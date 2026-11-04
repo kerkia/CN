@@ -16,7 +16,7 @@ import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
 import * as tracking from "../tracking.js";
 import { bindRunnerPop } from "../runnerpop.js";
-import { raceTabs, raceHref } from "../arenatabs.js";
+import { raceTabs, raceHref, isScoreRace } from "../arenatabs.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
   helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango", oreplay: "O-Replay", sportident: "SPORTident Center", direct: t("src.direct") };
@@ -196,7 +196,7 @@ async function detail(main, idx, query) {
       <div class="row" style="gap:8px">${tracking.button(track)}
         ${race.site ? html`<a class="btn btn-sm" href="${race.site}" target="_blank" rel="noopener">${t("prov.site")} ↗</a>` : ""}
         ${race.ffco_id ? html`<a class="btn btn-sm" href="https://cn.ffcorientation.fr/course/${race.ffco_id}/" target="_blank" rel="noopener">${t("prov.officialPage")}</a>` : ""}</div></div>
-    <div data-bar-tabs>${raceTabs(race.key, withSplits.length > 0)}</div>
+    <div data-bar-tabs>${raceTabs(race.key, withSplits.length > 0, {}, isScoreRace(race, withSplits))}</div>
     ${race.ongoing ? html`<p class="beta-note">${tn("prov.ongoingNote", race.ongoing)}</p>` : ""}
     ${docs.length ? html`<div class="filters" id="pv-pick"></div><section class="card"><div class="card-head"><div>
       <div class="hint" id="pv-class-hint"></div></div></div><div id="pv-class"></div></section>

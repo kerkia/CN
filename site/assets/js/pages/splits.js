@@ -19,6 +19,9 @@
 //   controls (splitstats.followers; the followed legs are also marked in Tableau);
 // - Régularité: each leg's performance index (the leg's reference time ÷ the runner's) and its spread, per runner and per
 //   leg (splitstats.regularity; 2026-10-22, the last three after MeOSDjango's analyses).
+// A score race (a rogaine: the controls taken in any order; owner, 2026-11-04) has no legs to compare: its « Tableau » lists each
+// runner's controls in the order taken, with their points, and « Passages » counts the controls taken against the clock; the
+// other views, the timing check and « Sans temps perdu » are left out (arenatabs.isScoreClass, SCORE_VIEWS).
 // Above the views, what the split times say about the timing itself (splitcheck.js): a unit off the right time, a card
 // not cleared, a punch before the start; the cells concerned are marked in Tableau.
 //
@@ -42,7 +45,7 @@ import { getProv, clock } from "./provisional.js";
 import * as local from "../local.js";
 import { liveId, toDoc, watch } from "../livesplits.js";
 import { bindRunnerPop } from "../runnerpop.js";
-import { SPLIT_VIEWS, resultsTab } from "../arenatabs.js";
+import { SPLIT_VIEWS, resultsTab, splitViews, isScoreClass, scoreControl } from "../arenatabs.js";
 import * as auth from "../auth.js";
 
 // a file under deposit (#/temps-inter?course=fichier) leads back to its race's deposit, under « Organisation ›
@@ -112,6 +115,9 @@ export async function render(main, { query = {} } = {}) {
   let ft1 = Number(query.f1) >= 0 && query.f1 ? Number(query.f1) : FOLLOW_DEFAULT.t1;
   let ft2 = Number(query.f2) > 0 && query.f2 ? Number(query.f2) : FOLLOW_DEFAULT.t2;
   let passAll = query.pa !== "0";             // « Passages »: every runner faint behind the runners compared
+  // a score race: its format, else each class by its split times (arenatabs.js)
+  const scoreRace = /^score$/i.test(withSplits.find((x) => x.key === key)?.epreuve || "");
+  const isScore = (k) => scoreRace || isScoreClass(k);
 
   // a live race: its classes as they arrive (shownAt: when the times drawn came); « Actualiser » once the course shown has newer ones
   let w = null, pending = false, shownAt = 0, loadedAt = 0;
@@ -124,6 +130,8 @@ export async function render(main, { query = {} } = {}) {
   function pickers() {
     const r = withSplits.find((x) => x.key === key);
     const k = docs[di].classes[ci];
+    const sc = isScore(k), views = splitViews(sc);
+    if (!views.includes(view)) view = "table";
     const clubs = [...new Set(k.runners.filter((x) => x.splits).map((x) => x.club).filter(Boolean))].sort((a, b) => a.localeCompare(b, "fr"));
     if (club && !clubs.includes(club)) club = "";
     head(r);
@@ -136,14 +144,14 @@ export async function render(main, { query = {} } = {}) {
     // a race's page in Arena (owner, 2026-10-30): its results as the first tab, then the analysis's views (not for a live race,
     // a file under deposit or a relay, which have no results page)
     const resultsToo = !live && key !== local.LOCAL && !withSplits.find((x) => x.key === key)?.relay;
-    $("#sp-tabs").innerHTML = html`<nav class="page-tabs race-tabs" role="tablist">${resultsToo ? resultsTab(key, view) : ""}${VIEWS.map((v) =>
+    $("#sp-tabs").innerHTML = html`<nav class="page-tabs race-tabs" role="tablist">${resultsToo ? resultsTab(key, view) : ""}${views.map((v) =>
       html`<button type="button" role="tab" data-ptab="${v}" aria-selected="${v === view}">${t(`spl.tab.${v}`)}</button>`)}</nav>`;
-    $("#sp-views").innerHTML = html`${TIMED.includes(view) ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}
+    $("#sp-views").innerHTML = html`${TIMED.includes(view) && !sc ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}
       ${view === "gaps" ? html`<label class="field"><span>${t("spl.graph")}</span><select id="sp-graph">${GRAPHS.map((g) => html`<option value="${g}" ${raw(g === graph ? "selected" : "")}>${t(`spl.graph.${g}`)}</option>`)}</select></label>
         ${graph === "gap" ? html`<label class="field"><span>${t("spl.ref")}</span><select id="sp-ref">${REFS.map((x) => html`<option value="${x}" ${raw(x === ref ? "selected" : "")}>${t(`spl.ref.${x}`)}</option>`)}</select></label>` : ""}
         ${graph === "gap" && ref === "runner" ? html`<label class="field"><span>${t("prov.runner")}</span><select id="sp-rr" style="max-width:240px">${k.runners.filter((x) => x.splits)
           .sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999)).map((x) => html`<option value="${x.name}" ${raw(x.name === refName ? "selected" : "")}>${x.place ? `${x.place}. ` : ""}${x.name}</option>`)}</select></label>` : ""}` : ""}
-      ${["table", "legs", "profile", "summary"].includes(view) ? html`<div class="field"><span>${t("spl.err")}</span><div class="row" style="gap:6px;align-items:center">
+      ${["table", "legs", "profile", "summary"].includes(view) && !sc ? html`<div class="field"><span>${t("spl.err")}</span><div class="row" style="gap:6px;align-items:center">
         <input type="number" id="sp-ep" min="0" max="500" step="1" value="${errPct}" style="width:64px" aria-label="${t("spl.err.pct")}"><span class="muted">${t("spl.err.pctUnit")}</span>
         <span class="muted">${t("spl.err.and")}</span>
         <input type="number" id="sp-es" min="0" max="3600" step="1" value="${errS}" style="width:64px" aria-label="${t("spl.err.s")}"><span class="muted">s</span></div></div>` : ""}
@@ -236,7 +244,8 @@ export async function render(main, { query = {} } = {}) {
 
   function draw() {
     const k = docs[di].classes[ci];
-    const asIdeal = ideal && TIMED.includes(view);
+    const sc = isScore(k);
+    const asIdeal = ideal && TIMED.includes(view) && !sc;
     const gapView = view === "gaps";
     replaceQuery({ course: key, doc: di || null, c: ci || null, vw: view === "table" ? null : view,
       v: asIdeal ? "ideal" : null, cl: club || null, g: gapView && graph !== "gap" ? graph : null,
@@ -288,9 +297,16 @@ export async function render(main, { query = {} } = {}) {
       x.cumRank = x.vCum.map((v, i) => rankOf(R.map((y) => y.vCum[i]), v));
       x.place = asIdeal ? (x.r.status === "ok" ? x.cumRank[n] : null) : x.r.place;
     }
+    // a score race: each runner's controls in the order taken ([{ i, s }]: the control's index, its time from the start), the
+    // points of those its name gives (« 206 (1p) »). The places stay the source's: points alone would ignore the late penalties,
+    // which no source gives (liveresultat's places follow the time alone)
+    const ctl = codes.map(scoreControl), withPts = sc && ctl.some((c) => c.pts != null);
+    const visits = (x) => x.cum.slice(0, n).map((s, i) => (s == null ? null : { i, s })).filter(Boolean).sort((a, b) => a.s - b.s);
+    if (sc) for (const x of R) { x.v = visits(x); x.pts = x.v.reduce((a, o) => a + (ctl[o.i].pts || 0), 0); }
     const byPlace = (xs) => [...xs].sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999) || (a.r.place ?? 9999) - (b.r.place ?? 9999));
     const shown = club ? R.filter((x) => x.r.club === club) : R;
-    if (!picked) picked = new Set(shown.filter((x) => x.r.status === "ok").sort((a, b) => a.r.time_s - b.r.time_s).slice(0, 5).map((x) => x.r.name));
+    // the first five compared: the fastest, or a score race's best placed (its places count the points)
+    if (!picked) picked = new Set((sc ? byPlace(shown) : shown.filter((x) => x.r.status === "ok").sort((a, b) => a.r.time_s - b.r.time_s)).slice(0, 5).map((x) => x.r.name));
     const sel = () => byPlace(shown.filter((x) => picked.has(x.r.name)));
     const label = (i) => (i === n ? t("spl.finish") : `${i + 1} (${codes[i]})`);
     const legLabels = Array.from({ length: L }, (_, i) => label(i));
@@ -308,7 +324,7 @@ export async function render(main, { query = {} } = {}) {
     };
     // the runners the charts and the face-à-face compare: ticked here or in the table
     const chooser = () => html`<section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.choose")}</h2>
-        <div class="hint">${t("spl.choose.hint")}</div></div></div>
+        ${sc ? "" : html`<div class="hint">${t("spl.choose.hint")}</div>`}</div></div>
       <div class="card-body" style="padding-bottom:0;display:flex;flex-wrap:wrap;gap:6px">
         ${["all", "none", "5", "10", "club"].filter((a) => a !== "club" || club).map((a) => html`<button type="button" class="chip" data-pickall="${a}">${t(`spl.pick.${a}`)}</button>`)}
         <span class="muted" style="font-size:12px;align-self:center">${t("spl.pick.shift")}</span></div>
@@ -323,7 +339,8 @@ export async function render(main, { query = {} } = {}) {
     let redraw = () => {};
 
     // what the split times say about the timing (splitcheck.js), above every view
-    const chk = checkClass(k);
+    // (a score race's controls come out of the list's order by design: nothing to check)
+    const chk = sc ? { issues: [], marks: new Map() } : checkClass(k);
     const who = (rs) => (rs.length > 5 ? `${rs.slice(0, 5).map((r) => r.name).join(", ")}… (+${rs.length - 5})` : rs.map((r) => r.name).join(", "));
     const issueLi = (x) => html`<li>${issueText(k, x)}${x.runners.length ? html` <span style="opacity:.8">— ${who(x.runners)}</span>` : ""}</li>`;
     $("#sp-check").innerHTML = !chk.issues.length ? "" : html`<div class="notice" style="display:block">
@@ -334,9 +351,27 @@ export async function render(main, { query = {} } = {}) {
       <div style="font-size:12.5px;margin-top:6px">${chk.issues.some((x) => x.kind !== "dup") ? html`${t("chk.banner.hint")} ` : ""}${t("chk.banner.marks")}</div></div>`;
     // who ran behind whom (splitstats.followers): its view, and the followed legs marked in Tableau
     const timedR = R.filter((x) => x.r.start_s != null);
-    const fol = ["table", "follow"].includes(view) && timedR.length > 1 ? followers(timedR, { t1: ft1, t2: ft2 }) : null;
+    const fol = !sc && ["table", "follow"].includes(view) && timedR.length > 1 ? followers(timedR, { t1: ft1, t2: ft2 }) : null;
 
-    if (view === "table") {
+    if (view === "table" && sc) {
+      const rows = byPlace(shown).map((x) => ({ x, v: x.v, pts: x.pts }));
+      body.innerHTML = html`
+        <section class="card"><div class="card-head"><div><h2>${kName(k.name)} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2></div></div>
+          <div class="table-wrap"><table class="data compact splits"${raw(freezeAttrs(2, 1))}><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
+            <th class="r">${t("prov.time")}</th><th class="r">${t("sh.score.col.n")}</th>${withPts ? html`<th class="r" title="${t("spl.sc.pts.hint")}">${t("spl.sc.pts")}</th>` : ""}
+            <th>${t("sh.score.col.order")}</th></tr></thead>
+          <tbody>${rows.map(({ x, v, pts }) => html`<tr>
+            <td class="r num">${x.r.place ?? ""}</td>
+            <td style="white-space:nowrap">${name(x)}<div class="muted" style="font-size:11.5px">${x.r.club || ""}</div></td>
+            <td class="r num">${x.r.status !== "ok" ? stLabel(x.r.status) : clock(x.r.time_s)}</td>
+            <td class="r num">${fmt(v.length)} <span class="muted" style="font-size:11px">/ ${fmt(n)}</span></td>
+            ${withPts ? html`<td class="r num">${fmt(pts)}</td>` : ""}
+            <td class="sp-sc-order">${v.map((o, j) => html`<span class="sp-sc-c" title="${t("spl.sc.leg", { t: clock(o.s - (j ? v[j - 1].s : 0)) })}"><b>${ctl[o.i].code}</b>${
+              ctl[o.i].pts != null ? html` <span class="muted">+${fmt(ctl[o.i].pts)}</span>` : ""}<span class="muted">${clock(o.s)}</span></span>`)}</td></tr>`)}</tbody></table></div></section>
+        ${foot(t("spl.sc.hint"), withPts && t("spl.sc.pts.hint"))}`;
+    }
+
+    if (view === "table" && !sc) {
       body.innerHTML = html`
         <section class="card"><div class="card-head"><div><h2>${kName(k.name)} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2></div></div>
           <div class="table-wrap"><table class="data compact splits"${raw(freezeAttrs(2, 1))}><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
@@ -588,21 +623,32 @@ export async function render(main, { query = {} } = {}) {
     if (view === "clock") {
       // each runner's passages against the clock: lines that meet are runners together, a steeper line catches up
       const timed = R.filter((x) => x.r.start_s != null);
-      const yLabels = [t("spl.startAbbr"), ...Array.from({ length: n }, (_, i) => String(i + 1)), t("spl.finishAbbr")];
+      // a score race: the number of controls taken so far, against the clock (the finish on the level of the last one)
+      const most = sc ? Math.max(0, ...timed.map((x) => x.v.length)) : 0;
+      const yLabels = sc ? [t("spl.startAbbr"), ...Array.from({ length: most }, (_, i) => String(i + 1))]
+        : [t("spl.startAbbr"), ...Array.from({ length: n }, (_, i) => String(i + 1)), t("spl.finishAbbr")];
       body.innerHTML = !timed.length ? empty(t("spl.clk.none"))
         : html`${chartCard({ id: "sp-clk", title: t("spl.clk.title"), tall: true })}${chooser()}
-          ${foot(t("spl.clk.hint"), t("spl.clk.def", { n: fmt(timed.length), of: fmt(R.length) }))}`;
+          ${foot(t(sc ? "spl.clk.hint.score" : "spl.clk.hint"), t("spl.clk.def", { n: fmt(timed.length), of: fmt(R.length) }))}`;
       if (timed.length) {
         bindChartCard(main, "sp-clk");
-        const pts = (x) => [[x.r.start_s, 0], ...x.cum.map((c, i) => (c == null ? null : [x.r.start_s + c, i + 1])).filter(Boolean)];
-        const tip = (s, [c, pos]) => `<b>${esc(s.name)}</b><div style="margin-top:3px">${esc(pos === n + 1 ? t("spl.finish") : pos ? label(pos - 1) : t("spl.start"))} · ${hm(c, true)}${pos ? ` · ${clock(c - s.start)}` : ""}</div>`;
+        // (a score race's points carry the control's code, null at the finish)
+        const pts = sc ? (x) => { const v = x.v;
+          return [[x.r.start_s, 0], ...v.map((o, j) => [x.r.start_s + o.s, j + 1, ctl[o.i].code]), ...(x.cum[n] == null ? [] : [[x.r.start_s + x.cum[n], v.length, null]])]; }
+          : (x) => [[x.r.start_s, 0], ...x.cum.map((c, i) => (c == null ? null : [x.r.start_s + c, i + 1])).filter(Boolean)];
+        const where = (pos, code) => (sc ? (code === undefined ? t("spl.start") : code == null ? t("spl.finish") : `${pos} (${code})`)
+          : pos === n + 1 ? t("spl.finish") : pos ? label(pos - 1) : t("spl.start"));
+        const tip = (s, [c, pos, code]) => `<b>${esc(s.name)}</b><div style="margin-top:3px">${esc(where(pos, code))} · ${hm(c, true)}${c > s.start ? ` · ${clock(c - s.start)}` : ""}</div>`;
         redraw = () => {
           const xs = sel().filter((x) => x.r.start_s != null), mine = new Set(xs);
           const series = [...(passAll ? timed.filter((x) => !mine.has(x)).map((x) => ({ name: x.r.name, start: x.r.start_s, color: css("--ink-3"), faint: true, data: pts(x) })) : []),
             ...xs.map((x, i) => ({ name: x.r.name, start: x.r.start_s, color: slotColor(i), data: pts(x) }))];
           $("#sp-clk-legend").innerHTML = legend(xs.map((x, i) => ({ label: x.r.name, color: slotColor(i) })));
           passChart($("#sp-clk"), { series, yLabels, fmtX: (v) => hm(v), tip });
-          $("#sp-clk-table").innerHTML = html`<table class="data compact"${raw(freezeAttrs(1, 1))}><thead><tr><th>${t("prov.name")}</th><th class="r">${t("spl.start")}</th>${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
+          $("#sp-clk-table").innerHTML = sc ? html`<table class="data compact"${raw(freezeAttrs(1, 1))}><thead><tr><th>${t("prov.name")}</th><th class="r">${t("spl.start")}</th>${yLabels.slice(1).map((l) => html`<th class="r">${l}</th>`)}<th class="r">${t("spl.finish")}</th></tr></thead>
+            <tbody>${xs.map((x) => { const v = x.v; return html`<tr><td style="white-space:nowrap">${x.r.name}</td><td class="r num">${hm(x.r.start_s, true)}</td>${yLabels.slice(1).map((l, j) => html`<td class="r num">${v[j]
+              ? html`<b>${ctl[v[j].i].code}</b> ${hm(x.r.start_s + v[j].s, true)}` : "—"}</td>`)}<td class="r num">${x.cum[n] == null ? "—" : hm(x.r.start_s + x.cum[n], true)}</td></tr>`; })}</tbody></table>`
+            : html`<table class="data compact"${raw(freezeAttrs(1, 1))}><thead><tr><th>${t("prov.name")}</th><th class="r">${t("spl.start")}</th>${legLabels.map((l) => html`<th class="r">${l}</th>`)}</tr></thead>
             <tbody>${xs.map((x) => html`<tr><td style="white-space:nowrap">${x.r.name}</td><td class="r num">${hm(x.r.start_s, true)}</td>${x.cum.map((c) => html`<td class="r num">${c == null ? "—" : hm(x.r.start_s + c, true)}</td>`)}</tr>`)}</tbody></table>`;
         };
       }

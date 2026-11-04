@@ -629,6 +629,11 @@ steady between controls: weight 1 under T1 = 7 s, falling to 0 at T2, both adjus
 index = time behind − time in front over the race time; followed legs barred in Tableau), « Régularité » (index = the leg's mean of
 its best quarter ÷ the runner's time; irregularity = its standard deviation weighted by the reference times over the runner's
 mean index — the absolute one favoured slow runners; a leg's spread with each runner's level taken out; finishers with every split).
+**Score races** (rogaines, owner 2026-11-04): a class is one when the race's format is « Score », its controls carry points
+(liveresultat's « 206 (1p) ») or most runners skip controls and take the rest out of the list's order (`arenatabs.isScoreClass`); it
+has only « Tableau » (each runner's controls in the order taken, with the points' sum — before late penalties, which no source
+gives; the places stay the source's, liveresultat's following the time alone) and « Passages » (controls taken against the clock),
+no timing check, no « Sans temps perdu » (`SCORE_VIEWS`; the results page's tabs too).
 By hand: `python -m ffco_scraper.prov --db <db>
 --out site/data --days 31 --budget 600` (`--build-only` rebuilds the files without fetching).
 

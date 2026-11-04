@@ -1952,6 +1952,11 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 /* a score course's table: each runner's controls in the order run */
 .sh-score td.sh-score-order { white-space: normal; }
 .sh-score-c { display: inline-block; margin: 0 8px 2px 0; font-variant-numeric: tabular-nums; }
+/* a score race in « Analyse de course »: each control taken, its code and points over its time from the start */
+.sp-sc-order { white-space: nowrap; }
+.sp-sc-c { display: inline-block; margin-right: 14px; text-align: center; line-height: 1.25; font-variant-numeric: tabular-nums; vertical-align: top; }
+.sp-sc-c > .muted { font-size: 11px; }
+.sp-sc-c > .muted:last-child { display: block; }
 .sh-e-work { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 10px; height: 60vh; min-height: 360px; }
 .sh-e-list { margin: 8px 0 0; padding-left: 22px; font-size: 13px; max-height: 30vh; overflow-y: auto; }
 @media (max-width: 900px) { .sh-e-work { grid-template-columns: 1fr; height: auto !important; } .sh-map { height: 60vh; }
