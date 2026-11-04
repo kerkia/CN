@@ -2574,8 +2574,15 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`pages/agenda.js`): in XW's list the host's flag and name in a « Pays » column, « Voir dans la liste de ce pays » in the details
   (`pickCountry` on the host, the event opened there); in a host's list the matched row tagged « WRE » (`.tag-wre`), « Coupe du
   monde » for a World Cup round, the unmatched WREs added as rows of their own (no FFCO link, no « no online entries » box) — a
-  country whose calendar Ozimut cannot read (Sweden, Norway, Finland, Australia…) gets an agenda of its WREs alone. Not yet: a filter
-  by country in the WRE list, its map.
+  country whose calendar Ozimut cannot read (Sweden, Norway, Finland, Australia…) gets an agenda of its WREs alone. **Maps**
+  (owner, 2026-11-04: « Australia has no map », « for IOF WRE, a world map »): `tools/countrymaps.py build` makes an outline for
+  every country the WRE calendar may name too (`wre.IOC`), and `geo/xw.json`, the world's land (`build_world`: every country's
+  rings, Antarctica out, 83 KB); a WRE without its match's position is placed by a town its name gives — the host's own table of
+  places when Ozimut has one (the name's generic words taken out first: « JK Day 2 - Middle » found a « Middle… »), else
+  `countries/places/world.json.gz` (`tools/worldplaces.py`: GeoNames' towns of 5 000 people or more, Natural Earth's label point
+  as each country's centre, 711 KB) — else at its country's centre, an approximate place; positions written after the change
+  check (`wre.POS`, `place_all`: `comparable` leaves them out); the legend says « au centre du pays » for IOF WRE and a WRE-only
+  list (`agendamap.mount`'s `area`, `agd.map.areaCountry`). Not yet: a filter by country in the WRE list.
 - **The Agenda's map** (owner, 2026-10-25: « on a computer, a map of the chosen country, the competition's place shown as soon as
   the mouse is over it in the table, all the more once it is selected »): above the details (`.agenda-side`, sticky; hidden and
   not fetched under 980 px), `site/assets/js/agendamap.js` draws the country as SVG from `site/assets/geo/<cc>.json` — Natural

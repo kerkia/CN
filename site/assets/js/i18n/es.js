@@ -3318,6 +3318,7 @@ export default {
   "agd.map.all": "Todo el país",
   "agd.map.town": "lugar",
   "agd.map.area": "lugar aproximado (en el centro: {dept} o {region})",
+  "agd.map.areaCountry": "lugar aproximado (centro del país)",
   "agd.map.approx": "(lugar aproximado)",
   "agd.map.missing.one": "{n} evento fuera del mapa",
   "agd.map.missing.other": "{n} eventos fuera del mapa",

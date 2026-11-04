@@ -2317,6 +2317,7 @@ export default {
   "agd.map.all": "Tout le pays",
   "agd.map.town": "lieu",
   "agd.map.area": "lieu approché (au centre : {dept} ou {region})",
+  "agd.map.areaCountry": "lieu approché (au centre du pays)",
   "agd.map.approx": "(lieu approché)",
   "agd.map.missing.one": "{n} manifestation hors de la carte",
   "agd.map.missing.other": "{n} manifestations hors de la carte",

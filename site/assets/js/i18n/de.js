@@ -3318,6 +3318,7 @@ export default {
   "agd.map.all": "Ganzes Land",
   "agd.map.town": "Ort",
   "agd.map.area": "ungefährer Ort (in der Mitte: {dept} oder {region})",
+  "agd.map.areaCountry": "ungefährer Ort (Mitte des Landes)",
   "agd.map.approx": "(ungefährer Ort)",
   "agd.map.missing.one": "{n} Veranstaltung nicht auf der Karte",
   "agd.map.missing.other": "{n} Veranstaltungen nicht auf der Karte",

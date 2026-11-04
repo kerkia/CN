@@ -168,19 +168,44 @@ def build(cc: str, countries: list, units: list) -> dict | None:
             "box": [round(x, 4) for x in box], "land": done(land), "units": done(unit_rings), "near": done(near, frame)}
 
 
+def build_world(countries: list) -> dict:
+    """« IOF WRE »'s map (countries/wre.py, code XW; owner, 2026-11-04): the world's land, every country's outline (its borders
+    drawn by the land's edge), Antarctica left out; simplified for a map a few hundred pixels wide."""
+    w, s, e, n = -170.0, -56.0, 180.0, 78.0
+    cos = math.cos(math.radians((s + n) / 2))
+    span = max((e - w) * cos, n - s)
+    tol = span / 1800                     # (zoomed in on a continent, its coasts still hold)
+    q = 100
+    out = []
+    for f in countries:
+        if code_of(f["properties"]) == "AQ":
+            continue
+        for r in rings(f["geometry"]):
+            b = bbox(r)
+            if max((b[2] - b[0]) * cos, b[3] - b[1]) < tol * 3:
+                continue
+            r = simplify(r, tol, cos)
+            if len(r) >= 4:
+                out.append(encode(r, q))
+    return {"v": 1, "source": "Natural Earth (public domain), https://www.naturalearthdata.com", "q": q,
+            "box": [w, s, e, n], "land": out, "units": [], "near": []}
+
+
 def main(argv) -> None:
     cmd = argv[0] if argv else "build"
     if cmd == "fetch":
         fetch()
         return
     import countries
-    ccs = [c.upper() for c in argv[1:]] or [m.COUNTRY.code for m in countries.modules()]
+    # every agenda's country, and every country the IOF's WRE calendar may name (countries/wre.py: their WREs have a list)
+    from countries import wre
+    ccs = [c.upper() for c in argv[1:]] or [m.COUNTRY.code for m in countries.modules()] + sorted(set(wre.IOC.values()))
     d = src_dir()
     load = lambda f: json.loads((d / f"{f}.geojson").read_text(encoding="utf-8"))["features"]
     world, units = load(FILES[0]), load(FILES[1])
     OUT.mkdir(parents=True, exist_ok=True)
-    for cc in ccs:
-        m = build(cc, world, units)
+    for cc in dict.fromkeys(ccs):
+        m = build_world(world) if cc == "XW" else build(cc, world, units)
         if not m:
             print(f"{cc}: not in Natural Earth")
             continue

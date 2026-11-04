@@ -24,7 +24,7 @@ export const where = (e) => (e.gps ? [e.gps[0], e.gps[1], false] : e.pos ? [e.po
  * has no outline. onPick(key): a dot clicked; onHover(key | null): the mouse over a dot; levels: { dept, region }, the
  * country's units' names (« département », « canton »…) for the legend.
  */
-export async function mount(el, cc, { onPick, onHover, levels = {} } = {}) {
+export async function mount(el, cc, { onPick, onHover, levels = {}, area = "agd.map.area" } = {}) {
   const geo = await outline(cc);
   if (!geo) { el.hidden = true; return null; }
   el.hidden = false;
@@ -54,7 +54,7 @@ export async function mount(el, cc, { onPick, onHover, levels = {} } = {}) {
       <g class="agm-dots"></g><g class="agm-hi"></g></svg>
       <div class="agm-tip" hidden></div>
     <div class="agm-foot"><span class="agm-key"><i class="agm-k-dot"></i>${t("agd.map.town")}</span>
-      <span class="agm-key"><i class="agm-k-ring"></i>${t("agd.map.area", levels)}</span><span class="agm-missing dim"></span>
+      <span class="agm-key"><i class="agm-k-ring"></i>${t(area, levels)}</span><span class="agm-missing dim"></span>
       <span class="agm-credit dim">${t("agd.map.credit")}</span></div></div>`;
   const svg = el.querySelector("svg"), dotsG = el.querySelector(".agm-dots"), hiG = el.querySelector(".agm-hi");
   const tip = el.querySelector(".agm-tip"), box = el.querySelector(".agm-box");

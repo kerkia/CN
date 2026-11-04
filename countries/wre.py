@@ -114,6 +114,54 @@ def match(w: dict, events: list[dict]) -> dict | None:
     return e if len(cands) == 1 and (e.get("end") or not e.get("epr") or e["epr"] == w.get("epr")) else None
 
 
+# the world's towns and the countries' centres (tools/worldplaces.py), read once
+_WORLD: dict | None = None
+# words of a WRE's name that are towns somewhere but never its place
+NOT_TOWN = set("""championship championships national nationals cup league open games meeting trophy festival tour week camp
+    days sprint middle long night relay final finals masters junior juniors youth senior elite international""".split())
+
+
+def world() -> dict:
+    global _WORLD
+    if _WORLD is None:
+        import gzip
+        import json
+        f = Path(__file__).resolve().parent / "places" / "world.json.gz"
+        try:
+            _WORLD = json.loads(gzip.decompress(f.read_bytes()).decode("utf-8")).get("countries") or {}
+        except (OSError, ValueError):
+            _WORLD = {}
+    return _WORLD
+
+
+def position(cc: str, name: str) -> list | None:
+    """Where a WRE with no place of its own is drawn on the Agenda's maps: a town its name gives — by the country's own table
+    of places when Ozimut has one (countries/places), else among the world's towns of 5 000 people or more —, else its
+    country's centre, an approximate place ([lat, lon, 1]); None for a country neither knows."""
+    from countries import places
+    # (the name without its generic words: « JK Day 2 - Middle » found a « Middle… » in Britain's table)
+    bare = " ".join(w for w in re.split(r"[\s,;:()/–—-]+", name or "") if w and agenda.fold(w) not in STOP | NOT_TOWN and not w.isdigit())
+    got = places.position(cc, bare) if bare and (places.DIR / f"{cc.lower()}.json.gz").exists() else None
+    if got and got[2] == "town":
+        return [got[0], got[1]]
+    w = world().get(cc) or {}
+    towns = w.get("t") or {}
+    toks = [x for x in re.findall(r"[a-z0-9]+", agenda.fold(name))]
+    best = None
+    for n in (3, 2, 1):                              # « la clusaz », « hong kong » before a single word
+        for i in range(len(toks) - n + 1):
+            g = toks[i:i + n]
+            if n == 1 and (len(g[0]) < 4 or g[0] in STOP or g[0] in NOT_TOWN or g[0].isdigit()):
+                continue
+            hit = towns.get(" ".join(g))
+            if hit and (best is None or (n, hit[2]) > best[0]):
+                best = ((n, hit[2]), hit)
+    if best:
+        return [best[1][0] / 100, best[1][1] / 100]
+    c = w.get("c")
+    return [c[0] / 100, c[1] / 100, 1] if c else None
+
+
 def read(http, today: date) -> list[dict]:
     rows, failed = [], 0
     for y in years(today):
@@ -144,8 +192,41 @@ def read(http, today: date) -> list[dict]:
                 for f in COPY:
                     if hit.get(f) not in (None, "", [], {}):
                         e[f] = hit[f]
+        if cc and not e.get("pos") and not e.get("gps"):
+            pos = position(cc, r["name"])
+            if pos:
+                e["pos"] = pos
+        POS[e["id"]] = e.get("pos")
         out.append(e)
     return out
+
+
+# each row's position as the last read gave it (its match's, a town of its name, its country's centre): the file's change
+# check leaves positions out (countries/agenda.py `comparable`), so they are written after it, as the other agendas' are
+POS: dict[str, list | None] = {}
+
+
+def place_all(path: Path) -> bool:
+    import json
+    try:
+        a = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    changed = False
+    for e in a.get("events") or []:
+        if e["id"] not in POS or e.get("pos") == POS[e["id"]]:
+            continue
+        changed = True
+        if POS[e["id"]]:
+            e["pos"] = POS[e["id"]]
+        else:
+            e.pop("pos", None)
+    if changed:
+        path.write_text(json.dumps(a, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        ev = a.get("events") or []
+        print(f"agenda XW: placed on the map — {sum(1 for e in ev if e.get('pos') and len(e['pos']) == 2)} at a place, "
+              f"{sum(1 for e in ev if e.get('pos') and len(e['pos']) == 3)} at their country's centre, of {len(ev)}")
+    return changed
 
 
 _refresh, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"iof": "IOF World Ranking"},
@@ -155,4 +236,6 @@ _refresh, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSI
 def refresh_agenda(root: Path, today: date | None = None) -> bool:
     global ROOT
     ROOT = root
-    return _refresh(root, today)
+    POS.clear()
+    got = _refresh(root, today)
+    return place_all(agenda_path(root)) or got

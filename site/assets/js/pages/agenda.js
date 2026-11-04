@@ -63,7 +63,7 @@ export async function render(main, { query }) {
   const W = inWre ? null : await data.countryJson(WRE, "agenda.json").catch(() => null);
   const wres = (W?.events || []).filter((w) => w.host === country.current());
   let A = await data.agenda();
-  if (!A && wres.length) A = { events: [], regions: [], depts: {}, specs: [], generated: W.generated, sources: W.sources };
+  if (!A && wres.length) A = { events: [], regions: [], depts: {}, specs: [], generated: W.generated, sources: W.sources, wreOnly: true };
   if (A && wres.length) {                    // (the file as loaded is the cache's: copied, never changed)
     const of = new Map(wres.filter((w) => w.same).map((w) => [String(w.same), w]));
     const hit = new Set();
@@ -406,6 +406,8 @@ export async function render(main, { query }) {
     if (map || mobile()) return;
     map = await agendaMap.mount($("#agmap"), cc, {
       levels: { dept: levelName("dept").toLowerCase(), region: levelName("region").toLowerCase() },
+      // (the WREs the IOF's calendar alone gives are placed at their country's centre when their name gives no town)
+      area: inWre || A.wreOnly ? "agd.map.areaCountry" : "agd.map.area",
       onPick: (key) => { select(key); $(`#table tr[data-key="${CSS.escape(key)}"]`)?.scrollIntoView({ block: "nearest" }); },
       onHover: (key) => {
         $$("#table tr.map-hover").forEach((r) => r.classList.remove("map-hover"));
