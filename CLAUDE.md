@@ -2564,6 +2564,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   `country.WRE`; its name `cty.wre`, a globe drawn in place of a flag, « WRE » on the header's button; `access` "all"). Source: the
   IOF World Ranking site's calendar (`ranking.orienteering.org/Calendar?year=&discipline=F|FS|M|S|T`, server-rendered, no bot
   challenge nor robots.txt, unlike IOF Eventor): date, host (the IOC's code, `IOC` → ISO), name, the World Cup badge, the status;
+  each WRE links its IOF Eventor page (`src.eventor`, owner 2026-11-04: venue, website, entries for the reader's browser — the
+  ranking site numbers events as Eventor does, a split event 1 000 000 / 2 000 000 + the number; Eventor screens robots, Ozimut
+  reads nothing there; an Eventor API key is asked of the IOF);
   this year and the next (the last too until March), one row per event (its men's and women's lists are two rows there), ~10
   requests a day; `countries.modules()` runs it **last** in the agenda run so that each WRE is matched to its host country's agenda
   as refreshed that day (`match`: a competition of that day or spanning it, the same discipline, sprint apart from forest except a

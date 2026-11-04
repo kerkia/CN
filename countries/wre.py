@@ -26,9 +26,15 @@ from countries import agenda
 from countries.base import Country
 
 COUNTRY = Country(code="XW", federation="IOF", access="all", db=paths.DATA_DIR / "xw.sqlite3", lang="en", results=False)
-AGENDA_VERSION = 3                       # 2: the WREs placed on the maps (a town of their name, else their country's centre);
-                                         # 3: France's centre was Clipperton Island's (worldplaces), none off its map any more
+AGENDA_VERSION = 4                       # 2: the WREs placed on the maps (a town of their name, else their country's centre);
+                                         # 3: France's centre was Clipperton Island's (worldplaces), none off its map any more;
+                                         # 4: each WRE's page on IOF Eventor (`src.eventor`)
 SOURCE = "https://ranking.orienteering.org"
+# a WRE's page on IOF Eventor, where its organiser gives the venue, website, entries and documents (owner, 2026-11-04: « POM 27
+# has its own site »): the ranking site numbers its events as Eventor does, an event ranked in two lists (men's and women's)
+# as 1 000 000 and 2 000 000 + its number. Eventor screens robots (a Cloudflare challenge): the link is for the reader's
+# browser; Ozimut reads nothing there.
+EVENTOR = "https://eventor.orienteering.sport/Events/Show/{}"
 LIST = f"{SOURCE}/Calendar"
 # the calendar's disciplines -> the agenda's discipline and format
 DISCIPLINES = {"F": (agenda.FOOT, None), "FS": (agenda.FOOT, agenda.SPRINT), "M": (agenda.MTBO, None),
@@ -209,7 +215,7 @@ def read(http, today: date) -> list[dict]:
         seen.add(k)
         spec, epr = DISCIPLINES[r["disc"]]
         e = agenda.event("XW", r["id"], r["date"], r["name"], spec=spec, epr=epr if epr is not None else (agenda.fmt_of(r["name"]) or None),
-                         src={"iof": f"{SOURCE}/ResultsView?event={r['id']}"}, wre=True, wc=r["wc"] or None,
+                         src={"iof": f"{SOURCE}/ResultsView?event={r['id']}", "eventor": EVENTOR.format(int(r["id"]) % 1_000_000)}, wre=True, wc=r["wc"] or None,
                          calculated=(r["status"] == "Calculated") or None, host=cc, ioc=r["ioc"] if not cc else None)
         if cc:
             hit = match(e, hosts.setdefault(cc, host_events(cc)))
@@ -255,7 +261,7 @@ def place_all(path: Path) -> bool:
     return changed
 
 
-_refresh, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"iof": "IOF World Ranking"},
+_refresh, agenda_path, agenda_current = agenda.hooks(COUNTRY, read, AGENDA_VERSION, sources={"iof": "IOF World Ranking", "eventor": "IOF Eventor"},
                                                       place=lambda e: None)
 
 

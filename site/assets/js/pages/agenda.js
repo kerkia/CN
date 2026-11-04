@@ -71,7 +71,7 @@ export async function render(main, { query }) {
       const w = e.id != null && of.get(String(e.id));
       if (!w) return e;
       hit.add(w.id);
-      return { ...e, wre: true, wc: e.wc || w.wc, src: { ...(e.src || {}), iof: w.src?.iof } };
+      return { ...e, wre: true, wc: e.wc || w.wc, src: { ...(e.src || {}), eventor: w.src?.eventor, iof: w.src?.iof } };
     });
     for (const w of wres) if (!hit.has(w.id)) rows.push({ ...w, country: country.current() });
     A = { ...A, events: rows, specs: [...new Set([...(A.specs || []), ...wres.map((w) => w.spec).filter(Boolean)])] };
@@ -600,7 +600,7 @@ export async function render(main, { query }) {
   // where an event of another country comes from: its federation's page (Spain: SICO), its results platform (O-Replay)
   // (the other countries' agendas name their sources in the file, `sources`: key -> the site's name, the value a link)
   const SOURCES = { sico: ["SICO", (v) => v], oreplay: ["O-Replay", (v) => `https://www.oreplay.es/competitions/${v.split("/")[0]}`],
-    iof: ["IOF World Ranking", (v) => (safeUrl(v) ? v : "")],
+    eventor: ["IOF Eventor", (v) => (safeUrl(v) ? v : "")], iof: ["IOF World Ranking", (v) => (safeUrl(v) ? v : "")],
     ...Object.fromEntries(Object.entries(A.sources || {}).map(([k, name]) => [k, [name, (v) => (safeUrl(v) ? v : "")]])) };
   const sourceLinks = (e) => {
     const out = Object.entries(e.src || {}).filter(([k, v]) => SOURCES[k] && v && SOURCES[k][1](v))
