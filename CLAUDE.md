@@ -359,12 +359,19 @@ only a trace is taken; a trace just dropped plays at once (`orgaGo`). Every anal
 is Le Helloco for now — owner, 2026-10-31: `app.OWNER_ROUTES`, `auth.owner`, out of the menus, the router sends others to the modules page; the texts naming them —
 the home page's Coach section, its picture and Tarifs line, the modules page, the tiles, Coach's documentation — have a « .lim »
 version without them, `auth.ownerKey`, `tour.js` `lim` / `OWNER_CAPS`, the guide's `owner`): Purple Pen's symbols (`tracer/symbols.js`) column by column, column D by family,
-names and sheet texts in the symbol file's 23 languages, a search, a practice mode hiding the names; Purple Pen credited in the
-legal notices. Beside each symbol its map equivalent (owner, 2026-10-30, after Maprunner's posters — the idea only):
-`mapsymbols.js` (`mapSvg(id, size)`, keyed by the IOF id, for the Tracer's guide later), our own schematic SVGs in ISOM 2017-2 /
-ISSprOM 2019-2 colours, the purple circle on the feature — every column D symbol, C and G (the eight directions drawn for north
-and turned, the flag's spot marked), E and F where a map shows them; H, sizes and special instructions none; white map paper
-in every theme. Practice (owner, 2026-10-30): the names hidden (`?mode=pratique`), « Masquer les symboles »
+a search, a practice mode hiding the names; Purple Pen credited in the legal notices. **Everything from the specifications and
+only from them** (owner, 2026-11-04: the drawings of 2026-10-30, our own schematic maps beside every column, were not the
+specification's, and the French showed English names): `iscd.js` — ISCD 2024 (the current IOF standard; its English text,
+downloaded with FFCO's French 2018 translation, kept in the session's scratch `ffco/`) — gives each Purple Pen id its ISCD number
+(`iscdRef`: Purple Pen keeps 2004's here and there, 11.x → 12.x, 12.x → 13.x, 13.x → 15.x…; radio/TV control and « map exchange at
+a control », not in ISCD, and Purple Pen's second forms of one symbol are left out), and column D the map symbols of ISCD's own
+« ISOM/ISSprOM » column (`MAP`, `mapCodes`: « a number includes all symbols beginning with it », 509 → 509.1, 509.2), drawn by
+`isom.js` exactly as « Symboles de carte » draws them, with their numbers (`mapSwatches`); the other columns have no map
+equivalent in ISCD, so none. Names and descriptions: ISCD 2024's (`cd.s.<ref>`, `cd.d.<ref>`; directional families from
+`cd.cdir.<D>` / `cd.gdir.<D>` patterns, the description on the family's first card only); French from FFCO's 2018 terms,
+the 2024 text translated faithfully; when the sheet language chosen differs from the site's, Purple Pen's name in it under the
+name (`cd.alt`). Column F's sizes and the instructions' distances, which Purple Pen draws as text, print ISCD's own examples
+(`PRINTED`: 2.5, 8 × 4, 0.5/3, 2|3, 60 m…). Practice (owner, 2026-10-30): the names hidden (`?mode=pratique`), « Masquer les symboles »
 (`?mode=carte`, the maps alone) or « Masquer les dessins de carte » (`?mode=symbole`; « Imaginer … » until 2026-10-31, owner: « Masquer » as the other choices), the rest shown by a tap. At the top,
 « Lire une ligne de définitions »: our own worked line (`EXAMPLE`: 7, 145, the eastern stony depression 8×4, north part,
 refreshments) under its letters A-H, written out in the language chosen by the Tracer's `textifier`, and what each column says
@@ -374,17 +381,23 @@ in 2017-2 —, 501-532, 601-603, 701-713) as a legend's swatch, group by group (
 line of meaning; a card « Ce que disent les couleurs » with the forest's runnability by the green; search; practice hiding the
 names (`?mode=noms`) or the drawings (`?mode=dessins`). `isom.js` draws them, our own SVGs at the specification's dimensions in mm
 (line widths, dots, dashes, spacings read from its drawings), 18 px a mm, the course symbols in a larger frame (7.6 px a mm). Names:
-the specification's (French: FFCO's translation, ISOM 2017-2 FR/EN); notes our own words (`ms.s.<code>`, `ms.n.<code>`). The four
+the specification's (French: FFCO's translation, ISOM 2017-2 FR/EN; Spanish: FEDO's); notes the specification's own definition,
+shortened, adding nothing (`ms.s.<code>`, `ms.n.<code>`; German translated from IOF's English, no official one found). **Every
+drawing checked against the specifications on 2026-11-04** (owner: 206, the dots of 114/212 touching, 416's second form, 517's
+ticks, « demi-courbe »): dimensions from their « précise définition » drawings, scattered dots placed at the spec's density and
+minimum/maximum spacing (`scatterMM`, the sprint's `spScatter`), every variant the spec draws shown in one swatch (402/404, 406-410
+with their running-direction stripes, 413/414, 416, 501, 520, 521, 202…); sprint from revision 6 (Czech) and the Polish 2019-2's
+vector drawings. Left open: dimensions only drawn, not written (532's steps, the stripes' angle, 510/511's bars), 602 taller than the
+swatch. Spec texts and the agents' notes kept in the session's scratch (`ffco/`, `forest-texts.json`, `sprint-texts.json`). The four
 « shall not be crossed / entered » symbols (520, 708, 709, 711) are tagged « interdit ». **Two tabs** (owner, 2026-10-31): « Forêt »
 (ISOM 2017-2) and « Sprint » (`?onglet=sprint`): ISSprOM 2019-2, revision 6 of January 2024 — read from the Czech federation's
 translation, the only copy of that revision found (no English one reachable); its numbers (105.1, 501.1-3, 509.1-2, 512.1-3, 513.1-2,
 522.1, 533, 710.1-2, 714, 715…) and dimensions at 1:4000 (`isom.js` `SP`, `SP_COURSE`, `GROUPS_SPRINT`; names `ms.sp.s.<code>`, the
 FFCO's French of ISSprOM 2019 where it has them); `SPRINT_ONLY` tagged « sprint » (not on a forest map), `FORBIDDEN_SPRINT` the
 symbols the sprint text says not to cross or enter. The standards, with their year, are named at the top of both this page and
-« Définitions de postes » (`.ms-stds`; owner, 2026-10-31). « Définitions de postes » has the same two tabs: one IOF standard (2018)
-for both, the Sprint tab keeping the symbols a sprint uses (`descriptions.js` `SPRINT_D`, `SPRINT_OTHER`; C, F and the special
-instructions whole) with each map drawn as a sprint map shows it (`mapsymbols.js` `SPRINT`, `mapSvg(id, size, cls, sprint)`), the
-urban features 5.23-5.25 tagged « sprint » on both tabs. A well / fountain / water tank is drawn as ISOM's blue square (311).
+« Définitions de postes » (`.ms-stds`; owner, 2026-10-31). « Définitions de postes » has the same two tabs: one IOF standard
+(ISCD 2024) for both; « Forêt » shows ISOM 2017-2's symbols beside column D, « Sprint » ISSprOM 2019-2's and keeps the column D
+features that have one, every other column whole (2026-11-04; the hand-picked sprint selections and the « sprint » tag are gone).
 The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); on a phone
 « Analyse solo » offers « Photographier la carte » (`#an-cam`, `capture="environment"`: the rear camera, the photo kept on the phone).
 **The home page** (owner, 2026-10-30): sections one under another, a rule between them, each a link of the bar — « Aperçu »

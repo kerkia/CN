@@ -2736,14 +2736,19 @@ div.tr-field { position: absolute; left: 50%; bottom: 34px; transform: translate
 .cd-sym { color: var(--ink); max-width: 100%; height: auto; outline: 1px solid var(--border-strong); background: var(--surface); }
 .cd-id { font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; min-height: 13px; }
 .cd-name { font-size: 13px; font-weight: 620; line-height: 1.3; }
-.cd-text { font-size: 12px; color: var(--ink-2); font-style: italic; line-height: 1.3; }
+.cd-text { font-size: 12px; color: var(--ink-2); line-height: 1.35; text-align: left; }
+.cd-alt { font-size: 12px; color: var(--ink-3); font-style: italic; line-height: 1.3; }
+.cd-grid:has(.has-map) { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+.cd-maps { display: flex; flex-wrap: wrap; gap: 6px 8px; justify-content: center; margin-top: 4px; }
+.cd-sw { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.cd-swn { font-size: 10.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
 .cd-practising .cd-card { cursor: pointer; }
-.cd-practising .cd-card:not(.shown) .cd-name, .cd-practising .cd-card:not(.shown) .cd-text { visibility: hidden; }
-/* each symbol beside its map equivalent (mapsymbols.js): map paper stays white in every theme, a little dimmed in the dark ones */
+.cd-practising .cd-card:not(.shown) .cd-name, .cd-practising .cd-card:not(.shown) .cd-text, .cd-practising .cd-card:not(.shown) .cd-alt { visibility: hidden; }
+/* each symbol beside its map equivalent (iscd.js, isom.js): map paper stays white in every theme, a little dimmed in the dark ones */
 .cd-pics { display: flex; gap: 6px; justify-content: center; max-width: 100%; }
 .cd-map { flex: none; outline: 1px solid var(--border-strong); border-radius: 1px; }
 :root[data-theme="dark"] .cd-map, :root[data-theme="undergrowth"] .cd-map { filter: brightness(.9); }
-.cd-practising.cd-by-map .cd-card:not(.shown) .cd-sym, .cd-practising.cd-by-sym .cd-card:not(.shown) .cd-map { visibility: hidden; }
+.cd-practising.cd-by-map .cd-card:not(.shown) .cd-sym, .cd-practising.cd-by-map .cd-card:not(.shown) .cd-id, .cd-practising.cd-by-sym .cd-card:not(.shown) .cd-maps { visibility: hidden; }
 .cd-sec { scroll-margin-top: 76px; }
 /* the worked line at the top: eight boxes under their letters, the line in words, what each column says */
 .cd-intro { margin-bottom: 14px; }

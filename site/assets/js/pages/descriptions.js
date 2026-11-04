@@ -2,19 +2,20 @@
 // with its name and the text a description sheet prints for it, in any of the symbol file's 23 languages. The symbols are
 // Purple Pen's (BSD licence, credited in the site's legal notices), the same the Tracer draws (tracer/symbols.js). A search
 // over the names and texts, and a practice mode that hides the names until a symbol is tapped. Beside each symbol, the feature
-// as a map draws it (mapsymbols.js; owner, 2026-10-30, after Maprunner's posters), and at the top a worked line of a sheet,
-// its eight columns explained and the line written out in the language chosen (the Tracer's textifier). Practice: the names
-// hidden, or the map alone (imagine the description) or the symbol alone (imagine the map), the rest found by a tap.
-// Two tabs (owner, 2026-10-31): « Forêt », every symbol with its map drawn as a forest map (ISOM 2017-2) shows it, and
-// « Sprint », the symbols a sprint uses, drawn as a sprint map (ISSprOM 2019-2) shows them; the standard of the descriptions
-// (the IOF's, 2018 — one for every discipline) named at the top. The urban features met mostly in sprint carry a tag.
+// as a map draws it, and at the top a worked line of a sheet, its eight columns explained and the line written out in the
+// language chosen (the Tracer's textifier). Practice: the names hidden, or the map alone (imagine the description) or the
+// symbol alone (imagine the map), the rest found by a tap.
+// Everything from the specifications and only from them (owner, 2026-11-04; iscd.js): the numbers, names and descriptions of
+// ISCD 2024, and beside a column D symbol the map symbols that ISCD's own « ISOM/ISSprOM » column names, drawn as « Symboles
+// de carte » draws them (isom.js); the other columns have none. Two tabs (owner, 2026-10-31): « Forêt » with ISOM 2017-2's
+// symbols, « Sprint » with ISSprOM 2019-2's (column D keeping the features that have one).
 
 import { html, raw, $, $$, normalise } from "../util.js";
 import { t, lang } from "../i18n.js";
 import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
-import { loadSymbols, loadAllTexts, languages, symbol, symbolsFor, symbolName, symbolText, symbolPaths } from "../tracer/symbols.js";
+import { loadSymbols, loadAllTexts, languages, symbol, symbolsFor, symbolName, symbolPaths } from "../tracer/symbols.js";
 import { textifier } from "../tracer/textify.js";
-import { mapSvg } from "../mapsymbols.js";
+import { iscdRef, mapCodes, mapSwatches } from "../iscd.js";
 
 // the columns of a description sheet, and the special instructions (Purple Pen's kinds); column D by its families (the
 // symbols' numbers: 1 landforms, 2 rocks, 3 water, 4 vegetation, 5 man-made, 6 special features)
@@ -28,16 +29,12 @@ const FROM_QUERY = { pratique: "names", carte: "map", symbole: "sym" };
 // refreshments » — C, D, E, the F size, G, H (Purple Pen's control: symbols C, D, E, F-combination, G, H)
 const LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const EXAMPLE = { num: "7", code: "145", symbols: ["0.1E", "1.12", "8.6", null, "11.3N", "12.2"], colF: "8x4" };
-// the symbols a sprint uses (in town and park): column D's features of streets, squares and parks, the positions said of
-// buildings, walls and fences, the sizes and crossings; columns C, F and the special instructions whole (an id's direction
-// suffix aside: « 11.4N » is « 11.4 »)
-const SPRINT_D = new Set(["1.4", "1.6", "1.10", "1.13", "2.1", "2.4", "2.8", "3.1", "3.2", "3.4", "3.5", "3.9", "3.11", "4.1", "4.5", "4.6", "4.7", "4.8",
-  "4.9", "5.1", "5.2", "5.4", "5.6", "5.7", "5.8", "5.9", "5.10", "5.11", "5.12", "5.13", "5.15", "5.17", "5.20", "5.23", "5.24", "5.25", "5.26", "6.1", "6.2"]);
-const SPRINT_OTHER = new Set(["8.11", "11.1", "11.2", "11.3", "11.4", "11.5", "11.8", "11.11", "11.12", "11.13", "11.14", "11.15", "12.1", "12.2", "12.4"]);
-const base = (id) => id.replace(/@.*/, "").replace(/(N|NE|E|SE|S|SW|W|NW|single)$/, "");
-const inSprint = (s) => s.k === "C" || s.k === "F" || s.k >= "T" || (s.k === "D" ? SPRINT_D : SPRINT_OTHER).has(base(s.id));
-// urban features, met mostly in sprint: tagged on both tabs
-const SPRINT_TYPICAL = new Set(["5.23", "5.24", "5.25"]);
+// what a sheet prints as text in a symbol's place: the specification's own examples (column F's sizes, the distances of the
+// special instructions); « a/b » on a diagonal (height on slope), « a|b » one over the other (heights of two features)
+const PRINTED = { "9.1": "2.5", "9.2": "8 × 4", "9.3": "0.5/3", "9.4": "2|3", "14.1": "150 m", "15.1": "60 m", "15.2": "300 m",
+  "15.5": "50 m", "16.1": "400 m", "16.2": "150 m", "16.3": "380 m" };
+const num = (ref) => ref.split(".").map(Number);
+const byRef = (a, b) => { const x = num(a), y = num(b); return x[0] - y[0] || x[1] - y[1]; };
 
 /** A symbol drawn as SVG: a square cell, or a row of eight for a special instruction. */
 function svg(s, size = 56, cls = "cd-sym") {
@@ -46,6 +43,15 @@ function svg(s, size = 56, cls = "cd-sym") {
   const d = (cmds) => cmds.map(([c, ...n]) => c + n.map((v) => +v.toFixed(2)).join(" ")).join("");
   const parts = symbolPaths(s, 0, 0, w, h).map((p) => (p.fill ? `<path d="${d(p.d)}" fill="currentColor"/>`
     : `<path d="${d(p.d)}" fill="none" stroke="currentColor" stroke-width="${Math.max(0.6, p.stroke).toFixed(2)}" stroke-linecap="${p.cap}" stroke-linejoin="${p.join}"/>`));
+  // the text a sheet prints there (descr.js places it so: column F's box, or columns D-E of an instruction's line)
+  const said = PRINTED[iscdRef(s.id)?.ref];
+  if (said) {
+    const tx = (x, y, v, fs) => `<text x="${x}" y="${y}" font-size="${fs}" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-family="Arial, Helvetica, sans-serif" font-weight="600">${v}</text>`;
+    const cx = wide ? w / 2 : w / 2;
+    if (said.includes("/")) { const [a, b2] = said.split("/"); parts.push(`<path d="M${w},0L0,${h}" stroke="currentColor" stroke-width="1"/>`, tx(w * 0.3, h * 0.27, a, h * 0.3), tx(w * 0.7, h * 0.73, b2, h * 0.3)); }
+    else if (said.includes("|")) { const [a, b2] = said.split("|"); parts.push(tx(cx, h * 0.27, a, h * 0.34), tx(cx, h * 0.73, b2, h * 0.34)); }
+    else parts.push(tx(cx, h / 2, said, wide ? h * 0.42 : h * (said.length > 3 ? 0.3 : 0.4)));
+  }
   return raw(`<svg class="${cls}${wide ? " wide" : ""}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${parts.join("")}</svg>`);
 }
 
@@ -75,15 +81,24 @@ export async function render(main, { query = {} } = {}) {
     <p class="muted" style="font-size:12.5px;margin-top:18px">${t("cd.source")}</p>`;
 
   const sheet = (kind) => symbolsFor(kind);
+  const uiLang = lang();
+  // a symbol's name and description: the specification's (ISCD 2024), in the site's language; directional ones made from
+  // their pattern. When the sheet's language is another, the name a sheet prints in it (Purple Pen's) under it.
+  const nameOf = (r) => (r.dir && r.ref.startsWith("0.") ? t(`cd.cdir.${r.dir}`) : t(`cd.s.${r.ref}`, { d: r.dir ? t(`cd.gdir.${r.dir}`) : "" }));
+  // a family drawn in eight directions (columns C and G) says its description once, on its first card
+  let described = new Set();
   const card = (s, sprint) => {
-    // (a column C or G text is a pattern around the feature's own, « {0}, le plus au Nord »: shown with an ellipsis)
-    const name = symbolName(s, L), text = s.k >= "T" ? "" : (symbolText(s, L) || "").replace(/\{\d\}/g, "…");
-    const typical = SPRINT_TYPICAL.has(base(s.id));
-    const words = normalise(`${name} ${text} ${s.id}${typical ? ` ${t("ms.sp.only")}` : ""}`);
-    const map = s.k >= "T" ? "" : mapSvg(s.id, 64, "cd-map", sprint);
-    return html`<button type="button" class="cd-card${s.k >= "T" ? " wide" : ""}" data-words="${words}" ${raw(map ? "data-map" : "")} aria-label="${name}">
-      <span class="cd-pics">${svg(s)}${raw(map)}</span><span class="cd-id">${/^[0-9]/.test(s.id) ? s.id.replace(/@.*/, "") : ""}${typical ? html` <span class="ms-tag sprint" title="${t("cd.sprint.typical")}">${t("ms.sp.only")}</span>` : ""}</span>
-      <span class="cd-name">${name}</span>${text && normalise(text) !== normalise(name) ? html`<span class="cd-text">${t("cd.quote", { x: text })}</span>` : ""}</button>`;
+    const r = iscdRef(s.id);
+    const name = nameOf(r), desc = described.has(r.ref) ? "" : t(`cd.d.${r.ref}`);
+    described.add(r.ref);
+    const alt = L !== uiLang ? symbolName(s, L) : "";
+    const d = s.k === "D";
+    const map = d ? mapSwatches(r.ref, sprint) : "";
+    const words = normalise(`${name} ${t(`cd.d.${r.ref}`)} ${alt} ${r.ref}${d ? ` ${mapCodes(r.ref, sprint).join(" ")}` : ""}`);
+    return html`<button type="button" class="cd-card${s.k >= "T" ? " wide" : ""}${map ? " has-map" : ""}" data-words="${words}" ${raw(map ? "data-map" : "")} aria-label="${name}">
+      <span class="cd-pics">${svg(s)}</span><span class="cd-id">${r.ref}</span>
+      <span class="cd-name">${name}</span>${alt && normalise(alt) !== normalise(name) ? html`<span class="cd-alt" lang="${L}" title="${t("cd.alt", { l: langs[L]?.name || L })}">${alt}</span>` : ""}
+      ${desc ? html`<span class="cd-text">${desc}</span>` : ""}${raw(map)}</button>`;
   };
   const section = (title, hint, list, id, sprint) => (list.length ? html`<section class="card cd-sec" ${raw(id ? `id="cd-${sprint ? "sp-" : ""}col-${id}"` : "")}><div class="card-head"><div><h2>${title}</h2>${hint ? html`<div class="hint">${hint}</div>` : ""}</div></div>
       <div class="cd-grid">${list.map((s) => card(s, sprint))}</div></section>` : "");
@@ -101,11 +116,13 @@ export async function render(main, { query = {} } = {}) {
       </div></section>`;
   }
   function body(sprint) {
-    const keep = (list) => (sprint ? list.filter(inSprint) : list);
+    described = new Set();
+    // the specification's symbols only; on the sprint tab, column D's features with an ISSprOM symbol
+    const keep = (list) => list.filter((s) => iscdRef(s.id) && (!sprint || s.k !== "D" || mapCodes(iscdRef(s.id).ref, true).length));
     return html`${COLUMNS.flatMap((c) => (c === "D"
       ? D_FAMILIES.map((f) => section(t("cd.col.D", { f: t(`cd.fam.${f}`) }), f === "1" ? t("cd.col.D.hint") : "", keep(sheet("D").filter((s) => s.id.split(".")[0] === f)), f === "1" ? "D" : "", sprint))
       : [section(t(`cd.col.${c}`), t(`cd.col.${c}.hint`), keep(sheet(c)), c, sprint)]))}
-      ${section(t("cd.special"), t("cd.special.hint"), keep(SPECIAL.flatMap(sheet)), "", sprint)}`;
+      ${section(t("cd.special"), t("cd.special.hint"), keep(SPECIAL.flatMap(sheet)).sort((a, b) => byRef(iscdRef(a.id).ref, iscdRef(b.id).ref)), "", sprint)}`;
   }
   function draw() {
     $("#cd-intro").innerHTML = intro();
