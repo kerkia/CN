@@ -25,8 +25,9 @@ def modules() -> list:
     """Every country's module (countries/fr, countries/es, countries/ch…), France first: its COUNTRY, and what it can do —
     refresh_agenda(root), agenda_path(root)…"""
     import importlib
-    from . import es, fr
-    return [fr, es] + [importlib.import_module(f"{__name__}.{k}") for k in AGENDA_ONLY]
+    from . import es, fr, wre
+    # « IOF WRE » (countries/wre.py) last: it matches each WRE to its host country's agenda as just refreshed
+    return [fr, es] + [importlib.import_module(f"{__name__}.{k}") for k in AGENDA_ONLY] + [wre]
 
 
 def registry() -> list[Country]:
@@ -56,6 +57,12 @@ def summary(c: Country, root: Path = SITE_DATA) -> dict | None:
     if not meta and not agenda:
         return None
     out = {"access": c.access, "federation": c.federation, "agenda": agenda, "ranking": bool(meta)}
+    if c.code == "XW" and agenda:                # « IOF WRE »: the countries its events take place in (their own lists show them)
+        try:
+            ev = json.loads((d / "agenda.json").read_text(encoding="utf-8")).get("events") or []
+            out["hosts"] = sorted({e["host"] for e in ev if e.get("host")})
+        except (OSError, ValueError):
+            pass
     if meta:
         out.update({"built": meta.get("built"), "methods": [m for m in meta.get("methods", {}) if m in SHOWN],
                     "seasons": meta.get("seasons", []), "counts": meta.get("counts", {})})

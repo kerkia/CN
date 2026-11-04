@@ -56,7 +56,26 @@ const declaredEvent = (r) => ({ kind: "c", id: r.key, declared: true, date: r.da
 let memo = null;
 
 export async function render(main, { query }) {
-  const A = await data.agenda();
+  // « IOF WRE » (countries/wre.py; owner, 2026-11-04): the IOF's World Ranking Events, a list of their own (the site's country
+  // XW) and in their host country's: its row of the same event tagged « WRE » (the match the build made, `same`), the others
+  // added as rows of their own — a country whose calendar Ozimut cannot read has those alone
+  const WRE = country.WRE, inWre = country.current() === WRE;
+  const W = inWre ? null : await data.countryJson(WRE, "agenda.json").catch(() => null);
+  const wres = (W?.events || []).filter((w) => w.host === country.current());
+  let A = await data.agenda();
+  if (!A && wres.length) A = { events: [], regions: [], depts: {}, specs: [], generated: W.generated, sources: W.sources };
+  if (A && wres.length) {                    // (the file as loaded is the cache's: copied, never changed)
+    const of = new Map(wres.filter((w) => w.same).map((w) => [String(w.same), w]));
+    const hit = new Set();
+    const rows = A.events.map((e) => {
+      const w = e.id != null && of.get(String(e.id));
+      if (!w) return e;
+      hit.add(w.id);
+      return { ...e, wre: true, wc: e.wc || w.wc, src: { ...(e.src || {}), iof: w.src?.iof } };
+    });
+    for (const w of wres) if (!hit.has(w.id)) rows.push({ ...w, country: country.current() });
+    A = { ...A, events: rows, specs: [...new Set([...(A.specs || []), ...wres.map((w) => w.spec).filter(Boolean)])] };
+  }
   if (!A) {
     main.innerHTML = html`<div class="page-head"><div><h1>${t("nav.agenda")}</h1></div></div>
       <div class="card"><div class="empty">${t("agd.unavailable")}</div></div>`;
@@ -141,7 +160,7 @@ export async function render(main, { query }) {
         <summary><span>${t("agd.filters")}</span><span class="badge" id="fold-badge" hidden></span></summary>
         <section class="card agenda-filters"><div id="filters"></div><div id="ag-rf"></div></section>
       </details>
-      ${country.hint(Object.entries(data.site()?.countries || {}).filter(([, v]) => v.agenda).map(([cc]) => cc))}
+      ${country.hint([...Object.entries(data.site()?.countries || {}).filter(([, v]) => v.agenda).map(([cc]) => cc), ...(data.site()?.countries?.[WRE]?.hosts || [])])}
       </div>
       <section class="card" id="list-card"><div class="card-head"><h2 id="count"></h2></div><div class="agenda-table" id="table"></div></section>
       </div>
@@ -297,12 +316,13 @@ export async function render(main, { query }) {
     const anchor = !toToday && box0.scrollTop > 0 ? $$("#table tbody tr").find((r) => r.getBoundingClientRect().bottom > top0 + 1) : null;
     const at0 = anchor ? anchor.getBoundingClientRect().top - top0 : 0, key0 = anchor?.dataset.key;
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
-        <th>${t("agd.col.date")}</th>${sees("FR") && fr ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t("agd.col.place")}</th>${places ? html`<th>${levelName("region")}</th>` : ""}<th>${t("agd.col.type")}</th></tr></thead>
+        <th>${t("agd.col.date")}</th>${sees("FR") && fr ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t(inWre ? "agd.col.country" : "agd.col.place")}</th>${places ? html`<th>${levelName("region")}</th>` : ""}<th>${t("agd.col.type")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" data-period="${periodOf(e)}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""} ${e.past ? "past" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim d-end"> → ${fmtDate(e.end, "short")}</span>` : ""}</td>
         ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
-        <td class="n">${nameOf(e)}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}${trackOf(e) ? html` <span class="tag" title="${t("trk.tagTip")}">${t("trk.tag")}</span>` : ""}${e.past ? pastTags(e) : ""}</td>
-        <td class="p">${e.place || ""}${deptTag(e) ? html` <span class="dim">${deptTag(e)}</span>` : ""}</td>
+        <td class="n">${nameOf(e)}${wreTags(e)}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}${trackOf(e) ? html` <span class="tag" title="${t("trk.tagTip")}">${t("trk.tag")}</span>` : ""}${e.past ? pastTags(e) : ""}</td>
+        <td class="p">${inWre && e.host ? html`<span class="nowrap">${country.flagImg(e.host)} ${country.name(e.host)}</span>${e.place ? html` <span class="dim">· ${e.place}</span>` : ""}`
+          : html`${e.place || ""}${deptTag(e) ? html` <span class="dim">${deptTag(e)}</span>` : ""}`}</td>
         ${places ? html`<td class="r">${fmtRegion(e.region)}</td>` : ""}
         <td class="nowrap t">${typeLabel(e)}</td></tr>`)}</tbody></table>` : html`<div class="empty">${t("agd.empty")}</div>`;
     const back = key0 && $(`#table tr[data-key="${CSS.escape(key0)}"]`);
@@ -333,6 +353,9 @@ export async function render(main, { query }) {
       }, 0);
     }
   }
+  /** A World Ranking Event's tags: « WRE » in its host country's list (the WRE list is all of them), « Coupe du monde ». */
+  const wreTags = (e) => html`${e.wre && !inWre ? html` <span class="tag tag-wre" title="${t("agd.wre.tip")}">WRE</span>` : ""}${
+    e.wc ? html` <span class="tag tag-wre" title="${t("agd.wc.tip")}">${t("agd.wc")}</span>` : ""}`;
   /** What « Résultats » found of a past competition: the organisers' results, split times, the official results. */
   const pastTags = (e) => html`${e.docs ? html` <span class="tag">${t("agd.past.results")}</span>` : ""}${e.splits ? html` <span class="tag">${t("agd.past.splits")}</span>` : ""}${
     e.official ? html` <span class="tag" title="${t("prov.ffcoResults")}">${t("agd.past.official")}</span>` : ""}`;
@@ -472,7 +495,7 @@ export async function render(main, { query }) {
     if (e.kind !== "c" || e.declared) return "";                // a declared competition: its organiser's own registration
     const r = e.reg;
     // (an agenda read from a calendar that does not tell the entries — `sources`, the other countries' — says nothing)
-    if (!r && A.sources) return "";
+    if (!r && (A.sources || e.host)) return "";
     if (!r) return html`<div class="reg closed"><div class="reg-title">${t("agd.reg")}</div><div class="dim">${t("agd.reg.none")}</div></div>`;
     const closed = r.closed || (r.close && r.close < today);
     const dates = r.close || r.mods || r.count != null;
@@ -529,6 +552,7 @@ export async function render(main, { query }) {
   // where an event of another country comes from: its federation's page (Spain: SICO), its results platform (O-Replay)
   // (the other countries' agendas name their sources in the file, `sources`: key -> the site's name, the value a link)
   const SOURCES = { sico: ["SICO", (v) => v], oreplay: ["O-Replay", (v) => `https://www.oreplay.es/competitions/${v.split("/")[0]}`],
+    iof: ["IOF World Ranking", (v) => (safeUrl(v) ? v : "")],
     ...Object.fromEntries(Object.entries(A.sources || {}).map(([k, name]) => [k, [name, (v) => (safeUrl(v) ? v : "")]])) };
   const sourceLinks = (e) => {
     const out = Object.entries(e.src || {}).filter(([k, v]) => SOURCES[k] && v && SOURCES[k][1](v))
@@ -536,6 +560,14 @@ export async function render(main, { query }) {
     return out.length ? html`<p class="row" style="margin:0;gap:8px;flex-wrap:wrap">${out}</p>` : "";
   };
 
+  /** In the WRE list, the event in its host country's agenda: the country becomes the site's, the event opened there. */
+  const hostLink = (e) => html`<p style="margin:0"><button type="button" class="btn btn-sm" data-host="${e.host}" data-host-id="${e.same || e.id}">${t("agd.wre.inCountry")}</button></p>`;
+  $("#detail").addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-host]");
+    if (!b) return;
+    history.replaceState(null, "", `#/agenda?id=${encodeURIComponent(b.dataset.hostId)}`);
+    window.dispatchEvent(new CustomEvent("ocn:country", { detail: b.dataset.host }));
+  });
   function drawDetail() {
     const e = st.selected && byKey.get(st.selected);
     const box = $("#detail");
@@ -556,6 +588,7 @@ export async function render(main, { query }) {
           ${row(t("agd.d.manif"), fmtManif(e.manif))}
           ${row(t("agd.d.league"), e.league)}
           ${row(t("agd.d.level"), e.level)}
+          ${row(t("agd.d.country"), inWre && e.host ? html`${country.flagImg(e.host)} ${country.name(e.host)}` : "")}
           ${row(t("agd.d.place"), e.place ? html`${e.place}${e.dep ? html` (${deptLabel(e.dep)})` : ""}` : e.dep ? deptLabel(e.dep) : "")}
           ${row(t("agd.d.region"), fmtRegion(region))}
           ${row(t("agd.d.spec"), fmtFormat(e.spec))}
@@ -573,7 +606,8 @@ export async function render(main, { query }) {
           ${(e.extra || []).map(([l, v]) => row(l, v))}
           ${row(t("agd.d.obs"), e.obs ? html`<span style="white-space:pre-line">${e.obs}</span>` : "")}
         </dl>
-        ${fr && e.id != null && !e.declared ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">${t("agd.ffco")}</a></p>` : ""}
+        ${inWre && e.host ? hostLink(e) : ""}
+        ${fr && e.id != null && !e.declared && !e.host ? html`<p style="margin:0"><a class="btn btn-sm" href="https://api.ffcorientation.fr/iframe/courses/${e.id}/" target="_blank" rel="noopener">${t("agd.ffco")}</a></p>` : ""}
         ${sourceLinks(e)}
         <div class="detail-nav">${backBtn}</div>
       </div>`;

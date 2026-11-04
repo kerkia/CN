@@ -2559,6 +2559,23 @@ Every multiple-choice game was played through to its score page at phone size, w
   the region its own column after the place, named as the country's level (« Association régionale » in Switzerland, the
   calendar's own column, « Land »…), under the place on a phone (owner, 2026-10-24: shown even where no finer unit is known).
   The filter bar's click handler took `<body data-group>` for a group chip: any click in the filters emptied the list (fixed).
+- **« IOF WRE »** (owner, 2026-11-04: « a special country named IOF WRE », first in the country menu after the account's own
+  countries): the IOF's World Ranking Events as one more agenda, `countries/wre.py`, code **XW** (ISO 3166's user-assigned range;
+  `country.WRE`; its name `cty.wre`, a globe drawn in place of a flag, « WRE » on the header's button; `access` "all"). Source: the
+  IOF World Ranking site's calendar (`ranking.orienteering.org/Calendar?year=&discipline=F|FS|M|S|T`, server-rendered, no bot
+  challenge nor robots.txt, unlike IOF Eventor): date, host (the IOC's code, `IOC` → ISO), name, the World Cup badge, the status;
+  this year and the next (the last too until March), one row per event (its men's and women's lists are two rows there), ~10
+  requests a day; `countries.modules()` runs it **last** in the agenda run so that each WRE is matched to its host country's agenda
+  as refreshed that day (`match`: a competition of that day or spanning it, the same discipline, sprint apart from forest except a
+  multi-day row; the most name words shared, a name saying « WRE » counting two; with none shared, the day's only competition
+  unless its format is known and another — measured 2026-11-04 on the local agendas: 61 of 191 matched, the misses mostly
+  2027 events the host calendars do not list yet); the match's id is kept (`same`) with its place, organiser, website, entries.
+  The index's XW entry lists its `hosts` (`countries.summary`), which the menu offers (`country.withData`). The Agenda page
+  (`pages/agenda.js`): in XW's list the host's flag and name in a « Pays » column, « Voir dans la liste de ce pays » in the details
+  (`pickCountry` on the host, the event opened there); in a host's list the matched row tagged « WRE » (`.tag-wre`), « Coupe du
+  monde » for a World Cup round, the unmatched WREs added as rows of their own (no FFCO link, no « no online entries » box) — a
+  country whose calendar Ozimut cannot read (Sweden, Norway, Finland, Australia…) gets an agenda of its WREs alone. Not yet: a filter
+  by country in the WRE list, its map.
 - **The Agenda's map** (owner, 2026-10-25: « on a computer, a map of the chosen country, the competition's place shown as soon as
   the mouse is over it in the table, all the more once it is selected »): above the details (`.agenda-side`, sticky; hidden and
   not fetched under 980 px), `site/assets/js/agendamap.js` draws the country as SVG from `site/assets/geo/<cc>.json` — Natural

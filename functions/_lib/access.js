@@ -9,3 +9,5 @@ export const DATA_ACCESS = { FR: "members", ES: "all" };
 // the countries whose agenda alone the site reads (countries/agenda.py, 2026-10-23): open to everyone, as their calendars are
 for (const cc of ["AT", "BE", "BG", "BR", "BY", "CH", "CZ", "DE", "DK", "EE", "GB", "GE", "HK", "HR", "IE", "IL", "IT", "JP",
   "KR", "LT", "MK", "PL", "RO", "RS", "SI", "SK", "TR", "UA", "ZA"]) DATA_ACCESS[cc] = "all";
+// « IOF WRE » (countries/wre.py, 2026-11-04): the IOF's World Ranking Events, listed as a country of its own
+DATA_ACCESS.XW = "all";

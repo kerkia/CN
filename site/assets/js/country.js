@@ -13,6 +13,10 @@ import * as auth from "./auth.js";
 import { flag } from "./vendor.js";
 
 const KEY = "ocn.country";
+// « IOF WRE » (countries/wre.py; owner, 2026-11-04): the IOF's World Ranking Events of every country, listed as a country of its
+// own (XW: ISO 3166's user-assigned range), first after the account's own countries; the countries its events take place in
+// (its index's `hosts`) are offered too — their own lists show their WREs, a country whose calendar Ozimut cannot read its WREs alone
+export const WRE = "XW";
 // the countries of the races « En direct » offers (the live relay's list: liveresultat's, every country's), kept on the device
 // for LIVE_TTL (owner, 2026-10-29: Sweden, whose agenda Ozimut cannot read, had left the menu with its live races)
 const LIVE_KEY = "ocn.liveCountries", LIVE_TTL = 6 * 3600e3;
@@ -35,11 +39,13 @@ export function refreshLive(base = "") {
 export function withData() {
   const read = Object.keys(data.site()?.countries || {});
   if (!read.length) read.push("FR");
+  read.push(...(data.site()?.countries?.[WRE]?.hosts || []));
   const mine = (auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc);
   return [...new Set([...read, ...(liveKept()?.cc || []), ...mine])];
 }
 /** A country's name in the site's language. */
 export function name(cc) {
+  if (cc === WRE) return t("cty.wre");
   try { return new Intl.DisplayNames([lang()], { type: "region" }).of(cc) || cc; } catch (e) { return cc; }
 }
 /** The site's country now. */
@@ -64,8 +70,11 @@ export const access = (cc) => info(cc)?.access || null;
 export const ranks = (cc = current()) => !!info(cc)?.ranking;
 
 /** A country's flag (owner, 2026-10-22: beside every country choice), or nothing for an unknown one. */
-export const flagImg = (cc, cls = "cty-flag") => (cc && /^[A-Z]{2}$/.test(cc)
+export const flagImg = (cc, cls = "cty-flag") => (cc === WRE ? wreMark(cls) : cc && /^[A-Z]{2}$/.test(cc)
   ? html`<img class="${cls}" src="${flag(cc)}" alt="" width="18" height="13" loading="lazy" decoding="async">` : "");
+
+/** « IOF WRE »'s mark in place of a flag: a globe, the world's (no federation's emblem). */
+const wreMark = (cls) => html`<svg class="${cls} cty-wre" width="18" height="13" viewBox="0 0 18 13" aria-hidden="true"><rect width="18" height="13" rx="1.5" fill="#1f5f9e"/><g fill="none" stroke="#fff" stroke-width="1"><circle cx="9" cy="6.5" r="4.6"/><ellipse cx="9" cy="6.5" rx="2" ry="4.6"/><path d="M4.4 6.5h9.2M5.1 4.1h7.8M5.1 8.9h7.8"/></g></svg>`;
 
 /** The header's menu, beside the language's: every country — the account's own first, then a line and the countries Ozimut
  *  has data for, then a line and every other IOF member (owner, 2026-10-29: a country is never left out of this menu; a page's
@@ -74,7 +83,8 @@ function items() {
   const ok = withData();
   const cur = current();
   const mine = byName((auth.session()?.countries || []).filter((c) => c.status === "ok").map((c) => c.cc));
-  const known = byName(ok.filter((cc) => !mine.includes(cc)));
+  // « IOF WRE » first after the account's own countries (owner, 2026-11-04)
+  const known = [...(ok.includes(WRE) ? [WRE] : []), ...byName(ok.filter((cc) => !mine.includes(cc) && cc !== WRE))];
   const rest = byName(MEMBERS.filter((cc) => !mine.includes(cc) && !ok.includes(cc)));
   const item = (cc) => html`<button type="button" role="menuitemradio" aria-checked="${String(cc === cur)}" data-country-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`;
   return html`${[mine, known, rest].filter((l) => l.length).map((l, i) => html`${i ? html`<div class="cty-sep" role="separator"></div>` : ""}${l.map(item)}`)}`;
@@ -85,7 +95,7 @@ export function menu() {
     <button class="icon-btn nav-top" type="button" aria-expanded="false" aria-haspopup="menu" title="${t("cty.menu")}" aria-label="${t("cty.menu")}">
       <span class="tool-label" aria-hidden="true">${t("cty.menu")}</span>
       ${flagImg(cur) || html`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>`}
-      <span class="lang-code">${cur}</span>
+      <span class="lang-code">${cur === WRE ? "WRE" : cur}</span>
     </button>
     <div class="nav-menu cty-menu" role="menu">${items()}</div>
   </div>`;
@@ -123,7 +133,7 @@ const PREP = {
   en: { aux: ["US", "NL", "PH", "GB"] },
   de: { aux: ["US", "NL", "PH"], au: ["CH", "TR", "SK", "UA", "MN", "CZ"] },
 };
-const prepOf = (cc) => Object.entries(PREP[lang()] || {}).find(([, l]) => l.includes(cc))?.[0] || "en";
+const prepOf = (cc) => cc === WRE ? "wre" : Object.entries(PREP[lang()] || {}).find(([, l]) => l.includes(cc))?.[0] || "en";
 const openHeaderMenu = () => {
   let b = document.querySelector('.nav-group[data-group="country"] > .nav-top');
   const sub = !b?.offsetParent && document.querySelector('.nav-group[data-group="me"] .menu-sub[data-sub="country"]');

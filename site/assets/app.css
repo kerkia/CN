@@ -3540,3 +3540,5 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
   .bk-pick select, .bk-form-row .field input, .bk-form-row .field select { font-size: 16px; }
   .bk-pick select { max-width: none; flex: 1 1 140px; }
 }
+/* « IOF WRE » (countries/wre.py, pages/agenda.js; 2026-11-04): a World Ranking Event, a World Cup round */
+.tag-wre { background: color-mix(in srgb, var(--water) 16%, var(--surface-3)); color: var(--water); }
