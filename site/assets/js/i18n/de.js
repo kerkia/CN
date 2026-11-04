@@ -2491,6 +2491,7 @@ export default {
   "an.src.drawn": "von Hand gezeichnet",
   "an.src.mymaps": "aus Meine Karten abgespielt",
   "an.replay.geo": "Lauf aus Meine Karten abgespielt: mit seiner Georeferenzierung auf die Karte gelegt, seine Posten und ihre Zeiten wie gespeichert.",
+  "an.replay.geoOwn": "Lauf aus Meine Karten abgespielt: Da die Karte nicht georeferenziert ist, wird der Lauf so auf sie gelegt, wie er gespeichert wurde, sein Maßstab aus seiner Länge abgeleitet.",
   "an.draw.box": "Kein GPS-Track?",
   "an.draw.own": "Von Hand gezeichnete Route",
   "an.draw.go": "Meine Route zeichnen",

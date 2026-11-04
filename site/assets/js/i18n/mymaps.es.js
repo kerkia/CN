@@ -51,7 +51,6 @@ export default {
   "mm.remove": "Quitar",
   "mm.replay": "Reproducir",
   "mm.replay.tip": "Reproducir esta carrera sobre el mapa en «Análisis individual»: el recorrido, los tramos, las curvas, el 3D.",
-  "mm.replay.noGeo": "Este mapa no está georreferenciado: la carrera no se puede reproducir.",
   "mm.replay.err": "No se pudo abrir la carrera en «Análisis individual».",
   "mm.remove.ask": "¿Quitar esta carrera del mapa? No se puede deshacer.",
   "mm.src.solo": "Análisis individual",

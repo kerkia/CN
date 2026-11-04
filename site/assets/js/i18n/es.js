@@ -2491,6 +2491,7 @@ export default {
   "an.src.drawn": "dibujado a mano",
   "an.src.mymaps": "reproducida desde Mis mapas",
   "an.replay.geo": "Carrera reproducida desde Mis mapas: colocada sobre el mapa por su georreferenciación, con sus controles y sus tiempos tal como se guardaron.",
+  "an.replay.geoOwn": "Carrera reproducida desde Mis mapas: como el mapa no está georreferenciado, la carrera se coloca tal como se guardó, con la escala sacada de su longitud.",
   "an.draw.box": "¿Sin track GPS?",
   "an.draw.own": "Ruta dibujada a mano",
   "an.draw.go": "Dibujar mi ruta",

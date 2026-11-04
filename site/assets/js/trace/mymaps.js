@@ -11,7 +11,7 @@
 
 import { FFLATE } from "../vendor.js";
 import { kindOf, readQuickRoute, ozimutPayload, withOzimut, affineFit } from "./mapjpeg.js";
-import { DRAWN_NS } from "./drawroute.js";
+import { DRAWN_NS, ownGeo } from "./drawroute.js";
 
 export const API = "api/mymaps";
 const PERSONAL = ["hr", "ele", "cad"];
@@ -124,11 +124,19 @@ export const runUrl = (id, token) => (token ? `${API}/s/${token}/runs/${id}` : `
  * marked `replay` — so that the page lays the run on the map through that same georeference and takes the controls and their
  * times as they were kept, reading nothing on the map. The run starts at its start control's time when it has one; a control
  * kept without a time is timed by the run's nearest point after the one before; a course without its start or finish gets them
- * where the run begins and ends. map: { w, h, geo }; d: decodeRun(rec). Null without a georeference.
+ * where the run begins and ends. map: { w, h, geo }; d: decodeRun(rec); run: { dist } (m). A map without a georeference gets a
+ * frame of its own (`nogeo`, as a route drawn on such a map: drawroute.ownGeo), its scale the run's length kept over its length in
+ * pixels (owner, 2026-11-04: a run kept on a map can always be replayed on it). Null for a run of under two points.
  */
-export function replayGpx(map, d, name = "") {
-  const g = map?.geo;
-  if (!g || !Number.isFinite(g.a) || !Number.isFinite(g.e) || d.n < 2) return null;
+export function replayGpx(map, d, name = "", run = null) {
+  if (d.n < 2) return null;
+  let g = map?.geo, nogeo = false;
+  if (!g || !Number.isFinite(g.a) || !Number.isFinite(g.e)) {
+    let px = 0;
+    for (let i = 1; i < d.n; i++) if (!d.br.has(i)) px += Math.hypot(d.x[i] - d.x[i - 1], d.y[i] - d.y[i - 1]);
+    const pxPerM = run?.dist > 0 && px > 0 ? px / run.dist : 1 / 0.42;   // else 0.42 m a pixel: 1:10 000 at 600 dpi
+    g = ownGeo(pxPerM, map.w, map.h); nogeo = true;
+  }
   const st = d.ctl.find((c) => c.k === "start" && c.t != null);
   let i0 = 0;
   if (st) { const j = d.ms.findIndex((v) => v >= st.t - 500); if (j >= 0 && d.n - j >= 10) i0 = j; }
@@ -153,7 +161,7 @@ export function replayGpx(map, d, name = "") {
   }
   const at = {};
   ctl.forEach((c, i) => { at[i] = Math.max(0, (c.t - t0) / 1000); });
-  const meta = { v: 1, w: map.w, h: map.h, geo: g, nogeo: false, start: t0, replay: true, km: null,
+  const meta = { v: 1, w: map.w, h: map.h, geo: g, nogeo, start: t0, replay: true, km: null,
     pts: ctl.map((c) => [Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10]), kind: ctl.map((c) => c.k), at };
   const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const iso = (ms) => new Date(Math.round(ms)).toISOString();

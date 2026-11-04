@@ -51,7 +51,6 @@ export default {
   "mm.remove": "Entfernen",
   "mm.replay": "Abspielen",
   "mm.replay.tip": "Diesen Lauf in der „Einzelanalyse“ auf der Karte abspielen: die Bahn, die Teilstrecken, die Kurven, 3D.",
-  "mm.replay.noGeo": "Diese Karte ist nicht georeferenziert: Der Lauf kann nicht abgespielt werden.",
   "mm.replay.err": "Der Lauf konnte in der „Einzelanalyse“ nicht geöffnet werden.",
   "mm.remove.ask": "Diesen Lauf von der Karte entfernen? Das ist endgültig.",
   "mm.src.solo": "Einzelanalyse",

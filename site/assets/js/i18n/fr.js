@@ -1741,6 +1741,7 @@ export default {
   "an.src.drawn": "dessinée à la main",
   "an.src.mymaps": "rejouée depuis Mes cartes",
   "an.replay.geo": "Course rejouée depuis Mes cartes : posée sur la carte par son géoréférencement, ses postes et leurs temps tels qu'enregistrés.",
+  "an.replay.geoOwn": "Course rejouée depuis Mes cartes : la carte n'étant pas géoréférencée, la course y est posée telle qu'elle a été enregistrée, son échelle tirée de sa longueur.",
   "an.draw.box": "Pas de trace GPS ?",
   "an.draw.own": "Itinéraire dessiné à la main",
   "an.draw.go": "Dessiner mon itinéraire",

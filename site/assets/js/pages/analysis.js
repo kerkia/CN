@@ -957,7 +957,7 @@ export async function render(main, { query = {}, route } = {}) {
     // the georeferencing
     geoFit = null; geoHow = "";
     const W = map.width, H = map.height;
-    if (drawnHere()) { geoFit = fitFromGeo(track.drawn.geo, track); notes.push(t(track.drawn.replay ? "an.replay.geo" : track.drawn.nogeo ? "an.draw.geoOwn" : "an.draw.geoHow")); }
+    if (drawnHere()) { geoFit = fitFromGeo(track.drawn.geo, track); notes.push(t(track.drawn.replay ? (track.drawn.nogeo ? "an.replay.geoOwn" : "an.replay.geo") : track.drawn.nogeo ? "an.draw.geoOwn" : "an.draw.geoHow")); }
     else if (files.orga) { geoFit = fitFromGeo(files.orga.geo, track); geoHow = t("an.orga.geo"); }
     else if (files.geo?.overlay) { geoFit = fitFromKml(files.geo.overlay, W, H, track); geoHow = files.geo.kind.toUpperCase(); }
     else if (files.geo?.corners) { geoFit = fitAffine(files.geo.corners.map(([lat, lon]) => toLocal(track, lat, lon)), [[0, 0], [W, 0], [W, H], [0, H]]); geoHow = `OCAD/Mapper${files.geo.detail ? ` · ${files.geo.detail}` : ""}`; }

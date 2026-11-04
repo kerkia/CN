@@ -51,7 +51,6 @@ export default {
   "mm.remove": "Retirer",
   "mm.replay": "Rejouer",
   "mm.replay.tip": "Rejouer cette course sur la carte dans « Analyse solo » : le parcours, les inter-postes, les courbes, la 3D.",
-  "mm.replay.noGeo": "Cette carte n'est pas géoréférencée : la course ne peut pas être rejouée.",
   "mm.replay.err": "La course n'a pas pu être ouverte dans « Analyse solo ».",
   "mm.remove.ask": "Retirer cette course de la carte \u0001 C'est définitif.",
   "mm.src.solo": "Analyse solo",

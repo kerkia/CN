@@ -889,8 +889,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   a zip), « Partager la sélection » (one map: its link; several: a link to that set, `mymap_links.map_id` « set:<ids sorted> », the
   same set again finds the same link), « Supprimer », « Désélectionner » (a tick updates the marks and the bar only: the cards are not
   drawn again). The head has « Partager ma bibliothèque » (the whole library), whose dialog lists the other links (per map, per
-  selection) to copy or delete. No « Tout exporter » any more. **« Rejouer »** (owner, 2026-11-04): each run of a georeferenced map
-  replays in « Analyse solo » — `MM.replayGpx` makes a GPX of the run (its points through the map's georeference, its times, the
+  selection) to copy or delete. No « Tout exporter » any more. **« Rejouer »** (owner, 2026-11-04): each run replays in « Analyse
+  solo » (offered on runs only: a map without one has nothing to replay) — `MM.replayGpx` makes a GPX of the run (its points through
+  the map's georeference, else a frame of its own, `nogeo`, scaled by the run's kept length over its pixels; its times, the
   personal channels kept) with the `ozimut:drawn` extension of a drawn route marked `replay` (the controls kept, their times — one
   without a time from the run's nearest point, a start or finish missing where the run begins or ends), `pwa.toSolo` hands it and
   the map to the page through the inbox, `?play=1`; there the route is laid by that georeference with nothing read on the map

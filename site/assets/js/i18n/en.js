@@ -2372,6 +2372,7 @@ export default {
   "an.src.drawn": "drawn by hand",
   "an.src.mymaps": "replayed from My maps",
   "an.replay.geo": "Run replayed from My maps: laid on the map by its georeferencing, its controls and their times as saved.",
+  "an.replay.geoOwn": "Run replayed from My maps: the map not being georeferenced, the run is laid on it as it was saved, its scale taken from its length.",
   "an.draw.box": "No GPS track?",
   "an.draw.own": "Route drawn by hand",
   "an.draw.go": "Draw my route",
