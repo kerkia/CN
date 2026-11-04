@@ -232,9 +232,42 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
       <span class="sh-tabs" id="sh-tabs"></span>
       ${organiser ? html`<span class="tag" title="${t("sh.mine.tip")}">${t("sh.mine")}</span>` : ""}${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}</div>
-    <div id="sh-viewer"></div>`;
-  // the circuit is chosen in the left panel's « Circuits » tab (owner, 2026-11-04: chips by the title would not scale)
-  const drawTabs = () => {};
+    <div id="sh-viewer"></div>
+    <div id="sh-splits" class="sh-splits" hidden></div>`;
+  // two views of the analysis (owner, 2026-11-04): the map (the replay, its panels) and Arena's split analysis of the times the
+  // tracks give at the controls, in the map's place. The circuit is chosen in the left panel's « Circuits » tab (chips by the
+  // title would not scale)
+  let pane = query.vue === "temps" ? "splits" : "map", splitsKey = "", splitsView = null;
+  const drawTabs = () => {
+    $("#sh-tabs").innerHTML = A.courses.length ? html`<nav class="sh-viewtabs" role="tablist">${[["map", t("sh.pane.map")], ["splits", t("sh.pane.splits")]].map(([k, l]) =>
+      html`<button type="button" role="tab" data-pane="${k}" aria-selected="${k === pane}">${l}</button>`)}</nav>` : "";
+    $$("#sh-tabs [data-pane]").forEach((b) => b.addEventListener("click", () => showPane(b.dataset.pane)));
+  };
+  async function showPane(p) {
+    pane = p;
+    drawTabs();
+    const onMap = p === "map";
+    $("#sh-viewer").hidden = !onMap; $("#sh-splits").hidden = onMap;
+    document.body.classList.toggle("an-theatre", onMap && !!viewer);
+    if (!onMap) viewer?.pause?.();                        // (pausing writes the replay's state into the address: before ours)
+    const q = Object.fromEntries(new URLSearchParams(location.hash.split("?")[1] || ""));
+    if (onMap) delete q.vue; else q.vue = "temps";
+    replaceQuery(q);
+    if (onMap) { window.dispatchEvent(new Event("resize")); return; }
+    // the times at the controls of every circuit's tracks (once per set of tracks)
+    const key = data.traces.map((x) => `${x.course}:${x.uid}:${x.updated}`).join("|");
+    if (key === splitsKey && splitsView) return;
+    splitsKey = key;
+    const box = $("#sh-splits");
+    box.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
+    try {
+      const doc = await splitsDoc({ A, id, traces: data.traces });
+      if (pane !== "splits") { splitsKey = ""; return; }
+      if (!doc.classes.length) { box.innerHTML = html`<div class="card"><div class="empty">${t("sh.pane.none")}</div></div>`; return; }
+      const shownName = A.courses.find((x) => x.n === courseN)?.name;             // the circuit the map shows, first
+      splitsView = await (await import("./splits.js")).renderEmbedded(box, { key: `multi:${id}`, c: Math.max(0, doc.classes.findIndex((k) => k.name === shownName)), race: { name: A.title, docs: [doc] } });
+    } catch (e) { console.error(e); splitsKey = ""; box.innerHTML = html`<div class="card"><div class="empty">${errText(e)}</div></div>`; }
+  }
   const pickCourse = (n) => { if (n !== courseN && A.courses.some((x) => x.n === n)) { courseN = n; openViewer(); } };
   const openViewer = async () => {
     viewer?.destroy();
@@ -253,6 +286,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   };
   drawTabs();
   await openViewer();
+  if (pane === "splits") showPane("splits");
   // the first visit: the offer to add one's track (owner, 2026-11-04) — to an account allowed to add one, with none in this
   // analysis yet; once per analysis and browser, closed or not
   const you = data.you || {};
@@ -263,6 +297,39 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     } }); });
   }
   return { title: A.title, cleanup: () => { viewer?.destroy(); document.body.classList.remove("an-theatre"); leaveFull(); document.querySelector(".sh-offer")?.remove(); } };
+}
+
+// ---- « Temps intermédiaires »: the tracks' times at the controls as a results document (owner, 2026-11-04) ---------------
+// one class per circuit, a runner per track: the passes as « Analyse multi » reads them (the first visit within 25 m after the
+// previous control, the start's departure, the finish's arrival), the split times from the start, the place among those who
+// passed every control and finished; the start's clock time (Paris) for « Passages », « Groupes » and « Autonomie »
+const parisSec = (unix) => { const d = new Date(unix * 1000); const [h, m, s] = d.toLocaleTimeString("en-GB", { timeZone: "Europe/Paris", hour12: false }).split(":").map(Number); return h * 3600 + m * 60 + s; };
+async function splitsDoc({ A, id, traces }) {
+  const classes = [];
+  for (const c of A.courses) {
+    if (c.score || !validGeo(c.geo) || !traces.some((x) => x.course === c.n)) continue;
+    let recs = [];
+    try { recs = await api(`/${id}/traces/${c.n}`, { key: keyOf(id) }); } catch (e) { recs = []; }
+    const P = c.controls, si = P.findIndex((p) => p.kind === "start"), fi = P.findIndex((p) => p.kind === "finish");
+    const mids = P.map((p, j) => j).filter((j) => P[j].kind === "control");
+    const runners = [];
+    for (const rec of recs) {
+      const tr = decodeTrace(rec);
+      if (!tr) continue;
+      const passes = coursePasses(tr, fitFromGeo(c.geo, tr), P, TOL);
+      const start = si >= 0 ? passes[si] ?? tr.t[0] : tr.t[0];
+      const splits = mids.map((j) => (passes[j] != null ? Math.round(passes[j] - start) : null));
+      const fin = fi >= 0 && passes[fi] != null ? Math.round(passes[fi] - start) : null;
+      const ok = fin != null && splits.every((v) => v != null);
+      runners.push({ name: rec.name, lic: rec.lic || null, club: "", status: ok ? "ok" : fin == null ? "dnf" : "mp", time_s: ok ? fin : null,
+        splits, start_s: parisSec(tr.ms0 / 1000 + start) });
+    }
+    if (!runners.length) continue;
+    const okOnes = runners.filter((r) => r.status === "ok").sort((a, b) => a.time_s - b.time_s);
+    okOnes.forEach((r, i) => { r.place = i && r.time_s === okOnes[i - 1].time_s ? okOnes[i - 1].place : i + 1; });
+    classes.push({ name: c.name, controls: mids.map((j, i) => P[j].code || String(i + 1)), runners });
+  }
+  return { source: "gps", title: A.title, url: "", classes };
 }
 
 // ---- the offer to add one's track, at the first visit of an analysis (owner, 2026-11-04) -------------------------------
@@ -2127,5 +2194,5 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   frame();
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

@@ -1931,6 +1931,11 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 .sh-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; overflow-y: auto; font-size: 13px; min-height: 0; }
 .sh-runners { display: flex; flex-direction: column; gap: 1px; }
 .sh-course-pick { margin: 0 0 8px; }
+/* the analysis's two views: the map, Arena's split analysis in its place (owner, 2026-11-04) */
+.sh-viewtabs { display: inline-flex; gap: 2px; padding: 2px; margin-left: 6px; border-radius: 8px; background: var(--surface-2); }
+.sh-viewtabs button { appearance: none; border: 0; background: none; padding: 4px 12px; border-radius: 6px; font: inherit; font-size: 13px; color: var(--ink-2); cursor: pointer; }
+.sh-viewtabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--border); }
+.sh-splits { margin-top: 10px; }
 .sh-course-pick select { width: 100%; }
 /* the list's columns, named (owner, 2026-11-04: in place of a sentence explaining the ticks and ⌖) */
 .sh-runner.sh-runner-head { cursor: default; padding-top: 0; padding-bottom: 2px; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .03em; border-bottom: 1px solid var(--border); border-radius: 0; }

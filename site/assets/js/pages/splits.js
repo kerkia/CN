@@ -77,21 +77,31 @@ const LANDING = "#/analyse-course";
 const GOOD = "background:color-mix(in srgb, var(--good) 16%, transparent)";
 const BAD = "background:color-mix(in srgb, var(--bad) 12%, transparent)";
 
-export async function render(main, { query = {} } = {}) {
+/**
+ * Arena's split analysis inside another page (owner, 2026-11-04: « Analyse multi »'s « Temps intermédiaires » tab, its times
+ * the controls' passes read on the GPS tracks): embed = { race: { name, docs }, key }. No head of its own, nothing written into
+ * the address, its views' tabs kept in the page (not moved to the site's bar). Returns { cleanup }.
+ */
+export async function renderEmbedded(main, embed) {
+  return render(main, { query: { course: embed.key, c: embed.c || 0 }, embed });
+}
+
+export async function render(main, { query = {}, embed = null } = {}) {
   bindRunnerPop(main);
   // no race named: « Analyse de course »'s list of the races with split times (owner, 2026-10-23)
   if (!query.course) return (await import("./racelist.js")).render(main, { query });
   // the results file read on « Déposer », not published: it alone (local.js); a live race (« En direct »): the times received
-  // so far, read from the live relay (livesplits.js)
-  const mine = query.course === local.LOCAL ? local.race() : null;
-  const live = liveId(query.course);
-  const idx = mine || query.course === local.LOCAL || live ? null : await getProv("index.json");
-  const withSplits = live ? [{ key: query.course, name: "", date_iso: "" }] : mine ? (mine.splits ? [mine] : []) : [...(idx?.races || []), ...(idx?.relays || []).map((r) => ({ ...r, relay: true }))].filter((r) => r.splits);
+  // so far, read from the live relay (livesplits.js); a race given by the page that embeds the analysis
+  const mine = embed ? null : query.course === local.LOCAL ? local.race() : null;
+  const live = embed ? null : liveId(query.course);
+  const idx = embed || mine || query.course === local.LOCAL || live ? null : await getProv("index.json");
+  const withSplits = embed ? [{ key: query.course, name: embed.race.name || "", date_iso: "", splits: true }]
+    : live ? [{ key: query.course, name: "", date_iso: "" }] : mine ? (mine.splits ? [mine] : []) : [...(idx?.races || []), ...(idx?.relays || []).map((r) => ({ ...r, relay: true }))].filter((r) => r.splits);
   main.innerHTML = html`
-    <div id="sp-back">${live || mine || query.course === local.LOCAL ? "" : html`<a class="back-link arena-back" href="#/agenda">‹ ${t("arena.back")}</a>`}</div>
-    <div class="page-head sp-head race-head"><div><div class="sp-title"><h1 id="sp-title">${t("spl.title")}</h1><span id="sp-acts"></span></div>
+    <div id="sp-back">${embed || live || mine || query.course === local.LOCAL ? "" : html`<a class="back-link arena-back" href="#/agenda">‹ ${t("arena.back")}</a>`}</div>
+    <div class="page-head sp-head race-head" ${raw(embed ? "hidden" : "")}><div><div class="sp-title"><h1 id="sp-title">${t("spl.title")}</h1><span id="sp-acts"></span></div>
       <p class="lede" id="sp-lede">${live ? "" : t("spl.lede")}</p></div></div>
-    <div id="sp-tabs" data-bar-tabs></div>
+    <div id="sp-tabs" ${raw(embed ? "" : "data-bar-tabs")}></div>
     <div id="sp-live"></div>
     <div class="sp-pick" id="sp-pick"></div>
     <div class="filters sp-views" id="sp-views"></div>
@@ -123,7 +133,7 @@ export async function render(main, { query = {} } = {}) {
   let w = null, pending = false, shownAt = 0, loadedAt = 0;
   async function loadRace() {
     if (live) loadedAt = w.st.at || Date.now();
-    race = live ? { name: w.st.info?.name || "", docs: [toDoc(w.st.info, w.st.classes, w.st.all)] }
+    race = embed ? embed.race : live ? { name: w.st.info?.name || "", docs: [toDoc(w.st.info, w.st.classes, w.st.all)] }
       : key === local.LOCAL ? local.race() : await getProv(`${encodeURIComponent(key)}.json`);
     docs = (race?.docs || []).filter((d) => d.classes?.some((k) => k.runners.some((r) => r.splits)));
   }
@@ -143,7 +153,7 @@ export async function render(main, { query = {} } = {}) {
         ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${c}</option>`)}</select>`;
     // a race's page in Arena (owner, 2026-10-30): its results as the first tab, then the analysis's views (not for a live race,
     // a file under deposit or a relay, which have no results page)
-    const resultsToo = !live && key !== local.LOCAL && !withSplits.find((x) => x.key === key)?.relay;
+    const resultsToo = !embed && !live && key !== local.LOCAL && !withSplits.find((x) => x.key === key)?.relay;
     $("#sp-tabs").innerHTML = html`<nav class="page-tabs race-tabs" role="tablist">${resultsToo ? resultsTab(key, view) : ""}${views.map((v) =>
       html`<button type="button" role="tab" data-ptab="${v}" aria-selected="${v === view}">${t(`spl.tab.${v}`)}</button>`)}</nav>`;
     $("#sp-views").innerHTML = html`${TIMED.includes(view) && !sc ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spv", [["real", t("spl.view.real")], ["ideal", t("spl.view.ideal")]], ideal ? "ideal" : "real")}</div>` : ""}
@@ -181,6 +191,7 @@ export async function render(main, { query = {} } = {}) {
   // the race's results or its live page; no link back to the list: the menu's « Analyse de course » is it (owner, 2026-10-23).
   // A file under deposit keeps its way back to the deposit, which the menu does not give
   function head(r) {
+    if (embed) return;                                   // the embedding page has its own head
     if (key === local.LOCAL) {
       $("#sp-back").innerHTML = html`<a class="back-link" href="${depositLink()}">‹ ${t("dep.title")}</a>`;
       return;
@@ -247,7 +258,7 @@ export async function render(main, { query = {} } = {}) {
     const sc = isScore(k);
     const asIdeal = ideal && TIMED.includes(view) && !sc;
     const gapView = view === "gaps";
-    replaceQuery({ course: key, doc: di || null, c: ci || null, vw: view === "table" ? null : view,
+    if (!embed) replaceQuery({ course: key, doc: di || null, c: ci || null, vw: view === "table" ? null : view,
       v: asIdeal ? "ideal" : null, cl: club || null, g: gapView && graph !== "gap" ? graph : null,
       ref: gapView && graph === "gap" && ref !== "cum" ? ref : null, rr: gapView && graph === "gap" && ref === "runner" ? refName : null,
       tol: view === "groups" && tol !== 10 ? tol : null, ep: errPct === ERR_DEFAULT.pct ? null : errPct, es: errS === ERR_DEFAULT.s ? null : errS, em: null, ev: null,

@@ -2008,6 +2008,20 @@ Every multiple-choice game was played through to its score page at phone size, w
   editor's « Importer des circuits », not twice at the same place; none when the course file is the map: drawn with it). Not done:
   variations keep their first branch only (listed in the dialog; none in the test file), OCAD's circle gaps are left out, classes
   (the advanced level's) for administrators only, a single file holding both map and courses not met yet.
+- **Analyse multi, the owner's review of 2026-11-04** (`pages/shared.js`): the left panel opens on its first tab, « Circuits »
+  (`sh.tab.circuits`): the circuit is a drop-down at its top (each with its number of tracks; no chips by the title), the runners'
+  list names its columns (Voir, Coureur, Suivre, Temps) instead of a sentence. **First visit**: an account allowed to add a track
+  (not a visitor; the organisers' `upload` switch) with none in the analysis is offered to drop it (`offerTrack`, once per analysis
+  and browser, `localStorage ocn.sh.offered.<id>`; after the beta notice); **the circuit is found from the track**
+  (`matchCircuits`: the controls passed in the circuit's order, `coursePasses`; `sureCircuit`: the only one at 90 %, the longest of
+  several at 95 %, the best at 60 % with 20 points over the next — else the runner chooses), then the usual consent. « Ajouter ma
+  trace » and « Ajouter des traces de test… » sit in the top line too and find the circuit the same way (test tracks had all gone to
+  the circuit shown, whose analyses then came out empty). « Itinéraires » computes when opened, and with the whole course shown every
+  leg in turn, listed below (`rcmOne`, `rcmTurnOn`). **Two views** in the top line, « Carte » and « Temps intermédiaires »
+  (`?vue=temps`): the second is Arena's split analysis (`splits.js` `renderEmbedded`: no head, nothing written into the address, its
+  views' tabs kept in the page) fed with a document built from the tracks (`splitsDoc`: one class per circuit, each track's passes,
+  its place among those who passed every control and finished, its start's Paris clock time); the map tab keeps « Analyses »' own
+  split table and gaps, linked to the map.
 - **Logos on OCAD maps, everywhere** (owner, 2026-11-04): an OCAD map's layout images (`vmap/map.js` `LayerBitmap`) are sized from
   their file's header when read (`ocad.js` `imageSize`: the map's extent holds them from the start), `map.ready` settles once all are
   decoded and `mapsrc.openVector` waits for it before drawing (they could miss the base image before); the layout is drawn whatever
