@@ -4864,6 +4864,7 @@ export default {
   "ma.tag.orgaMap": "Karte des Veranstalters",
   "ma.course.none": "Noch kein Wettkampf mit Ergebnissen.",
   "ma.events.none": "Noch kein Veranstalter hat eine Karte und Bahnen veröffentlicht.",
+  "ma.events.how": "Eine Veranstaltung wird unter „{path}“ eingerichtet: die Karte und ihre Bahnen. Die Läufer fügen dann ihre Tracks hinzu.",
   "ma.pick.hint": "Wähle eine Veranstaltung in der Liste oder auf der Karte.",
   "ma.by": "veranstaltet von {org}",
   "ma.courses.one": "{n} Bahn",

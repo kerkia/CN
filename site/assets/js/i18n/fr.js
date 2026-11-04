@@ -3808,6 +3808,7 @@ export default {
   "ma.tag.orgaMap": "carte de l'organisateur",
   "ma.course.none": "Aucune compétition avec résultats pour l'instant.",
   "ma.events.none": "Aucun organisateur n'a encore publié de carte et de circuits.",
+  "ma.events.how": "Un événement se prépare dans « {path} » : la carte et ses circuits. Les coureurs y ajoutent ensuite leur trace.",
   "ma.pick.hint": "Choisissez un événement dans la liste ou sur la carte.",
   "ma.by": "organisé par {org}",
   "ma.courses.one": "{n} circuit",

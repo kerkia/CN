@@ -4645,6 +4645,7 @@ export default {
   "ma.tag.orgaMap": "organiser's map",
   "ma.course.none": "No competition with results yet.",
   "ma.events.none": "No organiser has published a map and courses yet.",
+  "ma.events.how": "An event is set up in “{path}”: the map and its courses. The runners then add their tracks to it.",
   "ma.pick.hint": "Choose an event in the list or on the map.",
   "ma.by": "organised by {org}",
   "ma.courses.one": "{n} course",

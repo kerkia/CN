@@ -1243,7 +1243,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         ${leg ? "" : html`<label title="${modeHint}"><span>${t("sh.mode")}</span><select id="sh-mode">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
         ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
         <label><span>${t("sh.follow")}</span><select id="sh-follow">${FOLLOWS.map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label>
-        <span class="muted sh-mode-hint" title="${modeHint}">${modeHint}</span></div>`;
+        <span class="muted sh-mode-hint" title="${modeHint}">${modeHint}</span>
+        ${you.visitor ? "" : html`<span class="sh-bar-add">${runners.some((r) => r.mine) ? "" : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
+          ${admin ? html`<button type="button" class="btn btn-sm" id="sh-bar-test">${t("sh.test.add")}</button>` : ""}</span>`}</div>`;
     rightP.pane("display").innerHTML = html`
         <div class="an-opts">
           <label><span>${t("an.width")}</span><select id="sh-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
@@ -1257,6 +1259,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div>
         <div id="sh-3d-opts" hidden></div>`;
     if (admin) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
+    // adding one's track (and an administrator's test tracks) from the top line: the buttons live in the « Coureurs » tab, while
+    // the page opens on « Inter-postes » (owner, 2026-11-04: the upload could not be found) — that tab shown, the file chooser opened
+    const toRunners = (input) => { leftP.fold(false); leftP.show("runners"); $(input)?.click(); };
+    $("#sh-bar-add")?.addEventListener("click", () => toRunners("#sh-file"));
+    $("#sh-bar-test")?.addEventListener("click", () => toRunners("#sh-test-file"));
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));

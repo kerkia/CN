@@ -1884,6 +1884,8 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 .sh-bar-opts { gap: 4px 14px; font-size: 13px; }
 .sh-bar-opts label { display: inline-flex; align-items: center; gap: 6px; }
 .sh-mode-hint { flex: 1 1 200px; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-bar-add { display: flex; gap: 6px; flex: 0 0 auto; margin-left: auto; }
+.sh-bar-opts:has(.sh-bar-add) .sh-mode-hint { flex-basis: 40px; }   /* the hint gives way to the buttons: one line */
 .sh-lp [data-pane="own"]:not([hidden]) { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 .sh-map { position: relative; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #e9e6dc; min-height: 0; }
 .sh-map canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }

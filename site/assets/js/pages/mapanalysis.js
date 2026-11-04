@@ -156,6 +156,8 @@ async function picker(main, choice, query) {
         ${choice === "course" ? html`<td>${e.splits ? html`<span class="tag">${t("ma.splits")}</span>` : ""}${published.has(e.key) ? html` <span class="tag ma-tag-orga">${t("ma.tag.orgaMap")}</span>` : ""}</td>`
           : html`<td><span class="tag">${t(`ma.kind.${e.kind}`)}</span></td><td class="muted">${e.org || "—"}</td><td class="r num">${e.courses}</td>`}</tr>`)}</tbody></table>`
       : html`<div class="empty">${t(items.length ? "ra.emptyFilter" : choice === "course" ? "ma.course.none" : "ma.events.none")}</div>`;
+    // where an event comes from (named, not linked: no page leads into another module)
+    if (choice !== "course") $("#ma-table").insertAdjacentHTML("beforeend", html`<p class="hint ma-how">${t("ma.events.how", { path: `${t("mod.orga")} › ${t("nav.orgAnalyses")}` })}</p>`);
     map?.show(shown, selected);
     detail();
   }

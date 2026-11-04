@@ -4864,6 +4864,7 @@ export default {
   "ma.tag.orgaMap": "mapa del organizador",
   "ma.course.none": "Todavía no hay competiciones con resultados.",
   "ma.events.none": "Ningún organizador ha publicado todavía un mapa y recorridos.",
+  "ma.events.how": "Un evento se prepara en «{path}»: el mapa y sus recorridos. Después, los corredores añaden su track.",
   "ma.pick.hint": "Elige un evento en la lista o en el mapa.",
   "ma.by": "organizado por {org}",
   "ma.courses.one": "{n} recorrido",
