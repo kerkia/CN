@@ -83,6 +83,12 @@ export function boot() {
     });
   }
 }
+/** Files given to « Analyse solo » from another page (« Mes cartes »'s « Rejouer »): kept in the inbox, then the page opened —
+ *  on the playback at once when `play`. */
+export async function toSolo(files, { play = false } = {}) {
+  await inbox("put", { at: Date.now(), via: "page", files });
+  location.hash = `#/analyse-solo${play ? "?play=1" : ""}`;
+}
 /** Files are waiting: « Analyse solo » takes them, open or opened now. */
 function received() {
   if (/^#\/analyse(-solo|-perso)?(?:[?/]|$)/.test(location.hash)) window.dispatchEvent(new Event("ocn:inbox"));

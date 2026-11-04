@@ -2370,6 +2370,8 @@ export default {
   "an.formats.ocad": "OCAD (.ocd) and OpenOrienteering Mapper (.omap, .xmap) files are read: dropped alone, they are the map, drawn here and placed by their georeferencing; dropped with an image of the map, they serve the computed routes.",
   "an.src.gpx": "GPX",
   "an.src.drawn": "drawn by hand",
+  "an.src.mymaps": "replayed from My maps",
+  "an.replay.geo": "Run replayed from My maps: laid on the map by its georeferencing, its controls and their times as saved.",
   "an.draw.box": "No GPS track?",
   "an.draw.own": "Route drawn by hand",
   "an.draw.go": "Draw my route",

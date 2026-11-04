@@ -887,7 +887,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   a zip), « Partager la sélection » (one map: its link; several: a link to that set, `mymap_links.map_id` « set:<ids sorted> », the
   same set again finds the same link), « Supprimer », « Désélectionner » (a tick updates the marks and the bar only: the cards are not
   drawn again). The head has « Partager ma bibliothèque » (the whole library), whose dialog lists the other links (per map, per
-  selection) to copy or delete. No « Tout exporter » any more. **No quota for now** (owner). Storage: D1 (**migration 0019**: `mymaps`, `mymap_runs`, `mymap_links`), R2 `mymaps/<user>/<map>/map|thumb|runs/<run>.json`
+  selection) to copy or delete. No « Tout exporter » any more. **« Rejouer »** (owner, 2026-11-04): each run of a georeferenced map
+  replays in « Analyse solo » — `MM.replayGpx` makes a GPX of the run (its points through the map's georeference, its times, the
+  personal channels kept) with the `ozimut:drawn` extension of a drawn route marked `replay` (the controls kept, their times — one
+  without a time from the run's nearest point, a start or finish missing where the run begins or ends), `pwa.toSolo` hands it and
+  the map to the page through the inbox, `?play=1`; there the route is laid by that georeference with nothing read on the map
+  (`drawnHere`), source « mymaps » (`track.js`), played at once, neither edited nor cut nor saved again, the visit's other files
+  dropped. **No quota for now** (owner). Storage: D1 (**migration 0019**: `mymaps`, `mymap_runs`, `mymap_links`), R2 `mymaps/<user>/<map>/map|thumb|runs/<run>.json`
   (`functions/api/mymaps/[[path]].js`, its header lists the routes; images cached a year: a map never changes under its id);
   account deletion removes all (`api/account/delete.js`); the privacy page's « Mes cartes ». Texts in the area catalogue
   `i18n/mymaps.{fr,en,de,es}.js` (`loadArea("mymaps")`); the Coach guide's chapter `cartes`. Local test: launch config

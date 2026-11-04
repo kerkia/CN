@@ -11,6 +11,7 @@
 
 import { FFLATE } from "../vendor.js";
 import { kindOf, readQuickRoute, ozimutPayload, withOzimut, affineFit } from "./mapjpeg.js";
+import { DRAWN_NS } from "./drawroute.js";
 
 export const API = "api/mymaps";
 const PERSONAL = ["hr", "ele", "cad"];
@@ -116,6 +117,66 @@ export const setLink = (body) => call("/link", { method: "POST", body });
 /** Where a map's image, a thumbnail or a run is read: one's own, or through a link. */
 export const mapUrl = (id, part, token) => (token ? `${API}/s/${token}/maps/${id}/${part}` : `${API}/maps/${id}/${part}`);
 export const runUrl = (id, token) => (token ? `${API}/s/${token}/runs/${id}` : `${API}/runs/${id}`);
+// ---- a run replayed in « Analyse solo » (owner, 2026-11-04) -------------------------------------------------------------
+/**
+ * The GPX of a run kept here, as « Analyse solo » replays it: the run's points in degrees by the map's georeference, with their
+ * times (and the personal channels kept), and the `ozimut:drawn` extension a route drawn by hand carries (trace/drawroute.js),
+ * marked `replay` — so that the page lays the run on the map through that same georeference and takes the controls and their
+ * times as they were kept, reading nothing on the map. The run starts at its start control's time when it has one; a control
+ * kept without a time is timed by the run's nearest point after the one before; a course without its start or finish gets them
+ * where the run begins and ends. map: { w, h, geo }; d: decodeRun(rec). Null without a georeference.
+ */
+export function replayGpx(map, d, name = "") {
+  const g = map?.geo;
+  if (!g || !Number.isFinite(g.a) || !Number.isFinite(g.e) || d.n < 2) return null;
+  const st = d.ctl.find((c) => c.k === "start" && c.t != null);
+  let i0 = 0;
+  if (st) { const j = d.ms.findIndex((v) => v >= st.t - 500); if (j >= 0 && d.n - j >= 10) i0 = j; }
+  const t0 = d.ms[i0], last = d.n - 1;
+  // the controls in order, each with its time
+  let ctl = d.ctl.filter((c) => Number.isFinite(c.x) && Number.isFinite(c.y)).map((c) => ({ ...c }));
+  if (ctl.length) {
+    if (ctl[0].k !== "start") ctl.unshift({ k: "start", x: d.x[i0], y: d.y[i0], t: t0 });
+    if (ctl[ctl.length - 1].k !== "finish") ctl.push({ k: "finish", x: d.x[last], y: d.y[last], t: d.ms[last] });
+    let from = i0, prev = t0;
+    for (const c of ctl) {
+      if (c.k === "start") { c.t = t0; continue; }
+      if (c.t == null || c.t < prev) {
+        let best = -1, bd = Infinity;
+        for (let i = from; i <= last; i++) { const dd = Math.hypot(d.x[i] - c.x, d.y[i] - c.y); if (dd < bd) { bd = dd; best = i; } }
+        c.t = best >= 0 ? d.ms[best] : prev;
+      }
+      prev = c.t;
+      const j = d.ms.findIndex((v, i) => i >= from && v >= c.t);
+      if (j >= 0) from = j;
+    }
+  }
+  const at = {};
+  ctl.forEach((c, i) => { at[i] = Math.max(0, (c.t - t0) / 1000); });
+  const meta = { v: 1, w: map.w, h: map.h, geo: g, nogeo: false, start: t0, replay: true, km: null,
+    pts: ctl.map((c) => [Math.round(c.x * 10) / 10, Math.round(c.y * 10) / 10]), kind: ctl.map((c) => c.k), at };
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const iso = (ms) => new Date(Math.round(ms)).toISOString();
+  const ch = d.ch || {};
+  const seg = [];
+  for (let i = i0; i <= last; i++) {
+    if (i > i0 && d.br.has(i)) seg.push("</trkseg><trkseg>");
+    const { lat, lon } = toLatLon(g, d.x[i], d.y[i]);
+    const ele = ch.ele?.[i], hr = ch.hr?.[i], cad = ch.cad?.[i];
+    const ext = Number.isFinite(hr) || Number.isFinite(cad)
+      ? `<extensions><gpxtpx:TrackPointExtension>${Number.isFinite(hr) ? `<gpxtpx:hr>${Math.round(hr)}</gpxtpx:hr>` : ""}${Number.isFinite(cad) ? `<gpxtpx:cad>${Math.round(cad)}</gpxtpx:cad>` : ""}</gpxtpx:TrackPointExtension></extensions>` : "";
+    seg.push(`<trkpt lat="${lat.toFixed(7)}" lon="${lon.toFixed(7)}">${Number.isFinite(ele) ? `<ele>${ele}</ele>` : ""}<time>${iso(d.ms[i])}</time>${ext}</trkpt>`);
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Ozimut" xmlns="http://www.topografix.com/GPX/1/1" xmlns:ozimut="${DRAWN_NS}" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+<metadata><name>${esc(name)}</name><time>${iso(t0)}</time><extensions><ozimut:drawn>${esc(JSON.stringify(meta))}</ozimut:drawn></extensions></metadata>
+<trk><name>${esc(name)}</name><type>orienteering</type><trkseg>
+${seg.join("\n")}
+</trkseg></trk>
+</gpx>
+`;
+}
+
 const runCache = new Map();
 export async function getRun(id, token) {
   const k = `${token || ""}:${id}`;

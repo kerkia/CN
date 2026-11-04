@@ -194,9 +194,26 @@ export async function render(main, { query = {} } = {}) {
         ${r.note && noteOpen !== r.id ? html`<p class="mm-run-note">${r.note}</p>` : ""}
         ${mine && noteOpen === r.id ? html`<div class="mm-note-edit"><textarea id="mm-note-ta" rows="3" maxlength="1000" placeholder="${t("mm.note.ph")}">${r.note || ""}</textarea>
           <span><button type="button" class="btn btn-sm btn-primary" data-note-save="${r.id}">${t("mm.note.save")}</button> <button type="button" class="btn btn-sm" data-note-cancel>${t("mm.note.cancel")}</button></span></div>` : ""}
-        ${mine ? html`<span class="mm-run-acts"><button type="button" class="btn btn-ghost btn-sm" data-ren="${r.id}">${t("mm.rename")}</button>
+        <span class="mm-run-acts"><button type="button" class="btn btn-sm" data-replay="${r.id}" ${raw(m.geo ? "" : "disabled")} title="${t(m.geo ? "mm.replay.tip" : "mm.replay.noGeo")}">▶ ${t("mm.replay")}</button>
+        ${mine ? html`<button type="button" class="btn btn-ghost btn-sm" data-ren="${r.id}">${t("mm.rename")}</button>
           <button type="button" class="btn btn-ghost btn-sm" data-note="${r.id}">${t(r.note ? "mm.note.edit" : "mm.note.add")}</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-rm="${r.id}">${t("mm.remove")}</button></span>` : ""}</li>`)}`;
+          <button type="button" class="btn btn-ghost btn-sm" data-rm="${r.id}">${t("mm.remove")}</button>` : ""}</span></li>`)}`;
+      // « Rejouer » (owner, 2026-11-04): the map and the run handed to « Analyse solo », played at once (MM.replayGpx)
+      $$("[data-replay]").forEach((b) => b.addEventListener("click", async () => {
+        const r = m.runs.find((x) => x.id === b.dataset.replay);
+        b.disabled = true;
+        try {
+          const d = MM.decodeRun(await MM.getRun(r.id, token));
+          const name = r.title || m.title || t("mm.untitledRun");
+          const gpx = MM.replayGpx(m, d, name);
+          if (!gpx) throw new Error("geo");
+          const blob = await (await fetch(MM.mapUrl(m.id, "map", token), { credentials: "same-origin" })).blob();
+          const ext = /png/.test(blob.type) ? "png" : /webp/.test(blob.type) ? "webp" : "jpg";
+          const files = [new File([blob], MM.fileName(m.title || t("mm.untitled"), m.day, ext), { type: blob.type }),
+            new File([gpx], MM.fileName(name, r.day, "gpx"), { type: "application/gpx+xml" })];
+          await (await import("../pwa.js")).toSolo(files, { play: true });
+        } catch (e) { console.error(e); b.disabled = false; alert(t("mm.replay.err")); }
+      }));
       $$("[data-show]").forEach((b) => b.addEventListener("change", () => { if (b.checked) hidden.delete(b.dataset.show); else hidden.add(b.dataset.show); drawSide(); paint(); }));
       $$("[data-ren]").forEach((b) => b.addEventListener("click", async () => {
         const r = m.runs.find((x) => x.id === b.dataset.ren), v = prompt(t("mm.rename.ask"), r.title || "");

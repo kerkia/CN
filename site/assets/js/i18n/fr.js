@@ -1739,6 +1739,8 @@ export default {
   "an.formats.ocad": "Les fichiers OCAD (.ocd) et OpenOrienteering Mapper (.omap, .xmap) sont lus : déposés seuls, ils sont la carte, dessinée ici et calée par leur géoréférencement ; déposés avec une image de la carte, ils servent aux itinéraires calculés.",
   "an.src.gpx": "GPX", "an.src.tcx": "TCX", "an.src.fit": "FIT", "an.points": "points",
   "an.src.drawn": "dessinée à la main",
+  "an.src.mymaps": "rejouée depuis Mes cartes",
+  "an.replay.geo": "Course rejouée depuis Mes cartes : posée sur la carte par son géoréférencement, ses postes et leurs temps tels qu'enregistrés.",
   "an.draw.box": "Pas de trace GPS ?",
   "an.draw.own": "Itinéraire dessiné à la main",
   "an.draw.go": "Dessiner mon itinéraire",

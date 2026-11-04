@@ -2489,6 +2489,8 @@ export default {
   "an.formats.ocad": "OCAD-Dateien (.ocd) und OpenOrienteering-Mapper-Dateien (.omap, .xmap) werden gelesen: Allein abgelegt, sind sie die Karte, hier gezeichnet und über ihre Georeferenzierung platziert; zusammen mit einem Bild der Karte dienen sie den berechneten Routen.",
   "an.src.gpx": "GPX",
   "an.src.drawn": "von Hand gezeichnet",
+  "an.src.mymaps": "aus Meine Karten abgespielt",
+  "an.replay.geo": "Lauf aus Meine Karten abgespielt: mit seiner Georeferenzierung auf die Karte gelegt, seine Posten und ihre Zeiten wie gespeichert.",
   "an.draw.box": "Kein GPS-Track?",
   "an.draw.own": "Von Hand gezeichnete Route",
   "an.draw.go": "Meine Route zeichnen",

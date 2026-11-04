@@ -16,7 +16,7 @@ export function parseTrace(name, buf) {
   const doc = new DOMParser().parseFromString(new TextDecoder().decode(bytes), "application/xml");
   if (doc.querySelector("parsererror")) throw new Error("gpx");
   const root = doc.documentElement.localName;
-  if (root === "gpx") { const P = parseGpx(doc); return build(P, P.drawn ? "drawn" : "gpx"); }
+  if (root === "gpx") { const P = parseGpx(doc); return build(P, P.drawn ? (P.drawn.replay ? "mymaps" : "drawn") : "gpx"); }
   if (root === "TrainingCenterDatabase") return build(parseTcx(doc), "tcx");
   throw new Error("gpx");
 }

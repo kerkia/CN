@@ -2489,6 +2489,8 @@ export default {
   "an.formats.ocad": "Se leen los archivos OCAD (.ocd) y OpenOrienteering Mapper (.omap, .xmap): soltados solos, son el mapa, dibujado aquí y colocado por su georreferenciación; soltados con una imagen del mapa, sirven para las rutas calculadas.",
   "an.src.gpx": "GPX",
   "an.src.drawn": "dibujado a mano",
+  "an.src.mymaps": "reproducida desde Mis mapas",
+  "an.replay.geo": "Carrera reproducida desde Mis mapas: colocada sobre el mapa por su georreferenciación, con sus controles y sus tiempos tal como se guardaron.",
   "an.draw.box": "¿Sin track GPS?",
   "an.draw.own": "Ruta dibujada a mano",
   "an.draw.go": "Dibujar mi ruta",

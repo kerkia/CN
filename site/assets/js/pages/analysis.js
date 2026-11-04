@@ -659,6 +659,8 @@ export async function render(main, { query = {}, route } = {}) {
           filesCard();
           traceFull = parseTrace(name, await f.arrayBuffer());
           track = withCut(traceFull);
+          // a run replayed from « Mes cartes » brings its own georeference and controls: a visit's other files go
+          if (traceFull.drawn?.replay) for (const role of Object.keys(files)) if (role !== "map" && role !== "trace") files[role] = null;
           files.trace.detail = traceDetail();
           if (race?.date_iso) { const day = parisDay(track.ms0); if (day !== race.date_iso) files.trace.note = t("an.date.diff", { d1: fmtDate(day), d2: fmtDate(race.date_iso) }); }
         } else if (low.endsWith(".kmz")) {
@@ -955,7 +957,7 @@ export async function render(main, { query = {}, route } = {}) {
     // the georeferencing
     geoFit = null; geoHow = "";
     const W = map.width, H = map.height;
-    if (drawnHere()) { geoFit = fitFromGeo(track.drawn.geo, track); notes.push(t(track.drawn.nogeo ? "an.draw.geoOwn" : "an.draw.geoHow")); }
+    if (drawnHere()) { geoFit = fitFromGeo(track.drawn.geo, track); notes.push(t(track.drawn.replay ? "an.replay.geo" : track.drawn.nogeo ? "an.draw.geoOwn" : "an.draw.geoHow")); }
     else if (files.orga) { geoFit = fitFromGeo(files.orga.geo, track); geoHow = t("an.orga.geo"); }
     else if (files.geo?.overlay) { geoFit = fitFromKml(files.geo.overlay, W, H, track); geoHow = files.geo.kind.toUpperCase(); }
     else if (files.geo?.corners) { geoFit = fitAffine(files.geo.corners.map(([lat, lon]) => toLocal(track, lat, lon)), [[0, 0], [W, 0], [W, H], [0, H]]); geoHow = `OCAD/Mapper${files.geo.detail ? ` · ${files.geo.detail}` : ""}`; }
@@ -1131,7 +1133,9 @@ export async function render(main, { query = {}, route } = {}) {
     side(); draw();
     if (fit && !notes.length && targets.filter((g) => g.pos).length >= 3) steps(3);
     // the organiser's map: placed by its own georeferencing, nothing to check by hand — a trace just dropped plays at once
-    if (orgaGo && fit && offset != null && targets.filter((g) => g.pos && g.tEst != null).length >= 2) { orgaGo = false; finish(); }
+    // and a run replayed from « Mes cartes » (its georeference and controls kept): played at once too
+    const replayGo = autoPlay && !!track?.drawn?.replay && drawnHere();
+    if ((orgaGo || replayGo) && fit && offset != null && targets.filter((g) => g.pos && g.tEst != null).length >= 2) { orgaGo = false; autoPlay = false; finish(); }
   }
   const median = (xs) => { const v = [...xs].sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : 0; };
   /** The trace's sharp turns (over 50°) with no control placed nearby, probed on the map for a ring: the rings found. */
@@ -1411,7 +1415,7 @@ export async function render(main, { query = {}, route } = {}) {
   /** The trace is a route drawn on this map (its drawing kept in the GPX, for a map of the same size). */
   function drawnHere() { return !!(track?.drawn && map && track.drawn.w === map.width && track.drawn.h === map.height && validGeo(track.drawn.geo)); }
   function drawBlock() {
-    if (!map || (track && !track.drawn)) return "";
+    if (!map || (track && !track.drawn) || track?.drawn?.replay) return "";       // a run replayed from « Mes cartes » is not edited
     const own = !!track?.drawn;
     return html`<div class="an-drawbox"><b>${t(own ? "an.draw.own" : "an.draw.box")}</b>
       <button type="button" class="btn btn-sm${own ? "" : " btn-primary"}" id="an-draw-go">✎ ${t(own ? "an.draw.edit" : "an.draw.go")}</button>
@@ -1752,7 +1756,7 @@ export async function render(main, { query = {}, route } = {}) {
     ["#an-shot-zone", "#an-shot-type", "#an-shot-legend"].forEach((s) => $(s).addEventListener("change", shotSet));
     $("#an-shot").addEventListener("click", () => exportImage());
     // « Enregistrer dans Mes cartes » (owner, 2026-11-01): the map and the run as drawn here (trace/mymapsave.js)
-    if (!orgaOpt("mymaps", true)) $("#an-mymaps").hidden = true;
+    if (!orgaOpt("mymaps", true) || track?.drawn?.replay) $("#an-mymaps").hidden = true;   // a replay is already there
     else import("../trace/mymapsave.js").then((M) => M.mount($("#an-mymaps"), () => ({ file: files.map?.file || null, image: map, track, pxs, pys, offset, total,
       geo: fit ? geoFromFit(fit, track) : null, title: orgaMode ? orga.A.title : perso ? "" : [race?.name, klass()?.name].filter(Boolean).join(" · "),
       controls: targets.filter((g) => g.pos).map((g) => ({ k: g.kind, x: g.pos[0], y: g.pos[1], t: timeOf(g) })) }))).catch((e) => console.error(e));
