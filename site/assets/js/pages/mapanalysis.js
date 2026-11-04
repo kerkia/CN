@@ -28,6 +28,7 @@ export async function render(main, r) {
   // the published events are read by an account (Analyse multi's API); a visitor without one sees those their organiser opened
   // to visitors (owner, 2026-11-02), with the others' traces only
   if (choice === "orga" && !auth.session()) { location.replace(HOME); return { title: t("ma.title") }; }
+  if ((choice === "orga" || choice === "multi") && !auth.session()?.admin) { location.replace(HOME); return { title: t("ma.title") }; }   // administrators' for now
   return choice ? picker(main, choice, r.query) : tiles(main);
 }
 
@@ -61,15 +62,17 @@ function tiles(main) {
       <span class="ma-need"><i>${t("ma.need")}</i> ${t(`ma.${k}.need`)}</span>
       ${off ? html`<span class="ma-acc">${t("ma.account")}</span>` : ""}</a>`;
   };
+  // the organiser's map (tiles 1 and 2) the administrators' for now (owner, 2026-11-04; app.ADMIN_ROUTES)
+  const shared = !!me?.admin;
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("ma.title")}</h1><p class="lede">${t("ma.lede")}</p></div></div>
+    <div class="page-head"><div><h1>${t("ma.title")}</h1><p class="lede">${t(shared ? "ma.lede" : "ma.lede.own")}</p></div></div>
     <div class="ma-groups">
-      <section class="ma-group" data-group="orga"><h2>${t("ma.g.orga")}</h2><p class="ma-group-lede">${t("ma.g.orga.lede")}</p>
-        <div class="ma-tiles">${tile("multi", `${HOME}?choix=multi`)}${tile("orga", `${HOME}?choix=orga`, true)}</div></section>
+      ${shared ? html`<section class="ma-group" data-group="orga"><h2>${t("ma.g.orga")}</h2><p class="ma-group-lede">${t("ma.g.orga.lede")}</p>
+        <div class="ma-tiles">${tile("multi", `${HOME}?choix=multi`)}${tile("orga", `${HOME}?choix=orga`, true)}</div></section>` : ""}
       <section class="ma-group" data-group="own"><h2>${t("ma.g.own")}</h2><p class="ma-group-lede">${t("ma.g.own.lede")}</p>
         <div class="ma-tiles">${tile("course", `${HOME}?choix=course`)}${tile("free", "#/analyse-solo")}</div></section>
     </div>
-    <p class="muted ma-foot">${t("ma.foot")}</p>`;
+    <p class="muted ma-foot">${t(shared ? "ma.foot" : "ma.foot.own")}</p>`;
   return { title: t("ma.title") };
 }
 
@@ -104,7 +107,7 @@ async function picker(main, choice, query) {
       .map((x) => ({ key: x.key, name: x.name, date: x.date_iso, place: x.place || "", pos: x.pos || null, org: x.org || "", race: x, splits: !!x.splits,
         href: `#/analyse?course=${encodeURIComponent(x.key)}` }));
     // a competition whose organiser has published its map: its tile 2 needs no map of one's own
-    if (me) { try { for (const a of (await api("")).analyses) if (a.kind === "race" && a.courses > 0 && a.race && a.solo !== false) published.set(a.race, a); } catch (e) { /* none */ } }
+    if (me?.admin) { try { for (const a of (await api("")).analyses) if (a.kind === "race" && a.courses > 0 && a.race && a.solo !== false) published.set(a.race, a); } catch (e) { /* none */ } }
   } else {
     let data = null;
     try { data = await api(""); } catch (e) { $("#ma-table").innerHTML = html`<div class="empty">${t("ma.err")}</div>`; return { title: t(`ma.${choice}.title`) }; }

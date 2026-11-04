@@ -4704,6 +4704,8 @@ export default {
   "ma.need": "You need:",
   "ma.account": "With an account",
   "ma.foot": "Your files are read in your browser and sent nowhere, except the track you choose to share in “Compare with the other runners”.",
+  "ma.lede.own": "Replay your GPS track on your map to analyse your race: a competition, or a training session and any other outing.",
+  "ma.foot.own": "Your files are read in your browser and sent nowhere.",
   "ma.multi.title": "Compare with the other runners",
   "ma.multi.desc": "Your routes side by side, control by control, with the split times, the gaps and the route choices.",
   "ma.multi.need": "your track, shared with the event's runners",

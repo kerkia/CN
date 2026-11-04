@@ -255,6 +255,13 @@ Arena, Coach and Orga's « Les outils » are `content/guide.*.js` (`arena`, `coa
 tabs (CN officiel, Méthode Ozimut, Coureurs et clubs, and « L'étude »), Orga's « Le tracé » the methods' `tracerDoc`. A link of before
 naming only `?onglet=` is sent to its module by `app.docAddress` (`DOC_TAB_MODULE`; the GPS analyses are Coach's).
 
+**The shared map analyses are the administrators' for now** (owner, 2026-11-04): Coach's « Comparer avec les autres coureurs » and
+« Analyser seul ma course » on an organiser's map, Orga's « Analyses de carte » (`app.ADMIN_ROUTES`: `analysisClub`, `analysisRace`,
+`analysisOrga`, `orgAnalyses`; out of the menus and tiles, their addresses lead others to the modules page), the Tracer's « Publier
+vers l'analyse de carte » (`pro`), « Analyse de carte »'s first two tiles (`mapanalysis.js`: the own-map tiles alone, `ma.lede.own`),
+and their chapters in the guides (`admin`). « Analyse solo » on one's own map stays everyone's. Local test as a regular account:
+launch config `pages-dev-user-4156` (8793, wrangler 4.156.2, ADMIN_EMAILS overridden).
+
 **Three profiles**: a **visitor without an account** (« Entrer sans compte »: `auth.guest()`, `localStorage ocn.guest`; the
 router keeps them to `GUEST_ROUTES`: Arena, Coach — Analyse multi only where its organiser opened it to visitors —, Stats' runner, ranking and races), a **signed-in account**,
 and a signed-in account **with Orga** (`users.orga`, migration 0016 — at registration, in Réglages › Modules, or « Activer Orga »

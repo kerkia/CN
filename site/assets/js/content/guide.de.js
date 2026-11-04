@@ -175,21 +175,21 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Kartenanalyse"], ["solo", "Einzelanalyse"], ["multi", "Mit den anderen vergleichen"], ["cartes", "Meine Karten"], ...(owner ? [["definitions", "Postenbeschreibungen"], ["symboles", "Kartensymbole"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Kartenanalyse"], ["solo", "Einzelanalyse"], ...(admin ? [["multi", "Mit den anderen vergleichen"]] : []), ["cartes", "Meine Karten"], ...(owner ? [["definitions", "Postenbeschreibungen"], ["symboles", "Kartensymbole"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Spiele"], ["vma", "MAG"], ["routes", "Berechnete Routen"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
         ${slide("Coach", "Kartenanalyse", html`
-          <p>Die ${P("#/analyse-carte", "Kartenanalyse")} vereint die Analysen von GPS-Tracks hinter vier Kacheln, geordnet danach, wer die Karte liefert.</p>
+          <p>Die ${P("#/analyse-carte", "Kartenanalyse")} vereint die Analysen von GPS-Tracks hinter ${admin ? "vier Kacheln, geordnet danach, wer die Karte liefert" : "zwei Kacheln"}.</p>
           ${list([
-            html`<b>Der Veranstalter hat die Karte und die Bahnen veröffentlicht</b>: <b>Mit den anderen vergleichen</b> (dein Track
+            ...(admin ? [html`<b>Der Veranstalter hat die Karte und die Bahnen veröffentlicht</b>: <b>Mit den anderen vergleichen</b> (dein Track
               geteilt mit den Läufern der Veranstaltung) oder <b>Meinen Lauf allein analysieren</b> (die Einzelanalyse auf seiner Karte: Du legst nur deinen
-              Track ab, er legt sich dank der Einpassung des Veranstalters von selbst auf die Karte, und nichts wird gesendet; bei einem Wettkampf geben deine veröffentlichten Zwischenzeiten die Zeiten). Du brauchst ein Konto.`,
+              Track ab, er legt sich dank der Einpassung des Veranstalters von selbst auf die Karte, und nichts wird gesendet; bei einem Wettkampf geben deine veröffentlichten Zwischenzeiten die Zeiten). Du brauchst ein Konto.`] : []),
             html`<b>Du hast deine eigene Karte</b>: <b>Ein Wettkampf</b> (ein Lauf der letzten 60 Tage, seine Ergebnisse und Zwischenzeiten neben deinem
               Track) oder <b>Ein Training oder ein Ausflug</b> (jede Karte, jeder Track).`,
             html`<b>Die Veranstaltung</b> wählst du in einer Liste, auf einem Computer mit der Karte des Landes daneben; eine gewählte Veranstaltung zeigt,
-              was sie bietet. Ein Wettkampf, dessen Veranstalter die Karte veröffentlicht hat, sagt es und bietet an, ihn auf dieser Karte zu analysieren.`,
+              was sie bietet.${admin ? html` Ein Wettkampf, dessen Veranstalter die Karte veröffentlicht hat, sagt es und bietet an, ihn auf dieser Karte zu analysieren.` : ""}`,
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Einzelanalyse", html`
@@ -399,7 +399,7 @@ export function build(X) {
   // Orga (« Die Bahnlegung », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Wer veranstaltet"], ["resultats", "Ergebnisse"], ["horaires", "Startzeiten"], ["direct", "Live-Übertragung"], ["suivi", "GPS-Tracking"],
-    ["analyses", "Kartenanalysen"], ["declarer", "Eingetragene Wettkämpfe"]];
+    ...(admin ? [["analyses", "Kartenanalysen"]] : []), ["declarer", "Eingetragene Wettkämpfe"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -408,7 +408,7 @@ export function build(X) {
             genutzt. Veranstalter eines Wettkampfs ist ${fr ? "jedes Mitglied seines veranstaltenden Vereins – des Vereins seines letzten bekannten Laufs – oder" : ""}
             das Konto, das ihn eingetragen hat, außerhalb Frankreichs. Ein Training dagegen kann jedes Konto anlegen.</p>
           ${list([
-            html`${P("#/orga-analyses", "Kartenanalysen")}: die Kartenanalyse der Wettkämpfe des Vereins und seiner Trainings vorbereiten.`,
+            ...(admin ? [html`${P("#/orga-analyses", "Kartenanalysen")}: die Kartenanalyse der Wettkämpfe des Vereins und seiner Trainings vorbereiten.`] : []),
             html`${P("#/orga-resultats", "Ergebnisse")} und ${P("#/orga-horaires", "Startzeiten")}: die Ergebnisse und die Startliste hochladen.`,
             html`${P("#/orga-direct", "Live-Übertragung")}: die Ergebnisse live aus der Zeitmessungssoftware übertragen und den Link zum GPS-Tracking angeben.`,
             html`${P("#/orga-tracer", "Bahnlegung")}: die Bahnen legen; die Anleitung dazu ist der Reiter ${D("tracer", "Die Bahnlegung")}.`,

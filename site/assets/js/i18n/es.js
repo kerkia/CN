@@ -4923,6 +4923,8 @@ export default {
   "ma.need": "Necesitas:",
   "ma.account": "Con una cuenta",
   "ma.foot": "Tus archivos se leen en tu navegador y no se envían a ninguna parte, salvo el track que decidas compartir en «Comparar con los demás corredores».",
+  "ma.lede.own": "Reproduce tu track GPS sobre tu mapa para analizar tu carrera: una competición, o un entrenamiento y cualquier otra salida.",
+  "ma.foot.own": "Tus archivos se leen en tu navegador y no se envían a ninguna parte.",
   "ma.multi.title": "Comparar con los demás corredores",
   "ma.multi.desc": "Vuestras rutas una al lado de otra, baliza a baliza, con los parciales, las diferencias y las elecciones de ruta.",
   "ma.multi.need": "tu track, compartido con los corredores del evento",

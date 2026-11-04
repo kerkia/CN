@@ -174,21 +174,21 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Analyse de carte"], ["solo", "Analyse solo"], ["multi", "Comparer avec les autres coureurs"], ["cartes", "Mes cartes"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Analyse de carte"], ["solo", "Analyse solo"], ...(admin ? [["multi", "Comparer avec les autres coureurs"]] : []), ["cartes", "Mes cartes"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Jeux"], ["vma", "VMA"], ["routes", "Itinéraires calculés"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
         ${slide("Coach", "Analyse de carte", html`
-          <p>L'${P("#/analyse-carte", "Analyse de carte")} rassemble les analyses de traces GPS derrière quatre tuiles, rangées selon qui fournit la carte.</p>
+          <p>L'${P("#/analyse-carte", "Analyse de carte")} rassemble les analyses de traces GPS derrière ${admin ? "quatre tuiles, rangées selon qui fournit la carte" : "deux tuiles"}.</p>
           ${list([
-            html`<b>L'organisateur a publié la carte et les circuits</b> : <b>Comparer avec les autres coureurs</b> (votre trace partagée avec
+            ...(admin ? [html`<b>L'organisateur a publié la carte et les circuits</b> : <b>Comparer avec les autres coureurs</b> (votre trace partagée avec
               les coureurs de l'événement) ou <b>Analyser seul ma course</b> (l'Analyse solo sur sa carte : vous ne déposez que votre trace, elle se pose
-              d'elle-même grâce au calage de l'organisateur, et rien n'est envoyé ; pour une compétition, vos temps intermédiaires publiés le chronomètrent). Il faut un compte.`,
+              d'elle-même grâce au calage de l'organisateur, et rien n'est envoyé ; pour une compétition, vos temps intermédiaires publiés le chronomètrent). Il faut un compte.`] : []),
             html`<b>Vous avez votre propre carte</b> : <b>Une compétition</b> (une course des 60 derniers jours, ses résultats et ses temps intermédiaires à
               côté de votre trace) ou <b>Un entraînement ou une sortie</b> (n'importe quelle carte, n'importe quelle trace).`,
-            html`<b>L'événement</b> se choisit dans une liste, avec la carte du pays à côté sur un ordinateur ; un événement choisi dit ce qu'il offre. Une
-              compétition dont l'organisateur a publié la carte le signale, et propose de l'analyser sur sa carte.`,
+            html`<b>L'événement</b> se choisit dans une liste, avec la carte du pays à côté sur un ordinateur ; un événement choisi dit ce qu'il offre.${admin ? html` Une
+              compétition dont l'organisateur a publié la carte le signale, et propose de l'analyser sur sa carte.` : ""}`,
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Analyse solo", html`
@@ -396,7 +396,7 @@ export function build(X) {
   // Orga (« Le tracé », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Qui organise"], ["resultats", "Résultats"], ["horaires", "Horaires"], ["direct", "Direct"], ["suivi", "Suivi GPS"],
-    ["analyses", "Analyses de carte"], ["declarer", "Compétitions déclarées"]];
+    ...(admin ? [["analyses", "Analyses de carte"]] : []), ["declarer", "Compétitions déclarées"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -405,7 +405,7 @@ export function build(X) {
             Est organisateur d'une compétition ${fr ? "tout membre de son club organisateur — le club de sa dernière course connue — ou" : ""}
             le compte qui l'a déclarée, hors de France. Un entraînement, lui, peut être créé par n'importe quel compte.</p>
           ${list([
-            html`${P("#/orga-analyses", "Analyses de carte")} : préparer l'analyse de carte des compétitions du club et de ses entraînements.`,
+            ...(admin ? [html`${P("#/orga-analyses", "Analyses de carte")} : préparer l'analyse de carte des compétitions du club et de ses entraînements.`] : []),
             html`${P("#/orga-resultats", "Résultats")} et ${P("#/orga-horaires", "Horaires")} : déposer les résultats et la liste de départ.`,
             html`${P("#/orga-direct", "Direct")} : diffuser les résultats en direct depuis le logiciel de chronométrage, et donner le lien du suivi GPS.`,
             html`${P("#/orga-tracer", "Tracer")} : tracer les circuits ; son guide est l'onglet ${D("tracer", "Le tracé")}.`,

@@ -4923,6 +4923,8 @@ export default {
   "ma.need": "Du brauchst:",
   "ma.account": "Mit Konto",
   "ma.foot": "Deine Dateien werden in deinem Browser gelesen und nirgends hingeschickt, außer dem Track, den du unter „Mit den anderen vergleichen“ teilst.",
+  "ma.lede.own": "Spiele deinen GPS-Track auf deiner Karte ab, um deinen Lauf zu analysieren: einen Wettkampf oder ein Training und jeden anderen Ausflug.",
+  "ma.foot.own": "Deine Dateien werden in deinem Browser gelesen und nirgends hingeschickt.",
   "ma.multi.title": "Mit den anderen vergleichen",
   "ma.multi.desc": "Eure Routen nebeneinander, Posten für Posten, mit Zwischenzeiten, Abständen und Routenwahlen.",
   "ma.multi.need": "deinen Track, geteilt mit den Läufern der Veranstaltung",

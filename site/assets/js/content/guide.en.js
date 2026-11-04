@@ -170,21 +170,21 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Map analysis"], ["solo", "Solo analysis"], ["multi", "Compare with the other runners"], ["cartes", "My maps"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Map analysis"], ["solo", "Solo analysis"], ...(admin ? [["multi", "Compare with the other runners"]] : []), ["cartes", "My maps"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Games"], ["vma", "MAS"], ["routes", "Computed routes"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
         ${slide("Coach", "Map analysis", html`
-          <p>The ${P("#/analyse-carte", "Map analysis")} gathers the GPS track analyses behind four tiles, arranged by who provides the map.</p>
+          <p>The ${P("#/analyse-carte", "Map analysis")} gathers the GPS track analyses behind ${admin ? "four tiles, arranged by who provides the map" : "two tiles"}.</p>
           ${list([
-            html`<b>The organiser has published the map and the courses</b>: <b>Compare with the other runners</b> (your track shared with
+            ...(admin ? [html`<b>The organiser has published the map and the courses</b>: <b>Compare with the other runners</b> (your track shared with
               the event's runners) or <b>Analyse my race alone</b> (the Solo analysis on their map: you drop only your track, it lays itself on the map from
-              the organiser's calibration, and nothing is sent; for a competition, your published split times time it). It needs an account.`,
+              the organiser's calibration, and nothing is sent; for a competition, your published split times time it). It needs an account.`] : []),
             html`<b>You have your own map</b>: <b>A competition</b> (a race of the last 60 days, its results and split times beside your track) or <b>A
               training or an outing</b> (any map, any track).`,
-            html`<b>The event</b> is chosen in a list, with the country's map beside it on a computer; an event chosen says what it offers. A competition whose
-              organiser has published the map says so, and offers to analyse it on that map.`,
+            html`<b>The event</b> is chosen in a list, with the country's map beside it on a computer; an event chosen says what it offers.${admin ? html` A competition whose
+              organiser has published the map says so, and offers to analyse it on that map.` : ""}`,
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Solo analysis", html`
@@ -382,7 +382,7 @@ export function build(X) {
   // Orga (« Course setting », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Who organises"], ["resultats", "Results"], ["horaires", "Start times"], ["direct", "Live feed"], ["suivi", "GPS tracking"],
-    ["analyses", "Map analyses"], ["declarer", "Declared competitions"]];
+    ...(admin ? [["analyses", "Map analyses"]] : []), ["declarer", "Declared competitions"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -391,7 +391,7 @@ export function build(X) {
             competition's organiser is ${fr ? "any member of its organising club — the club of their latest known race — or " : ""}the account that
             declared it, outside France. A training session can be created by any account.</p>
           ${list([
-            html`${P("#/orga-analyses", "Map analyses")}: preparing the map analysis of the club's competitions and of its training sessions.`,
+            ...(admin ? [html`${P("#/orga-analyses", "Map analyses")}: preparing the map analysis of the club's competitions and of its training sessions.`] : []),
             html`${P("#/orga-resultats", "Results")} and ${P("#/orga-horaires", "Start times")}: uploading the results and the start list.`,
             html`${P("#/orga-direct", "Live feed")}: broadcasting the results live from the timing software, and giving the GPS tracking link.`,
             html`${P("#/orga-tracer", "Course setting")}: setting the courses; its guide is the ${D("tracer", "Course setting")} tab.`,

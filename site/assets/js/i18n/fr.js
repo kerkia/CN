@@ -3867,6 +3867,8 @@ export default {
   "ma.need": "Il vous faut :",
   "ma.account": "Avec un compte",
   "ma.foot": "Vos fichiers sont lus dans votre navigateur et ne sont envoyés nulle part, sauf la trace que vous choisissez de partager dans « Comparer avec les autres coureurs ».",
+  "ma.lede.own": "Rejouez votre trace GPS sur votre carte pour analyser votre course : une compétition, ou un entraînement et toute autre sortie.",
+  "ma.foot.own": "Vos fichiers sont lus dans votre navigateur et ne sont envoyés nulle part.",
   "ma.multi.title": "Comparer avec les autres coureurs",
   "ma.multi.desc": "Vos itinéraires côte à côte, poste par poste, avec les temps intermédiaires, les écarts et les choix d'itinéraire.",
   "ma.multi.need": "votre trace, partagée avec les coureurs de l'événement",

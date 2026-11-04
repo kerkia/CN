@@ -157,7 +157,7 @@ export const TABS = [
         S("offline", t("trc.rd.offline"), "offline", { tip: t("trc.rd.offlineTip") }),
         S("field-states", t("trc.rd.fieldStates"), "flag", { need: "edit", pro: true, tip: t("trc.rd.fieldStatesTip") }))] },
     { id: "after", title: t("trc.rd.gAfter"), guide: "apres", items: [
-      B("publish", t("trc.rd.publish"), "share", { need: "after", tip: t("trc.rd.publishTip") }),
+      B("publish", t("trc.rd.publish"), "share", { need: "after", tip: t("trc.rd.publishTip"), pro: true }),   // the map analyses: administrators' for now (2026-11-04)
       B("send-results", t("trc.rd.sendResults"), "send", { need: "after", tip: t("trc.rd.sendResultsTip") }),
       B("rep-after", t("trc.rd.repAfter"), "chart", { need: "after", tip: t("trc.rd.repAfterTip") })] },
     { id: "security", title: t("trc.rd.gSecurity"), items: [stack(S("encryption", t("trc.rd.encryption"), "lock", { tip: t("trc.rd.encryptionTip") }))] },
