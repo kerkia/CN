@@ -3188,6 +3188,7 @@ export default {
   "agd.ffco": "Official page ↗",
   "agd.range": "{a} to {b}",
   "agd.src": "See on {site} ↗",
+  "agd.sortHint": "Click a heading to sort by that column (again: the other way); Shift + click to add a further sort key, then to reverse it, then to remove it.",
   "cty.wre": "IOF WRE",
   "cty.in.wre": "of the IOF World Ranking",
   "agd.col.country": "Country",

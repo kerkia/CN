@@ -57,10 +57,18 @@ def build() -> dict:
         for n in {fold(name), fold(ascii_)}:
             if len(n) >= 3 and (n not in t or t[n][2] < w):
                 t[n] = [round(lat * 100), round(lon * 100), w]
+    from tools.countrymaps import rings, bbox
     feats = json.loads((src_dir() / "ne_10m_admin_0_countries.geojson").read_text(encoding="utf-8"))["features"]
+    # a code borne by several features (France's: Clipperton Island too, in the Pacific — owner, 2026-11-04: « Nationale moyenne
+    # distance in France appears in the Pacific ocean »): the largest one's label point
+    size = {}
     for ft in feats:
         p, cc = ft["properties"], code_of(ft["properties"])
-        if cc and p.get("LABEL_Y") is not None:
+        if not cc or p.get("LABEL_Y") is None:
+            continue
+        a = max(((b[2] - b[0]) * (b[3] - b[1]) for b in map(bbox, rings(ft["geometry"]))), default=0)
+        if a > size.get(cc, -1):
+            size[cc] = a
             out.setdefault(cc, {"t": {}})["c"] = [round(p["LABEL_Y"] * 100), round(p["LABEL_X"] * 100)]
     return {"v": 1, "source": "GeoNames (CC BY 4.0), https://www.geonames.org; Natural Earth (public domain)",
             "countries": {cc: v for cc, v in sorted(out.items()) if v.get("c")}}

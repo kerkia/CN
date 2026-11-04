@@ -3348,6 +3348,7 @@ export default {
   "agd.ffco": "Offizielle Seite ↗",
   "agd.range": "{a} bis {b}",
   "agd.src": "Auf {site} ansehen ↗",
+  "agd.sortHint": "Klicke auf eine Spaltenüberschrift, um nach dieser Spalte zu sortieren (erneut: in umgekehrter Richtung); Umschalt + Klick fügt ein weiteres Sortierkriterium hinzu, kehrt es dann um und entfernt es schließlich.",
   "cty.wre": "IOF WRE",
   "cty.in.wre": "der IOF-Weltrangliste",
   "agd.col.country": "Land",

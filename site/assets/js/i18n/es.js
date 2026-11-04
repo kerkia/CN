@@ -3348,6 +3348,7 @@ export default {
   "agd.ffco": "Ficha oficial ↗",
   "agd.range": "del {a} al {b}",
   "agd.src": "Ver en {site} ↗",
+  "agd.sortHint": "Haz clic en un encabezado para ordenar por esa columna (de nuevo: en el otro sentido); Mayús + clic para añadir otro criterio de orden, luego invertirlo y después quitarlo.",
   "cty.wre": "IOF WRE",
   "cty.in.wre": "del ranking mundial IOF",
   "agd.col.country": "País",

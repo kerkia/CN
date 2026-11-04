@@ -304,8 +304,53 @@ export async function render(main, { query }) {
     return [st.kinds.size !== 1 || !st.kinds.has("c"), st.cnOnly, !!st.from, !!st.to, !!st.spec, !everyPlace(), st.groups.size > 0]
       .filter(Boolean).length;
   }
+  // ---- sorting (owner, 2026-11-04: « just make the list sortable by any column, including multiple columns », in place of a
+  // country filter for IOF WRE; as the admin's usage tables): a click on a heading sorts by that column alone (again: the other
+  // way); Shift + click adds it as a further key, then turns it the other way, then takes it out. The date's own order (and
+  // the day's by département, then name) is the default; it breaks every tie. Kept for the visit.
+  const SORT_KEY = "ocn.agd.sort", DEFAULT_SORT = [{ key: "date", dir: 1 }];
+  let sortBy = (() => { try { const v = JSON.parse(sessionStorage.getItem(SORT_KEY) || "null"); return Array.isArray(v) && v.length ? v : null; } catch (e) { return null; } })() || DEFAULT_SORT;
+  const firstDir = (k) => (k === "cn" ? -1 : 1);                 // the CN's races first; dates and texts from the start
+  const coll = new Intl.Collator(locale(), { sensitivity: "base", numeric: true });
+  const sortVal = (e, k) => (k === "date" ? e.date : k === "cn" ? (e.cn ? 1 : 0) : k === "event" ? nameOf(e) || null
+    : k === "place" ? (inWre && e.host ? `${country.name(e.host)} ${e.place || ""}` : e.place || null)
+    : k === "region" ? fmtRegion(e.region) || null : k === "type" ? typeLabel(e) || null : null);
+  const byDefault = () => sortBy.length === 1 && sortBy[0].key === "date" && sortBy[0].dir === 1;
+  const rank = new Map(events.map((e, i) => [e.key, i]));
+  function sortedList(list) {
+    if (byDefault()) return list;
+    return [...list].sort((a, b) => {
+      for (const { key, dir } of sortBy) {
+        const x = sortVal(a, key), y = sortVal(b, key);
+        if (x == null && y == null) continue;
+        if (x == null) return 1;                                 // the empty ones last, whichever way
+        if (y == null) return -1;
+        const c = typeof x === "number" ? x - y : key === "date" ? (x < y ? -1 : x > y ? 1 : 0) : coll.compare(x, y);
+        if (c) return c * dir;
+      }
+      return rank.get(a.key) - rank.get(b.key);
+    });
+  }
+  function sortHead(key, label) {
+    const i = sortBy.findIndex((o) => o.key === key);
+    const mark = i < 0 ? "" : html`<span class="arrow">${sortBy[i].dir > 0 ? "▲" : "▼"}${sortBy.length > 1 ? html`<sup>${i + 1}</sup>` : ""}</span>`;
+    return html`<th scope="col" class="sortable" data-sort="${key}" title="${t("agd.sortHint")}"
+      aria-sort="${i === 0 ? (sortBy[0].dir > 0 ? "ascending" : "descending") : "none"}">${label}${mark}</th>`;
+  }
+  $("#table").addEventListener("click", (ev) => {
+    const th = ev.target.closest("th[data-sort]");
+    if (!th) return;
+    const key = th.dataset.sort, i = sortBy.findIndex((o) => o.key === key);
+    if (!ev.shiftKey) sortBy = [{ key, dir: i === 0 && sortBy.length === 1 ? -sortBy[0].dir : i === 0 ? sortBy[0].dir : firstDir(key) }];
+    else if (i < 0) sortBy = [...sortBy, { key, dir: firstDir(key) }];
+    else if (sortBy[i].dir === firstDir(key) || sortBy.length === 1) sortBy = sortBy.map((o, j) => (j === i ? { ...o, dir: -o.dir } : o));
+    else sortBy = sortBy.filter((_, j) => j !== i);
+    try { sessionStorage.setItem(SORT_KEY, JSON.stringify(sortBy)); } catch (e) { /* this page only */ }
+    drawTable();
+  });
+
   function drawTable() {
-    shown = visible();
+    shown = sortedList(visible());
     const n = activeFilters();
     $("#fold-badge").hidden = !n;
     $("#fold-badge").textContent = n;
@@ -316,7 +361,7 @@ export async function render(main, { query }) {
     const anchor = !toToday && box0.scrollTop > 0 ? $$("#table tbody tr").find((r) => r.getBoundingClientRect().bottom > top0 + 1) : null;
     const at0 = anchor ? anchor.getBoundingClientRect().top - top0 : 0, key0 = anchor?.dataset.key;
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
-        <th>${t("agd.col.date")}</th>${sees("FR") && fr ? html`<th>${t("agd.col.cn")}</th>` : ""}<th>${t("agd.col.event")}</th><th>${t(inWre ? "agd.col.country" : "agd.col.place")}</th>${places ? html`<th>${levelName("region")}</th>` : ""}<th>${t("agd.col.type")}</th></tr></thead>
+        ${sortHead("date", t("agd.col.date"))}${sees("FR") && fr ? sortHead("cn", t("agd.col.cn")) : ""}${sortHead("event", t("agd.col.event"))}${sortHead("place", t(inWre ? "agd.col.country" : "agd.col.place"))}${places ? sortHead("region", levelName("region")) : ""}${sortHead("type", t("agd.col.type"))}</tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" data-period="${periodOf(e)}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""} ${e.past ? "past" : ""}">
         <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim d-end"> → ${fmtDate(e.end, "short")}</span>` : ""}</td>
         ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
@@ -330,6 +375,7 @@ export async function render(main, { query }) {
     // past competitions above today's: the list opens on today (after a change of the three boxes), the last past competition
     // still in sight above it (owner, 2026-10-31: the past ones are there, one scroll up). The list scrolls in its own box, on a
     // phone too since 2026-10-31 (owner: the filters stay in sight); else the page goes there, under the bar
+    if (toToday && !byDefault()) { toToday = false; $("#table").scrollTop = 0; }     // (another order: its top)
     if (toToday) {
       toToday = false;
       const box = $("#table");

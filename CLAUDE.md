@@ -2582,7 +2582,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   `countries/places/world.json.gz` (`tools/worldplaces.py`: GeoNames' towns of 5 000 people or more, Natural Earth's label point
   as each country's centre, 711 KB) — else at its country's centre, an approximate place; positions written after the change
   check (`wre.POS`, `place_all`: `comparable` leaves them out); the legend says « au centre du pays » for IOF WRE and a WRE-only
-  list (`agendamap.mount`'s `area`, `agd.map.areaCountry`). Not yet: a filter by country in the WRE list.
+  list (`agendamap.mount`'s `area`, `agd.map.areaCountry`). A country's centre is the label point of its largest Natural Earth
+  feature (France's code also covers Clipperton Island: « Nationale moyenne distance » sat in the Pacific), and a position off the
+  country's map frame (`wre.inside`, the frame of geo/<cc>.json) falls back to that centre, else to the frame's.
+  **The Agenda's table sorts by any column** (owner, 2026-11-04, in place of a country filter for IOF WRE; every country's list,
+  as the admin's usage tables): a click on a heading sorts by it (again: the other way), Shift + click adds a further key, then
+  reverses it, then takes it out (`sortBy`, `sortHead`, `agd.sortHint`); the date's order breaks ties; kept for the visit
+  (`sessionStorage ocn.agd.sort`); another order than the date's opens the list at its top.
 - **The Agenda's map** (owner, 2026-10-25: « on a computer, a map of the chosen country, the competition's place shown as soon as
   the mouse is over it in the table, all the more once it is selected »): above the details (`.agenda-side`, sticky; hidden and
   not fetched under 980 px), `site/assets/js/agendamap.js` draws the country as SVG from `site/assets/geo/<cc>.json` — Natural

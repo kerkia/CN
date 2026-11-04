@@ -2347,6 +2347,7 @@ export default {
   "agd.ffco": "Fiche officielle ↗",
   "agd.range": "du {a} au {b}",
   "agd.src": "Voir sur {site} ↗",
+  "agd.sortHint": "Cliquez sur un en-tête pour trier par cette colonne (de nouveau : dans l'autre sens) ; Maj + clic pour ajouter un critère de tri, puis l'inverser, puis le retirer.",
   "cty.wre": "IOF WRE",
   "cty.in.wre": "du classement mondial IOF",
   "agd.col.country": "Pays",

@@ -26,7 +26,8 @@ from countries import agenda
 from countries.base import Country
 
 COUNTRY = Country(code="XW", federation="IOF", access="all", db=paths.DATA_DIR / "xw.sqlite3", lang="en", results=False)
-AGENDA_VERSION = 2                       # 2: the WREs placed on the maps (a town of their name, else their country's centre)
+AGENDA_VERSION = 3                       # 2: the WREs placed on the maps (a town of their name, else their country's centre);
+                                         # 3: France's centre was Clipperton Island's (worldplaces), none off its map any more
 SOURCE = "https://ranking.orienteering.org"
 LIST = f"{SOURCE}/Calendar"
 # the calendar's disciplines -> the agenda's discipline and format
@@ -142,7 +143,7 @@ def position(cc: str, name: str) -> list | None:
     # (the name without its generic words: « JK Day 2 - Middle » found a « Middle… » in Britain's table)
     bare = " ".join(w for w in re.split(r"[\s,;:()/–—-]+", name or "") if w and agenda.fold(w) not in STOP | NOT_TOWN and not w.isdigit())
     got = places.position(cc, bare) if bare and (places.DIR / f"{cc.lower()}.json.gz").exists() else None
-    if got and got[2] == "town":
+    if got and got[2] == "town" and inside(cc, got[0], got[1]):
         return [got[0], got[1]]
     w = world().get(cc) or {}
     towns = w.get("t") or {}
@@ -156,10 +157,35 @@ def position(cc: str, name: str) -> list | None:
             hit = towns.get(" ".join(g))
             if hit and (best is None or (n, hit[2]) > best[0]):
                 best = ((n, hit[2]), hit)
-    if best:
+    if best and inside(cc, best[1][0] / 100, best[1][1] / 100):
         return [best[1][0] / 100, best[1][1] / 100]
     c = w.get("c")
-    return [c[0] / 100, c[1] / 100, 1] if c else None
+    if c and inside(cc, c[0] / 100, c[1] / 100):
+        return [c[0] / 100, c[1] / 100, 1]
+    box = frame(cc)                              # (a centre off the country's map: the map's own centre)
+    return [round((box[1] + box[3]) / 2, 2), round((box[0] + box[2]) / 2, 2), 1] if box else None
+
+
+_FRAMES: dict = {}
+
+
+def frame(cc: str) -> list | None:
+    """The country's map frame on the Agenda ([west, south, east, north], site/assets/geo/<cc>.json): its main land, overseas
+    lands left out."""
+    if cc not in _FRAMES:
+        import json
+        try:
+            _FRAMES[cc] = json.loads((Path(__file__).resolve().parent.parent / "site" / "assets" / "geo" / f"{cc.lower()}.json")
+                                     .read_text(encoding="utf-8"))["box"]
+        except (OSError, ValueError, KeyError):
+            _FRAMES[cc] = None
+    return _FRAMES[cc]
+
+
+def inside(cc: str, lat: float, lon: float) -> bool:
+    """Is a position on the country's map (a place overseas is not: the map would leave it out)? True without a map."""
+    b = frame(cc)
+    return not b or (b[0] <= lon <= b[2] and b[1] <= lat <= b[3])
 
 
 def read(http, today: date) -> list[dict]:
