@@ -72,13 +72,13 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">GPS track analyses</h2>
       <p>The “Solo analysis” page reads the map and the GPS track in your browser: no data is sent to the site, and these files are
         kept only for the duration of the visit.</p>
-      <p>In a “Group analysis” (training or competition), the organiser uploads the maps and the courses, and each participant can
+      <p>In the map analysis of a training session or a competition, the organiser uploads the maps and the courses, and each participant can
         add their own track. It is then sent to and kept in the site's storage (Cloudflare), with the participant's name and licence
         number, reduced to the positions and times within the map's area (without heart rate, cadence or any route off the map). It
         is visible to the people allowed to open the analysis, as the organiser chooses: all logged-in licence holders, the members
         of their club, or those who hold the password. Each participant can remove their track at any time; it is erased with the
         analysis and with their account. An analysis's maps are kept as long as it exists; if the organiser deletes their account,
-        the analysis remains, without their name. In a “Group analysis”, your own graphs (pace, heart rate, cadence, etc.) come from
+        the analysis remains, without their name. In an event's map analysis, your own graphs (pace, heart rate, cadence, etc.) come from
         your file, kept in your browser on this device: it is not sent, and only you have access to it.</p>
       <p>The comment you write on your race is seen by
         the same people as your trace; you change or delete it at any time. If the organiser opens the analysis to visitors without an

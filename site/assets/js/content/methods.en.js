@@ -845,7 +845,7 @@ export function build(X) {
       "export-images": "One image per course, with its world file when the map is georeferenced.",
       "export-ocad": "Each course as an OCAD or OpenOrienteering Mapper map, to finish or print it with that software.",
       "export-routegadget": "The map as an image and the courses, to upload to RouteGadget.", "export-csv": "The reports' tables, for a spreadsheet.",
-      publish: "After the race: the courses in “Group analysis”, where the runners upload their GPS tracks.",
+      publish: "After the race: the courses in the map analysis, where the runners upload their GPS tracks.",
       "send-results": "From the day of the race: each course's length, climb and controls sent to the site's results.",
       "map-change": "Another map (a corrected version, a better scan, the OCAD file): the controls keep their place.",
       offline: "Keep the event on this device to open it without a network.",
@@ -1042,7 +1042,7 @@ export function build(X) {
             this the tool works out the offset, the rotation and the scale. If the scale changes, it offers to correct either the map (the image's resolution or the PDF's scale),
             which keeps the course lengths right, or the controls. A .ppen made on an OCAD map, imported with the same OCAD map, needs no alignment.</p>
           <h3>Georeferencing</h3>
-          <p>For the climb, field mode, GPX files and group analysis, the map's place on the Earth must be known. A georeferenced OCAD or Mapper map
+          <p>For the climb, field mode, GPX files and the map analysis, the map's place on the Earth must be known. A georeferenced OCAD or Mapper map
             (Lambert 93, UTM, OCAD's systems) and a georeferenced TIFF are placed automatically. Otherwise, ${W("georef")}: two points of the
             map (a junction, a building corner) clicked with their latitude and longitude — a right-click on Géoportail or an online map gives
             them —, or three or more for a distorted photo; or a world file (.jgw, .pgw… with its .prj); or a KMZ of the same image. The dialog
@@ -1315,12 +1315,12 @@ export function build(X) {
           <p>On the day of the race or after (never before: the courses stay secret, and the buttons of Team and race › After the race stay greyed out until then), the
             course setter can:</p>
           <ul class="mx-list">
-            <li><b>publish the courses to group analysis</b> (${W("publish")}): each course arrives there with its map and its calibration, and the runners only have to upload
+            <li><b>publish the courses to the map analysis</b> (${W("publish")}): each course arrives there with its map and its calibration, and the runners only have to upload
               their GPS track;</li>
             <li><b>send the courses to “Results”</b> (${W("send-results")}): the results lists gain each course's length, climb and controls
               when the organisers' files do not give them;</li>
             <li>read the <b>review</b> (${W("rep-after")}): for each leg, the best time and the median time, the share of runners who made
-              a mistake on it, the missing punches (a control unit to check?), and the <b>routes</b> taken, from the tracks shared on group analysis.</li>
+              a mistake on it, the missing punches (a control unit to check?), and the <b>routes</b> taken, from the tracks shared on the map analysis.</li>
           </ul>
         </section>`,
       ruban: () => {

@@ -81,14 +81,14 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Analysen von GPS-Tracks</h2>
       <p>Die Seite „Einzelanalyse“ liest Karte und GPS-Track in deinem Browser: Es werden keine Daten an die Website übertragen, und diese
         Dateien werden nur für die Dauer des Besuchs aufbewahrt.</p>
-      <p>In einer „Gruppenanalyse“ (Training oder Wettkampf) lädt der Veranstalter die Karten und Bahnen hoch, und jeder
+      <p>In der Kartenanalyse eines Trainings oder Wettkampfs lädt der Veranstalter die Karten und Bahnen hoch, und jeder
         Teilnehmer kann seinen eigenen GPS-Track hinzufügen. Dieser wird dann übertragen und im Speicher der Website
         (Cloudflare) aufbewahrt, mit Name und Lizenznummer des Teilnehmers, beschränkt auf die Positionen und Uhrzeiten innerhalb der
         Kartenfläche (ohne Herzfrequenz, Kadenz und Wege außerhalb der Karte). Er ist für die Personen sichtbar, die die Analyse öffnen dürfen,
         je nach Wahl des Veranstalters: alle angemeldeten Lizenzinhaber, die Mitglieder seines Vereins oder die Inhaber des
         Passworts. Jeder Teilnehmer kann seinen GPS-Track jederzeit entfernen; er wird mit der Analyse und mit seinem Konto gelöscht. Die
         Karten einer Analyse werden aufbewahrt, solange die Analyse besteht; löscht der Veranstalter sein Konto, bleibt die Analyse erhalten,
-        ohne seinen Namen. In einer „Gruppenanalyse“ stammen deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz usw.) aus deiner
+        ohne seinen Namen. In der Kartenanalyse einer Veranstaltung stammen deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz usw.) aus deiner
         Datei, die in deinem Browser auf diesem Gerät gespeichert ist: Sie wird nicht übertragen, und nur du hast Zugriff darauf.</p>
       <p>Dein Kommentar zu deinem
         Lauf ist für dieselben Personen sichtbar wie dein Track; du kannst ihn jederzeit ändern oder löschen. Öffnet der Veranstalter die

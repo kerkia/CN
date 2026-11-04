@@ -20,7 +20,7 @@ export function build(X) {
     arena: html`Las competiciones: el calendario, los resultados de los organizadores, el directo y el análisis de los tiempos parciales.`,
     coach: owner ? html`Entrenar: los análisis de tracks GPS, las descripciones de control, los símbolos del mapa, los juegos y la VAM.`
       : html`Entrenar: los análisis de tracks GPS, los juegos y la VAM.`,
-    orga: html`Las herramientas de los organizadores: resultados, horarios, emisión en directo, seguimiento GPS, análisis de grupo y trazado de recorridos.`,
+    orga: html`Las herramientas de los organizadores: resultados, horarios, emisión en directo, seguimiento GPS, análisis de mapa y trazado de recorridos.`,
   };
 
   // ======================================================================================================
@@ -33,7 +33,7 @@ export function build(X) {
           sus páginas. El logotipo de Ozimut te devuelve a ella en cualquier momento. Orga se activa al registrarte, en los Ajustes o en la página de
           módulos, y se usa en ordenador.</p>
         ${list([
-          html`<b>Sin cuenta</b>, Ozimut muestra lo que es público: Arena, Coach salvo el análisis de grupo, y en Stats el corredor, la clasificación y las
+          html`<b>Sin cuenta</b>, Ozimut muestra lo que es público: Arena, Coach salvo la comparación con los demás corredores, y en Stats el corredor, la clasificación y las
             carreras del periodo que la federación publica libremente.`,
           html`<b>Una cuenta</b> se abre con una dirección de correo electrónico y una contraseña, y después los países donde corres (${P("#/reglages?onglet=pays", "Ajustes › Mis países")}).
             Para Francia, el nombre y el número de licencia se comprueban con la lista de federados: es lo que abre ${fr ? "las clasificaciones y tu página de corredor" : "las clasificaciones francesas"}.
@@ -173,7 +173,7 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Análisis de mapa"], ["solo", "Análisis individual"], ["multi", "Análisis de grupo"], ["cartes", "Mis mapas"], ...(owner ? [["definitions", "Descripciones de control"], ["symboles", "Símbolos del mapa"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Análisis de mapa"], ["solo", "Análisis individual"], ["multi", "Comparar con los demás corredores"], ["cartes", "Mis mapas"], ...(owner ? [["definitions", "Descripciones de control"], ["symboles", "Símbolos del mapa"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Juegos"], ["vma", "VAM"], ...(admin ? [["routes", "Rutas calculadas"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
@@ -181,7 +181,7 @@ export function build(X) {
         ${slide("Coach", "Análisis de mapa", html`
           <p>El ${P("#/analyse-carte", "Análisis de mapa")} reúne los análisis de tracks GPS tras cuatro casillas, ordenadas según quién aporta el mapa.</p>
           ${list([
-            html`<b>El organizador ha publicado el mapa y los recorridos</b>: <b>Comparar con los demás corredores</b> (el Análisis de grupo, tu track
+            html`<b>El organizador ha publicado el mapa y los recorridos</b>: <b>Comparar con los demás corredores</b> (tu track
               compartido con los corredores del evento) o <b>Analizar mi carrera en solitario</b> (el Análisis individual sobre su mapa: solo sueltas tu
               track, se coloca solo gracias a la calibración del organizador y no se envía nada; en una competición, tus tiempos parciales publicados lo cronometran). Necesitas una cuenta.`,
             html`<b>Tienes tu propio mapa</b>: <b>Una competición</b> (una carrera de los últimos 60 días, sus resultados y parciales junto a tu track) o
@@ -205,14 +205,14 @@ export function build(X) {
               y la leyenda, guardada en tu dispositivo.`,
             html`<b>¿Sin track GPS?</b> « Dibujar mi ruta »: haz clic en tu ruta sobre el mapa, control tras control; los parciales publicados (o los que
               escribas, al menos el de meta) la hacen correr como el track de un reloj; « Ajustar a los caminos » coloca luego cada tramo sobre el paso más cercano que lee el mapa.
-              Una ruta dibujada no se puede añadir a un análisis múltiple. <b>📏</b> mide una distancia en el mapa, y « Orientación del mapa »
+              Una ruta dibujada no sirve para compararse con los demás corredores. <b>📏</b> mide una distancia en el mapa, y « Orientación del mapa »
               puede girar el tramo en curso hacia arriba.`,
           ])}
           <p>El mapa y el track se leen en tu navegador y no salen de él; solo se guarda la calibración de los controles, para recuperar el análisis tal como
             lo dejaste.</p>`)}`,
       multi: () => html`
-        ${slide("Coach", "Análisis de grupo", html`
-          <p>El ${P("#/analyse-carte?choix=multi", "Análisis de grupo")} muestra lado a lado los tracks de todos los que corrieron una competición o un entrenamiento,
+        ${slide("Coach", "Comparar con los demás corredores", html`
+          <p>«${P("#/analyse-carte?choix=multi", "Comparar con los demás corredores")}» muestra lado a lado los tracks de todos los que corrieron una competición o un entrenamiento,
             sobre el mapa que preparó el organizador (consulta la documentación de ${M("orga", "Orga")}). Elige la carrera, añade tu track —solo guarda las
             posiciones y las horas— y compara. Necesitas una cuenta.</p>
           ${list([
@@ -271,7 +271,7 @@ export function build(X) {
           <p>En los dos análisis GPS, un administrador puede pedir a Ozimut que proponga, para cada tramo, las rutas más rápidas sobre el mapa,
             con su longitud, su desnivel y un tiempo estimado, y que mida con el mismo modelo la ruta que tomó cada corredor.
             En el ${P("#/analyse-solo", "Análisis individual")} se calculan todos los tramos y la pestaña «Rutas», a la izquierda del mapa, los recoge tramo a tramo (los ajustes están en la pestaña «Cálculo», a la derecha); en
-            el ${P("#/analyse-club", "Análisis de grupo")}, el tramo mostrado, con la lista de corredores. Es un prototipo: las rutas siguen
+            «${P("#/analyse-club", "Comparar con los demás corredores")}», el tramo mostrado, con la lista de corredores. Es un prototipo: las rutas siguen
             el mapa tal como Ozimut lo lee, y esa lectura puede equivocarse.</p>`)}
         ${slide("Coach · prueba", "1. Leer el mapa por sus colores", html`
           <p>El mapa es una imagen: Ozimut solo conoce sus colores. Cada punto se clasifica: el blanco (bosque por el que se corre bien), el amarillo
@@ -330,7 +330,7 @@ export function build(X) {
           ])}
           <p>Ese tiempo corresponde a un ritmo de referencia en bosque blanco llano: 6:00 min/km por defecto, o el que escribas, o —si no escribes nada—
             el del corredor: en el Análisis individual, la mediana, sobre sus tramos, de su tiempo real dividido entre el tiempo del modelo en su propia
-            ruta; en el Análisis de grupo, la mediana de los corredores en el tramo.</p>`)}
+            ruta; en «Comparar con los demás corredores», la mediana de los corredores en el tramo.</p>`)}
         ${slide("Coach · prueba", "3. La prudencia de navegación", html`
           <p>Lo más corto no siempre es lo más seguro: lejos de cualquier referencia, en medio del bosque, se lee el mapa más a menudo, se va más despacio
             y uno se equivoca. Ozimut llama <b>pasamanos</b> a los caminos, los arroyos, los lindes entre terrenos distintos y los bordes de lo que
@@ -383,7 +383,7 @@ export function build(X) {
           <p>Con pocos tramos, estos valores se mueven poco: solo se apartan de los valores por defecto si los tramos lo dicen claramente. Los tramos
             a más de un 25 % del modelo (un error, una parada, un mapa mal leído) se dejan de lado antes de un segundo ajuste: la calibración no debe
             absorber los errores que la ejecución quiere mostrar. Después, las rutas se recalculan con esas velocidades: A es la mejor ruta <i>para
-            este corredor</i>, la elección se mide frente a ella y la ejecución frente a sus velocidades habituales. En el Análisis de grupo, la
+            este corredor</i>, la elección se mide frente a ella y la ejecución frente a sus velocidades habituales. En «Comparar con los demás corredores», la
             velocidad en los caminos y la subida se calibran con todo el grupo (todos los tramos de todos los corredores), y cada uno conserva su
             ritmo.</p>`)}`,
     });
@@ -393,7 +393,7 @@ export function build(X) {
   // Orga (« El trazado », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Quién organiza"], ["resultats", "Resultados"], ["horaires", "Horarios"], ["direct", "Emisión en directo"], ["suivi", "Seguimiento GPS"],
-    ["analyses", "Análisis de grupo"], ["declarer", "Competiciones declaradas"]];
+    ["analyses", "Análisis de mapa"], ["declarer", "Competiciones declaradas"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -453,7 +453,7 @@ export function build(X) {
             Routechoices…), indica su enlace en ${P("#/orga-direct", "Orga › Emisión en directo")}: aparece en la competición en Arena, con sus resultados y
             su directo. Solo se publica el enlace.</p>`)}`,
       analyses: () => html`
-        ${slide("Orga", "Preparar un análisis de grupo", html`
+        ${slide("Orga", "Preparar un análisis de mapa", html`
           <p>En ${P("#/orga-analyses", "Análisis de mapa")} (las competiciones de tu club de los últimos 60 días, y tus entrenamientos:
             «Nuevo entrenamiento»), un análisis de mapa se prepara recorrido por recorrido:</p>
           ${list([
@@ -463,8 +463,8 @@ export function build(X) {
             html`<b>El acceso</b>: todas las cuentas, los miembros del club o una contraseña. «Ver como los corredores» muestra la página tal como ellos la
               verán.`,
           ])}
-          <p>Los corredores lo encuentran en Coach («Análisis de grupo»). El trazado también puede publicar sus recorridos, mapa incluido, en un análisis de
-            grupo (en el caso de una competición, después de la carrera).</p>`)}`,
+          <p>Los corredores lo encuentran en Coach («Análisis de mapa › Comparar con los demás corredores»). El trazado también puede publicar sus recorridos, mapa incluido, en un análisis de
+            mapa (en el caso de una competición, después de la carrera).</p>`)}`,
       declarer: () => html`
         ${slide("Orga", "Declarar una competición, fuera de Francia", html`
           <p>Las competiciones francesas proceden del calendario de ${fr ? "la FFCO" : "la federación francesa"}. En los demás países, una cuenta miembro del país declara ella misma su

@@ -845,7 +845,7 @@ export function build(X) {
       "export-images": "Une image par circuit, avec son fichier de calage quand la carte est géoréférencée.",
       "export-ocad": "Chaque circuit en carte OCAD ou OpenOrienteering Mapper, pour le finir ou l'imprimer avec ces logiciels.",
       "export-routegadget": "La carte en image et les circuits, à déposer sur RouteGadget.", "export-csv": "Les tableaux des rapports, pour un tableur.",
-      publish: "Après la course : les circuits dans « Analyse multi », où les coureurs déposent leurs traces GPS.",
+      publish: "Après la course : les circuits dans l'analyse de carte, où les coureurs déposent leurs traces GPS.",
       "send-results": "À partir du jour de la course : longueurs, dénivelées et postes de chaque circuit envoyés aux résultats du site.",
       "map-change": "Une autre carte (une version corrigée, un meilleur scan, le fichier OCAD) : les postes gardent leur place.",
       offline: "Garder l'événement sur cet appareil pour l'ouvrir sans réseau.",
@@ -1042,7 +1042,7 @@ export function build(X) {
             déduit le décalage, la rotation et l'échelle. Si l'échelle change, il propose de corriger la carte (la résolution de l'image ou l'échelle du PDF),
             les longueurs du circuit restant justes, ou les postes. Un .ppen fait sur une carte OCAD, importé avec la même carte OCAD, n'a pas besoin de calage.</p>
           <h3>Le géoréférencement</h3>
-          <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse multi, il faut savoir où est la carte sur la Terre. Une carte OCAD ou Mapper géoréférencée
+          <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse de carte, il faut savoir où est la carte sur la Terre. Une carte OCAD ou Mapper géoréférencée
             (Lambert 93, UTM, les systèmes d'OCAD) et un TIFF géoréférencé le sont tout seuls. Sinon, ${W("georef")} : deux points de la
             carte (un carrefour, un angle de bâtiment) cliqués avec leur latitude et leur longitude — un clic droit sur Géoportail ou une carte en ligne les
             donne —, ou trois et plus pour une photo déformée ; ou un fichier de calage (.jgw, .pgw… avec son .prj) ; ou un KMZ de la même image. La fenêtre
@@ -1315,12 +1315,12 @@ export function build(X) {
           <p>Le jour de la course ou après (jamais avant : les circuits restent secrets, et les boutons d'Équipe et course › Après la course restent grisés jusque-là), le
             traceur peut :</p>
           <ul class="mx-list">
-            <li><b>publier les circuits vers l'analyse multi</b> (${W("publish")}) : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
+            <li><b>publier les circuits vers l'analyse de carte</b> (${W("publish")}) : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
               leur trace GPS ;</li>
             <li><b>envoyer les circuits à « Résultats »</b> (${W("send-results")}) : les listes de résultats y gagnent la longueur, la dénivelée et les postes de chaque circuit
               quand les fichiers des organisateurs ne les donnent pas ;</li>
             <li>lire le <b>bilan</b> (${W("rep-after")}) : pour chaque interposte, le meilleur temps et le temps médian, la part des coureurs qui s'y sont
-              trompés, les postes manquants (un boîtier à vérifier ?), et les <b>itinéraires</b> pris, d'après les traces partagées sur l'analyse multi.</li>
+              trompés, les postes manquants (un boîtier à vérifier ?), et les <b>itinéraires</b> pris, d'après les traces partagées sur l'analyse de carte.</li>
           </ul>
         </section>`,
       ruban: () => {

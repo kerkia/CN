@@ -79,14 +79,14 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Análisis de tracks GPS</h2>
       <p>La página «Análisis individual» lee el mapa y el track GPS en tu navegador: no se transmite ningún dato al sitio, y esos
         archivos solo se conservan durante la visita.</p>
-      <p>En un «Análisis de grupo» (entrenamiento o competición), el organizador sube los mapas y los recorridos, y cada
+      <p>En el análisis de mapa de un entrenamiento o de una competición, el organizador sube los mapas y los recorridos, y cada
         participante puede añadir su propio track. Este se transmite entonces y se conserva en el espacio de almacenamiento del sitio
         (Cloudflare), con el nombre y el número de licencia del participante, reducido a las posiciones y horas situadas dentro de la superficie de
         el mapa (sin frecuencia cardiaca, cadencia ni trayecto fuera del mapa). Es visible para las personas autorizadas a abrir
         el análisis, según lo que elija el organizador: todos los federados con sesión iniciada, los miembros de su club o quienes tengan la
         contraseña. Cada participante puede retirar su track en cualquier momento; se borra con el análisis y con su cuenta. Los
         mapas de un análisis se conservan mientras este exista; si el organizador elimina su cuenta, el análisis se mantiene,
-        sin su nombre. En un «Análisis de grupo», tus propias gráficas (ritmo, frecuencia cardiaca, cadencia, etc.) proceden de tu
+        sin su nombre. En el análisis de mapa de un evento, tus propias gráficas (ritmo, frecuencia cardiaca, cadencia, etc.) proceden de tu
         archivo, guardado en tu navegador en este dispositivo: no se transmite, y solo tú tienes acceso a él.</p>
       <p>El comentario que escribes sobre tu carrera lo ven
         las mismas personas que tu track; lo cambias o lo borras cuando quieras. Si el organizador abre el análisis a los visitantes sin

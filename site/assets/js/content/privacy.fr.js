@@ -80,14 +80,14 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Analyses de traces GPS</h2>
       <p>La page « Analyse solo » lit la carte et la trace GPS dans votre navigateur : aucune donnée n'est transmise au site, et ces
         fichiers ne sont conservés que le temps de la visite.</p>
-      <p>Dans une « Analyse multi » (entraînement ou compétition), l'organisateur dépose les cartes et les parcours, et chaque
+      <p>Dans l'analyse de carte d'un entraînement ou d'une compétition, l'organisateur dépose les cartes et les parcours, et chaque
         participant peut y ajouter sa propre trace. Celle-ci est alors transmise et conservée dans l'espace de stockage du site
         (Cloudflare), avec le nom et le numéro de licence du participant, réduite aux positions et aux heures situées sur l'emprise de
         la carte (sans fréquence cardiaque, cadence ni trajet hors de la carte). Elle est visible des personnes autorisées à ouvrir
         l'analyse, selon le choix de l'organisateur : tous les licenciés connectés, les membres de son club ou les détenteurs du mot
         de passe. Chaque participant peut retirer sa trace à tout moment ; elle est effacée avec l'analyse et avec son compte. Les
         cartes d'une analyse sont conservées tant que celle-ci existe ; si l'organisateur supprime son compte, l'analyse est maintenue,
-        sans son nom. Dans une « Analyse multi », vos propres courbes (allure, fréquence cardiaque, cadence, etc.) proviennent de votre
+        sans son nom. Dans l'analyse de carte d'un événement, vos propres courbes (allure, fréquence cardiaque, cadence, etc.) proviennent de votre
         fichier, conservé dans votre navigateur sur cet appareil : il n'est pas transmis, et vous seul y avez accès.</p>
       <p>Le commentaire que vous écrivez sur
         votre course est visible des mêmes personnes que votre trace ; vous le modifiez ou l'effacez à tout moment. Si l'organisateur

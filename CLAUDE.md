@@ -1590,6 +1590,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   rank (« 1er sur 76 »), × the class median, percentile in D21 / H21 (the share of that class below their CN).
   runner is ringed on their class's row; « Mon club » (`?club=1`) rings the club's runners. All computed in the browser from
   `loadRanking` (the monthly snapshots); the Documentation's « Les calculs du site › Coureurs » explains it.
+- **« Analyse multi » is no longer said** (owner, 2026-11-04), in any language: what an organiser opens for an event and the
+  runners add their trace to is its « analyse de carte » (map analysis, Kartenanalyse, análisis de mapa; Orga's page « Analyses de
+  carte », « Ouvrir l'analyse de carte »); the runners' side, where it is told apart from « Analyse solo », is Coach's tile
+  « Comparer avec les autres coureurs » (`ma.multi.title`). Code names (`multi`, `shared.js`, `beta.multi`) keep the old word.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them; renamed 2026-10-19): a race's points are the
   « score Ozimut » / « score officiel » (`ui.scoreLabel`, i18n `score.*`; « score Top » until 2026-10-19), a runner's ranking
   value the « indice Ozimut » / « CN officiel » (`ui.cnLabel`, `ui.cnWords`, `cn.*`; « CN Top » until 2026-10-19); the
@@ -1628,7 +1632,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   the gates are gone from `app.js` (the right stays in D1, unused). The admin page alone stays the administrators'.
 - **Organisation** (menu group `orga`, the control flag's orange; owner, 2026-10-15): the organisers' pages —
   « Analyses de carte » (`#/orga-analyses`, route `orgAnalyses`, `pages/shared.js` `orgListPage`; owner, 2026-11-04: the former
-  « Compétitions » and « Entraînements » as one list, « analyse multi » no longer said in Orga — `#/orga-competitions` and
+  « Compétitions » and « Entraînements » as one list — `#/orga-competitions` and
   `#/orga-entrainements` still open it): the competitions of the last 60 days organised by one's club (one analysis each,
   « Ouvrir l'analyse de carte » then its circuits), the competition analyses older than that, and one's training events
   (« Nouvel entraînement »), by date with a « Type » column and a search; an analysis opens at `#/orga-analyses?id=` whatever

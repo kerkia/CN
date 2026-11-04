@@ -22,7 +22,7 @@ export function build(X) {
     arena: html`Les compétitions : l'agenda, les résultats des organisateurs, le direct et l'analyse des temps intermédiaires.`,
     coach: owner ? html`S'entraîner : les analyses de traces GPS, les définitions de postes, les symboles de carte, les jeux et la VMA.`
       : html`S'entraîner : les analyses de traces GPS, les jeux et la VMA.`,
-    orga: html`Les outils des organisateurs : résultats, horaires, direct, suivi GPS, analyses multi et tracé des circuits.`,
+    orga: html`Les outils des organisateurs : résultats, horaires, direct, suivi GPS, analyses de carte et tracé des circuits.`,
   };
 
   // ======================================================================================================
@@ -35,7 +35,7 @@ export function build(X) {
           seulement. Le logo Ozimut y ramène à tout moment. Orga s'active à l'inscription, dans les Réglages ou sur la page des modules, et s'utilise
           sur ordinateur.</p>
         ${list([
-          html`<b>Sans compte</b>, Ozimut montre ce qui est public : Arena, Coach sauf l'analyse multi, et dans Stats le coureur, le classement et les
+          html`<b>Sans compte</b>, Ozimut montre ce qui est public : Arena, Coach sauf la comparaison avec les autres coureurs, et dans Stats le coureur, le classement et les
             courses sur la période que la fédération publie librement.`,
           html`<b>Un compte</b> s'ouvre avec une adresse e-mail et un mot de passe, puis les pays où l'on court (${P("#/reglages?onglet=pays", "Réglages › Mes pays")}).
             Pour la France, le nom et le numéro de licence sont vérifiés auprès de la liste des licenciés : c'est ce qui ouvre ${fr ? "les classements et votre page de coureur" : "les classements français"}.
@@ -174,7 +174,7 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Analyse de carte"], ["solo", "Analyse solo"], ["multi", "Analyse multi"], ["cartes", "Mes cartes"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Analyse de carte"], ["solo", "Analyse solo"], ["multi", "Comparer avec les autres coureurs"], ["cartes", "Mes cartes"], ...(owner ? [["definitions", "Définitions de postes"], ["symboles", "Symboles de carte"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Jeux"], ["vma", "VMA"], ...(admin ? [["routes", "Itinéraires calculés"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
@@ -182,7 +182,7 @@ export function build(X) {
         ${slide("Coach", "Analyse de carte", html`
           <p>L'${P("#/analyse-carte", "Analyse de carte")} rassemble les analyses de traces GPS derrière quatre tuiles, rangées selon qui fournit la carte.</p>
           ${list([
-            html`<b>L'organisateur a publié la carte et les circuits</b> : <b>Comparer avec les autres coureurs</b> (l'Analyse multi, votre trace partagée avec
+            html`<b>L'organisateur a publié la carte et les circuits</b> : <b>Comparer avec les autres coureurs</b> (votre trace partagée avec
               les coureurs de l'événement) ou <b>Analyser seul ma course</b> (l'Analyse solo sur sa carte : vous ne déposez que votre trace, elle se pose
               d'elle-même grâce au calage de l'organisateur, et rien n'est envoyé ; pour une compétition, vos temps intermédiaires publiés le chronomètrent). Il faut un compte.`,
             html`<b>Vous avez votre propre carte</b> : <b>Une compétition</b> (une course des 60 derniers jours, ses résultats et ses temps intermédiaires à
@@ -206,14 +206,14 @@ export function build(X) {
               la légende, enregistrée sur l'appareil.`,
             html`<b>Pas de trace GPS ?</b> « Dessiner mon itinéraire » : cliquez votre itinéraire sur la carte, poste après poste ; les temps intermédiaires publiés
               (ou ceux que vous tapez, l'arrivée au moins) le font courir comme une trace de montre ; « Coller aux chemins » pose ensuite chaque inter-poste
-              sur le passage le plus proche que lit la carte. Un itinéraire dessiné ne s'ajoute pas à une Analyse multi. <b>📏</b> mesure une distance sur la carte, et
+              sur le passage le plus proche que lit la carte. Un itinéraire dessiné ne sert pas à se comparer aux autres coureurs. <b>📏</b> mesure une distance sur la carte, et
               « Orientation de la carte » peut tourner l'inter-poste en cours vers le haut.`,
           ])}
           <p>La carte et la trace sont lues dans votre navigateur et n'en sortent pas ; seul le calage des postes est gardé, pour retrouver l'analyse telle
             qu'on l'a laissée.</p>`)}`,
       multi: () => html`
-        ${slide("Coach", "Analyse multi", html`
-          <p>L'${P("#/analyse-carte?choix=multi", "Analyse multi")} met côte à côte les traces de tous ceux qui ont couru une compétition ou un entraînement, sur la carte
+        ${slide("Coach", "Comparer avec les autres coureurs", html`
+          <p>« ${P("#/analyse-carte?choix=multi", "Comparer avec les autres coureurs")} » met côte à côte les traces de tous ceux qui ont couru une compétition ou un entraînement, sur la carte
             que l'organisateur a préparée (voir la documentation d'${M("orga", "Orga")}). Choisissez la course, ajoutez votre trace — elle ne garde que les
             positions et les heures —, et comparez. Il faut un compte.</p>
           ${list([
@@ -272,7 +272,7 @@ export function build(X) {
           <p>Dans les deux analyses GPS, un administrateur peut faire proposer par Ozimut, pour chaque inter-poste, les itinéraires les plus rapides
             sur la carte, avec leur longueur, leur dénivelé et un temps estimé — et mesurer sur le même modèle l'itinéraire que chaque coureur a pris.
             Dans l'${P("#/analyse-solo", "Analyse solo")}, tous les inter-postes sont calculés et l'onglet « Itinéraires », à gauche de la carte, les reprend poste par poste (les réglages sont dans l'onglet « Calcul », à droite) ; dans
-            l'${P("#/analyse-club", "Analyse multi")}, l'inter-poste affiché, avec la liste des coureurs. C'est un prototype : les itinéraires suivent
+            « ${P("#/analyse-club", "Comparer avec les autres coureurs")} », l'inter-poste affiché, avec la liste des coureurs. C'est un prototype : les itinéraires suivent
             la carte telle qu'Ozimut la lit, et cette lecture peut se tromper.</p>`)}
         ${slide("Coach · essai", "1. Lire la carte d'après ses couleurs", html`
           <p>La carte est une image : Ozimut ne connaît que ses couleurs. Chaque point est classé : le blanc (forêt où l'on court bien), le jaune
@@ -332,7 +332,7 @@ export function build(X) {
           ])}
           <p>Ce temps est celui d'une allure de référence en forêt blanche à plat : 6:00 min/km par défaut, ou celle qu'on tape, ou — sans rien taper —
             celle du coureur : dans l'Analyse solo, la médiane, sur ses inter-postes, de son temps réel divisé par le temps du modèle sur son propre
-            itinéraire ; dans l'Analyse multi, la médiane des coureurs sur l'inter-poste.</p>`)}
+            itinéraire ; dans « Comparer avec les autres coureurs », la médiane des coureurs sur l'inter-poste.</p>`)}
         ${slide("Coach · essai", "3. La prudence de navigation", html`
           <p>Le plus court n'est pas toujours le plus sûr : loin de tout repère, au milieu de la forêt, on lit la carte plus souvent, on ralentit, on se
             trompe. Ozimut appelle <b>lignes directrices</b> les chemins, les ruisseaux, les lisières entre terrains différents et les bords de ce qui
@@ -386,7 +386,7 @@ export function build(X) {
           <p>Avec peu de postes, ces valeurs bougent peu : elles ne s'écartent des valeurs par défaut que si les postes le disent nettement. Les
             postes à plus de 25 % du modèle (une erreur, un arrêt, une carte mal lue) sont mis de côté avant un second calcul : la calibration ne doit
             pas absorber les erreurs que l'exécution veut montrer. Les itinéraires sont ensuite recalculés avec ces vitesses : A est le meilleur
-            itinéraire <i>pour ce coureur</i>, le choix se mesure contre lui, l'exécution contre ses vitesses habituelles. En Analyse multi, la
+            itinéraire <i>pour ce coureur</i>, le choix se mesure contre lui, l'exécution contre ses vitesses habituelles. Dans « Comparer avec les autres coureurs », la
             vitesse sur les chemins et la montée se calibrent sur tout le groupe (tous les postes de tous les coureurs), et chacun garde son allure.</p>`)}`,
     });
   }
@@ -395,7 +395,7 @@ export function build(X) {
   // Orga (« Le tracé », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Qui organise"], ["resultats", "Résultats"], ["horaires", "Horaires"], ["direct", "Direct"], ["suivi", "Suivi GPS"],
-    ["analyses", "Analyses multi"], ["declarer", "Compétitions déclarées"]];
+    ["analyses", "Analyses de carte"], ["declarer", "Compétitions déclarées"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -456,7 +456,7 @@ export function build(X) {
             Routechoices…), donnez son lien dans ${P("#/orga-direct", "Orga › Direct")} : il paraît sur la compétition dans Arena, avec ses résultats et son
             direct. Seul le lien est publié.</p>`)}`,
       analyses: () => html`
-        ${slide("Orga", "Préparer une analyse multi", html`
+        ${slide("Orga", "Préparer une analyse de carte", html`
           <p>Dans ${P("#/orga-analyses", "Analyses de carte")} (les compétitions de votre club des 60 derniers jours, et vos entraînements :
             « Nouvel entraînement »), une analyse de carte se prépare circuit par circuit :</p>
           ${list([
@@ -466,7 +466,7 @@ export function build(X) {
             html`<b>L'accès</b> : tous les comptes, les membres du club, ou un mot de passe. « Voir comme les coureurs » montre la page telle qu'ils la
               verront.`,
           ])}
-          <p>Les coureurs la trouvent dans Coach (« Analyse multi »). Le tracé peut aussi publier ses circuits, carte comprise, vers une analyse multi (après
+          <p>Les coureurs la trouvent dans Coach (« Analyse de carte › Comparer avec les autres coureurs »). Le tracé peut aussi publier ses circuits, carte comprise, vers une analyse de carte (après
             la course pour une compétition).</p>`)}`,
       declarer: () => html`
         ${slide("Orga", "Déclarer une compétition, hors de France", html`

@@ -20,7 +20,7 @@ export function build(X) {
     arena: html`The competitions: the calendar, the organisers' results, live results and the split-time analysis.`,
     coach: owner ? html`Training: GPS track analyses, control descriptions, map symbols, games and the MAS.`
       : html`Training: GPS track analyses, games and the MAS.`,
-    orga: html`The organisers' tools: results, start times, live feed, GPS tracking, group analyses and course setting.`,
+    orga: html`The organisers' tools: results, start times, live feed, GPS tracking, map analyses and course setting.`,
   };
 
   // ======================================================================================================
@@ -33,7 +33,7 @@ export function build(X) {
           logo brings you back there at any time. Orga is turned on when registering, in Settings or on the modules page, and is used on a
           computer.</p>
         ${list([
-          html`<b>Without an account</b>, Ozimut shows what is public: Arena, Coach but the group analysis, and in Stats the runner, the ranking and the
+          html`<b>Without an account</b>, Ozimut shows what is public: Arena, Coach except comparing with the other runners, and in Stats the runner, the ranking and the
             races over the period the federation publishes openly.`,
           html`<b>An account</b> opens with an e-mail address and a password, then the countries where you race (${P("#/reglages?onglet=pays", "Settings › My countries")}).
             For France, your name and licence number are checked against the list of licensees: this is what opens ${fr ? "the rankings and your runner page" : "the French rankings"}.
@@ -170,7 +170,7 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Map analysis"], ["solo", "Solo analysis"], ["multi", "Group analysis"], ["cartes", "My maps"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Map analysis"], ["solo", "Solo analysis"], ["multi", "Compare with the other runners"], ["cartes", "My maps"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Games"], ["vma", "MAS"], ...(admin ? [["routes", "Computed routes"]] : [])];     // (a prototype, for the administrators)
   function coach() {
     return chapters(COACH, {
@@ -178,7 +178,7 @@ export function build(X) {
         ${slide("Coach", "Map analysis", html`
           <p>The ${P("#/analyse-carte", "Map analysis")} gathers the GPS track analyses behind four tiles, arranged by who provides the map.</p>
           ${list([
-            html`<b>The organiser has published the map and the courses</b>: <b>Compare with the other runners</b> (the Group analysis, your track shared with
+            html`<b>The organiser has published the map and the courses</b>: <b>Compare with the other runners</b> (your track shared with
               the event's runners) or <b>Analyse my race alone</b> (the Solo analysis on their map: you drop only your track, it lays itself on the map from
               the organiser's calibration, and nothing is sent; for a competition, your published split times time it). It needs an account.`,
             html`<b>You have your own map</b>: <b>A competition</b> (a race of the last 60 days, its results and split times beside your track) or <b>A
@@ -202,14 +202,14 @@ export function build(X) {
               exported, saved on your device.`,
             html`<b>No GPS track?</b> « Draw my route »: click your route on the map, control after control; the published split times (or those you type,
               the finish's at least) make it run like a watch's track; « Snap to the paths » then lays each leg on the nearest way the map reads. A drawn
-              route cannot be added to a multi analysis. <b>📏</b> measures a distance on the map, and « Map orientation » can turn the
+              route cannot be used to compare yourself with the other runners. <b>📏</b> measures a distance on the map, and « Map orientation » can turn the
               current leg up.`,
           ])}
           <p>The map and the track are read in your browser and never leave it; only the controls' placing is kept, to find the analysis as you left
             it.</p>`)}`,
       multi: () => html`
-        ${slide("Coach", "Group analysis", html`
-          <p>The ${P("#/analyse-carte?choix=multi", "Group analysis")} shows side by side the tracks of everyone who ran a competition or a training session, on the
+        ${slide("Coach", "Compare with the other runners", html`
+          <p>“${P("#/analyse-carte?choix=multi", "Compare with the other runners")}” shows side by side the tracks of everyone who ran a competition or a training session, on the
             map its organiser prepared (see ${M("orga", "Orga")}'s documentation). Choose the race, add your track — it keeps only positions and times —,
             and compare. It needs an account.</p>
           ${list([
@@ -265,7 +265,7 @@ export function build(X) {
         ${slide("Coach · trial, administrators", "Computed routes", html`
           <p>In both GPS analyses, an administrator can have Ozimut suggest, for each leg, the fastest routes on the map, with their length, climb and
             an estimated time — and measure each runner's own route on the same model. In ${P("#/analyse-solo", "Solo analysis")}, every leg is
-            computed and the "Routes" tab, left of the map, lists them leg by leg (the settings are in the "Compute" tab, on the right); in ${P("#/analyse-club", "Group analysis")}, the leg shown, with the list of runners.
+            computed and the "Routes" tab, left of the map, lists them leg by leg (the settings are in the "Compute" tab, on the right); in “${P("#/analyse-club", "Compare with the other runners")}”, the leg shown, with the list of runners.
             It is a prototype: the routes follow the map as Ozimut reads it, and that reading can be wrong.</p>`)}
         ${slide("Coach · trial", "1. Reading the map by its colours", html`
           <p>The map is an image: Ozimut knows only its colours. Each pixel is classed: white (runnable forest), yellow (open land, lighter or
@@ -321,8 +321,8 @@ export function build(X) {
             html`Steps go in 16 directions (the eight neighbours and the knight's moves), which follows a straight line within 3%.`,
           ])}
           <p>That time is for a reference pace in flat runnable forest: 6:00 min/km by default, or the one typed, or — when none is typed — the
-            runner's own: in Solo analysis, the median over their legs of their actual time divided by the model's time on their own route; in Group
-            analysis, the runners' median on the leg.</p>`)}
+            runner's own: in Solo analysis, the median over their legs of their actual time divided by the model's time on their own route; in “Compare with the other
+            runners”, the runners' median on the leg.</p>`)}
         ${slide("Coach · trial", "3. Navigation caution", html`
           <p>The shortest is not always the safest: far from any feature, deep in the forest, one reads the map more often, slows down, makes
             mistakes. Ozimut calls <b>handrails</b> paths, streams, edges between different terrains and the banks of what stops (water,
@@ -372,7 +372,7 @@ export function build(X) {
           <p>With few legs these values move little: they leave the defaults only when the legs say so clearly. Legs over 25% off the model (a
             mistake, a stop, a misread map) are set aside before a second fit: the calibration must not absorb the mistakes the execution is there
             to show. The routes are then computed again with these speeds: A is the best route <i>for this runner</i>, the choice is measured against
-            it, the execution against their usual speeds. In Group analysis, the speed on paths and the climb are calibrated on the whole group
+            it, the execution against their usual speeds. In “Compare with the other runners”, the speed on paths and the climb are calibrated on the whole group
             (every leg of every runner), and each runner keeps their own pace.</p>`)}`,
     });
   }
@@ -381,7 +381,7 @@ export function build(X) {
   // Orga (« Course setting », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Who organises"], ["resultats", "Results"], ["horaires", "Start times"], ["direct", "Live feed"], ["suivi", "GPS tracking"],
-    ["analyses", "Group analyses"], ["declarer", "Declared competitions"]];
+    ["analyses", "Map analyses"], ["declarer", "Declared competitions"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -441,7 +441,7 @@ export function build(X) {
             its link in ${P("#/orga-direct", "Orga › Live feed")}: it appears on the competition in Arena, with its results and live page. Only the link is
             published.</p>`)}`,
       analyses: () => html`
-        ${slide("Orga", "Preparing a group analysis", html`
+        ${slide("Orga", "Preparing a map analysis", html`
           <p>In ${P("#/orga-analyses", "Map analyses")} (your club's competitions of the last 60 days, and your training sessions:
             “New training session”), a map analysis is prepared course by course:</p>
           ${list([
@@ -450,7 +450,7 @@ export function build(X) {
             html`<b>The course</b>: read on the map, the controls' order from the courses' IOF XML, your track, or your clicks.`,
             html`<b>Access</b>: every account, the club's members, or a password. “View as runners see it” shows the page as they will.`,
           ])}
-          <p>Runners find it in Coach (“Group analysis”). Course setting can also publish its courses, map included, to a group analysis (after the race for
+          <p>Runners find it in Coach (“Map analysis › Compare with the other runners”). Course setting can also publish its courses, map included, to a map analysis (after the race for
             a competition).</p>`)}`,
       declarer: () => html`
         ${slide("Orga", "Declaring a competition, outside France", html`
