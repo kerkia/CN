@@ -469,6 +469,11 @@ export function build(X) {
             html`<b>Der Zugang</b>: alle Konten, die Mitglieder des Vereins oder ein Passwort. „Aus Läufersicht ansehen“ zeigt die Seite so, wie sie sie
               sehen werden.`,
           ])}
+          <p>Die Seite der Analyse dient dazu, sie zu verwalten, nicht zu analysieren: die Liste der Bahnen, die Karte der gewählten Bahn mit ihrem
+            Verlauf zum Prüfen, die Veröffentlichung (eine neue Analyse bleibt ein Entwurf, den nur die Veranstalter sehen, bis „Veröffentlichen“),
+            was die Läufer tun können (ihren Track hinzufügen, „Einzelanalyse“ auf deiner Karte, „Meine Karten“, Kommentare, Routenwahlen,
+            3D-Ansicht, Video, berechnete Routen) und die Nutzung: die Konten, die sie geöffnet haben, die Tracks pro Bahn, wer sie allein
+            abgespielt hat, ohne einen Track zu teilen — nur Zahlen, nie wer.</p>
           <p>Die Läufer finden sie in Coach („Kartenanalyse › Mit den anderen vergleichen“). Die Bahnlegung kann ihre Bahnen auch samt Karte in eine Kartenanalyse veröffentlichen (bei einem
             Wettkampf nach dem Lauf).</p>`)}`,
       declarer: () => html`

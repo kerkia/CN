@@ -1593,6 +1593,26 @@ Every multiple-choice game was played through to its score page at phone size, w
   rank (« 1er sur 76 »), × the class median, percentile in D21 / H21 (the share of that class below their CN).
   runner is ringed on their class's row; « Mon club » (`?club=1`) rings the club's runners. All computed in the browser from
   `loadRanking` (the monthly snapshots); the Documentation's « Les calculs du site › Coureurs » explains it.
+- **The organisers' page of one analysis** (`#/orga-analyses?id=`, `shared.js` `managePage`; owner, 2026-11-04: « this is not a page to do
+  analyses, this is a page to manage the publishing and setting, and ultimately removal, of the analysis »): no replay (that is the
+  runners' page, « Voir comme les coureurs » in a new tab, where the organisers still draw exercises and share route choices). The
+  circuits listed (controls, km as the crow flies from the georeference, `courseLength`; traces and solo counts) with the map of the
+  one chosen beside them, its course drawn; « Publication et accès » (title, date, access, password, visitors); « Ce que les coureurs
+  peuvent faire » (switches saved at once); « Fréquentation »; deletion. The circuit editor and the OCAD import take the page's width
+  while open (`editing`). **Drafts**: every analysis created since then is `draft` until « Publier » (a circuit at least): its
+  organisers alone list and open it (API 403 `draft`, out of the visitors' list); « Repasser en brouillon » hides it again, the traces
+  kept; analyses of before have no `draft` and stay published. **Switches** (`meta.opts`, `api/analyses` `OPTS`/`optsOf`, defaults):
+  `upload` (on; off: PUT trace refused, 403 `closed`, to all but the organisers; the traces shared stay and can be removed), `solo`
+  (on; off: « Analyse solo » on the organiser's map refused, `an.orga.closed`, and the analysis left out of tile 2's picker — summary
+  `solo` "0"), `mymaps` (on: « Enregistrer dans Mes cartes » in Solo's orga mode and, new, in the multi replay for one's own trace,
+  `trace/mymapsave.js` with the map as stored), `notes` (on; off: comments neither shown nor written, PATCH note 403), `variants` (on:
+  the « Variantes » tab and colouring), `view3d` (on), `video` (on), `routes` (off: the computed routes for the runners; administrators
+  always). The server enforces upload, notes and drafts; the others are the pages'. **Counts** (`GET …/stats`, organisers only, numbers
+  only): R2 `analyses/<id>/view-<uid>.json` (an account's GET of the analysis, not an organiser's nor Solo's `?for=solo`; first/last
+  day and days in custom metadata, written once a day), `solo-<n>-<uid>.json` (`POST …/solo/<n>`, sent once a visit by Solo's orga mode
+  when the playback starts), `gview-<day>.json` (visitors without an account, a count); traces' custom metadata `note: "1"` from then
+  on (comments counted from 2026-11-04). Removed with the analysis, the circuit and the account (`api/account/delete.js`); the privacy
+  page says so.
 - **« Analyse multi » is no longer said** (owner, 2026-11-04), in any language: what an organiser opens for an event and the
   runners add their trace to is its « analyse de carte » (map analysis, Kartenanalyse, análisis de mapa; Orga's page « Analyses de
   carte », « Ouvrir l'analyse de carte »); the runners' side, where it is told apart from « Analyse solo », is Coach's tile

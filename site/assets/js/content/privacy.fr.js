@@ -94,6 +94,11 @@ export const body = (SITE, { world = false } = {}) => `
         ouvre l'analyse aux visiteurs sans compte, votre trace et votre commentaire ne leur sont montrés que si vous l'acceptez (une case
         décochée par défaut), avec votre nom mais sans votre numéro de licence ; vous retirez cet accord à tout moment. Dans « Mes
         cartes », le commentaire que vous écrivez sur une course est gardé avec elle et suit les mêmes règles qu'elle.</p>
+      <p>Pour aider l'organisateur à décider (publier, ouvrir ou fermer une fonction), une analyse de carte compte qui l'ouvre et qui
+        rejoue un circuit seul dans « Analyse solo » sur sa carte : le numéro de votre compte, le premier et le dernier jour, et le
+        nombre de jours, une fois par jour au plus ; pour les visiteurs sans compte, un nombre par jour seulement. Les organisateurs
+        n'en voient que des totaux, jamais qui ; ils ne sont pas comptés eux-mêmes. Ces relevés sont effacés avec l'analyse, avec le
+        circuit concerné et avec votre compte.</p>
       <h2 style="font-size:16px">Mes cartes</h2>
       <p>« Mes cartes » garde les cartes que vous y enregistrez (depuis « Analyse solo ») ou importez (fichiers JPEG de QuickRoute ou
         d'Ozimut), et les itinéraires que vous y avez courus, dans l'espace de stockage du site (Cloudflare)  l'image de la carte telle
@@ -248,5 +253,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Crédits :</b> les symboles et les textes des définitions de postes (Coach › Définitions de postes, le tracé des circuits)
         viennent de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         sous <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licence BSD</a>.</p>
-      <p class="muted">Dernière mise à jour : 3 novembre 2026.</p>
+      <p class="muted">Dernière mise à jour : 4 novembre 2026.</p>
 `;

@@ -95,6 +95,11 @@ export const body = (SITE, { world = false } = {}) => `
         Analyse für Besucher ohne Konto, werden ihnen dein Track und dein Kommentar nur gezeigt, wenn du zustimmst (ein standardmäßig
         nicht angekreuztes Kästchen), mit deinem Namen, aber ohne deine Lizenznummer; du kannst diese Zustimmung jederzeit zurückziehen.
         In « Meine Karten » wird dein Kommentar zu einem Lauf mit ihm gespeichert und folgt denselben Regeln.</p>
+      <p>Damit der Veranstalter entscheiden kann (veröffentlichen, eine Funktion freigeben oder abschalten), zählt eine Kartenanalyse,
+        wer sie öffnet und wer eine Bahn allein in der „Einzelanalyse“ auf seiner Karte abspielt: die Nummer deines Kontos, der erste
+        und der letzte Tag und die Zahl der Tage, höchstens einmal pro Tag; für Besucher ohne Konto nur eine Zahl pro Tag. Die
+        Veranstalter sehen nur Summen, nie wer; sie selbst werden nicht gezählt. Diese Einträge werden mit der Analyse, mit der
+        betreffenden Bahn und mit deinem Konto gelöscht.</p>
       <h2 style="font-size:16px">Meine Karten</h2>
       <p>„Meine Karten“ bewahrt die Karten, die du dort speicherst (aus der „Einzelanalyse“) oder importierst (JPEG-Dateien aus
         QuickRoute oder Ozimut), und die Routen, die du darauf gelaufen bist, im Speicher der Website (Cloudflare) auf: das Bild der
@@ -250,5 +255,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
         stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
-      <p class="muted">Letzte Aktualisierung: 3. November 2026.</p>
+      <p class="muted">Letzte Aktualisierung: 4. November 2026.</p>
 `;

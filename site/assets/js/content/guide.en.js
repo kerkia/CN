@@ -450,6 +450,10 @@ export function build(X) {
             html`<b>The course</b>: read on the map, the controls' order from the courses' IOF XML, your track, or your clicks.`,
             html`<b>Access</b>: every account, the club's members, or a password. “View as runners see it” shows the page as they will.`,
           ])}
+          <p>The analysis's page is for managing it, not for analysing: the list of courses, the map of the one chosen with its course drawn to check
+            it, the publication (a new analysis stays a draft only the organisers see, until “Publish”), what the runners can do (add their track,
+            “Solo analysis” on your map, “My maps”, comments, route choices, 3D view, video, computed routes), and the attendance: the accounts that
+            opened it, the tracks per course, those who replayed it alone without sharing a track — counts only, never who.</p>
           <p>Runners find it in Coach (“Map analysis › Compare with the other runners”). Course setting can also publish its courses, map included, to a map analysis (after the race for
             a competition).</p>`)}`,
       declarer: () => html`

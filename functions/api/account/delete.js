@@ -15,7 +15,8 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
       do {
         const r = await env.BUCKET.list({ prefix: "analyses/", cursor, limit: 1000 });
         for (const o of r.objects) {
-          const m = /\/trace-\d+-(\d+)\.json$/.exec(o.key), uid = m ? Number(m[1]) : null;
+          // its traces, and the record of its visits and solo replays (counted for the organisers: api/analyses)
+          const m = /\/(?:trace|solo)-\d+-(\d+)\.json$/.exec(o.key) || /\/view-(\d+)\.json$/.exec(o.key), uid = m ? Number(m[1]) : null;
           if (uid === user.id || (uid > 1e9 && Math.floor((uid - 1e9) / 1000) === user.id)) keys.push(o.key);
         }
         cursor = r.truncated ? r.cursor : undefined;

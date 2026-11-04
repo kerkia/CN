@@ -93,6 +93,11 @@ export const body = (SITE, { world = false } = {}) => `
         cuenta, tu track y tu comentario solo se les muestran si lo aceptas (una casilla sin marcar por defecto), con tu nombre pero sin tu
         número de licencia; retiras ese acuerdo cuando quieras. En « Mis mapas », el comentario que escribes sobre una carrera se guarda
         con ella y sigue las mismas reglas.</p>
+      <p>Para ayudar al organizador a decidir (publicar, abrir o cerrar una función), un análisis de mapa cuenta quién lo abre y quién
+        reproduce un recorrido en solitario en «Análisis individual» sobre su mapa: el número de tu cuenta, el primer y el último día y
+        el número de días, como mucho una vez al día; para los visitantes sin cuenta, solo un número por día. Los organizadores solo
+        ven totales, nunca quién; a ellos no se les cuenta. Estos registros se borran con el análisis, con el recorrido afectado y con
+        tu cuenta.</p>
       <h2 style="font-size:16px">Mis mapas</h2>
       <p>«Mis mapas» guarda los mapas que guardas allí (desde «Análisis individual») o importas (archivos JPEG de QuickRoute o de
         Ozimut), y los recorridos que hiciste en ellos, en el almacenamiento del sitio (Cloudflare): la imagen del mapa tal como la
@@ -245,5 +250,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Créditos:</b> los símbolos y los textos de las descripciones de control (Coach › Descripciones de control, el trazado de recorridos)
         proceden de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         bajo <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licencia BSD</a>.</p>
-      <p class="muted">Última actualización: 3 de noviembre de 2026.</p>
+      <p class="muted">Última actualización: 4 de noviembre de 2026.</p>
 `;

@@ -104,17 +104,18 @@ async function picker(main, choice, query) {
       .map((x) => ({ key: x.key, name: x.name, date: x.date_iso, place: x.place || "", pos: x.pos || null, org: x.org || "", race: x, splits: !!x.splits,
         href: `#/analyse?course=${encodeURIComponent(x.key)}` }));
     // a competition whose organiser has published its map: its tile 2 needs no map of one's own
-    if (me) { try { for (const a of (await api("")).analyses) if (a.kind === "race" && a.courses > 0 && a.race) published.set(a.race, a); } catch (e) { /* none */ } }
+    if (me) { try { for (const a of (await api("")).analyses) if (a.kind === "race" && a.courses > 0 && a.race && a.solo !== false) published.set(a.race, a); } catch (e) { /* none */ } }
   } else {
     let data = null;
     try { data = await api(""); } catch (e) { $("#ma-table").innerHTML = html`<div class="empty">${t("ma.err")}</div>`; return { title: t(`ma.${choice}.title`) }; }
-    const ready = data.analyses.filter((a) => a.courses > 0);
+    // « Analyse solo » on an organiser's map only where its organisers left it open (owner, 2026-11-04; they still see theirs)
+    const ready = data.analyses.filter((a) => a.courses > 0 && (choice !== "orga" || a.solo !== false || a.organiser));
     every = ready.map((a) => raceOf(a.race) || {});
     // a competition of the site's country (a race no longer on « Résultats »: France's), every training
     items = ready.filter((a) => a.kind !== "race" || country.of(raceOf(a.race) || {}) === cc).map((a) => {
       const rc = raceOf(a.race);
       return { key: a.id, name: a.title, date: a.date, place: rc?.place || "", pos: a.pos || rc?.pos || null, org: a.ownerName || "", kind: a.kind,
-        courses: a.courses, locked: a.access === "locked", organiser: a.organiser, race: rc, href: choice === "multi" ? multiHref(a) : orgaHref(a.id) };
+        courses: a.courses, locked: a.access === "locked", organiser: a.organiser, draft: !!a.draft, race: rc, href: choice === "multi" ? multiHref(a) : orgaHref(a.id) };
     });
   }
   const byKey = new Map(items.map((e) => [e.key, e]));
@@ -152,7 +153,7 @@ async function picker(main, choice, query) {
         ${choice === "course" ? html`<th>${t("ma.col.what")}</th>` : html`<th>${t("ma.col.kind")}</th><th>${t("ma.col.org")}</th><th class="r">${t("sh.col.courses")}</th>`}</tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === selected ? "sel" : ""}">
         <td class="num">${fmtDate(e.date, "short")}</td>
-        <td class="ma-name"><a href="${e.href}" data-open>${e.name}</a>${e.locked ? html` <span title="${t("ma.locked")}">🔒</span>` : ""}${sub(e) ? html`<div class="muted ma-sub">${sub(e)}</div>` : ""}</td>
+        <td class="ma-name"><a href="${e.href}" data-open>${e.name}</a>${e.locked ? html` <span title="${t("ma.locked")}">🔒</span>` : ""}${e.draft ? html` <span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}${sub(e) ? html`<div class="muted ma-sub">${sub(e)}</div>` : ""}</td>
         ${choice === "course" ? html`<td>${e.splits ? html`<span class="tag">${t("ma.splits")}</span>` : ""}${published.has(e.key) ? html` <span class="tag ma-tag-orga">${t("ma.tag.orgaMap")}</span>` : ""}</td>`
           : html`<td><span class="tag">${t(`ma.kind.${e.kind}`)}</span></td><td class="muted">${e.org || "—"}</td><td class="r num">${e.courses}</td>`}</tr>`)}</tbody></table>`
       : html`<div class="empty">${t(items.length ? "ra.emptyFilter" : choice === "course" ? "ma.course.none" : "ma.events.none")}</div>`;

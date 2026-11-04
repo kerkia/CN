@@ -155,7 +155,7 @@ async function orgListPage(main) {
           <td><span class="tag">${t(`sh.org.type.${x.kind}`)}</span></td>
           <td class="cut" title="${x.place ? `${x.name} · ${x.place}` : x.name}">${x.name}${x.place ? html` <span class="muted">· ${x.place}</span>` : ""}</td>
           <td class="muted cut" title="${x.org || ""}">${x.org || "—"}</td>
-          <td>${x.a ? html`${t("sh.org.status.n", { n: x.a.courses })}${x.kind === "club" ? html` <span class="muted">· ${t(`sh.vis.${x.a.vis}`)}</span>` : ""}` : html`<span class="muted">${t("sh.org.status.none")}</span>`}</td>
+          <td>${x.a ? html`<span class="tag ${x.a.draft ? "sh-m-draft" : "sh-m-live"}">${t(x.a.draft ? "sh.m.state.draft" : "sh.m.state.live")}</span> ${t("sh.org.status.n", { n: x.a.courses })}${x.kind === "club" ? html` <span class="muted">· ${t(`sh.vis.${x.a.vis}`)}</span>` : ""}` : html`<span class="muted">${t("sh.org.status.none")}</span>`}</td>
           <td class="r">${x.a ? html`<a class="btn btn-sm" href="${ORG_ROUTE}?id=${x.a.id}">${t("sh.org.manage")}</a>` : html`<button type="button" class="btn btn-sm btn-primary" data-activate="${x.key}">${t("sh.org.activate")}</button>`}</td></tr>`)}</tbody></table>`
       : q ? html`<div class="empty">${t("lv.find.none")}</div>`
       : html`<div class="empty">${club || me?.admin ? t("sh.org.none", { club: club || "—" }) : !auth.sees("FR") ? t("sh.org.noCountry") : t("sh.org.noclub")}</div>`;
@@ -221,6 +221,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   }
   let race = null;
   if (kind === "race" && A.race) race = await getProv(`${encodeURIComponent(A.race)}.json`);
+  if (org) return managePage(main, id, data, race);
   // the circuit, and the replay's state, from the address (a link reopens the same view)
   let courseN = A.courses.some((c) => String(c.n) === query.c) ? Number(query.c) : A.courses[0]?.n ?? null, viewer = null, initial = query;
   main.innerHTML = html`
@@ -228,9 +229,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       <a class="btn btn-sm" href="${home}">← ${homeTitle}</a>
       <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
       <span class="sh-tabs" id="sh-tabs"></span>
-      ${org ? html`<button type="button" class="btn btn-sm" id="sh-manage">${t("sh.manage")}</button>`
-        : organiser ? html`<span class="tag" title="${t("sh.mine.tip")}">${t("sh.mine")}</span>` : ""}</div>
-    <section class="card sh-setup" id="sh-setup" hidden></section>
+      ${organiser ? html`<span class="tag" title="${t("sh.mine.tip")}">${t("sh.mine")}</span>` : ""}${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}</div>
     <div id="sh-viewer"></div>`;
   const drawTabs = () => {
     $("#sh-tabs").innerHTML = A.courses.length > 1 ? html`${A.courses.map((c) => html`<button type="button" class="an-chip" data-course="${c.n}" aria-pressed="${c.n === courseN}" style="--chip:${COURSE}">${c.name}</button>`)}` : "";
@@ -242,26 +241,13 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     const c = A.courses.find((x) => x.n === courseN);
     if (!c) {
       document.body.classList.remove("an-theatre");
-      $("#sh-viewer").innerHTML = html`<div class="card"><div class="empty">${t(org ? "sh.noCourse.org" : "sh.notReady")}</div></div>`;
+      $("#sh-viewer").innerHTML = html`<div class="card"><div class="empty">${t(organiser ? "sh.noCourse.org" : "sh.notReady")}</div></div>`;
       return;
     }
     const init = initial; initial = {};                    // the address's state for the first circuit opened only
     viewer = await replay($("#sh-viewer"), { A, id, course: c, race, init, traces: data.traces.filter((x) => x.course === c.n), you: data.you, reload: async () => {
       data = await api(`/${id}`, { key: keyOf(id) }); openViewer(); } });
   };
-  const reloadAll = async () => {
-    data = await api(`/${id}`, { key: keyOf(id) }); Object.assign(A, data.analysis);
-    if (!A.courses.some((c) => c.n === courseN)) courseN = A.courses[A.courses.length - 1]?.n ?? null;
-    const s = $("#sh-setup");
-    if (s && !s.hidden) setup(s, { A, id, kind, race, onChange: reloadAll });
-    $(".sh-title").textContent = A.title;
-    drawTabs(); openViewer();
-  };
-  if (org) {
-    // the organisers' page opens on the settings and the circuits; the replay below shows what the runners will see
-    $("#sh-manage").addEventListener("click", () => { const s = $("#sh-setup"); s.hidden = !s.hidden; if (!s.hidden) setup(s, { A, id, kind, race, onChange: reloadAll }); });
-    $("#sh-setup").hidden = false; setup($("#sh-setup"), { A, id, kind, race, onChange: reloadAll });
-  }
   drawTabs();
   await openViewer();
   return { title: A.title, cleanup: () => { viewer?.destroy(); document.body.classList.remove("an-theatre"); leaveFull(); } };
@@ -281,71 +267,234 @@ function unlockPage(main, kind, id) {
   return { title: t(kind ? `sh.${kind}.title` : "sh.org.title") };
 }
 
-// ---- the organiser: the analysis's settings, its circuits ------------------------------------------------------------
-// the password field and the visitors' box only when the access chosen uses them (owner, 2026-11-04: an analysis kept to the
-// club showed « Ouverte aussi aux visiteurs sans compte », greyed)
-function setup(box, ctx) {
-  const { A, id, onChange } = ctx;
-  box.innerHTML = html`<div class="card-body">
-    <h2 style="font-size:16px;margin:0 0 8px">${t("sh.settings")}</h2>
-    <div class="filters" style="align-items:flex-end">
-      <label class="field"><span>${t("sh.col.title")}</span><input id="sh-s-title" value="${A.title}" style="width:280px" maxlength="120"></label>
-      <label class="field"><span>${t("f.date")}</span><input type="date" id="sh-s-date" value="${A.date}"></label>
-      <label class="field"><span>${t("sh.col.access")}</span><select id="sh-s-vis">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select></label>
-      <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label>
-      <label class="an-opt sh-s-visitors" ${raw(A.vis === "public" ? "" : "hidden")} title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")}> ${t("sh.visitors")}</label>
-      <button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div>
-    ${A.courses.length ? html`<h2 style="font-size:16px;margin:14px 0 8px">${t("sh.courses")}</h2>
-    <table class="data compact" style="max-width:720px"><tbody>
-      ${A.courses.map((c) => html`<tr><td><b>${c.name}</b>${c.circuit ? html` <span class="muted">· ${c.circuit}</span>` : ""}</td>
-        <td class="muted">${c.controls.filter((p) => p.kind === "control").length} ${t("prov.controls")}</td>
-        <td><button type="button" class="btn btn-sm" data-edit="${c.n}">${t("sh.edit")}</button> <button type="button" class="btn btn-sm" data-del="${c.n}">${t("sh.remove")}</button></td></tr>`)}
-    </tbody></table>` : ""}
-    <label class="dropzone an-drop" id="sh-drop" style="margin-top:12px"><input type="file" id="sh-drop-in" multiple hidden accept=".ocd,.omap,.xmap,.png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,image/*,application/pdf">
-      <strong>${t(A.courses.length ? "sh.drop.more" : "sh.drop")}</strong><span class="muted">${t("sh.drop.hint")}</span></label>
+// ---- the organisers' page of one analysis (owner, 2026-11-04: « this is not a page to do analyses, this is a page to manage the
+// publishing and setting, and ultimately removal, of the analysis »): the circuits listed with the map of the one chosen beside
+// them, to check what the runners will get; its publication and access; the runners' features switched on or off; what the
+// runners did with it (counts only, never who). The replay is the runners' page (« Voir comme les coureurs »), where the
+// organisers also draw the exercises and share the route choices.
+const OPT_KEYS = ["upload", "solo", "mymaps", "notes", "variants", "view3d", "video", "routes"];
+/** A circuit's length as the crow flies from control to control, in metres, from its georeference (null when unknown). */
+function courseLength(c) {
+  const g = c.geo, P = c.controls || [];
+  if (c.score || P.length < 2 || !g) return null;
+  const det = g.a * g.e - g.b * g.d;
+  if (!det) return null;
+  const ll = (p) => { const x = p.x - g.c, y = p.y - g.f; return [(g.e * x - g.b * y) / det, (-g.d * x + g.a * y) / det]; };
+  let m = 0;
+  for (let i = 1; i < P.length; i++) {
+    const [lo1, la1] = ll(P[i - 1]), [lo2, la2] = ll(P[i]), k = Math.cos(((la1 + la2) / 2) * Math.PI / 180);
+    m += Math.hypot((lo2 - lo1) * 111320 * k, (la2 - la1) * 110540);
+  }
+  return Number.isFinite(m) && m > 0 ? m : null;
+}
+
+async function managePage(main, id, data, race) {
+  const A = data.analysis, kind = A.kind;
+  const runnersHref = `${kind === "race" ? "#/analyse-competition" : "#/analyse-club"}?id=${id}`;
+  let sel = A.courses[0]?.n ?? null, stats = null, preview = null;
+  main.innerHTML = html`
+    <div class="sh-top">
+      <a class="btn btn-sm" href="${ORG_ROUTE}">← ${t("nav.orgAnalyses")}</a>
+      <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted" id="sh-m-facts"></span>
+      <span class="tag" id="sh-m-state"></span>
+      <a class="btn btn-sm" href="${runnersHref}" target="_blank" rel="opener" title="${t("sh.m.asRunner.hint")}" style="margin-left:auto">${t("sh.org.asRunner")} ↗</a></div>
     <div id="sh-editor"></div>
-    <div class="row" style="margin-top:8px"><button type="button" class="btn btn-sm" id="sh-delete" style="margin-left:auto">${t("sh.delete")}</button></div></div>`;
-  $("#sh-s-save").addEventListener("click", async () => {
-    const body = { title: $("#sh-s-title").value, date: $("#sh-s-date").value, vis: $("#sh-s-vis").value, visitors: $("#sh-s-vis").value === "public" && $("#sh-s-visitors").checked };
-    if (body.vis === "password" && $("#sh-s-pw").value) body.password = $("#sh-s-pw").value;
-    try { await api(`/${id}`, { method: "PUT", body, key: keyOf(id) }); $("#sh-s-note").textContent = t("sh.saved"); onChange(); }
-    catch (e) { $("#sh-s-note").textContent = errText(e); }
-  });
-  $("#sh-s-vis").addEventListener("change", (e) => {
-    const v = e.target.value;
-    $(".sh-s-visitors").hidden = v !== "public"; if (v !== "public") $("#sh-s-visitors").checked = false;
-    $("#sh-s-pwf").hidden = v !== "password";
-  });
+    <div class="sh-m" id="sh-m">
+      <div class="sh-m-grid">
+        <div class="sh-m-left">
+          <section class="card" id="sh-m-pub"></section>
+          <section class="card" id="sh-m-courses"></section>
+        </div>
+        <section class="card sh-m-mapcard"><div class="sh-map sh-m-map"><canvas id="sh-m-canvas"></canvas>
+            <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-m-zin">+</button><button type="button" class="btn btn-sm" id="sh-m-zout">−</button><button type="button" class="btn btn-sm" id="sh-m-fit" title="${t("an.fitMap")}">▭</button></div>
+            <div class="empty sh-m-nomap" id="sh-m-nomap" hidden>${t("sh.m.noMap")}</div></div>
+          <div class="sh-m-cap muted" id="sh-m-cap"></div></section>
+      </div>
+      <div class="sh-m-grid2">
+        <section class="card" id="sh-m-stats"></section>
+        <section class="card" id="sh-m-opts"></section>
+      </div>
+      <section class="card sh-m-danger"><div class="card-body row" style="gap:10px;align-items:center">
+        <span class="muted">${t("sh.m.delete.hint")}</span>
+        <button type="button" class="btn btn-sm" id="sh-delete" style="margin-left:auto">${t("sh.delete")}</button></div></section>
+    </div>`;
+
+  // ---- the map of the circuit chosen, its course drawn as the runners will see it
+  const images = new Map();
+  let shown = null;
+  const mv = mapView($("#sh-m-canvas"), { onDraw: (g, view, lw) => { if (shown) drawCourse(g, shown.controls, shown.r || 20, lw, 1, 0, !shown.score); } });
+  $("#sh-m-zin").addEventListener("click", () => mv.zoomBy(1.4));
+  $("#sh-m-zout").addEventListener("click", () => mv.zoomBy(1 / 1.4));
+  $("#sh-m-fit").addEventListener("click", () => { mv.fitAll(); mv.draw(); });
+  async function showMap() {
+    const c = A.courses.find((x) => x.n === sel) || null;
+    shown = c;
+    $("#sh-m-nomap").hidden = !!c;
+    $("#sh-m-nomap").textContent = t(A.courses.length ? "sh.m.noMap" : "sh.m.courses.none");
+    if (!c) { $("#sh-m-cap").textContent = ""; mv.draw(); return; }
+    const len = courseLength(c), ctrl = c.controls.filter((p) => p.kind === "control").length;
+    $("#sh-m-cap").textContent = [c.name, c.circuit, tn("sh.m.ctrls", ctrl), len ? t("sh.m.len", { km: fmt(len / 1000, 1) }) : "", c.score ? t("sh.score") : ""].filter(Boolean).join(" · ");
+    const token = (preview = {});
+    let img = images.get(`${c.n}:${c.map?.v}`);
+    if (!img) {
+      try { img = await createImageBitmap(await api(`/${id}/map/${c.n}?v=${c.map?.v || 0}`, { key: keyOf(id) })); images.set(`${c.n}:${c.map?.v}`, img); }
+      catch (e) { if (token === preview) { $("#sh-m-nomap").hidden = false; $("#sh-m-nomap").textContent = errText(e); } return; }
+    }
+    if (token !== preview) return;
+    mv.setImage(img);
+    // the course in view, with a margin
+    const P = c.controls, r = c.r || 20;
+    if (P.length) mv.fitPoints(P.map((p) => p.x), P.map((p) => p.y), 30 + r * 2);
+    mv.draw();
+  }
+
+  // ---- the head: its facts and its state
+  function head() {
+    $(".sh-title").textContent = A.title;
+    $("#sh-m-facts").textContent = [fmtDate(A.date), A.ownerName, t(`sh.org.type.${kind}`)].filter(Boolean).join(" · ");
+    const st = $("#sh-m-state");
+    st.textContent = t(A.draft ? "sh.m.state.draft" : "sh.m.state.live");
+    st.className = `tag ${A.draft ? "sh-m-draft" : "sh-m-live"}`;
+  }
+
+  // ---- publication and access
+  function pubCard() {
+    const box = $("#sh-m-pub"), ready = A.courses.length > 0;
+    box.innerHTML = html`<div class="card-body">
+      <h2 class="sh-m-h">${t("sh.m.pub")}</h2>
+      <div class="sh-m-status ${A.draft ? "draft" : "live"}">
+        <p>${t(A.draft ? (ready ? "sh.m.draft.ready" : "sh.m.draft.empty") : `sh.m.live.${A.vis}`, { where: t("sh.m.where") })}</p>
+        ${A.draft ? html`<button type="button" class="btn btn-primary" id="sh-m-publish" ${raw(ready ? "" : "disabled")}>${t("sh.m.publish")}</button>`
+          : html`<button type="button" class="btn btn-sm" id="sh-m-unpublish">${t("sh.m.unpublish")}</button>`}</div>
+      <div class="filters sh-m-fields" style="align-items:flex-end">
+        <label class="field"><span>${t("sh.col.title")}</span><input id="sh-s-title" value="${A.title}" maxlength="120"></label>
+        <label class="field"><span>${t("f.date")}</span><input type="date" id="sh-s-date" value="${A.date}"></label>
+        <label class="field"><span>${t("sh.col.access")}</span><select id="sh-s-vis">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select></label>
+        <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label>
+        <label class="an-opt sh-s-visitors" ${raw(A.vis === "public" ? "" : "hidden")} title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")}> ${t("sh.visitors")}</label>
+        <button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div></div>`;
+    const put = async (body, note) => {
+      try { const r = await api(`/${id}`, { method: "PUT", body, key: keyOf(id) }); Object.assign(A, r.analysis); if (note) $(note).textContent = t("sh.saved"); head(); pubCard(); optsCard(); statsCard(); }
+      catch (e) { const el = note ? $(note) : null; if (el) el.textContent = errText(e); else alert(errText(e)); }
+    };
+    $("#sh-m-publish")?.addEventListener("click", () => put({ draft: false }));
+    $("#sh-m-unpublish")?.addEventListener("click", () => { if (confirm(t("sh.m.unpublish.confirm"))) put({ draft: true }); });
+    $("#sh-s-save").addEventListener("click", () => {
+      const body = { title: $("#sh-s-title").value, date: $("#sh-s-date").value, vis: $("#sh-s-vis").value, visitors: $("#sh-s-vis").value === "public" && $("#sh-s-visitors").checked };
+      if (body.vis === "password" && $("#sh-s-pw").value) body.password = $("#sh-s-pw").value;
+      put(body, "#sh-s-note");
+    });
+    $("#sh-s-vis").addEventListener("change", (e) => {
+      const v = e.target.value;
+      $(".sh-s-visitors").hidden = v !== "public"; if (v !== "public") $("#sh-s-visitors").checked = false;
+      $("#sh-s-pwf").hidden = v !== "password";
+    });
+  }
+
+  // ---- the circuits: a row chosen shows its map; one drop zone for every way in (owner, 2026-11-04): an OCAD course-setting
+  // project gives every circuit at once, a map (with its georeference, course file or one's trace) one circuit in the editor,
+  // which takes the page's width while it is open
+  const editing = (on) => { $("#sh-m").hidden = on; if (!on) $("#sh-editor").innerHTML = ""; };
+  const ctx = { A, id, kind, race, onChange: () => reload(), done: () => editing(false) };
+  function coursesCard() {
+    const box = $("#sh-m-courses"), per = new Map((stats?.courses || []).map((c) => [c.n, c]));
+    box.innerHTML = html`<div class="card-body">
+      <h2 class="sh-m-h">${t("sh.courses")}</h2>
+      ${A.courses.length ? html`<div class="table-wrap"><table class="data compact sh-m-table"><thead><tr><th>${t("sh.m.col.course")}</th><th class="r">${t("sh.m.col.ctrls")}</th><th class="r">${t("sh.m.col.len")}</th>
+          <th class="r" title="${t("sh.m.col.traces.tip")}">${t("sh.m.col.traces")}</th><th class="r" title="${t("sh.m.col.solo.tip")}">${t("sh.m.col.solo")}</th><th></th></tr></thead>
+        <tbody>${A.courses.map((c) => { const s = per.get(c.n), len = courseLength(c); return html`<tr data-n="${c.n}" tabindex="0" class="${c.n === sel ? "sel" : ""}">
+          <td><b>${c.name}</b>${c.circuit ? html` <span class="muted">· ${c.circuit}</span>` : ""}${c.score ? html` <span class="tag">${t("sh.score")}</span>` : ""}</td>
+          <td class="r num">${c.controls.filter((p) => p.kind === "control").length}</td>
+          <td class="r num">${len ? fmt(len / 1000, 1) : "—"}</td>
+          <td class="r num">${s ? s.traces : "…"}</td><td class="r num">${s ? s.solo : "…"}</td>
+          <td class="r sh-m-act"><button type="button" class="btn btn-sm" data-edit="${c.n}">${t("sh.edit")}</button> <button type="button" class="btn btn-sm" data-del="${c.n}">${t("sh.remove")}</button></td></tr>`; })}</tbody></table></div>
+        <p class="hint">${t("sh.m.courses.hint")}</p>` : html`<p class="muted">${t("sh.m.courses.none")}</p>`}
+      <label class="dropzone an-drop" id="sh-drop" style="margin-top:10px"><input type="file" id="sh-drop-in" multiple hidden accept=".ocd,.omap,.xmap,.png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,image/*,application/pdf">
+        <strong>${t(A.courses.length ? "sh.drop.more" : "sh.drop")}</strong><span class="muted">${t("sh.drop.hint")}</span></label></div>`;
+    const pick = (n) => { sel = n; $$("tr[data-n]", box).forEach((r) => r.classList.toggle("sel", Number(r.dataset.n) === n)); showMap(); };
+    $$("tr[data-n]", box).forEach((r) => {
+      r.addEventListener("click", (e) => { if (!e.target.closest("button")) pick(Number(r.dataset.n)); });
+      r.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.target.closest("button")) pick(Number(r.dataset.n)); });
+    });
+    $$("[data-del]", box).forEach((b) => b.addEventListener("click", async () => {
+      const n = Number(b.dataset.del), s = per.get(n);
+      if (!confirm(s?.traces ? tn("sh.m.remove.traces", s.traces) : t("sh.course.remove.confirm"))) return;
+      try { await api(`/${id}`, { method: "PUT", body: { courses: A.courses.filter((c) => c.n !== n) }, key: keyOf(id) }); reload(); }
+      catch (e) { alert(errText(e)); }
+    }));
+    const zone = $("#sh-drop", box);
+    const open = (list) => {
+      list = [...(list || [])];
+      if (!list.length) return;
+      editing(true);
+      if (list.some((f) => /\.(ocd|omap|xmap)$/i.test(f.name))) ocadImport($("#sh-editor"), ctx, list);
+      else editor($("#sh-editor"), { ...ctx, course: null, files: list });
+    };
+    $("#sh-drop-in").addEventListener("change", (e) => { open(e.target.files); e.target.value = ""; });
+    zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("over"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("over"));
+    zone.addEventListener("drop", (e) => { e.preventDefault(); zone.classList.remove("over"); open(e.dataTransfer.files); });
+    $$("[data-edit]", box).forEach((b) => b.addEventListener("click", () => {
+      editing(true);
+      editor($("#sh-editor"), { ...ctx, course: A.courses.find((c) => c.n === Number(b.dataset.edit)) });
+    }));
+  }
+
+  // ---- the runners' features, each switched on or off at once (the server keeps them: api/analyses OPTS)
+  function optsCard() {
+    const box = $("#sh-m-opts"), o = A.opts || {};
+    const keys = OPT_KEYS;
+    box.innerHTML = html`<div class="card-body">
+      <h2 class="sh-m-h">${t("sh.m.opts")}</h2><p class="muted sh-m-sub">${t("sh.m.opts.lede")}</p>
+      <ul class="sh-m-opts">${keys.map((k) => html`<li><label class="sh-m-opt"><input type="checkbox" data-opt="${k}" ${raw(o[k] ? "checked" : "")}>
+        <span><b>${t(`sh.opt.${k}`)}</b><span class="muted">${t(`sh.opt.${k}.hint`)}</span></span></label></li>`)}</ul>
+      <p class="muted" id="sh-m-opts-note"></p></div>`;
+    $$("[data-opt]", box).forEach((cb) => cb.addEventListener("change", async () => {
+      const note = $("#sh-m-opts-note");
+      note.textContent = t("sh.saving");
+      try { const r = await api(`/${id}`, { method: "PUT", body: { opts: { [cb.dataset.opt]: cb.checked } }, key: keyOf(id) }); Object.assign(A, r.analysis); note.textContent = t("sh.saved"); }
+      catch (e) { cb.checked = !cb.checked; note.textContent = errText(e); }
+    }));
+  }
+
+  // ---- what the runners did with it: counts only
+  function statsCard() {
+    const box = $("#sh-m-stats");
+    if (!stats) { box.innerHTML = html`<div class="card-body"><h2 class="sh-m-h">${t("sh.m.stats")}</h2><p class="muted">${t("misc.loading")}</p></div>`; return; }
+    const S = stats, admin = !!auth.session()?.admin, tests = S.courses.reduce((s, c) => s + c.tests, 0);
+    const tile = (label, value, sub = "") => html`<div class="tile"><div class="tile-label">${label}</div><div class="tile-value num">${value}</div>${sub ? html`<div class="tile-sub">${sub}</div>` : ""}</div>`;
+    const day = (iso) => (iso ? fmtDate(String(iso).slice(0, 10), "short") : "—");
+    box.innerHTML = html`<div class="card-body">
+      <h2 class="sh-m-h">${t("sh.m.stats")}</h2>
+      <div class="tiles tiles-compact sh-m-tiles">
+        ${tile(t("sh.m.s.viewers"), S.viewers, S.viewers ? t("sh.m.s.viewers.sub", { n: S.recent, last: day(S.lastView) }) : "")}
+        ${tile(t("sh.m.s.runners"), S.runners, S.viewers ? t("sh.m.s.runners.sub", { p: Math.round((100 * S.runners) / Math.max(S.viewers, S.runners)) }) : S.lastTrace ? t("sh.m.s.last", { d: day(S.lastTrace) }) : "")}
+        ${tile(t("sh.m.s.solo"), S.soloOnly, t("sh.m.s.solo.sub", { n: S.solo }))}
+        ${A.visitors ? tile(t("sh.m.s.guests"), S.guests) : ""}</div>
+      ${S.courses.length ? html`<div class="table-wrap" style="margin-top:10px"><table class="data compact"><thead><tr><th>${t("sh.m.col.course")}</th>
+          <th class="r" title="${t("sh.m.col.traces.tip")}">${t("sh.m.col.traces")}</th><th class="r">${t("sh.m.col.notes")}</th>${A.visitors ? html`<th class="r" title="${t("sh.m.col.vis.tip")}">${t("sh.m.col.vis")}</th>` : ""}
+          <th class="r" title="${t("sh.m.col.solo.tip")}">${t("sh.m.col.solo")}</th><th class="r" title="${t("sh.m.col.soloOnly.tip")}">${t("sh.m.col.soloOnly")}</th><th class="r">${t("sh.m.col.last")}</th>${admin && tests ? html`<th class="r">${t("sh.m.col.tests")}</th>` : ""}</tr></thead>
+        <tbody>${S.courses.map((c) => html`<tr><td>${c.name}</td><td class="r num">${c.traces}</td><td class="r num">${c.notes}</td>${A.visitors ? html`<td class="r num">${c.visitors}</td>` : ""}
+          <td class="r num">${c.solo}</td><td class="r num">${c.soloOnly}</td><td class="r num">${day(c.last)}</td>${admin && tests ? html`<td class="r num">${c.tests}</td>` : ""}</tr>`)}</tbody></table></div>` : ""}
+      <p class="hint">${t("sh.m.stats.note")}</p></div>`;
+  }
+  async function loadStats() {
+    try { stats = await api(`/${id}/stats`, { key: keyOf(id) }); } catch (e) { stats = null; $("#sh-m-stats").innerHTML = html`<div class="card-body"><h2 class="sh-m-h">${t("sh.m.stats")}</h2><p class="muted">${errText(e)}</p></div>`; return; }
+    statsCard(); coursesCard();
+  }
+
+  async function reload() {
+    try { data = await api(`/${id}`, { key: keyOf(id) }); } catch (e) { alert(errText(e)); return; }
+    Object.assign(A, data.analysis);
+    if (!A.courses.some((c) => c.n === sel)) sel = A.courses[A.courses.length - 1]?.n ?? null;
+    editing(false); head(); pubCard(); coursesCard(); optsCard(); statsCard(); showMap(); loadStats();
+  }
   $("#sh-delete").addEventListener("click", async () => {
     if (!confirm(t("sh.delete.confirm"))) return;
     try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ORG_ROUTE; } catch (e) { alert(errText(e)); }
   });
-  $$("[data-del]", box).forEach((b) => b.addEventListener("click", async () => {
-    if (!confirm(t("sh.course.remove.confirm"))) return;
-    const n = Number(b.dataset.del);
-    try { await api(`/${id}`, { method: "PUT", body: { courses: A.courses.filter((c) => c.n !== n) }, key: keyOf(id) }); onChange(); setup(box, ctx); }
-    catch (e) { alert(errText(e)); }
-  }));
-  // one drop zone for every way in (owner, 2026-11-04: « Ajouter un circuit » and « Importer un fichier OCAD » were two ways to
-  // one place): an OCAD course-setting project gives every circuit at once, a map (with its georeference, course file or one's
-  // trace) one circuit in the editor; the zone gives way to the panel it opened, and comes back when that one is given up
-  const zone = $("#sh-drop", box);
-  const done = () => { zone.hidden = false; };
-  const open = (list) => {
-    list = [...(list || [])];
-    if (!list.length) return;
-    zone.hidden = true;
-    if (list.some((f) => /\.(ocd|omap|xmap)$/i.test(f.name))) ocadImport($("#sh-editor"), { ...ctx, done }, list);
-    else editor($("#sh-editor"), { ...ctx, course: null, files: list, done });
-  };
-  $("#sh-drop-in").addEventListener("change", (e) => { open(e.target.files); e.target.value = ""; });
-  zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("over"); });
-  zone.addEventListener("dragleave", () => zone.classList.remove("over"));
-  zone.addEventListener("drop", (e) => { e.preventDefault(); zone.classList.remove("over"); open(e.dataTransfer.files); });
-  $$("[data-edit]", box).forEach((b) => b.addEventListener("click", () => {
-    zone.hidden = true;
-    editor($("#sh-editor"), { ...ctx, course: A.courses.find((c) => c.n === Number(b.dataset.edit)), done });
-  }));
+  head(); pubCard(); coursesCard(); optsCard(); statsCard(); showMap(); loadStats();
+  return { title: A.title, cleanup: () => mv.destroy() };
 }
 
 /** An OCAD course-setting file: the map and every course in one file, each course a circuit (owner, 2026-11-04: the circuit
@@ -737,21 +886,26 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
   let v3 = null, v3on = false, v3token = 0, v3sig = "", v3list = [], v3leg = null;      // the 3D view (below)
   const admin = !!auth.session()?.admin;
+  // the features the organisers switched (owner, 2026-11-04; api/analyses OPTS): the computed routes (the administrators always),
+  // adding a trace (the organisers always), comments, route choices, the 3D view, a headcam video, saving one's run in « Mes cartes »
+  const O = A.opts || {}, routesOn = admin || !!O.routes, canAdd = !!you.organiser || O.upload !== false, notesOn = O.notes !== false,
+    variantsOn = O.variants !== false, view3dOn = O.view3d !== false, videoOn = O.video !== false, mymapsOn = O.mymaps !== false;
+  if (!variantsOn && colourBy === "variant") colourBy = "runner";
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
       <div class="an-bar sh-bar" id="sh-bar"></div>
       ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.runners") }, { key: "legs", label: t("an.tab.legs") }, { key: "views", label: t("sh.tab.views") },
-        ...(admin ? [{ key: "routes", label: t("an.tab.routes") }] : []), ...(you.visitor ? [] : [{ key: "own", label: t("sh.own.title") }])],
+        ...(routesOn ? [{ key: "routes", label: t("an.tab.routes") }] : []), ...(you.visitor ? [] : [{ key: "own", label: t("sh.own.title") }])],
         inner: { runners: html`<div id="sh-left"></div>`, legs: html`<div class="sh-views" id="sh-legs"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
       <div class="an-split" id="sh-split-l" title="${t("an.split")}"></div>
       <div class="sh-mapcol"><div class="sh-map"><div class="an-3d" id="sh-3d-host" hidden></div><canvas id="sh-canvas"></canvas>
-        <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="sh-3d" aria-pressed="false" title="${t("an.v3.hint")}">3D</button><button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
+        <div class="an-tools">${view3dOn ? html`<button type="button" class="btn btn-sm an-3d-btn" id="sh-3d" aria-pressed="false" title="${t("an.v3.hint")}">3D</button>` : ""}<button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
-          <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button><button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden></div>
+          <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button>${videoOn ? html`<button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden>` : ""}</div>
         <div class="an-hud" id="sh-hud"></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
-      ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display") }, ...(admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}</div>`;
+      ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display") }, ...(routesOn ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}</div>`;
   const layEl = $("#sh-layout");
   /** The panels' widths (a rail when folded), the window's height below the top line. */
   function applyLayout() {
@@ -773,8 +927,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     return 2 * 6371000 * Math.asin(Math.sqrt(s));
   } });
   // the map (drawn once the runners are known: the view draws as soon as it has its image)
-  let image;
-  try { image = await createImageBitmap(await api(`/${id}/map/${course.n}?v=${course.map.v}`, { key: keyOf(id) })); }
+  let image, mapBlob = null;                                // the map as stored (« Mes cartes » keeps it as it came)
+  try { mapBlob = await api(`/${id}/map/${course.n}?v=${course.map.v}`, { key: keyOf(id) }); image = await createImageBitmap(mapBlob); }
   catch (e) { box.innerHTML = html`<div class="card"><div class="empty">${errText(e)}</div></div>`; return { destroy() { mv.destroy(); } }; }
   // the traces
   let recs = [];
@@ -1120,19 +1274,20 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           <span class="num muted">${leg ? (lt != null ? html`${clock(lt)}${lt > bestLeg ? html` <span class="sh-behind">${signed(lt - bestLeg)}</span>` : ""}` : "—")
             : r.official?.time != null ? clock(r.official.time) : total(r) != null ? `~${clock(total(r))}` : "—"}</span>
           ${score ? html`<span class="sh-sub muted">${t("sh.score.n", { n: visitsOf(r).length, m: scoreN })}</span>` : leg && dist != null ? html`<span class="sh-sub muted">${fmt(dist)} m · ${pace(dist / lt)}</span>` : r.official?.place ? html`<span class="sh-sub muted">${t("sh.place", { p: r.official.place })}</span>` : ""}
-          ${r.note ? html`<span class="sh-note" title="${t("sh.note.of", { r: r.name })}">${r.note}</span>` : ""}</div>`; })}</div>`
+          ${notesOn && r.note ? html`<span class="sh-note" title="${t("sh.note.of", { r: r.name })}">${r.note}</span>` : ""}</div>`; })}</div>`
         : html`<div class="empty">${t("sh.noTraces")}</div>`}
       ${you.visitor ? html`<p class="hint sh-visitor">${t("sh.visitor.note")}</p>` : html`<div class="sh-mine">${runners.some((r) => r.mine)
-        ? html`<button type="button" class="btn btn-sm" id="sh-add">${t("sh.trace.replace")}</button> <button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>`
-        : html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>`}
-        ${phone.button("sh-phone")}
+        ? html`${canAdd ? html`<button type="button" class="btn btn-sm" id="sh-add">${t("sh.trace.replace")}</button> ` : ""}<button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>`
+        : canAdd ? html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>` : ""}
+        ${canAdd ? html`${phone.button("sh-phone")}
         <input type="file" id="sh-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
-        <p class="hint" style="margin:6px 0 0">${t("sh.fitTip")}</p></div>
-      ${myRun() ? html`<div class="sh-mine sh-note-box"><label for="sh-note"><b>${t("sh.note.mine")}</b></label>
+        <p class="hint" style="margin:6px 0 0">${t("sh.fitTip")}</p>` : html`<p class="hint" style="margin:6px 0 0">${t("sh.closed")}</p>`}</div>
+      ${myRun() && (notesOn || A.visitors) ? html`<div class="sh-mine sh-note-box">${notesOn ? html`<label for="sh-note"><b>${t("sh.note.mine")}</b></label>
         <textarea id="sh-note" rows="3" maxlength="1000" placeholder="${t("sh.note.ph")}">${myRun().note || ""}</textarea>
         <div class="row" style="gap:6px;align-items:center"><button type="button" class="btn btn-sm" id="sh-note-save">${t("sh.note.save")}</button><span class="muted" id="sh-note-state"></span></div>
-        <p class="hint" style="margin:0">${t("sh.note.hint")}</p>
+        <p class="hint" style="margin:0">${t("sh.note.hint")}</p>` : ""}
         ${A.visitors ? html`<label class="an-opt"><input type="checkbox" id="sh-mine-vis" ${raw(myRun().visitors ? "checked" : "")}> ${t("sh.visitors.mine")}</label>` : ""}</div>` : ""}
+      ${myRun() && mymapsOn ? html`<div class="sh-mine" id="sh-mymaps"></div>` : ""}
       ${auth.session()?.admin ? html`<div class="sh-mine"><b>${t("sh.test.title")}</b>
         <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-test-add">${t("sh.test.add")}</button>
         ${myTests().length ? html`<button type="button" class="btn btn-sm" id="sh-test-rm">${t("sh.test.remove", { n: myTests().length })}</button>` : ""}</div>
@@ -1166,13 +1321,21 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     $("#sh-invert").addEventListener("click", () => { runners.forEach((r) => { r.visible = !r.visible; }); if (sel && !sel.visible) sel = null; shownChanged(); });
     $("#sh-mine-only")?.addEventListener("click", () => { runners.forEach((r) => { r.visible = r.mine; }); shownChanged(); });
     if (you.visitor) return;
-    $("#sh-add").addEventListener("click", () => $("#sh-file").click());
+    $("#sh-add")?.addEventListener("click", () => $("#sh-file").click());
     $("#sh-mine-vis")?.addEventListener("change", async (e) => {
       try { const r = await api(`/${id}/trace/${course.n}`, { method: "PATCH", body: { visitors: e.target.checked }, key: keyOf(id) }); myRun().visitors = !!r.visitors; }
       catch (err) { e.target.checked = !e.target.checked; alert(errText(err)); }
     });
     $("#sh-note-save")?.addEventListener("click", () => saveNote($("#sh-note").value));
-    $("#sh-file").addEventListener("change", (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ""; });
+    $("#sh-file")?.addEventListener("change", (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ""; });
+    // « Enregistrer dans Mes cartes » (owner, 2026-11-04: an organiser's switch): one's run on the organiser's map, as « Analyse
+    // solo » saves it (trace/mymapsave.js) — the map as stored, one's route in its pixels with its times
+    if ($("#sh-mymaps")) import("../trace/mymapsave.js").then((M) => M.mount($("#sh-mymaps"), () => {
+      const r = myRun(), ext = /png/.test(mapBlob?.type) ? "png" : /webp/.test(mapBlob?.type) ? "webp" : "jpg";
+      return { file: mapBlob ? new File([mapBlob], `${course.name || "map"}.${ext}`, { type: mapBlob.type }) : null, image, track: r?.tr, pxs: r?.pxs, pys: r?.pys,
+        offset: r?.start ?? null, total: r && r.finish != null ? r.finish - r.start : null, geo: course.geo, title: [A.title, course.name].filter(Boolean).join(" · "),
+        controls: r ? ctrls.map((p, j) => ({ k: p.kind, x: p.x, y: p.y, t: r.passes[j] != null ? r.passes[j] - r.start : null })) : [] };
+    })).catch((e) => console.error(e));
     phone.bind("sh-phone", { kind: "trace", multiple: false, onFiles: (f) => { upload(f[0]); } });
     $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); await ownDel(ownKey(id, course.n)); reload(); } catch (e) { alert(errText(e)); } });
     $("#sh-test-add")?.addEventListener("click", () => $("#sh-test-file").click());
@@ -1244,7 +1407,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
         ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
         <label><span>${t("sh.follow")}</span><select id="sh-follow">${FOLLOWS.map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label>
         <span class="muted sh-mode-hint" title="${modeHint}">${modeHint}</span>
-        ${you.visitor ? "" : html`<span class="sh-bar-add">${runners.some((r) => r.mine) ? "" : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
+        ${you.visitor ? "" : html`<span class="sh-bar-add">${runners.some((r) => r.mine) || !canAdd ? "" : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
           ${admin ? html`<button type="button" class="btn btn-sm" id="sh-bar-test">${t("sh.test.add")}</button>` : ""}</span>`}</div>`;
     rightP.pane("display").innerHTML = html`
         <div class="an-opts">
@@ -1254,11 +1417,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
           ${leg ? "" : html`<label><span>${t("an.tail")}</span><select id="sh-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>`}
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="sh-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
-          <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => leg || !LEG_ONLY.includes(c)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
+          <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => (leg || !LEG_ONLY.includes(c)) && (c !== "variant" || variantsOn)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
           <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
           <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div>
         <div id="sh-3d-opts" hidden></div>`;
-    if (admin) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
+    if (routesOn) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
     // adding one's track (and an administrator's test tracks) from the top line: the buttons live in the « Coureurs » tab, while
     // the page opens on « Inter-postes » (owner, 2026-11-04: the upload could not be found) — that tab shown, the file chooser opened
     const toRunners = (input) => { leftP.fold(false); leftP.show("runners"); $(input)?.click(); };
@@ -1404,7 +1567,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
 
   // ---- the route choices computed (trace/routeplan.js; administrators only, a prototype — 2026-10-24): the leg shown's
   // fastest routes on the map as read, each runner's own route measured on the same model
-  const rcm = { s: RC.loadSettings(RC.isSprint(race) ? "sprint" : "forest"), on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })(),
+  const rcm = { s: RC.loadSettings(RC.isSprint(race) ? "sprint" : "forest"), on: routesOn && (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })(),
     plan: null, ready: null, pic: null, picOn: false, routes: [], mine: [], auto: [], token: 0, status: "", prog: null, warn: "", dem: null, info: null,
     decOn: RC.decisionOn(), dec: null, decAsk: "", calib: null, calibKey: "", calibP: null,
     vec: null };                                        // an OCAD or Mapper map of the analysis's map, this visit only
@@ -1660,7 +1823,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (v3on) { close3d(); return; }
     const my = ++v3token;
     v3on = true;
-    $("#sh-3d").setAttribute("aria-pressed", "true");
+    $("#sh-3d")?.setAttribute("aria-pressed", "true");
     $("#sh-3d-host").hidden = false; $("#sh-canvas").hidden = true;
     v3note(`${bar()} ${t("an.v3.loading")}`);
     try {
@@ -1693,7 +1856,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
     if (v3) { v3.dispose(); v3 = null; }
     if (!v3on) return;
     v3on = false;
-    $("#sh-3d").setAttribute("aria-pressed", "false");
+    $("#sh-3d")?.setAttribute("aria-pressed", "false");
     $("#sh-3d-host").hidden = true; $("#sh-canvas").hidden = false; v3note("");
     opts3d(); mv.draw();
   }
@@ -1738,7 +1901,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
       left(); right(); frame(); saveUrl();
     },
     get leg() { return leg; }, organiser: !!you.organiser, VARIANT_COLOURS,
-    tabOk: (k) => (score ? k === "splits" : k !== "legs" && (k !== "exercises" || A.kind === "club")), score, visitsOf, scoreN,
+    tabOk: (k) => (score ? k === "splits" : k !== "legs" && (k !== "exercises" || A.kind === "club") && (k !== "variants" || variantsOn)), score, visitsOf, scoreN,
     exercises: () => exercises, exScores, exWidth, get draft() { return draft; },
     setDraft: (d) => { draft = d; mv.draw(); bottom.draw(); },
     setExWidth: (e, w, save) => { if (save) { saveExercises(exercises.map((x) => (x.id === e.id ? { ...x, w } : x))).then(() => { delete exW[e.id]; bottom.draw(); }).catch((err) => alert(errText(err))); } exW[e.id] = w; mv.draw(); },
@@ -1764,8 +1927,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   const video = videoPanel($(".sh-map", box), { runners, key: `ocn.sh.video.${id}.${course.n}`, playing: () => playing, speed: () => speed,
     pick: () => sel || runners.find((r) => r.mine) || runners[0],
     raceTime: (r) => { const s = sAt(r, T); return s == null ? null : s - r.start; } });
-  $("#sh-video-btn").addEventListener("click", () => $("#sh-video-file").click());
-  $("#sh-video-file").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) { video.open(f); video.sync(true); } e.target.value = ""; });
+  $("#sh-video-btn")?.addEventListener("click", () => $("#sh-video-file").click());
+  $("#sh-video-file")?.addEventListener("change", (e) => { const f = e.target.files[0]; if (f) { video.open(f); video.sync(true); } e.target.value = ""; });
   // the strip: a click or a drag seeks
   const strip = $("#sh-strip");
   const scrub = (e) => { stop(); T = T0 + stripFraction(strip, e.clientX - strip.getBoundingClientRect().left) * (T1 - T0); frame(); };
@@ -1779,7 +1942,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, you, reload
   $("#sh-fitmap").addEventListener("click", () => { follow = "none"; right(); if (v3) { v3.setFollow(false); v3.fitMap(); } else { mv.fitAll(); mv.draw(); } });
   $("#sh-zin").addEventListener("click", () => v3?.zoom(1.4));
   $("#sh-zout").addEventListener("click", () => v3?.zoom(1 / 1.4));
-  $("#sh-3d").addEventListener("click", () => toggle3d());
+  $("#sh-3d")?.addEventListener("click", () => toggle3d());
   window.scrollTo(0, 0);
   applyLayout();
   mv.setAlpha(mapAlpha / 100);

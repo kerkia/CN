@@ -1873,6 +1873,39 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 .sh-title { font-size: 15px; }
 .sh-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .sh-setup { margin-bottom: 12px; }
+/* the organisers' page of one analysis (owner, 2026-11-04): the circuits beside the map of the one chosen, then the attendance and
+   the runners' features; no replay */
+.sh-m-grid { display: grid; grid-template-columns: minmax(340px, 5fr) minmax(320px, 6fr); gap: 12px; align-items: start; margin-bottom: 12px; }
+.sh-m-left { display: grid; gap: 12px; min-width: 0; }
+.sh-m-grid2 { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; align-items: start; margin-bottom: 12px; }
+.sh-m-h { font-size: 16px; margin: 0 0 8px; }
+.sh-m-sub { margin: -4px 0 8px; font-size: 13px; }
+.sh-m-mapcard { position: sticky; top: calc(var(--bar-h, 56px) + 8px); padding: 8px; }
+.sh-m-map { height: min(68vh, 640px); }
+.sh-m-nomap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--surface); }
+.sh-m-cap { font-size: 13px; margin: 6px 2px 0; }
+.sh-m-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 10px 12px; border-radius: var(--radius); margin-bottom: 10px;
+  background: color-mix(in srgb, var(--flag) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--flag) 35%, var(--border)); }
+.sh-m-status.live { background: color-mix(in srgb, var(--forest) 12%, var(--surface)); border-color: color-mix(in srgb, var(--forest) 40%, var(--border)); }
+.sh-m-status p { margin: 0; flex: 1 1 260px; font-size: 13.5px; }
+.sh-m-fields input#sh-s-title { width: 260px; max-width: 100%; }
+.tag.sh-m-draft { background: color-mix(in srgb, var(--flag) 18%, var(--surface)); color: var(--ink); }
+.tag.sh-m-live { background: color-mix(in srgb, var(--forest) 18%, var(--surface)); color: var(--ink); }
+.sh-m-table tbody tr { cursor: pointer; }
+.sh-m-table tr.sel td { background: color-mix(in srgb, var(--course) 10%, var(--surface)); }
+.sh-m-table tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--course); }
+.sh-m-act { white-space: nowrap; }
+.sh-m-opts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sh-m-opt { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; font-size: 13.5px; }
+.sh-m-opt input { margin-top: 3px; }
+.sh-m-opt > span { display: flex; flex-direction: column; gap: 1px; }
+.sh-m-opt .muted { font-size: 12.5px; }
+.sh-m-danger { margin-bottom: 12px; }
+@media (max-width: 980px) {
+  .sh-m-grid, .sh-m-grid2 { grid-template-columns: 1fr; }
+  .sh-m-mapcard { position: static; }
+  .sh-m-map { height: 60vh; }
+}
 .sh-vis { border: 0; padding: 0; margin: 10px 0 0; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
 .sh-vis legend { font-weight: 600; color: var(--ink-2); margin-bottom: 4px; padding: 0; }
 .sh-layout { display: grid; gap: 0; height: 75vh; grid-template-columns: var(--sh-lw, 320px) 8px minmax(0, 1fr) 8px var(--sh-rw, 270px);

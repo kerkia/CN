@@ -4,6 +4,13 @@
 //   analyses/<id>/map-<n>                  — a circuit's map image
 //   analyses/<id>/trace-<n>-<uid>.json     — one account's trace on circuit n: positions and times only, cropped to
 //                                            the map by the browser; the name and licence are the account's
+//   analyses/<id>/view-<uid>.json          — an account opened the analysis (not its organisers): its first and last day and
+//                                            the days seen, in the object's custom metadata (owner, 2026-11-04: what the
+//                                            organiser decides on — viewers against runners); empty body
+//   analyses/<id>/solo-<n>-<uid>.json      — an account replayed circuit n alone in « Analyse solo » on the organiser's map
+//   analyses/<id>/gview-<YYYY-MM-DD>.json  — visitors without an account who opened it that day (a count, approximate)
+// The organisers see counts only (GET …/stats), never who. A draft (`draft`, every new analysis since 2026-11-04) is seen by
+// its organisers alone until they publish it; `opts` are the runners' features the organisers switch (OPTS below).
 // Organisers (2026-10-15): a training analysis (kind "club") is its creator's; a competition's (kind "race", one per
 // race) is created and managed by the members of the race's organising club (_lib/club.js) and the administrators.
 // Access: the organisers and the administrators always; otherwise by the analysis's rule — every logged-in account
@@ -15,7 +22,9 @@
 //   GET    /api/analyses?kind=club|race[&race=<key>]   the analyses one may open (or unlock)
 //   POST   /api/analyses                               create { kind, title, date, race?, vis, password? } -> { id }
 //   GET    /api/analyses/<id>                          the analysis and its traces' list
-//   PUT    /api/analyses/<id>                          the organiser: { title?, vis?, password?, courses? }
+//   PUT    /api/analyses/<id>                          the organiser: { title?, vis?, password?, courses?, draft?, opts? }
+//   GET    /api/analyses/<id>/stats                    the organiser: views, traces, solo replays, per circuit
+//   POST   /api/analyses/<id>/solo/<n>                 an account replays circuit n in « Analyse solo » (counted)
 //   DELETE /api/analyses/<id>                          the organiser: the analysis, its maps and traces
 //   POST   /api/analyses/<id>/unlock                   { password } -> { key }
 //   GET|PUT /api/analyses/<id>/map/<n>                 a circuit's map (PUT: the organiser, an image body)
@@ -48,6 +57,12 @@ const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 const TEST_BASE = 1e9, TEST_MAX = 999;
 const testUid = (account, k) => TEST_BASE + account * 1000 + k;
 const testOwner = (uid) => (uid > TEST_BASE ? Math.floor((uid - TEST_BASE) / 1000) : null);
+// the runners' features an organiser switches (owner, 2026-11-04), and their defaults: replaying alone on the organiser's map,
+// adding one's trace, saving one's run in « Mes cartes », comments, the route choices, the 3D view, a headcam video, the
+// computed routes (a prototype: off unless the organiser opens them; the administrators always see them)
+const OPTS = { solo: true, upload: true, mymaps: true, notes: true, variants: true, view3d: true, video: true, routes: false };
+const optsOf = (m) => Object.fromEntries(Object.entries(OPTS).map(([k, d]) => [k, typeof m?.opts?.[k] === "boolean" ? m.opts[k] : d]));
+const parisDay = () => new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
 const newId = () => Array.from(randomBytes(12), (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
 
 async function hmacKey(env) {
@@ -59,7 +74,7 @@ async function unlockKey(env, meta, uid) {
 }
 
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", club: m.club || "", orgClub: m.orgClub || "", vis: m.vis,
-  visitors: m.visitors && m.vis === "public" ? "1" : "",
+  visitors: m.visitors && m.vis === "public" && !m.draft ? "1" : "", draft: m.draft ? "1" : "", solo: optsOf(m).solo ? "1" : "0",
   owner: m.owner, ownerName: m.ownerName || "", courses: (m.courses || []).length, updated: m.updated, pos: centreOf(m) });
 /** The middle of the first circuit's map, "lat,lon" (« Analyse de carte » places the event on its map), or "". */
 function centreOf(m) {
@@ -72,7 +87,7 @@ function centreOf(m) {
   return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? `${lat.toFixed(5)},${lon.toFixed(5)}` : "";
 }
 const custom = (m) => Object.fromEntries(Object.entries(summary(m)).map(([k, v]) => [k, String(v ?? "")]));
-const publicMeta = (m) => { const { pw, ...rest } = m; return rest; };
+const publicMeta = (m) => { const { pw, ...rest } = m; return { ...rest, draft: !!m.draft, opts: optsOf(m) }; };
 
 async function loadMeta(env, id) {
   const o = await env.BUCKET.get(`${META}${id}.json`);
@@ -192,9 +207,9 @@ const cleanNote = (s) => String(s ?? "").replace(/\r/g, "").replace(/[\u0000-\u0
 async function visitors(ctx, parts) {
   const { request, env } = ctx;
   if (request.method !== "GET") return json({ error: "method" }, 405);
-  const open = (m) => !!m && m.vis === "public" && !!m.visitors;
+  const open = (m) => !!m && m.vis === "public" && !!m.visitors && !m.draft;
   if (!parts.length) {
-    const metas = (await listAll(env, META)).map((o) => o.customMetadata || {}).filter((m) => m.vis === "public" && m.visitors === "1");
+    const metas = (await listAll(env, META)).map((o) => o.customMetadata || {}).filter((m) => m.vis === "public" && m.visitors === "1" && m.draft !== "1");
     return json({ analyses: metas.map((m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, courses: Number(m.courses) || 0,
       pos: m.pos || "", access: "open", organiser: false, visitors: true })) }, 200, { "Cache-Control": "private, max-age=60" });
   }
@@ -209,7 +224,8 @@ async function visitors(ctx, parts) {
       return { course: Number(m.course), uid: Number(m.uid), name: m.name || "", lic: "", updated: m.updated || "", size: o.size };
     });
     const { owner, ownerName, pw, ...rest } = meta;
-    return json({ analysis: rest, traces, you: { uid: 0, organiser: false, visitor: true } });
+    ctx.waitUntil?.(countGuest(env, id));
+    return json({ analysis: { ...rest, opts: optsOf(meta) }, traces, you: { uid: 0, organiser: false, visitor: true } });
   }
   if (parts.length !== 3 || !Number.isInteger(n) || !(meta.courses || []).some((c) => c.n === n)) return json({ error: "not found" }, 404);
   if (parts[1] === "map") {
@@ -229,6 +245,22 @@ async function visitors(ctx, parts) {
     return json(bodies, 200, { "Cache-Control": "no-store" });
   }
   return json({ error: "not found" }, 404);
+}
+
+/** A visitor without an account opened analysis id today: the day's count, read then written (two at once may count one). */
+async function countGuest(env, id) {
+  try {
+    const key = `${DATA}${id}/gview-${parisDay()}.json`, o = await env.BUCKET.head(key);
+    await env.BUCKET.put(key, "", { customMetadata: { n: String((Number(o?.customMetadata?.n) || 0) + 1) } });
+  } catch (e) { /* not counted */ }
+}
+/** An account opened analysis id (kind "view": the analysis, "solo-<n>": circuit n in « Analyse solo »): written once a day. */
+async function countUse(env, id, kind, uid) {
+  try {
+    const key = `${DATA}${id}/${kind}-${uid}.json`, o = await env.BUCKET.head(key), day = parisDay(), m = o?.customMetadata || {};
+    if (m.last === day) return;
+    await env.BUCKET.put(key, "", { customMetadata: { first: m.first || day, last: day, days: String((Number(m.days) || 0) + 1) } });
+  } catch (e) { /* not counted */ }
 }
 
 export const onRequest = (ctx) => {
@@ -268,6 +300,7 @@ const forUsers = withUser(async (ctx, user) => {
         }
         const meta = { ...m, owner: Number(m.owner), courses: [] };
         const org = await isOrganiser(env, user, meta, lazyClub);
+        if (m.draft === "1" && !org) continue;                              // a draft: its organisers' alone
         let acc;
         if (org || m.vis === "public") acc = "open";
         else if (m.vis === "club") acc = m.club && (await lazyClub()) === m.club ? "open" : null;
@@ -275,7 +308,7 @@ const forUsers = withUser(async (ctx, user) => {
         if (!acc) continue;
         out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, ownerName: m.ownerName,
           courses: Number(m.courses) || 0, updated: m.updated, mine: meta.owner === user.id, organiser: org, access: acc,
-          pos: m.pos ? m.pos.split(",").map(Number) : null });
+          draft: m.draft === "1", solo: m.solo !== "0", pos: m.pos ? m.pos.split(",").map(Number) : null });
       }
       out.sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.updated || "").localeCompare(a.updated || ""));
       return json({ analyses: out, club: await lazyClub() });
@@ -308,7 +341,7 @@ const forUsers = withUser(async (ctx, user) => {
         pw = { pw_hash: h.hash, pw_salt: h.salt, pw_iter: h.iter };
       }
       const meta = { id: newId(), kind, title, date, race, club: club || "", orgClub, vis, pw, owner: user.id, ownerName: user.display_name || "",
-        created: nowIso(), updated: nowIso(), courses: [] };
+        created: nowIso(), updated: nowIso(), courses: [], draft: true };
       await saveMeta(env, meta);
       return json({ id: meta.id });
     }
@@ -331,8 +364,10 @@ const forUsers = withUser(async (ctx, user) => {
     return json({ key: await unlockKey(env, meta, user.id) });
   }
 
+  if (meta.draft && !organiser) return json({ error: "draft" }, 403);
   const acc = await access(ctx, user, meta, lazyClub);
   if (acc !== "open") return json({ error: acc === "locked" ? "locked" : "forbidden" }, 403);
+  const opts = optsOf(meta);
 
   if (!sub) {
     if (method === "GET") {
@@ -340,6 +375,8 @@ const forUsers = withUser(async (ctx, user) => {
         const m = o.customMetadata || {};
         return { course: Number(m.course), uid: Number(m.uid), name: m.name || "", lic: m.lic || "", updated: m.updated || "", size: o.size };
       });
+      // a runner's visit counted (not the organisers', nor « Analyse solo »'s own read: it counts itself, POST …/solo/<n>)
+      if (!organiser && new URL(request.url).searchParams.get("for") !== "solo") ctx.waitUntil?.(countUse(env, id, "view", user.id));
       return json({ analysis: publicMeta(meta), traces, you: { uid: user.id, organiser } });
     }
     if (!organiser) return json({ error: "forbidden" }, 403);
@@ -354,6 +391,13 @@ const forUsers = withUser(async (ctx, user) => {
         meta.vis = b.vis;
       }
       if (b.visitors != null) meta.visitors = !!b.visitors;
+      if (b.draft != null) { if (b.draft) meta.draft = true; else delete meta.draft; }
+      if (b.opts != null) {
+        if (typeof b.opts !== "object" || Array.isArray(b.opts)) return json({ error: "fields" }, 400);
+        const o = optsOf(meta);
+        for (const k of Object.keys(OPTS)) if (typeof b.opts[k] === "boolean") o[k] = b.opts[k];
+        meta.opts = o;
+      }
       if (meta.vis !== "public") meta.visitors = false;                     // open to visitors only when open to every account
       if (b.password) {
         const p = String(b.password);
@@ -369,7 +413,7 @@ const forUsers = withUser(async (ctx, user) => {
         const gone = (meta.courses || []).filter((c) => !cs.some((x) => x.n === c.n)).map((c) => c.n);
         if (gone.length) {
           const keys = (await listAll(env, `${DATA}${id}/`, false)).map((o) => o.key)
-            .filter((k) => gone.some((n) => k === `${DATA}${id}/map-${n}` || k.startsWith(`${DATA}${id}/trace-${n}-`)));
+            .filter((k) => gone.some((n) => k === `${DATA}${id}/map-${n}` || k.startsWith(`${DATA}${id}/trace-${n}-`) || k.startsWith(`${DATA}${id}/solo-${n}-`)));
           for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
         }
         meta.courses = cs;
@@ -386,9 +430,20 @@ const forUsers = withUser(async (ctx, user) => {
     return json({ error: "method" }, 405);
   }
 
+  if (sub === "stats" && method === "GET") {
+    if (!organiser) return json({ error: "forbidden" }, 403);
+    return json(await statsOf(env, meta), 200, { "Cache-Control": "no-store" });
+  }
+
   const n = Number(parts[2]);
   if (!Number.isInteger(n) || n < 0 || n > 99) return json({ error: "not found" }, 404);
   const course = (meta.courses || []).find((c) => c.n === n);
+
+  if (sub === "solo" && method === "POST") {
+    if (!course || !opts.solo) return json({ error: "not found" }, 404);
+    if (!organiser) await countUse(env, id, `solo-${n}`, user.id);
+    return json({ ok: true });
+  }
 
   if (sub === "map") {
     const key = `${DATA}${id}/map-${n}`;
@@ -445,6 +500,7 @@ const forUsers = withUser(async (ctx, user) => {
     if (method === "PUT") {
       const size = Number(request.headers.get("Content-Length") || 0);
       if (size > MAX_TRACE) return json({ error: "too big" }, 413);
+      if (!opts.upload && !organiser) return json({ error: "closed" }, 403);   // the organisers closed it to new traces
       if (!(await allow(env, `antrace:${user.id}`, 100, 86400))) return json({ error: "too many" }, 429);
       const b = await readBody(request);
       if (b?.consent !== true) return json({ error: "consent" }, 400);
@@ -458,13 +514,13 @@ const forUsers = withUser(async (ctx, user) => {
       const name = (user.display_name || "") + (k != null ? ` #${k}` : "");
       // a route drawn by hand is not a trace to compare with the others' (owner, 2026-11-02): refused
       if (b.drawn != null) return json({ error: "drawn" }, 400);
-      const note = cleanNote(b.note);
+      const note = opts.notes ? cleanNote(b.note) : "";
       const vis = b.visitors === true && !!meta.visitors;                     // the runner agreed to be seen by visitors too
       const rec = { ...tr, uid, name, lic: k != null ? "" : user.licence || "", course: n, updated: nowIso(), ...(k != null ? { test: true } : {}),
         ...(note ? { note } : {}), ...(vis ? { visitors: true } : {}) };
       await env.BUCKET.put(`${DATA}${id}/trace-${n}-${uid}.json`, JSON.stringify(rec), {
         httpMetadata: { contentType: "application/json" },
-        customMetadata: { uid: String(uid), name: rec.name, lic: String(rec.lic), course: String(n), updated: rec.updated, ...(k != null ? { test: "1" } : {}), ...(vis ? { vis: "1" } : {}) } });
+        customMetadata: { uid: String(uid), name: rec.name, lic: String(rec.lic), course: String(n), updated: rec.updated, ...(k != null ? { test: "1" } : {}), ...(vis ? { vis: "1" } : {}), ...(note ? { note: "1" } : {}) } });
       return json({ ok: true, uid });
     }
     if (method === "PATCH") {                                                 // one's own comment, the trace unchanged
@@ -473,8 +529,10 @@ const forUsers = withUser(async (ctx, user) => {
       if (!o) return json({ error: "not found" }, 404);
       const rec = await o.json().catch(() => null);
       if (!rec) return json({ error: "not found" }, 404);
+      if (b && "note" in b && !opts.notes) return json({ error: "closed" }, 403);
       if (b && "note" in b) { const note = cleanNote(b.note); if (note) rec.note = note; else delete rec.note; }
       const cm = { ...(o.customMetadata || {}) };
+      if (rec.note) cm.note = "1"; else delete cm.note;
       if (b && "visitors" in b) { if (b.visitors === true && meta.visitors) { rec.visitors = true; cm.vis = "1"; } else { delete rec.visitors; delete cm.vis; } }
       await env.BUCKET.put(key, JSON.stringify(rec), { httpMetadata: { contentType: "application/json" }, customMetadata: cm });
       return json({ ok: true, note: rec.note || "", visitors: !!rec.visitors });
@@ -497,3 +555,43 @@ const forUsers = withUser(async (ctx, user) => {
   }
   return json({ error: "not found" }, 404);
 });
+
+/** What the organisers decide on (owner, 2026-11-04): per circuit the traces shared, the comments and the visitors' consents,
+ *  the accounts that replayed it alone; for the analysis the accounts that opened it, the runners, those who replayed alone
+ *  without sharing a trace, the visitors without an account. Counts only: never who. */
+async function statsOf(env, meta) {
+  const id = meta.id, objs = await listAll(env, `${DATA}${id}/`);
+  const courses = new Map((meta.courses || []).map((c) => [c.n, { n: c.n, name: c.name, traces: 0, tests: 0, notes: 0, visitors: 0, solo: 0, soloOnly: 0, last: "" }]));
+  const tracers = new Set(), byCourse = new Map(), soloBy = new Map(), soloAll = new Set();
+  let viewers = 0, viewDays = 0, recent = 0, guests = 0, lastView = "", lastTrace = "";
+  const week = new Date(Date.now() - 7 * 86400e3).toLocaleDateString("en-CA", { timeZone: "Europe/Paris" });
+  for (const o of objs) {
+    const name = o.key.slice(`${DATA}${id}/`.length), m = o.customMetadata || {};
+    let x;
+    if ((x = /^trace-(\d+)-(\d+)\.json$/.exec(name))) {
+      const c = courses.get(Number(x[1]));
+      if (!c) continue;
+      if (m.test === "1") { c.tests += 1; continue; }
+      c.traces += 1; if (m.note === "1") c.notes += 1; if (m.vis === "1") c.visitors += 1;
+      if ((m.updated || "") > c.last) c.last = m.updated;
+      if ((m.updated || "") > lastTrace) lastTrace = m.updated;
+      tracers.add(x[2]);
+      if (!byCourse.has(c.n)) byCourse.set(c.n, new Set());
+      byCourse.get(c.n).add(x[2]);
+    } else if ((x = /^solo-(\d+)-(\d+)\.json$/.exec(name))) {
+      if (!courses.has(Number(x[1]))) continue;
+      if (!soloBy.has(Number(x[1]))) soloBy.set(Number(x[1]), new Set());
+      soloBy.get(Number(x[1])).add(x[2]); soloAll.add(x[2]);
+    } else if (/^view-\d+\.json$/.test(name)) {
+      viewers += 1; viewDays += Number(m.days) || 1;
+      if ((m.last || "") >= week) recent += 1;
+      if ((m.last || "") > lastView) lastView = m.last;
+    } else if (/^gview-\d{4}-\d{2}-\d{2}\.json$/.test(name)) guests += Number(m.n) || 0;
+  }
+  for (const [n, set] of soloBy) {
+    const c = courses.get(n), mine = byCourse.get(n) || new Set();
+    c.solo = set.size; c.soloOnly = [...set].filter((u) => !mine.has(u)).length;
+  }
+  return { courses: [...courses.values()], viewers, viewDays, recent, guests, runners: tracers.size, solo: soloAll.size,
+    soloOnly: [...soloAll].filter((u) => !tracers.has(u)).length, lastView, lastTrace, created: meta.created || "" };
+}

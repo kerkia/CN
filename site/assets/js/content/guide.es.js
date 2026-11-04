@@ -463,6 +463,11 @@ export function build(X) {
             html`<b>El acceso</b>: todas las cuentas, los miembros del club o una contraseña. «Ver como los corredores» muestra la página tal como ellos la
               verán.`,
           ])}
+          <p>La página del análisis sirve para gestionarlo, no para analizar: la lista de recorridos, el mapa del elegido con su trazado para
+            comprobarlo, la publicación (un análisis nuevo queda en borrador, que solo ven los organizadores, hasta «Publicar»), lo que pueden hacer
+            los corredores (añadir su track, «Análisis individual» sobre tu mapa, «Mis mapas», comentarios, variantes, vista 3D, vídeo, rutas
+            calculadas) y el uso: las cuentas que lo han abierto, los tracks por recorrido, quienes lo han reproducido en solitario sin compartir
+            track — solo números, nunca quién.</p>
           <p>Los corredores lo encuentran en Coach («Análisis de mapa › Comparar con los demás corredores»). El trazado también puede publicar sus recorridos, mapa incluido, en un análisis de
             mapa (en el caso de una competición, después de la carrera).</p>`)}`,
       declarer: () => html`

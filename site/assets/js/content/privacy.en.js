@@ -85,6 +85,10 @@ export const body = (SITE, { world = false } = {}) => `
         account, your trace and your comment are shown to them only if you agree (a box unticked by default), with your name but
         without your licence number; you withdraw that agreement at any time. In « My maps », the comment you write on a run is kept
         with it and follows the same rules.</p>
+      <p>To help the organiser decide (publish, open or close a feature), a map analysis counts who opens it and who replays a course
+        alone in “Solo analysis” on its map: your account's number, the first and the last day, and the number of days, once a day at
+        most; for visitors without an account, a number per day only. The organisers see totals only, never who; they are not counted
+        themselves. These records are erased with the analysis, with the course concerned and with your account.</p>
       <h2 style="font-size:16px">My maps</h2>
       <p>“My maps” keeps the maps you save there (from “Solo analysis”) or import (QuickRoute or Ozimut JPEG files), and the routes
         you ran on them, in the site's storage (Cloudflare): the map's image as you gave it, its title, date, place and your notes, and
@@ -224,5 +228,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Credits:</b> the control description symbols and texts (Coach › Control descriptions, the course setting) come from Purple
         Pen, by Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         under the <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD licence</a>.</p>
-      <p class="muted">Last updated: 3 November 2026.</p>
+      <p class="muted">Last updated: 4 November 2026.</p>
 `;

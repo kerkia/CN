@@ -168,14 +168,28 @@ export async function render(main, { query = {}, route } = {}) {
     const id = String(query.id || "");
     try {
       const k = (() => { try { return sessionStorage.getItem(`ocn.an.key.${id}`) || ""; } catch (e) { return ""; } })();
-      const r = /^[a-z0-9-]{4,64}$/i.test(id) ? await fetch(`api/analyses/${id}`, { credentials: "same-origin", headers: k ? { "X-Analysis-Key": k } : {} }) : null;
+      // `for=solo`: this read is not counted as a visit of the multi analysis (the replay counts itself: soloSeen)
+      const r = /^[a-z0-9-]{4,64}$/i.test(id) ? await fetch(`api/analyses/${id}?for=solo`, { credentials: "same-origin", headers: k ? { "X-Analysis-Key": k } : {} }) : null;
       const d = r ? await r.json().catch(() => null) : null;
-      if (!r || !r.ok) orgaErr = d?.error === "locked" ? "an.orga.locked" : "an.orga.err";
+      if (!r || !r.ok) orgaErr = d?.error === "locked" ? "an.orga.locked" : d?.error === "draft" ? "an.orga.draft" : "an.orga.err";
       else if (!(d.analysis.courses || []).length) orgaErr = "an.orga.noCourse";
-      else { orga = { id, A: d.analysis, key: k }; orgaN = d.analysis.courses.some((c) => String(c.n) === String(query.c)) ? Number(query.c) : d.analysis.courses[0].n; }
+      // the organisers may close « Analyse solo » on their map (owner, 2026-11-04); they still open it themselves
+      else if (d.analysis.opts?.solo === false && !d.you?.organiser) orgaErr = "an.orga.closed";
+      else { orga = { id, A: d.analysis, key: k, organiser: !!d.you?.organiser }; orgaN = d.analysis.courses.some((c) => String(c.n) === String(query.c)) ? Number(query.c) : d.analysis.courses[0].n; }
     } catch (e) { orgaErr = "an.orga.err"; }
   }
   const orgaRace = orga?.A?.kind === "race" && orga.A.race ? orga.A.race : null;
+  // the organisers' switches on their map (api/analyses OPTS): the computed routes (the administrators always), the 3D view,
+  // saving the run in « Mes cartes »
+  const orgaOpt = (k, d) => (orgaMode && orga ? (typeof orga.A.opts?.[k] === "boolean" ? orga.A.opts[k] : d) : true);
+  const routesOk = !!me?.admin || (orgaMode && orgaOpt("routes", false));
+  /** A replay on the organiser's map counted for its organisers (once a visit and circuit; never who: api/analyses stats). */
+  const soloSeen = () => {
+    if (!orgaMode || !orga || orga.organiser) return;
+    const k = `ocn.an.solo.${orga.id}.${orgaN}`;
+    try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1"); } catch (e) { /* counted again */ }
+    fetch(`api/analyses/${orga.id}/solo/${orgaN}`, { method: "POST", credentials: "same-origin", headers: orga.key ? { "X-Analysis-Key": orga.key } : {} }).catch(() => {});
+  };
   let withTimes = !perso;                                  // published times to read: a race, or an organiser's competition with results
   const idx = perso ? null : await getProv("index.json");
   const races = (idx?.races || []).filter((r) => r.docs && !r.soon).sort((a, b) => b.date_iso.localeCompare(a.date_iso));
@@ -197,7 +211,7 @@ export async function render(main, { query = {}, route } = {}) {
       <div class="an-layout" id="an-layout">
         <div class="an-bar" id="an-bar" hidden></div>
         ${raw(panelHtml({ id: "an-left", side: "left", cls: "an-left", tabs: [{ key: "graphs", label: t("an.tab.graphs") }, { key: "legs", label: t("an.tab.legs") },
-          ...(me?.admin ? [{ key: "routes", label: t("an.tab.routes") }] : [])],
+          ...(routesOk ? [{ key: "routes", label: t("an.tab.routes") }] : [])],
           inner: { graphs: html`<div class="an-chips" id="an-chips"></div><canvas id="an-strip"></canvas>`, legs: html`<div id="an-legs"></div>`, routes: html`<div class="rc-busy" id="an-rc-busy" hidden></div><div id="an-rc"></div>` } }))}
         <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
@@ -206,7 +220,7 @@ export async function render(main, { query = {}, route } = {}) {
           <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
-        ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display") }, ...(me?.admin ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}
+        ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display") }, ...(routesOk ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}
       </div>
     </div>`;
   if (!perso && !here.length && !races.some((r) => r.key === query.course)) {
@@ -1722,7 +1736,7 @@ export async function render(main, { query = {}, route } = {}) {
         <button type="button" class="btn btn-sm btn-primary" id="an-shot">⤓ ${t("an.shot.save")}</button><span class="muted an-shot-state" id="an-shot-state"></span></div><div id="an-mymaps"></div>
       ${short.map((x) => html`<div class="notice" style="margin-top:8px">${x}</div>`)}
       ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
-    if (me?.admin) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
+    if (routesOk) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
     $("#an-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#an-prev").addEventListener("click", () => jumpLeg(-1));
     $("#an-next").addEventListener("click", () => jumpLeg(1));
@@ -1738,7 +1752,8 @@ export async function render(main, { query = {}, route } = {}) {
     ["#an-shot-zone", "#an-shot-type", "#an-shot-legend"].forEach((s) => $(s).addEventListener("change", shotSet));
     $("#an-shot").addEventListener("click", () => exportImage());
     // « Enregistrer dans Mes cartes » (owner, 2026-11-01): the map and the run as drawn here (trace/mymapsave.js)
-    import("../trace/mymapsave.js").then((M) => M.mount($("#an-mymaps"), () => ({ file: files.map?.file || null, image: map, track, pxs, pys, offset, total,
+    if (!orgaOpt("mymaps", true)) $("#an-mymaps").hidden = true;
+    else import("../trace/mymapsave.js").then((M) => M.mount($("#an-mymaps"), () => ({ file: files.map?.file || null, image: map, track, pxs, pys, offset, total,
       geo: fit ? geoFromFit(fit, track) : null, title: orgaMode ? orga.A.title : perso ? "" : [race?.name, klass()?.name].filter(Boolean).join(" · "),
       controls: targets.filter((g) => g.pos).map((g) => ({ k: g.kind, x: g.pos[0], y: g.pos[1], t: timeOf(g) })) }))).catch((e) => console.error(e));
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
@@ -1766,11 +1781,12 @@ export async function render(main, { query = {}, route } = {}) {
     paceLegend();
     if (legs[0]?.t1 != null) zoomTo(legs[0], 1.15, 30); else fitTrace();    // the first leg, a small margin around it
     seek(0);
-    $("#an-3d").hidden = false; $("#an-measure").hidden = false;
+    $("#an-3d").hidden = !orgaOpt("view3d", true); $("#an-measure").hidden = false;
+    soloSeen();
     const gc = $("#an-gen-credit");
     gc.hidden = !LM.isGenerated(files.map?.name);
     if (!gc.hidden) gc.innerHTML = t("an.gen.short", { osm: html`<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t("an.gen.osm")}</a>` });
-    if (autoV3) { autoV3 = false; toggle3d(); }
+    if (autoV3) { autoV3 = false; if (orgaOpt("view3d", true)) toggle3d(); }
     rcPanel();
     if (rcs.on) rcStart();
   }
@@ -2194,7 +2210,7 @@ export async function render(main, { query = {}, route } = {}) {
   // each leg's fastest routes on the map as read, the route the runner took measured on the same model
   const rcs = { s: RC.loadSettings(), mapSet: false, pic: null, picOn: false, plan: null, planFor: "", planMap: null, dem: null, info: null,
     routes: [], mine: [], auto: null, token: 0, status: "", prog: null, warn: "", decOn: RC.decisionOn(), dec: null, decAsk: "",
-    on: (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })() };
+    on: routesOk && (() => { try { return localStorage.getItem("ocn.rc.on") === "1"; } catch (e) { return false; } })() };
   const rcPace = () => RC.paceOf(rcs.s, rcs.auto);
   const rcStatus = (text, frac = null) => { rcs.status = text; rcs.prog = frac; RC.setStatus(text, frac); rcBusyPane(); };
   /** While the routes are computed, « Itinéraires » says so (owner, 2026-11-01: it stayed empty a minute): what is done now,

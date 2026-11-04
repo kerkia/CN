@@ -466,6 +466,11 @@ export function build(X) {
             html`<b>L'accès</b> : tous les comptes, les membres du club, ou un mot de passe. « Voir comme les coureurs » montre la page telle qu'ils la
               verront.`,
           ])}
+          <p>La page de l'analyse sert à la gérer, pas à analyser : la liste des circuits, la carte de celui qu'on choisit avec son parcours pour le
+            vérifier, la publication (une nouvelle analyse reste un brouillon que seuls les organisateurs voient, jusqu'à « Publier »), ce que les
+            coureurs peuvent faire (ajouter leur trace, « Analyse solo » sur votre carte, « Mes cartes », commentaires, variantes, vue 3D,
+            vidéo, itinéraires calculés), et la fréquentation : les comptes qui l'ont ouverte, les traces par circuit, ceux qui l'ont rejouée seuls
+            sans partager de trace — des nombres seulement, jamais qui.</p>
           <p>Les coureurs la trouvent dans Coach (« Analyse de carte › Comparer avec les autres coureurs »). Le tracé peut aussi publier ses circuits, carte comprise, vers une analyse de carte (après
             la course pour une compétition).</p>`)}`,
       declarer: () => html`
