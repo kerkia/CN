@@ -3751,7 +3751,7 @@ export default {
   "cd.letter.G": "Where the flag stands relative to the feature", "cd.letter.H": "Other information: first aid, refreshments, manned control",
   "cd.source": "Numbers, names, descriptions and map equivalents: the IOF's International Specification for Control Descriptions (ISCD 2024). Description symbols drawn by Purple Pen. Map symbols drawn by Ozimut after ISOM 2017-2 and ISSprOM 2019-2, as on the “Map symbols” page.",
   "cd.col.C": "Column C · Which of similar features", "cd.col.C.hint": "When several similar features lie in the circle.",
-  "cd.col.D": "Column D · The feature: {f}", "cd.col.D.hint": "The feature at the centre of the circle, as the map shows it. Under each, the map symbols the specification matches it with, with their numbers.",
+  "cd.col.D": "Column D · The feature: {f}", "cd.col.D.hint": "The feature at the centre of the circle, as the map shows it. Under each, the map symbols the specification matches it with, with their numbers, in a control circle: both at the map's scale (a 5 mm circle in the forest, 6 mm in sprint).",
   "cd.fam.1": "landforms", "cd.fam.2": "rocks and boulders", "cd.fam.3": "water and marshes", "cd.fam.4": "vegetation", "cd.fam.5": "man-made features",
   "cd.fam.6": "special features",
   "cd.col.E": "Column E · Feature detail", "cd.col.E.hint": "Its appearance, when it needs saying.",

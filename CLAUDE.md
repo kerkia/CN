@@ -366,7 +366,9 @@ downloaded with FFCO's French 2018 translation, kept in the session's scratch `f
 (`iscdRef`: Purple Pen keeps 2004's here and there, 11.x → 12.x, 12.x → 13.x, 13.x → 15.x…; radio/TV control and « map exchange at
 a control », not in ISCD, and Purple Pen's second forms of one symbol are left out), and column D the map symbols of ISCD's own
 « ISOM/ISSprOM » column (`MAP`, `mapCodes`: « a number includes all symbols beginning with it », 509 → 509.1, 509.2), drawn by
-`isom.js` exactly as « Symboles de carte » draws them, with their numbers (`mapSwatches`); the other columns have no map
+`isom.js` exactly as « Symboles de carte » draws them, with their numbers, each in a control circle at the map's scale
+(owner, 2026-11-04: `isom.isomInCircle` — 703's ø 5.0 mm forest, 6.0 sprint; areas over the whole square, points and lines in
+their swatch's band through its centre, `AREA`, `LIFT`; `mapSwatches`); the other columns have no map
 equivalent in ISCD, so none. Names and descriptions: ISCD 2024's (`cd.s.<ref>`, `cd.d.<ref>`; directional families from
 `cd.cdir.<D>` / `cd.gdir.<D>` patterns, the description on the family's first card only); French from FFCO's 2018 terms,
 the 2024 text translated faithfully; when the sheet language chosen differs from the site's, Purple Pen's name in it under the

@@ -3944,7 +3944,7 @@ export default {
   "cd.col.C": "Columna C · Cuál de los elementos parecidos",
   "cd.col.C.hint": "Cuando hay varios elementos parecidos en el círculo.",
   "cd.col.D": "Columna D · El elemento: {f}",
-  "cd.col.D.hint": "El elemento en el centro del círculo, tal como lo representa el mapa. Debajo de cada uno, los símbolos de mapa que la especificación le hace corresponder, con su número.",
+  "cd.col.D.hint": "El elemento en el centro del círculo, tal como lo representa el mapa. Debajo de cada uno, los símbolos de mapa que la especificación le hace corresponder, con su número, en un círculo de control: ambos a la escala del mapa (círculo de 5 mm en bosque, de 6 mm en sprint).",
   "cd.fam.1": "relieve",
   "cd.fam.2": "rocas y piedras",
   "cd.fam.3": "agua y pantanos",

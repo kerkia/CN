@@ -69,6 +69,8 @@ const tri = (x, y, s, rot, col) => { // a solid triangle of sides 8:6:5 scaled t
   return fillp(`M${P(A.map(([u, v]) => [x + u * c - v * si, y + u * si + v * c]))}Z`, col);
 };
 const cx = () => W / 2, cy = () => H / 2;
+/** How many times a swatch's area the frame drawn has (1, but for a control circle's square). */
+let areaK = 1;
 
 // ---- helpers of the forest symbols, each after a dimension of the specification (ISOM 2017-2 and its « 3.8 Précise
 // définition des symboles ») --------------------------------------------------------------------------------------------
@@ -87,20 +89,44 @@ function scatterMM(density, min, max = Infinity, seed = 0, margin = 0.15) {
 }
 function scatterNew(density, min, max, seed, margin) {
   const x0 = X0 + margin, y0 = Y0 + margin, x1 = X1() - margin, y1 = Y1() - margin;
-  const N = Math.round(density * (X1() - X0) * (Y1() - Y0));
-  const p = Array.from({ length: N }, (_, i) => [x0 + rnd(2 * i + 1, seed) * (x1 - x0), y0 + rnd(2 * i + 2, seed) * (y1 - y0)]);
+  const even = Math.sqrt(2 / (Math.sqrt(3) * density));
+  let p;
+  if (max < 1.25 * even) {
+    // a maximum distance near the even spacing (very broken ground, stony ground): thrown at random, the dots clump and leave
+    // holes the relaxation cannot close, so they start from staggered rows at that spacing, each moved a little at random
+    const a = Math.min(even, 0.97 * max), dy = (a * Math.sqrt(3)) / 2;
+    p = [];
+    for (let r = 0, y = y0; y <= y1; r++, y += dy) for (let x = x0 + (r % 2 ? a / 2 : 0); x <= x1; x += a) {
+      const i = p.length;
+      p.push([Math.min(x1, x + (rnd(2 * i + 1, seed) - 0.5) * 0.3 * a), Math.min(y1, y + (rnd(2 * i + 2, seed) - 0.5) * 0.3 * a)]);
+    }
+  } else {
+    const N0 = Math.round(density * (X1() - X0) * (Y1() - Y0));
+    p = Array.from({ length: N0 }, (_, i) => [x0 + rnd(2 * i + 1, seed) * (x1 - x0), y0 + rnd(2 * i + 2, seed) * (y1 - y0)]);
+  }
+  const N = p.length;
   // kept apart a little beyond the minimum, toward the even spacing of the density, so that they spread without clumps
-  const even = Math.sqrt(2 / (Math.sqrt(3) * density)), lo = Math.min(Math.max(min, 0.85 * even), 0.92 * max) * 1.02, clamp = (q) => { q[0] = Math.min(x1, Math.max(x0, q[0])); q[1] = Math.min(y1, Math.max(y0, q[1])); };
+  const lo = Math.min(Math.max(min, 0.85 * even), 0.92 * max) * 1.02, clamp = (q) => { q[0] = Math.min(x1, Math.max(x0, q[0])); q[1] = Math.min(y1, Math.max(y0, q[1])); };
+  // the neighbours looked for in a grid of cells as wide as the farthest distance that matters (all of them, the nearest
+  // beyond it, only for a dot with none so near): a swatch's few dots and a control circle's many cost alike per dot
+  const cell = Math.max(lo, Number.isFinite(max) ? max : lo), cols = Math.ceil((x1 - x0) / cell) + 1;
   for (let it = 0; it < 600; it++) {
     let moved = false;
+    const grid = new Map();
+    p.forEach((q, j) => { const k = Math.floor((q[0] - x0) / cell) + cols * Math.floor((q[1] - y0) / cell); (grid.get(k) || grid.set(k, []).get(k)).push(j); });
     for (let i = 0; i < N; i++) {
       let nd = Infinity, nj = -1;
-      for (let j = 0; j < N; j++) {
+      const gx = Math.floor((p[i][0] - x0) / cell), gy = Math.floor((p[i][1] - y0) / cell);
+      const near = [];
+      for (let a = gx - 1; a <= gx + 1; a++) for (let c = gy - 1; c <= gy + 1; c++) if (a >= 0 && a < cols) near.push(...(grid.get(a + cols * c) || []));
+      const look = (js) => { for (const j of js) {
         if (j === i) continue;
         const dx = p[j][0] - p[i][0], dy = p[j][1] - p[i][1], d = Math.hypot(dx, dy) || 1e-6;
         if (d < nd) { nd = d; nj = j; }
         if (d < lo) { const k = (lo - d) / 2 / d; p[i][0] -= dx * k; p[i][1] -= dy * k; p[j][0] += dx * k; p[j][1] += dy * k; clamp(p[i]); clamp(p[j]); moved = true; }
-      }
+      } };
+      look(near.sort((u, v) => u - v));
+      if (nd > cell && nd > max) { nd = Infinity; look(p.map((_, j) => j)); }
       if (nd > max && nj >= 0) { const k = (nd - max * 0.98) / 2 / nd, dx = p[nj][0] - p[i][0], dy = p[nj][1] - p[i][1]; p[i][0] += dx * k; p[i][1] += dy * k; clamp(p[i]); moved = true; }
     }
     if (!moved) break;
@@ -365,6 +391,7 @@ function spScreenSq(x0, y0, x1, y1, s, d, col) {
  *  dart throwing from a fixed seed. */
 function spScatter(count, d, gap, seed, x0 = X0 + 0.2, y0 = Y0 + 0.2, x1 = X1() - 0.2, y1 = Y1() - 0.2) {
   const out = []; let s = seed * 9301 + 49297;
+  count = Math.round(count * areaK); // as many a mm² in a control circle's square as in a swatch
   const r = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
   for (let tries = 0; out.length < count && tries < count * 400; tries++) {
     const p = [x0 + r() * (x1 - x0), y0 + r() * (y1 - y0)];
@@ -631,5 +658,32 @@ export function isomSvg(code, width = 126, cls = "ms-sw", sprint = false) {
   const draw = (course ? (sprint ? SP_COURSE : COURSE) : (sprint ? SP : S))[code];
   if (!draw) return "";
   const w = width, h = Math.round((H * width) / W);
-  return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" width="${w}" height="${h}" aria-hidden="true"><rect width="${W}" height="${H}" fill="${C.paper}"/>${draw()}</svg>`;
+  return `<svg class="${cls}" viewBox="0 0 ${W} ${H}" width="${w}" height="${h}" aria-hidden="true"><rect width="${W}" height="${H}" fill="${C.paper}"/>${ownIds(draw())}</svg>`;
+}
+/** A map symbol as a control would show it: drawn as above, at the map's scale, in a square a little larger than the control
+ *  circle (703: ø 5.0 mm on a forest map, 6.0 on a sprint map), the circle over it at its own size, `width` pixels wide. */
+export function isomInCircle(code, width = 64, cls = "ms-sw", sprint = false) {
+  const draw = (sprint ? SP : S)[code];
+  if (!draw || parseFloat(code) >= 700) return "";
+  const side = sprint ? 8.4 : 7.4, circle = (sprint ? SP_COURSE : COURSE)[703];
+  // an area fills the square; a point or a line is drawn in its swatch's band, centred
+  const area = (sprint ? AREA_SPRINT : AREA).has(String(code));
+  let body;
+  if (area) { W = H = side; areaK = ((W - 0.8) * (H - 0.8)) / (6.2 * 2.2); body = ownIds(draw()); areaK = 1; }
+  else { W = side; H = 3; body = `<g transform="translate(0 ${n((side - 3) / 2 + ((sprint ? LIFT_SPRINT : LIFT)[code] || 0))})">${ownIds(draw())}</g>`; W = H = side; }
+  return `<svg class="${cls}" viewBox="0 0 ${side} ${side}" width="${width}" height="${width}" aria-hidden="true"><rect width="${side}" height="${side}" fill="${C.paper}"/>${body}${circle()}</svg>`;
+}
+/** The areas (drawn over the whole square), forest and sprint. */
+const AREA = new Set(["113", "114", "208", "209", "210", "211", "212", "213", "214", "301", "302", "307", "308", "310", "401", "402", "403", "404", "405",
+  "406", "407", "408", "409", "410", "412", "413", "414", "501", "520"]);
+const AREA_SPRINT = new Set(["113", "208", "210", "213", "214", "301", "302", "307", "308", "310", "401", "402", "403", "404", "405", "406", "407", "408", "409",
+  "410", "411", "412", "413", "414", "501", "501.1", "501.2", "501.3", "520", "533"]);
+/** The swatches whose line is drawn above the band's middle: moved down so that it runs through the circle's centre. */
+const LIFT = { 104: 0.3, 201: 0.3, 202: 0.55 }, LIFT_SPRINT = { 104: 0.4, 201: 0.5, 202: 0.3 };
+// Clip paths and patterns get ids of their own in each drawing: the same symbol drawn twice on a page, in frames of different
+// sizes, would otherwise take the first one's.
+let drawn = 0;
+function ownIds(svg) {
+  const k = ++drawn;
+  return svg.replace(/\bid="([^"]+)"/g, `id="$1-${k}"`).replace(/url\(#([^)]+)\)/g, `url(#$1-${k})`);
 }

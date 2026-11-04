@@ -2,11 +2,11 @@
 // specification and only from it »): each symbol's number in the specification, and for column D the ISOM 2017-2 and ISSprOM
 // 2019-2 map symbols the specification's own « ISOM/ISSprOM » column names for it (« where a number is given it includes all
 // symbols beginning with that number, e.g. 509 indicates 509.1 & 509.2 »), drawn by isom.js exactly as « Symboles de carte »
-// draws them. The other columns have no map equivalent in the specification, so none is drawn. The symbols themselves are
+// draws them, in a control circle. The other columns have no map equivalent in the specification, so none is drawn. The symbols themselves are
 // Purple Pen's (tracer/symbols.js), whose ids keep older numbers here and there: `iscdRef` gives the specification's.
 // Names and descriptions: the catalogues' `cd.s.<ref>` / `cd.d.<ref>` (IOF's English, our French and the others' from it).
 
-import { GROUPS, GROUPS_SPRINT, isomSvg } from "./isom.js";
+import { GROUPS, GROUPS_SPRINT, isomInCircle } from "./isom.js";
 
 /** Column D: the specification's ISOM/ISSprOM column, by ISCD number. */
 const MAP = {
@@ -66,9 +66,10 @@ export function mapCodes(ref, sprint = false) {
   for (const c of MAP[ref] || []) for (const k of have) if ((k === c || k.startsWith(`${c}.`)) && !out.includes(k)) out.push(k);
   return out;
 }
-/** The swatches of those symbols, as « Symboles de carte » draws them, each with its number. */
-export function mapSwatches(ref, sprint = false, width = 70) {
+/** Those symbols as a control shows them: each drawn as « Symboles de carte » draws it, at the map's scale, in the control
+ *  circle at its own size (owner, 2026-11-04: « what this could look like in a control circle on the map »), with its number. */
+export function mapSwatches(ref, sprint = false, width = 64) {
   const codes = mapCodes(ref, sprint);
   if (!codes.length) return "";
-  return `<span class="cd-maps">${codes.map((c) => `<span class="cd-sw">${isomSvg(c, width, "cd-map", sprint)}<span class="cd-swn">${c}</span></span>`).join("")}</span>`;
+  return `<span class="cd-maps">${codes.map((c) => `<span class="cd-sw">${isomInCircle(c, width, "cd-map", sprint)}<span class="cd-swn">${c}</span></span>`).join("")}</span>`;
 }
