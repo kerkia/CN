@@ -26,7 +26,7 @@ from countries import agenda
 from countries.base import Country
 
 COUNTRY = Country(code="XW", federation="IOF", access="all", db=paths.DATA_DIR / "xw.sqlite3", lang="en", results=False)
-AGENDA_VERSION = 1
+AGENDA_VERSION = 2                       # 2: the WREs placed on the maps (a town of their name, else their country's centre)
 SOURCE = "https://ranking.orienteering.org"
 LIST = f"{SOURCE}/Calendar"
 # the calendar's disciplines -> the agenda's discipline and format

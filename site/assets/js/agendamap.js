@@ -2,7 +2,9 @@
 // as the mouse is over it in the table, all the more once it is selected»). The country's outline is
 // site/assets/geo/<cc>.json (tools/countrymaps.py, Natural Earth): no map service is asked anything. An event is placed by
 // its GPS coordinates (`gps`, the organiser's), else by `pos` — its town ([lat, lon]) or, when the town is unknown, its
-// département's or region's centre ([lat, lon, 1], drawn hollow) — from GeoNames (countries/agenda.py `add_positions`).
+// département's or region's centre ([lat, lon, 1], drawn hollow) — from GeoNames (countries/agenda.py `add_positions`); a World
+// Ranking Event the IOF's calendar alone gives, by a town of its name, else its country's centre (countries/wre.py; « IOF WRE »'s
+// own map is the world's, geo/xw.json).
 // Every event of the table is a dot; the one under the mouse, and the one selected, in the control flag's orange with its
 // place's name. Wheel or buttons to zoom, drag to move; a click on a dot selects its event.
 
