@@ -159,9 +159,12 @@ document.addEventListener("click", (e) => {
   if (!hintCcs) { openHeaderMenu(); return; }
   const pop = popOf(open), cur = current();
   if (!pop.hidden) { shut(pop); return; }
-  const others = byName(hintCcs.filter((cc) => cc !== cur && /^[A-Z]{2}$/.test(cc || "")));
-  pop.innerHTML = html`${others.length ? others.map((cc) => html`<button type="button" role="menuitem" data-cty-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`)
-    : html`<span class="cty-pop-none">${t("cty.hint.none")}</span>`}<button type="button" role="menuitem" class="cty-pop-all" data-cty-all>${t("cty.hint.all")}</button>`;
+  const others = byName(hintCcs.filter((cc) => cc !== cur && cc !== WRE && /^[A-Z]{2}$/.test(cc || "")));
+  // « IOF WRE » on top, a line under it, as in the header's menu (owner, 2026-11-04: sorted by name, it was lost among the I's)
+  const wre = hintCcs.includes(WRE) && cur !== WRE;
+  const pickBtn = (cc) => html`<button type="button" role="menuitem" data-cty-pick="${cc}">${flagImg(cc)}${name(cc)}</button>`;
+  pop.innerHTML = html`${wre ? html`${pickBtn(WRE)}${others.length ? html`<div class="cty-sep" role="separator"></div>` : ""}` : ""}${others.length ? others.map(pickBtn)
+    : wre ? "" : html`<span class="cty-pop-none">${t("cty.hint.none")}</span>`}<button type="button" role="menuitem" class="cty-pop-all" data-cty-all>${t("cty.hint.all")}</button>`;
   pop.hidden = false;
   open.setAttribute("aria-expanded", "true");
 });
