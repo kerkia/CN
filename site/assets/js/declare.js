@@ -30,15 +30,23 @@ export const asRace = (d) => ({ key: d.key, name: d.name, date_iso: d.date, plac
 const errText = (e) => { const k = `dc.err.${String(e.code || "").replace(/\s+/g, "_")}`; return t(k) !== k ? t(k) : t("dc.err.other"); };
 
 /**
- * The card « Mes compétitions déclarées » in `container`: the list, « Déclarer une compétition », each one changed or taken
- * off. Nothing for an account that may declare in no country. `onChange()`: after a change (the page draws its lists again).
+ * The card « Mes compétitions créées » in `container`: the list, « Créer une compétition », each one changed or taken off.
+ * Nothing for an account that may create in no country. `onChange()`: after a change (the page draws its lists again).
+ * `formOnly` (Orga › Analyses de carte's « Nouvelle compétition », owner 2026-11-04: creating is the tab's one job): the form at
+ * once, no list, no « Annuler »; `onCreated(competition)` after each creation, the form then empty again.
  */
-export async function card(container, { onChange = () => {} } = {}) {
+export async function card(container, { onChange = () => {}, formOnly = false, onCreated = () => {} } = {}) {
   const D = await load();
   if (!D.countries.length && !D.admin) { container.innerHTML = ""; return; }
   const countries = D.countries.length ? D.countries : country.sortedMembers(["FR"]).map((cc) => ({ cc, club: "" }));
   const draw = (editing = null, message = "") => {
     const list = D.competitions;
+    if (formOnly) {
+      container.innerHTML = html`<section class="card" style="margin-bottom:14px">
+        ${message ? html`<div class="notice" style="margin:14px 16px 0">${message}</div>` : ""}<div style="padding-top:14px">${form({})}</div></section>`;
+      bindForm({});
+      return;
+    }
     container.innerHTML = html`<section class="card" style="margin-bottom:14px">
       <div class="card-head"><div><h2>${t("dc.title")}</h2><div class="hint">${t("dc.lede")}</div></div>
         ${editing ? "" : html`<button type="button" class="btn btn-sm btn-primary" id="dc-add">${t("dc.add")}</button>`}</div>
@@ -80,20 +88,20 @@ export async function card(container, { onChange = () => {} } = {}) {
         ${FORMATS.map((v) => html`<option value="${v}" ${sel(v, d.epreuve || "")}>${t(`dc.fmt.${v}`)}</option>`)}</select></label>
       <label class="field" style="grid-column:1/-1"><span>${t("dc.f.site")}</span><input id="dc-site" type="url" maxlength="300" placeholder="https://" value="${d.site || ""}"></label>
       <div class="row" style="gap:8px;grid-column:1/-1"><button type="submit" class="btn btn-primary btn-sm">${d.id ? t("dc.save") : t("dc.create")}</button>
-        <button type="button" class="btn btn-sm" id="dc-cancel">${t("dc.cancel")}</button>
+        ${formOnly ? "" : html`<button type="button" class="btn btn-sm" id="dc-cancel">${t("dc.cancel")}</button>`}
         <span class="muted" style="font-size:12.5px" id="dc-msg"></span></div>
     </form>`;
   };
   const bindForm = (d) => {
     const f = $("#dc-form", container);
-    $("#dc-cancel", container).addEventListener("click", () => draw());
+    $("#dc-cancel", container)?.addEventListener("click", () => draw());
     // the club of the membership chosen, while the field has not been typed in
     let typed = !!d.club;
     $("#dc-club", container).addEventListener("input", () => { typed = true; });
     $("#dc-country", container).addEventListener("change", (e) => {
       if (!typed) $("#dc-club", container).value = countries.find((c) => c.cc === e.target.value)?.club || "";
     });
-    $("#dc-name", container).focus();
+    if (!formOnly) $("#dc-name", container).focus();
     f.addEventListener("submit", async (e) => {
       e.preventDefault();
       const v = (id) => $(`#${id}`, container).value.trim();
@@ -107,6 +115,7 @@ export async function card(container, { onChange = () => {} } = {}) {
         flash = t(r.soon ? "dc.saved.soon" : "dc.saved.later", { name: r.competition.name });
         draw(null, flash);
         onChange();
+        if (!d.id) onCreated(r.competition);
       } catch (err) { btn.disabled = false; $("#dc-msg", container).textContent = errText(err); }
     });
   };

@@ -1617,6 +1617,7 @@ export default {
   "sh.org.open.noCountry": "Aucune compétition de votre club à ouvrir. Hors de France, créez-la d'abord dans « Nouvelle compétition ».",
   "sh.org.newRace.intro": "En France, les compétitions viennent du calendrier de la fédération : celles de votre club paraissent d'elles-mêmes dans « Ouvrir une compétition ». Hors de France, créez ici une compétition de votre club (il faut avoir rejoint son pays dans Réglages › Mes pays) ; vous ouvrirez ensuite son analyse dans « Ouvrir une compétition ».",
   "sh.org.newTraining.intro": "Un entraînement de votre club : son analyse de carte est créée aussitôt, en brouillon jusqu'à « Publier ».",
+  "sh.org.created": "« {name} » est créée : elle est choisie ci-dessous, ouvrez son analyse de carte quand vous voulez.",
   "sh.by.gone": "compte supprimé",
   "sh.via.list": "depuis la liste d'Orga",
   "sh.via.form": "nouvel entraînement",

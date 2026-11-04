@@ -2307,6 +2307,7 @@ export default {
   "sh.org.open.noCountry": "Kein Wettkampf deines Vereins zu öffnen. Außerhalb Frankreichs erstelle ihn zuerst unter „Neuer Wettkampf“.",
   "sh.org.newRace.intro": "In Frankreich kommen die Wettkämpfe aus dem Kalender des Verbands: Die deines Vereins erscheinen von selbst unter „Wettkampf öffnen“. Außerhalb Frankreichs erstellst du hier einen Wettkampf deines Vereins (dazu musst du seinem Land unter Einstellungen › Meine Länder beigetreten sein); seine Analyse öffnest du dann unter „Wettkampf öffnen“.",
   "sh.org.newTraining.intro": "Ein Training deines Vereins: Seine Kartenanalyse wird sofort erstellt, als Entwurf bis „Veröffentlichen“.",
+  "sh.org.created": "„{name}“ ist erstellt: Er ist unten gewählt; öffne seine Kartenanalyse, wann du willst.",
   "sh.by.gone": "gelöschtes Konto",
   "sh.via.list": "aus der Orga-Liste",
   "sh.via.form": "neues Training",

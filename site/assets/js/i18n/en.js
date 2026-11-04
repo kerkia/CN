@@ -2231,6 +2231,7 @@ export default {
   "sh.org.open.noCountry": "No competition of your club to open. Outside France, create it first in “New competition”.",
   "sh.org.newRace.intro": "In France, competitions come from the federation's calendar: your club's appear by themselves in “Open a competition”. Outside France, create a competition of your club here (you need to have joined its country in Settings › My countries); you then open its analysis in “Open a competition”.",
   "sh.org.newTraining.intro": "A training session of your club: its map analysis is created at once, as a draft until “Publish”.",
+  "sh.org.created": "“{name}” is created: it is chosen below; open its map analysis whenever you like.",
   "sh.by.gone": "deleted account",
   "sh.via.list": "from Orga's list",
   "sh.via.form": "new training session",

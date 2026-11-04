@@ -18,7 +18,7 @@
 // state in the address. Stored by /api/analyses (R2).
 
 import { html, raw, $, $$, fmt, fmtDate, fileAccept } from "../util.js";
-import { t, tn } from "../i18n.js";
+import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
 import { getProv, clock } from "./provisional.js";
@@ -138,6 +138,7 @@ async function orgListPage(main, query = {}) {
     </div>
     <div data-panel="ouvrir" ${raw(tab === "ouvrir" ? "" : "hidden")}>
       <p class="hint sh-tab-intro">${t("sh.org.open.intro")}</p>
+      <div class="notice" id="sh-open-note" hidden style="margin:0 0 10px"></div>
       <div class="sh-pick-bar"><label class="field"><span>${t("sh.org.filter")}</span><input id="sh-f-open" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label>
         <span class="sh-pick-act"><span class="muted" id="sh-sel-open">${t("sh.org.pick.open")}</span>
           <button type="button" class="btn btn-primary" id="sh-go-open" disabled>${t("sh.org.activate")}</button></span></div>
@@ -159,8 +160,10 @@ async function orgListPage(main, query = {}) {
   createForm($("#sh-create"), club);
   const day0 = today();
   const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-  const own = data.analyses.filter((a) => a.organiser);
-  const byRace = new Map(own.filter((a) => a.kind === "race").map((a) => [a.race, a]));
+  // the analyses one manages here: those one opened oneself, every organiser's for an administrator (owner, 2026-11-04: « besides
+  // admins, users should only see the events they have created »); a competition opened by a club-mate is not offered again
+  const own = data.analyses.filter((a) => a.organiser && (me?.admin || a.mine));
+  const byRace = new Map(data.analyses.filter((a) => a.kind === "race" && a.organiser).map((a) => [a.race, a]));
   // the competitions that may be opened: those of the last 60 days organised by one's club (all of them for an administrator)
   // and those the account created outside France (declare.js), whatever their day: an organiser may prepare the map before
   const races = ((await getProv("index.json"))?.races || []).filter((x) => x.docs && !x.soon && x.date_iso <= day0);
@@ -187,9 +190,36 @@ async function orgListPage(main, query = {}) {
     html`<button type="button" class="btn btn-sm" data-to-tab="${k}">${label}</button>`)}</div>` : ""}</div>`;
 
   // a list to choose from, and its one button (owner: « a selection from the list and a button »): a click on a row chooses it,
-  // a double click or Enter acts on it
-  const picker = ({ list, box, filter, label, go, rows, table, none, act }) => {
+  // a double click or Enter acts on it. Its columns sort as the Agenda's (owner, 2026-11-04: « multi-sorting on the tables »): a
+  // click on a heading sorts by it alone (again: the other way), Shift + click adds it as a further key, then turns it, then
+  // takes it out; kept for the visit
+  const coll = new Intl.Collator(locale(), { sensitivity: "base", numeric: true });
+  const picker = ({ list, box, filter, label, go, rows, colgroup, cols, none, act, sortKey }) => {
     let sel = null;
+    const DEF = [{ key: "date", dir: -1 }];
+    let sortBy = (() => { try { const v = JSON.parse(sessionStorage.getItem(sortKey) || "null"); return Array.isArray(v) && v.length ? v : null; } catch (e) { return null; } })() || DEF;
+    const colOf = (k) => cols.find((c) => c.key === k);
+    const firstDir = (k) => colOf(k)?.dir || 1;
+    const sorted = (xs) => {
+      const at = new Map(xs.map((x, i) => [x.key, i]));
+      return [...xs].sort((a, b) => {
+        for (const { key, dir } of sortBy) {
+          const c = colOf(key); if (!c) continue;
+          const x = c.val(a), y = c.val(b);
+          if ((x == null || x === "") && (y == null || y === "")) continue;
+          if (x == null || x === "") return 1;                     // the empty ones last, whichever way
+          if (y == null || y === "") return -1;
+          const d = typeof x === "number" ? x - y : coll.compare(String(x), String(y));
+          if (d) return d * dir;
+        }
+        return at.get(a.key) - at.get(b.key);
+      });
+    };
+    const head = () => html`<thead><tr><th></th>${cols.map((c) => {
+      const i = sortBy.findIndex((o) => o.key === c.key);
+      const mark = i < 0 ? "" : html`<span class="arrow">${sortBy[i].dir > 0 ? "▲" : "▼"}${sortBy.length > 1 ? html`<sup>${i + 1}</sup>` : ""}</span>`;
+      return html`<th scope="col" class="sortable" data-sort="${c.key}" title="${c.tip ? `${c.tip} — ${t("agd.sortHint")}` : t("agd.sortHint")}"
+        aria-sort="${i === 0 ? (sortBy[0].dir > 0 ? "ascending" : "descending") : "none"}">${c.label}${mark}</th>`; })}</tr></thead>`;
     const mark = () => {
       $$(`#${box} tr[data-k]`).forEach((tr) => { const on = tr.dataset.k === sel; tr.classList.toggle("sh-sel", on); const r = $("input", tr); if (r) r.checked = on; });
       const x = list().find((y) => y.key === sel);
@@ -198,9 +228,9 @@ async function orgListPage(main, query = {}) {
     };
     const draw = () => {
       const q = norm($(`#${filter}`).value);
-      const all = list(), shown = q ? all.filter((x) => norm(`${x.name} ${x.org || ""} ${x.place || ""} ${x.a?.ownerName || ""} ${x.a?.ownerEmail || ""} ${t(`sh.org.type.${x.kind || "race"}`)}`).includes(q)) : all;
+      const all = list(), shown = sorted(q ? all.filter((x) => norm(`${x.name} ${x.org || ""} ${x.place || ""} ${x.a?.ownerName || ""} ${x.a?.ownerEmail || ""} ${t(`sh.org.type.${x.kind || "race"}`)}`).includes(q)) : all);
       if (sel && !shown.some((x) => x.key === sel)) sel = null;
-      $(`#${box}`).innerHTML = shown.length ? html`<table class="data compact sh-orglist" data-freeze="1" data-freeze-phone="1">${raw(table)}
+      $(`#${box}`).innerHTML = shown.length ? html`<table class="data compact sh-orglist" data-freeze="1" data-freeze-phone="1">${raw(colgroup)}${raw(head())}
         <tbody>${shown.map((x) => html`<tr data-k="${x.key}" tabindex="-1"><td class="c-sel"><input type="radio" name="${box}" value="${x.key}" aria-label="${x.name}"></td>${raw(rows(x))}</tr>`)}</tbody></table>`
         : q ? html`<div class="empty">${t("lv.find.none")}</div>` : none();
       $$(`#${box} tr[data-k]`).forEach((tr) => {
@@ -216,25 +246,45 @@ async function orgListPage(main, query = {}) {
     };
     $(`#${filter}`).addEventListener("input", draw);
     $(`#${go}`).addEventListener("click", () => { const x = list().find((y) => y.key === sel); if (x) act(x); });
-    return draw;
+    $(`#${box}`).addEventListener("click", (ev) => {
+      const th = ev.target.closest("th[data-sort]");
+      if (!th) return;
+      const key = th.dataset.sort, i = sortBy.findIndex((o) => o.key === key);
+      if (!ev.shiftKey) sortBy = [{ key, dir: i === 0 && sortBy.length === 1 ? -sortBy[0].dir : i === 0 ? sortBy[0].dir : firstDir(key) }];
+      else if (i < 0) sortBy = [...sortBy, { key, dir: firstDir(key) }];
+      else if (sortBy[i].dir === firstDir(key) || sortBy.length === 1) sortBy = sortBy.map((o, j) => (j === i ? { ...o, dir: -o.dir } : o));
+      else sortBy = sortBy.filter((_, j) => j !== i);
+      try { sessionStorage.setItem(sortKey, JSON.stringify(sortBy)); } catch (e) { /* this page only */ }
+      draw();
+    });
+    // a row chosen from outside (a competition just created): shown, chosen, brought into view
+    const select = (k) => { sel = k; draw(); $(`#${box} tr[data-k="${CSS.escape(k)}"]`)?.scrollIntoView({ block: "center" }); };
+    return { draw, select };
   };
 
   // 1. the opened analyses, to manage
   const openedRows = opened.map((x) => ({ ...x, key: x.id }));
-  picker({ list: () => openedRows, box: "sh-list-opened", filter: "sh-f-opened", label: "sh-sel-opened", go: "sh-go-opened",
-    table: html`<colgroup><col class="c-sel"><col class="c-date"><col class="c-type"><col><col class="c-org"><col class="c-status"><col class="c-by"></colgroup>
-      <thead><tr><th></th><th>${t("f.date")}</th><th>${t("sh.org.col.type")}</th><th>${t("sh.org.col.event")}</th><th>${t("sh.org.col.org")}</th><th>${t("sh.org.col.state")}</th><th title="${t("sh.org.col.by.tip")}">${t("sh.org.col.by")}</th></tr></thead>`,
+  picker({ list: () => openedRows, box: "sh-list-opened", filter: "sh-f-opened", label: "sh-sel-opened", go: "sh-go-opened", sortKey: "ocn.sh.sort.opened",
+    colgroup: html`<colgroup><col class="c-sel"><col class="c-date"><col class="c-type"><col><col class="c-org"><col class="c-status"><col class="c-by"></colgroup>`,
+    cols: [{ key: "date", label: t("f.date"), dir: -1, val: (x) => x.date || "" },
+      { key: "type", label: t("sh.org.col.type"), val: (x) => t(`sh.org.type.${x.kind}`) },
+      { key: "event", label: t("sh.org.col.event"), val: (x) => x.name },
+      { key: "org", label: t("sh.org.col.org"), val: (x) => x.org || "" },
+      { key: "state", label: t("sh.org.col.state"), val: (x) => (x.a.draft ? 0 : 1000) + (Number(x.a.courses) || 0) },
+      { key: "by", label: t("sh.org.col.by"), tip: t("sh.org.col.by.tip"), val: (x) => `${x.a.ownerName || ""} ${x.a.created || ""}` }],
     rows: (x) => html`<td class="num">${x.date ? fmtDate(x.date, "short") : "—"}</td><td><span class="tag">${t(`sh.org.type.${x.kind}`)}</span></td>${raw(nameCell(x))}
       <td class="muted cut" title="${x.org || ""}">${x.org || "—"}</td>
       <td class="cut"><span class="tag ${x.a.draft ? "sh-m-draft" : "sh-m-live"}">${t(x.a.draft ? "sh.m.state.draft" : "sh.m.state.live")}</span> <span class="muted">${tn("ma.courses", x.a.courses)}${x.kind === "club" ? ` · ${t(`sh.vis.${x.a.vis}`)}` : ""}</span></td>
       <td class="cut" title="${byTitle(x.a)}">${raw(byLine(x.a))}</td>`,
     none: () => empty(t("sh.org.opened.none"), ["ouvrir", t("sh.org.tab.open")], ["entrainement", t("sh.org.tab.newTraining")]),
-    act: (x) => { location.hash = `${ORG_ROUTE}?id=${x.id}`; } })();
+    act: (x) => { location.hash = `${ORG_ROUTE}?id=${x.id}`; } }).draw();
 
   // 2. the competitions not opened yet, to open
-  const drawOpen = picker({ list: toOpen, box: "sh-list-open", filter: "sh-f-open", label: "sh-sel-open", go: "sh-go-open",
-    table: html`<colgroup><col class="c-sel"><col class="c-date"><col><col class="c-org"></colgroup>
-      <thead><tr><th></th><th>${t("f.date")}</th><th>${t("sh.org.type.race")}</th><th>${t("sh.org.col.org")}</th></tr></thead>`,
+  const openList = picker({ list: toOpen, box: "sh-list-open", filter: "sh-f-open", label: "sh-sel-open", go: "sh-go-open", sortKey: "ocn.sh.sort.open",
+    colgroup: html`<colgroup><col class="c-sel"><col class="c-date"><col><col class="c-org"></colgroup>`,
+    cols: [{ key: "date", label: t("f.date"), dir: -1, val: (x) => x.date || "" },
+      { key: "event", label: t("sh.org.type.race"), val: (x) => x.name },
+      { key: "org", label: t("sh.org.col.org"), val: (x) => x.org || "" }],
     rows: (x) => html`<td class="num">${x.date ? fmtDate(x.date, "short") : "—"}</td>${raw(nameCell(x))}<td class="muted cut" title="${x.org || ""}">${x.org || "—"}</td>`,
     none: () => club || me?.admin ? empty(t("sh.org.open.none", { club: club || "—" }), ["competition", t("sh.org.tab.newRace")])
       : !auth.sees("FR") ? empty(t("sh.org.open.noCountry"), ["competition", t("sh.org.tab.newRace")]) : empty(t("sh.org.noclub")),
@@ -244,11 +294,19 @@ async function orgListPage(main, query = {}) {
       try { const r = await api("", { method: "POST", body: { kind: "race", race: x.key, title: x.name, date: x.date, vis: "public", via: "list" } }); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
       catch (e) { b.disabled = false; alert(errText(e)); }
     } });
-  drawOpen();
+  openList.draw();
 
-  // 3. a competition created by its organiser (outside France: France's come from the federation's calendar), then opened in 2
-  declare.card($("#dc-card"), { onChange: async () => { created = (await declare.load()).competitions || []; drawOpen(); } });
-  declare.load().then((D) => { created = D.competitions || []; drawOpen(); });
+  // 3. a competition created by its organiser (outside France: France's come from the federation's calendar): the form at once,
+  // nothing listed (owner, 2026-11-04: « this page is not there to list competitions created »); once created, it is chosen in 2
+  declare.card($("#dc-card"), { formOnly: true, onCreated: (c) => {
+    created = [c, ...created.filter((d) => d.key !== c.key)];
+    show("ouvrir");
+    openList.select(c.key);
+    const note = $("#sh-open-note");
+    note.textContent = t("sh.org.created", { name: c.name });
+    note.hidden = false;
+  } });
+  declare.load().then((D) => { created = D.competitions || []; openList.draw(); });
 
   if (me?.admin) {
     const mb = (b) => (b >= 1e9 ? t("unit.gb", { n: fmt(b / 1e9, 2) }) : t("unit.mb", { n: fmt(b / 1e6, 1) }));
