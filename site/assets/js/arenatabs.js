@@ -40,6 +40,22 @@ export function isScoreClass(k) {
 export const isScoreRace = (race, docs = []) => /^score$/i.test(race?.epreuve || "")
   || (() => { const ks = docs.flatMap((d) => d.classes || []).filter((k) => k.runners?.some((r) => r.splits)); return ks.length > 0 && ks.every(isScoreClass); })();
 
+/** A score class's own ranking (owner, 2026-11-04: the sources' places follow the time alone, liveresultat's among them): the
+ * points of the controls taken — or their number when the controls carry no points —, then the time; runners on equal points
+ * and time share a place, and only the finishers ("ok") have one. Late penalties are left out: they need the organiser's rules.
+ * { withPts, of: Map(runner → { n, pts, place }) }. */
+export function scoreRanking(k) {
+  const cs = (k?.controls || []).map(scoreControl), withPts = cs.some((c) => c.pts != null);
+  const of = new Map();
+  for (const r of k?.runners || []) {
+    const taken = (r.splits || []).slice(0, cs.length || undefined).map((s, i) => (s == null ? null : i)).filter((i) => i != null);
+    of.set(r, { n: taken.length, pts: withPts ? taken.reduce((a, i) => a + (cs[i]?.pts || 0), 0) : taken.length, place: null });
+  }
+  const ok = [...of].filter(([r]) => r.status === "ok" && r.time_s != null);
+  for (const [r, v] of ok) v.place = 1 + ok.filter(([y, w]) => w.pts > v.pts || (w.pts === v.pts && y.time_s < r.time_s)).length;
+  return { withPts, of };
+}
+
 /** The analysis's views for a race or class. */
 export const splitViews = (score) => (score ? SCORE_VIEWS : SPLIT_VIEWS);
 

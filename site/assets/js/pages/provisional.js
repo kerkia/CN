@@ -16,7 +16,7 @@ import * as country from "../country.js";
 import { oChecklist, saveOChecklist } from "../startchecks.js";
 import * as tracking from "../tracking.js";
 import { bindRunnerPop } from "../runnerpop.js";
-import { raceTabs, raceHref, isScoreRace } from "../arenatabs.js";
+import { raceTabs, raceHref, isScoreRace, isScoreClass, scoreRanking } from "../arenatabs.js";
 
 const SOURCE = { ffco: t("prov.official"), upload: t("src.upload"), liveresultat: "liveresultat", winsplits: "WinSplits", heyries: "Orientation Data", site: t("src.site"), livelox: "Livelox",
   helga: "Helga", olive: "O'Live", meosdjango: "MeOSDjango", oreplay: "O-Replay", sportident: "SPORTident Center", direct: t("src.direct") };
@@ -266,10 +266,14 @@ async function detail(main, idx, query) {
       return p ? html`<div class="pub">${t("prov.pub")} ${fmt(p.score)}${s != null && s !== p.score
         ? html` <span style="color:var(--bad)">(${s > p.score ? "+" : "−"}${fmt(Math.abs(s - p.score))})</span>` : ""}</div>` : "";
     };
+    // a score race (a rogaine) with its split times: placed by the points of the controls taken (their number without points),
+    // then the time (arenatabs.scoreRanking) — the sources' places follow the time alone; the late penalties are not known
+    const sc = k.runners.some((r) => r.splits) && (/^score$/i.test(race.epreuve || "") || isScoreClass(k)) ? scoreRanking(k) : null;
+    const rows = sc ? k.runners.map((r) => ({ ...r, ...sc.of.get(r) })) : k.runners;
     dataTable($("#pv-class"), {
-      compact: true, rows: k.runners, sortKey: "place", sortDir: 1, rowClass: (r) => (who && r.lic === who ? "selected" : ""),
+      compact: true, rows, sortKey: "place", sortDir: 1, rowClass: (r) => (who && r.lic === who ? "selected" : ""),
       columns: [
-        { key: "place", label: t("col.place"), cls: "rank num", defaultDir: 1, sort: (r) => r.place ?? 1e6,
+        { key: "place", label: sc ? html`<span title="${t("spl.sc.rank")}">${t("col.place")}</span>` : t("col.place"), cls: "rank num", defaultDir: 1, sort: (r) => r.place ?? 1e6,
           render: (r) => (r.place != null ? fmt(r.place) : html`<span class="dim">${STATUS[r.status]}</span>`) },
         { key: "name", label: t("rk.col.name"), defaultDir: 1, sort: (r) => r.name,
           render: (r) => (r.lic ? popName(r)
@@ -281,6 +285,8 @@ async function detail(main, idx, query) {
             return c.code ? html`<span title="${c.name}">${c.code}</span>` : html`<span style="font-size:12.5px">${r.club || ""}</span>`; } },
         { key: "time", label: t("col.time"), align: "r", cls: "num", defaultDir: 1, sort: (r) => (ok(r) ? r.time_s : null),
           render: (r) => (ok(r) ? clock(r.time_s) : "") },
+        ...(sc ? [{ key: "n", label: t("sh.score.col.n"), align: "r", cls: "num", sort: (r) => r.n, render: (r) => fmt(r.n) },
+          ...(sc.withPts ? [{ key: "pts", label: html`<span title="${t("spl.sc.pts.hint")}">${t("spl.sc.pts")}</span>`, align: "r", cls: "num", sort: (r) => r.pts, render: (r) => fmt(r.pts) }] : [])] : []),
         ...(scored ? M.flatMap((m) => [{
           key: `cn_${m}`, label: subHead(cnLabel(m), "J-15"), align: "r", cls: "num", sort: (r) => r.cnj15?.[m],
           render: (r) => (r.cnj15?.[m] ? fmt(r.cnj15[m]) : html`<span class="dim">—</span>`),

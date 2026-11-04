@@ -45,7 +45,7 @@ import { getProv, clock } from "./provisional.js";
 import * as local from "../local.js";
 import { liveId, toDoc, watch } from "../livesplits.js";
 import { bindRunnerPop } from "../runnerpop.js";
-import { SPLIT_VIEWS, resultsTab, splitViews, isScoreClass, scoreControl } from "../arenatabs.js";
+import { SPLIT_VIEWS, resultsTab, splitViews, isScoreClass, scoreControl, scoreRanking } from "../arenatabs.js";
 import * as auth from "../auth.js";
 
 // a file under deposit (#/temps-inter?course=fichier) leads back to its race's deposit, under « Organisation ›
@@ -309,14 +309,16 @@ export async function render(main, { query = {}, embed = null } = {}) {
       x.place = asIdeal ? (x.r.status === "ok" ? x.cumRank[n] : null) : x.r.place;
     }
     // a score race: each runner's controls in the order taken ([{ i, s }]: the control's index, its time from the start), the
-    // points of those its name gives (« 206 (1p) »). The places stay the source's: points alone would ignore the late penalties,
-    // which no source gives (liveresultat's places follow the time alone)
+    // points of those its name gives (« 206 (1p) »); placed by the points, then the time (arenatabs.scoreRanking)
     const ctl = codes.map(scoreControl), withPts = sc && ctl.some((c) => c.pts != null);
     const visits = (x) => x.cum.slice(0, n).map((s, i) => (s == null ? null : { i, s })).filter(Boolean).sort((a, b) => a.s - b.s);
-    if (sc) for (const x of R) { x.v = visits(x); x.pts = x.v.reduce((a, o) => a + (ctl[o.i].pts || 0), 0); }
+    if (sc) {
+      const rank = scoreRanking(k).of;
+      for (const x of R) { x.v = visits(x); x.pts = x.v.reduce((a, o) => a + (ctl[o.i].pts || 0), 0); x.place = rank.get(x.r)?.place ?? null; }
+    }
     const byPlace = (xs) => [...xs].sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999) || (a.r.place ?? 9999) - (b.r.place ?? 9999));
     const shown = club ? R.filter((x) => x.r.club === club) : R;
-    // the first five compared: the fastest, or a score race's best placed (its places count the points)
+    // the first five compared: the fastest, or a score race's best placed (by its points)
     if (!picked) picked = new Set((sc ? byPlace(shown) : shown.filter((x) => x.r.status === "ok").sort((a, b) => a.r.time_s - b.r.time_s)).slice(0, 5).map((x) => x.r.name));
     const sel = () => byPlace(shown.filter((x) => picked.has(x.r.name)));
     const label = (i) => (i === n ? t("spl.finish") : `${i + 1} (${codes[i]})`);
@@ -368,18 +370,18 @@ export async function render(main, { query = {}, embed = null } = {}) {
       const rows = byPlace(shown).map((x) => ({ x, v: x.v, pts: x.pts }));
       body.innerHTML = html`
         <section class="card"><div class="card-head"><div><h2>${kName(k.name)} · ${fmt(shown.length)} ${t("prov.runners").toLowerCase()}</h2></div></div>
-          <div class="table-wrap"><table class="data compact splits"${raw(freezeAttrs(2, 1))}><thead><tr><th class="r">${t("prov.place")}</th><th>${t("prov.name")}</th>
+          <div class="table-wrap"><table class="data compact splits"${raw(freezeAttrs(2, 1))}><thead><tr><th class="r" title="${t("spl.sc.rank")}">${t("prov.place")}</th><th>${t("prov.name")}</th>
             <th class="r">${t("prov.time")}</th><th class="r">${t("sh.score.col.n")}</th>${withPts ? html`<th class="r" title="${t("spl.sc.pts.hint")}">${t("spl.sc.pts")}</th>` : ""}
             <th>${t("sh.score.col.order")}</th></tr></thead>
           <tbody>${rows.map(({ x, v, pts }) => html`<tr>
-            <td class="r num">${x.r.place ?? ""}</td>
+            <td class="r num">${x.place ?? ""}</td>
             <td style="white-space:nowrap">${name(x)}<div class="muted" style="font-size:11.5px">${x.r.club || ""}</div></td>
             <td class="r num">${x.r.status !== "ok" ? stLabel(x.r.status) : clock(x.r.time_s)}</td>
             <td class="r num">${fmt(v.length)} <span class="muted" style="font-size:11px">/ ${fmt(n)}</span></td>
             ${withPts ? html`<td class="r num">${fmt(pts)}</td>` : ""}
             <td class="sp-sc-order">${v.map((o, j) => html`<span class="sp-sc-c" title="${t("spl.sc.leg", { t: clock(o.s - (j ? v[j - 1].s : 0)) })}"><b>${ctl[o.i].code}</b>${
               ctl[o.i].pts != null ? html` <span class="muted">+${fmt(ctl[o.i].pts)}</span>` : ""}<span class="muted">${clock(o.s)}</span></span>`)}</td></tr>`)}</tbody></table></div></section>
-        ${foot(t("spl.sc.hint"), withPts && t("spl.sc.pts.hint"))}`;
+        ${foot(t("spl.sc.hint"), t("spl.sc.rank"))}`;
     }
 
     if (view === "table" && !sc) {
