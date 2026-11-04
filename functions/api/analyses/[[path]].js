@@ -20,7 +20,9 @@
 // organiser and the administrators may remove any.
 //
 //   GET    /api/analyses?kind=club|race[&race=<key>]   the analyses one may open (or unlock)
-//   POST   /api/analyses                               create { kind, title, date, race?, vis, password? } -> { id }
+//   POST   /api/analyses                               create { kind, title, date, race?, vis, password?, via? } -> { id }
+//                                                      (`via`: where it was opened — "list" Orga's list, "form" a new training,
+//                                                      "tracer" the Tracer's publication; kept since 2026-11-04 with `created`)
 //   GET    /api/analyses/<id>                          the analysis and its traces' list
 //   PUT    /api/analyses/<id>                          the organiser: { title?, vis?, password?, courses?, draft?, opts? }
 //   GET    /api/analyses/<id>/stats                    the organiser: views, traces, solo replays, per circuit
@@ -76,7 +78,9 @@ async function unlockKey(env, meta, uid) {
   return b64url(sig);
 }
 
+const VIA = ["list", "form", "tracer"];
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", club: m.club || "", orgClub: m.orgClub || "", vis: m.vis,
+  created: m.created || "", via: m.via || "",
   visitors: m.visitors && m.vis === "public" && !m.draft ? "1" : "", draft: m.draft ? "1" : "", solo: optsOf(m).solo ? "1" : "0",
   owner: m.owner, ownerName: m.ownerName || "", courses: (m.courses || []).length, updated: m.updated, pos: centreOf(m) });
 /** The middle of the first circuit's map, "lat,lon" (« Analyse de carte » places the event on its map), or "". */
@@ -296,10 +300,11 @@ const forUsers = withUser(async (ctx, user) => {
         const m = o.customMetadata || {};
         if (kind && m.kind !== kind) continue;
         if (race && m.race !== race) continue;
-        // an analysis saved before its summary had a position: its summary written again once (its date of change kept)
-        if (m.pos === undefined && Number(m.courses) > 0) {
+        // an analysis saved before its summary had a position, or its creation's date: its summary written again once (its date of
+        // change kept)
+        if ((m.pos === undefined && Number(m.courses) > 0) || m.created === undefined) {
           const full = await loadMeta(env, m.id);
-          if (full) { await env.BUCKET.put(o.key, JSON.stringify(full), { httpMetadata: { contentType: "application/json" }, customMetadata: custom(full) }); m.pos = centreOf(full); }
+          if (full) { await env.BUCKET.put(o.key, JSON.stringify(full), { httpMetadata: { contentType: "application/json" }, customMetadata: custom(full) }); Object.assign(m, custom(full)); }
         }
         const meta = { ...m, owner: Number(m.owner), courses: [] };
         const org = await isOrganiser(env, user, meta, lazyClub);
@@ -311,9 +316,13 @@ const forUsers = withUser(async (ctx, user) => {
         if (!acc) continue;
         out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, ownerName: m.ownerName,
           courses: Number(m.courses) || 0, updated: m.updated, mine: meta.owner === user.id, organiser: org, access: acc,
-          draft: m.draft === "1", solo: m.solo !== "0", pos: m.pos ? m.pos.split(",").map(Number) : null });
+          draft: m.draft === "1", solo: m.solo !== "0", pos: m.pos ? m.pos.split(",").map(Number) : null,
+          // who opened it (owner, 2026-11-04: « I need a way for an admin to see which organisers own and opened which map
+          // analyses »): shown to its organisers; the account's e-mail to the administrators only (below)
+          ...(org ? { owner: meta.owner, created: m.created || "", via: m.via || "" } : {}) });
       }
       out.sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.updated || "").localeCompare(a.updated || ""));
+      if (isAdmin(env, user)) await withEmails(env, out);
       return json({ analyses: out, club: await lazyClub() });
     }
     if (method === "POST") {
@@ -344,7 +353,7 @@ const forUsers = withUser(async (ctx, user) => {
         pw = { pw_hash: h.hash, pw_salt: h.salt, pw_iter: h.iter };
       }
       const meta = { id: newId(), kind, title, date, race, club: club || "", orgClub, vis, pw, owner: user.id, ownerName: user.display_name || "",
-        created: nowIso(), updated: nowIso(), courses: [], draft: true };
+        created: nowIso(), updated: nowIso(), courses: [], draft: true, ...(VIA.includes(b.via) ? { via: b.via } : {}) };
       await saveMeta(env, meta);
       return json({ id: meta.id });
     }
@@ -380,7 +389,9 @@ const forUsers = withUser(async (ctx, user) => {
       });
       // a runner's visit counted (not the organisers', nor « Analyse solo »'s own read: it counts itself, POST …/solo/<n>)
       if (!organiser && new URL(request.url).searchParams.get("for") !== "solo") ctx.waitUntil?.(countUse(env, id, "view", user.id));
-      return json({ analysis: publicMeta(meta), traces, you: { uid: user.id, organiser } });
+      // the administrators: the e-mail of the account that opened it
+      const creator = isAdmin(env, user) ? (await withEmails(env, [{ owner: meta.owner }]))[0] : null;
+      return json({ analysis: publicMeta(meta), traces, you: { uid: user.id, organiser }, ...(creator?.ownerEmail ? { ownerEmail: creator.ownerEmail } : {}) });
     }
     if (!organiser) return json({ error: "forbidden" }, 403);
     if (method === "PUT") {
@@ -597,4 +608,16 @@ async function statsOf(env, meta) {
   }
   return { courses: [...courses.values()], viewers, viewDays, recent, guests, runners: tracers.size, solo: soloAll.size,
     soloOnly: [...soloAll].filter((u) => !tracers.has(u)).length, lastView, lastTrace, created: meta.created || "" };
+}
+
+/** The administrators' view: each analysis's opener's e-mail (`ownerEmail`), read from the accounts in one query. */
+async function withEmails(env, list) {
+  const ids = [...new Set(list.map((a) => Number(a.owner)).filter((n) => Number.isInteger(n) && n > 0))];
+  if (!ids.length || !env.DB) return list;
+  try {
+    const rows = (await env.DB.prepare(`SELECT id, email FROM users WHERE id IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results || [];
+    const by = new Map(rows.map((r) => [Number(r.id), r.email]));
+    for (const a of list) if (by.has(Number(a.owner))) a.ownerEmail = by.get(Number(a.owner));
+  } catch (e) { /* the names alone */ }
+  return list;
 }

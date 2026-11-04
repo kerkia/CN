@@ -1628,7 +1628,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   day and days in custom metadata, written once a day), `solo-<n>-<uid>.json` (`POST …/solo/<n>`, sent once a visit by Solo's orga mode
   when the playback starts), `gview-<day>.json` (visitors without an account, a count); traces' custom metadata `note: "1"` from then
   on (comments counted from 2026-11-04). An administrator's test traces are counted apart (« +N de test », a « Tests » column), never
-  as runners. Removed with the analysis, the circuit and the account (`api/account/delete.js`); the privacy
+  as runners. **Who opened it** (owner, 2026-11-04: « I need a way for an admin to see which organisers own and opened which map
+  analyses »): Orga's list has « Ouverte par » (the account's name, the day, the way in) and « Seulement les analyses ouvertes », the
+  analysis's page « Ouverte par … le … »; the administrators also see the account's e-mail (`withEmails`, one D1 query). `created` and
+  `via` (« list » Orga's button, « form » a new training, « tracer » the Tracer's publication; recorded since 2026-11-04) are in each
+  analysis's summary (an older summary is written again once at the first list). Removed with the analysis, the circuit and the account (`api/account/delete.js`); the privacy
   page says so.
 - **« Analyse multi » is no longer said** (owner, 2026-11-04), in any language: what an organiser opens for an event and the
   runners add their trace to is its « analyse de carte » (map analysis, Kartenanalyse, análisis de mapa; Orga's page « Analyses de

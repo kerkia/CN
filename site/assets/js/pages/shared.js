@@ -127,7 +127,8 @@ async function orgListPage(main) {
     ${raw(betaNote("multi"))}
     <section class="card sh-create" id="sh-create" hidden></section>
     <div id="dc-card"></div>
-    <div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="sh-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>
+    <div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="sh-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label>
+      <label class="an-opt"><input type="checkbox" id="sh-opened"> ${t("sh.org.onlyOpened")}</label></div>
     <section class="card"><div class="table-wrap" id="sh-list"><div class="empty">${t("misc.loading")}</div></div></section>
     <p class="muted" style="font-size:12.5px;margin:6px 2px 0" id="sh-storage"></p>`;
   let data;
@@ -148,28 +149,36 @@ async function orgListPage(main) {
     ...own.filter((a) => a.kind === "club").map((a) => ({ kind: "club", date: a.date, name: a.title, org: a.ownerName, a })),
   ].sort((a, b) => (b.date || "").localeCompare(a.date || "") || a.name.localeCompare(b.name, "fr"));
   const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  // who opened each analysis, when and from where (owner, 2026-11-04: « who did this? »): its organisers see the name, the
+  // administrators the account's e-mail too
+  const byLine = (a) => html`${a.ownerName || t("sh.by.gone")}${a.created ? html` <span class="muted">· ${fmtDate(a.created.slice(0, 10), "short")}</span>` : ""}${a.via ? html`<div class="muted sh-by-via">${t(`sh.via.${a.via}`)}</div>` : ""}`;
+  const byTitle = (a) => [a.ownerEmail, a.via ? t(`sh.via.${a.via}`) : t("sh.via.unknown")].filter(Boolean).join(" · ");
+  let opened = false;
   const draw = (q = "") => {
-    const list = q ? rows.filter((x) => norm(`${x.name} ${x.org || ""} ${x.place || ""} ${t(`sh.org.type.${x.kind}`)}`).includes(norm(q))) : rows;
+    const list = (q ? rows.filter((x) => norm(`${x.name} ${x.org || ""} ${x.place || ""} ${x.a?.ownerName || ""} ${x.a?.ownerEmail || ""} ${t(`sh.org.type.${x.kind}`)}`).includes(norm(q))) : rows)
+      .filter((x) => !opened || x.a);
     // the page's width, no sideways scroll (owner, 2026-10-30): the event's and the organiser's names cut, whole on hover
-    $("#sh-list").innerHTML = list.length ? html`<table class="data compact sh-orglist"><colgroup><col class="c-date"><col class="c-type"><col><col class="c-org"><col class="c-status"><col class="c-act"></colgroup>
-      <thead><tr><th>${t("f.date")}</th><th>${t("sh.org.col.type")}</th><th>${t("prov.race")}</th><th>${t("sh.org.col.org")}</th><th>${t("sh.org.col.status")}</th><th></th></tr></thead>
+    $("#sh-list").innerHTML = list.length ? html`<table class="data compact sh-orglist"><colgroup><col class="c-date"><col class="c-type"><col><col class="c-org"><col class="c-status"><col class="c-by"><col class="c-act"></colgroup>
+      <thead><tr><th>${t("f.date")}</th><th>${t("sh.org.col.type")}</th><th>${t("prov.race")}</th><th>${t("sh.org.col.org")}</th><th>${t("sh.org.col.status")}</th><th title="${t("sh.org.col.by.tip")}">${t("sh.org.col.by")}</th><th></th></tr></thead>
       <tbody>${list.map((x) => html`<tr><td class="num">${x.date ? fmtDate(x.date, "short") : "—"}</td>
           <td><span class="tag">${t(`sh.org.type.${x.kind}`)}</span></td>
           <td class="cut" title="${x.place ? `${x.name} · ${x.place}` : x.name}">${x.name}${x.place ? html` <span class="muted">· ${x.place}</span>` : ""}</td>
           <td class="muted cut" title="${x.org || ""}">${x.org || "—"}</td>
           <td>${x.a ? html`<span class="tag ${x.a.draft ? "sh-m-draft" : "sh-m-live"}">${t(x.a.draft ? "sh.m.state.draft" : "sh.m.state.live")}</span> ${t("sh.org.status.n", { n: x.a.courses })}${x.kind === "club" ? html` <span class="muted">· ${t(`sh.vis.${x.a.vis}`)}</span>` : ""}` : html`<span class="muted">${t("sh.org.status.none")}</span>`}</td>
+          <td class="cut" title="${x.a ? byTitle(x.a) : ""}">${x.a ? byLine(x.a) : html`<span class="muted">—</span>`}</td>
           <td class="r">${x.a ? html`<a class="btn btn-sm" href="${ORG_ROUTE}?id=${x.a.id}">${t("sh.org.manage")}</a>` : html`<button type="button" class="btn btn-sm btn-primary" data-activate="${x.key}">${t("sh.org.activate")}</button>`}</td></tr>`)}</tbody></table>`
       : q ? html`<div class="empty">${t("lv.find.none")}</div>`
       : html`<div class="empty">${club || me?.admin ? t("sh.org.none", { club: club || "—" }) : !auth.sees("FR") ? t("sh.org.noCountry") : t("sh.org.noclub")}</div>`;
     $$("[data-activate]").forEach((b) => b.addEventListener("click", async () => {
       const x = mine.find((r) => r.key === b.dataset.activate);
       b.disabled = true;
-      try { const r = await api("", { method: "POST", body: { kind: "race", race: x.key, title: x.name, date: x.date_iso, vis: "public" } }); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
+      try { const r = await api("", { method: "POST", body: { kind: "race", race: x.key, title: x.name, date: x.date_iso, vis: "public", via: "list" } }); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
       catch (e) { b.disabled = false; alert(errText(e)); }
     }));
   };
   draw();
   $("#sh-filter").addEventListener("input", (e) => draw(e.target.value));
+  $("#sh-opened").addEventListener("change", (e) => { opened = e.target.checked; draw($("#sh-filter").value); });
   $("#sh-new").addEventListener("click", () => {
     const box = $("#sh-create");
     box.hidden = !box.hidden;
@@ -199,7 +208,7 @@ function createForm(box, kind, races, club) {
   $("#sh-create-go").addEventListener("click", async () => {
     const vis = $("input[name=sh-vis]:checked").value;
     const body = { kind, title: $("#sh-title").value, date: $("#sh-date").value, vis, password: $("#sh-pw").value, race: $("#sh-race")?.value };
-    try { const r = await api("", { method: "POST", body }); if (vis === "password") setKey(r.id, ""); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
+    try { const r = await api("", { method: "POST", body: { ...body, via: "form" } }); if (vis === "password") setKey(r.id, ""); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
     catch (e) { $("#sh-create-note").textContent = errText(e); }
   });
 }
@@ -481,7 +490,7 @@ async function managePage(main, id, data, race) {
     <div class="sh-top">
       <a class="btn btn-sm" href="${ORG_ROUTE}">← ${t("nav.orgAnalyses")}</a>
       <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted" id="sh-m-facts"></span>
-      <span class="tag" id="sh-m-state"></span>
+      <span class="tag" id="sh-m-state"></span><span class="muted sh-m-by" id="sh-m-by"></span>
       <a class="btn btn-sm" href="${runnersHref}" target="_blank" rel="opener" title="${t("sh.m.asRunner.hint")}" style="margin-left:auto">${t("sh.org.asRunner")} ↗</a></div>
     <div id="sh-editor"></div>
     <div class="sh-m" id="sh-m">
@@ -536,7 +545,11 @@ async function managePage(main, id, data, race) {
   // ---- the head: its facts and its state
   function head() {
     $(".sh-title").textContent = A.title;
-    $("#sh-m-facts").textContent = [fmtDate(A.date), A.ownerName, t(`sh.org.type.${kind}`)].filter(Boolean).join(" · ");
+    $("#sh-m-facts").textContent = [fmtDate(A.date), t(`sh.org.type.${kind}`)].filter(Boolean).join(" · ");
+    // who opened it, when, from where; the administrators see the account's e-mail
+    const by = $("#sh-m-by");
+    by.textContent = t(A.created ? "sh.m.by" : "sh.m.by.noDate", { name: A.ownerName || t("sh.by.gone"), date: A.created ? fmtDate(A.created.slice(0, 10)) : "" })
+      + (A.via ? ` (${t(`sh.via.${A.via}`)})` : "") + (data.ownerEmail ? ` · ${data.ownerEmail}` : "");
     const st = $("#sh-m-state");
     st.textContent = t(A.draft ? "sh.m.state.draft" : "sh.m.state.live");
     st.className = `tag ${A.draft ? "sh-m-draft" : "sh-m-live"}`;
