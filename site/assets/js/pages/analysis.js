@@ -210,8 +210,8 @@ export async function render(main, { query = {}, route } = {}) {
     <div id="an-work" hidden>
       <div class="an-layout" id="an-layout">
         <div class="an-bar" id="an-bar" hidden></div>
-        ${raw(panelHtml({ id: "an-left", side: "left", cls: "an-left", tabs: [{ key: "graphs", label: t("an.tab.graphs") }, { key: "legs", label: t("an.tab.legs") },
-          ...(routesOk ? [{ key: "routes", label: t("an.tab.routes") }] : [])],
+        ${raw(panelHtml({ id: "an-left", side: "left", cls: "an-left", tabs: [{ key: "graphs", label: t("an.tab.graphs"), tip: t("an.tab.graphs.tip") }, { key: "legs", label: t("an.tab.legs"), tip: t("an.tab.legs.tip") },
+          ...(routesOk ? [{ key: "routes", label: t("an.tab.routes"), tip: t("an.tab.routes.tip") }] : [])],
           inner: { graphs: html`<div class="an-chips" id="an-chips"></div><canvas id="an-strip"></canvas>`, legs: html`<div id="an-legs"></div>`, routes: html`<div class="rc-busy" id="an-rc-busy" hidden></div><div id="an-rc"></div>` } }))}
         <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
@@ -220,7 +220,7 @@ export async function render(main, { query = {}, route } = {}) {
           <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
-        ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display") }, ...(routesOk ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}
+        ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOk ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : [])] }))}
       </div>
     </div>`;
   if (!perso && !here.length && !races.some((r) => r.key === query.course)) {
@@ -1950,8 +1950,7 @@ export async function render(main, { query = {}, route } = {}) {
     const k = klass(), r = runner(), est = !officialTaus();
     const hasHr = !!track.ch.hr, hasCad = !!track.ch.cad;
     const sum = legs.reduce((a, l) => ({ dist: a.dist + (l.dist || 0), straight: a.straight + (l.straight || 0), lost: a.lost + (l.mistake ? l.lost : 0), n: a.n + (l.mistake ? 1 : 0) }), { dist: 0, straight: 0, lost: 0, n: 0 });
-    $("#an-legs").innerHTML = html`<p class="hint sp-hint">${t(est ? "an.legs.hint.est" : "an.legs.hint")}</p>
-      <div class="table-wrap"><table class="data compact"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}${est ? html`<div class="th-sub">${t("an.col.est")}</div>` : ""}</th>${est ? "" : html`<th class="r">${t("an.col.best")}</th>
+    $("#an-legs").innerHTML = html`<div class="table-wrap" title="${t(est ? "an.legs.hint.est" : "an.legs.hint")}"><table class="data compact"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}${est ? html`<div class="th-sub">${t("an.col.est")}</div>` : ""}</th>${est ? "" : html`<th class="r">${t("an.col.best")}</th>
         <th class="r">${t("an.col.rank")}</th><th class="r">${t("an.col.lost")}</th>`}<th class="r">${t("an.col.trace")}</th><th class="r">${t("an.col.straight")}</th><th class="r">${t("an.col.detour")}</th><th class="r">${t("an.col.pace")}</th>
         ${hasHr ? html`<th class="r">${t("an.col.hr")}</th>` : ""}${hasCad ? html`<th class="r" title="${unitOf("cad")}">${t("an.col.cad")} <span class="muted">${unitOf("cad")}</span></th>` : ""}</tr></thead>
       <tbody>${legs.map((l, i) => html`<tr data-leg="${i}" class="${l.mistake ? "an-mistake" : ""}" style="cursor:pointer">

@@ -379,11 +379,11 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     const P = loadPrefs(), px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
     sp.lw = px(P.lw, 200, 1400, 320); sp.rw = px(P.rw, 200, 700, 270);
     $("#sh-splits").innerHTML = html`<div class="sh-layout sh-sp-layout" id="sh-sp-layout">
-      ${raw(panelHtml({ id: "sh-sp-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.circuits") }], inner: { runners: html`<div id="sh-sp-left"></div>` } }))}
+      ${raw(panelHtml({ id: "sh-sp-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.circuits"), tip: t("sh.tab.circuits.tip") }], inner: { runners: html`<div id="sh-sp-left"></div>` } }))}
       <div class="an-split" id="sh-sp-split-l" title="${t("an.split")}"></div>
       <div class="sh-sp-center" id="sh-sp-center"></div>
       <div class="an-split" id="sh-sp-split-r" title="${t("an.split")}"></div>
-      ${raw(panelHtml({ id: "sh-sp-rp", side: "right", cls: "sh-rp", tabs: [{ key: "settings", label: t("sh.tab.settings") }], inner: { settings: html`<div id="sh-sp-right"></div>` } }))}</div>`;
+      ${raw(panelHtml({ id: "sh-sp-rp", side: "right", cls: "sh-rp", tabs: [{ key: "settings", label: t("sh.tab.settings"), tip: t("sh.tab.settings.tip") }], inner: { settings: html`<div id="sh-sp-right"></div>` } }))}</div>`;
     const el = $("#sh-sp-layout");
     const apply = () => {
       el.dataset.lcol = sp.lp.collapsed ? "1" : "0"; el.dataset.rcol = sp.rp.collapsed ? "1" : "0";
@@ -1308,8 +1308,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
       <div class="an-bar sh-bar" id="sh-bar"></div>
-      ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.circuits") }, { key: "legs", label: t("an.tab.legs") }, { key: "views", label: t("sh.tab.views") },
-        ...(routesOn ? [{ key: "routes", label: t("an.tab.routes") }] : []), ...(you.visitor ? [] : [{ key: "own", label: t("sh.own.title") }])],
+      ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.circuits"), tip: t("sh.tab.circuits.tip") }, { key: "legs", label: t("an.tab.legs"), tip: t("sh.tab.legs.tip") },
+        { key: "views", label: t("sh.tab.views"), tip: t("sh.tab.views.tip") }, ...(routesOn ? [{ key: "routes", label: t("an.tab.routes"), tip: t("an.tab.routes.tip") }] : []),
+        ...(you.visitor ? [] : [{ key: "own", label: t("sh.own.title"), tip: t("sh.tab.own.tip") }])],
         inner: { runners: html`<div id="sh-left"></div>`, legs: html`<div class="sh-views" id="sh-legs"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
       <div class="an-split" id="sh-split-l" title="${t("an.split")}"></div>
       <div class="sh-mapcol"><div class="sh-map"><div class="an-3d" id="sh-3d-host" hidden></div><canvas id="sh-canvas"></canvas>
@@ -1319,7 +1320,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <div class="an-hud" id="sh-hud"></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
-      ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display") }, ...(routesOn ? [{ key: "compute", label: t("an.tab.compute") }] : [])] }))}</div>`;
+      ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOn ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : [])] }))}</div>`;
   const layEl = $("#sh-layout");
   /** The panels' widths (a rail when folded), the window's height below the top line. */
   function applyLayout() {
@@ -1329,7 +1330,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     fit();
   }
   // « Itinéraires » opened: the routes computed at once (owner, 2026-11-04: nothing showed until a box of « Calcul » was ticked)
-  const leftP = bindPanel($("#sh-lp"), lp, { onChange: () => { savePrefs(); applyLayout(); }, onShow: (k) => { if (k === "views" || k === "legs") bottom.draw(); else if (k === "own") drawOwn(); else if (k === "routes") { if (rcm.on) rcmList(); else rcmTurnOn(); } } });
+  const leftP = bindPanel($("#sh-lp"), lp, { onChange: () => { savePrefs(); applyLayout(); }, onShow: (k) => { if (k === "views" || k === "legs") bottom.draw(); else if (k === "own") drawOwn(); else if (k === "routes") { if (!rcm.on) rcmTurnOn(); else { if (!rcm.token) rcmLeg(); rcmList(); } } } });
   const rightP = bindPanel($("#sh-rp"), rp, { onChange: () => { savePrefs(); applyLayout(); } });
   bindSplitter($("#sh-split-l"), layEl, "left", (w, rect) => { lw = Math.round(Math.min(rect.width - (rp.collapsed ? 34 : rw) - 300, Math.max(180, w))); if (lp.collapsed) leftP.fold(false, true); applyLayout(); }, savePrefs);
   bindSplitter($("#sh-split-r"), layEl, "right", (w, rect) => { rw = Math.round(Math.min(rect.width - (lp.collapsed ? 34 : lw) - 300, Math.max(200, w))); if (rp.collapsed) rightP.fold(false, true); applyLayout(); }, savePrefs);
@@ -2030,7 +2031,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   const geoInv = (() => { const g = course.geo, det = g.a * g.e - g.b * g.d; return (x, y) => { const u = x - g.c, v = y - g.f; return [(g.e * u - g.b * v) / det, (g.a * v - g.d * u) / det]; }; })();
   const rcmFrame = runners[0]?.fit || (() => { const [lon, lat] = geoInv(image.width / 2, image.height / 2); return fitFromGeo(course.geo, frameAt(lat, lon)); })();
   const rcmPace = () => RC.paceOf(rcm.s, rcm.auto[leg]);
-  const rcmStatus = (text, frac = null) => { rcm.status = text; rcm.prog = frac; RC.setStatus(text, frac); };
+  const rcmStatus = (text, frac = null) => {
+    rcm.status = text; rcm.prog = frac; RC.setStatus(text, frac);
+    const w = $("#rc-leg .rc-wait");                       // the Itinéraires tab, while it has no route to show, says where the work is
+    if (w) w.innerHTML = rcmWait();
+  };
+  const rcmWait = () => html`<p class="hint sp-hint">${rcm.status || t("rc.tab.wait")}</p>${raw(rcm.prog != null ? bar(rcm.prog) : "")}`;
   const rcmFacts = (facts) => { rcm.info = { ...rcm.info, ...facts }; rcm.warn = RC.readingWarning(rcm.info, rcm.s); RC.setWarning(rcm.warn); };
   const rcmReading = (f) => rcmStatus(t("rc.st.readingPct", { p: Math.round(100 * f) }), f);
   /** The decision map of the leg shown, asked of the worker once (null until it has come: the map is drawn again then). */
@@ -2239,7 +2245,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       return;
     }
     const legs = leg ? [leg] : Array.from({ length: legsN }, (_, i) => i + 1).filter((j) => rcm.routes[j]?.length);
-    if (!legs.length || !rcm.routes[legs[0]]?.length) { el.innerHTML = html`<p class="hint sp-hint">${t("rc.tab.wait")}</p>`; return; }
+    if (!legs.length || !rcm.routes[legs[0]]?.length) { el.innerHTML = html`<div class="rc-wait">${raw(rcmWait())}</div>`; return; }
     const signed = (v) => `${v >= 0 ? "+" : "−"}${clock(Math.abs(v))}`;
     const dot = (n) => html`<span class="rc-dot" style="background:${n >= 0 ? RC.ROUTE_COLOURS[n] : "#999"}"></span>`;
     const how = (j) => (rcm.s.pace > 0 ? t("rc.pace.typed") : rcm.calib?.ok ? t("rc.pace.calibMulti") : rcm.auto[j] ? t("rc.pace.median") : t("rc.pace.default"));

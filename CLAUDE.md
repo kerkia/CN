@@ -1261,7 +1261,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   scroll down on a large screen »; supersedes the layout notes above for « Analyse solo » and « Analyse multi »): the controls above
   the map (`.an-bar`: the race's line, play, speed, follow, the time slider, ⤢ ↗; Solo's figures of the moment on a second line —
   time, leg, pace, distance, the file's channels, ⚠ for a cut trace —; Multi's leg, start mode and follow), then a panel of tabs
-  on each side of the map (`trace/sidepanel.js`: `panelHtml`, `bindPanel` — tabs, a fold button ‹ / › that leaves a rail of the
+  on each side of the map (every tab with a tooltip saying what it holds, `tip`; the legs tables' explanation a tooltip on the table, not a paragraph above it — owner,
+  2026-11-05; Multi's « Itinéraires » starts the computation when opened and shows its progress or failure while it has no route; `trace/sidepanel.js`: `panelHtml`, `bindPanel` — tabs, a fold button ‹ / › that leaves a rail of the
   tabs' names, a click there reopens on that tab —, `bindSplitter`): Solo left « Courbes » (the curves), « Inter-postes » (the legs'
   table, when the sequence is known), « Itinéraires » (administrators: the computed routes leg by leg, the current leg marked and
   brought into view, the runner's own route measured on the same model — time, length, climb — with Choix and Exécution); right

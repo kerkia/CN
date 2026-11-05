@@ -11,10 +11,10 @@ import { t } from "../i18n.js";
 export function panelHtml({ id, side, tabs, inner = {}, cls = "" }) {
   const fold = side === "left" ? "‹" : "›", open = side === "left" ? "›" : "‹";
   return html`<aside class="sp sp-${side} ${cls}" id="${id}" data-collapsed="0">
-    <div class="sp-head"><div class="sp-tabs" role="tablist">${tabs.map((b) => html`<button type="button" role="tab" class="sp-tab" data-tab="${b.key}" aria-selected="false">${b.label}</button>`)}</div>
+    <div class="sp-head"><div class="sp-tabs" role="tablist">${tabs.map((b) => html`<button type="button" role="tab" class="sp-tab" data-tab="${b.key}" aria-selected="false" title="${b.tip || ""}">${b.label}</button>`)}</div>
       <button type="button" class="btn btn-sm sp-fold" title="${t("sp.fold")}" aria-label="${t("sp.fold")}">${fold}</button></div>
     <div class="sp-rail"><button type="button" class="btn btn-sm sp-unfold" title="${t("sp.unfold")}" aria-label="${t("sp.unfold")}">${open}</button>
-      ${tabs.map((b) => html`<button type="button" class="sp-rail-tab" data-rail="${b.key}" title="${b.label}">${b.label}</button>`)}</div>
+      ${tabs.map((b) => html`<button type="button" class="sp-rail-tab" data-rail="${b.key}" title="${b.tip || b.label}">${b.label}</button>`)}</div>
     <div class="sp-body">${tabs.map((b) => html`<div class="sp-pane" data-pane="${b.key}" hidden>${raw(inner[b.key] || "")}</div>`)}</div></aside>`;
 }
 

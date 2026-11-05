@@ -104,9 +104,9 @@ function legsView(el, X) {
     return { j, time: v, best: best[i], rank, n: field.all.filter((l) => l[i] != null).length, ...loss[i], dist, straight, v: v > 0 && dist != null ? dist / v : null };
   });
   const sum = rows.reduce((s, l) => ({ time: s.time + (l.time || 0), dist: s.dist + (l.dist || 0), straight: s.straight + (l.time != null ? l.straight : 0), lost: s.lost + (l.mistake ? l.lost : 0), n: s.n + (l.mistake ? 1 : 0) }), { time: 0, dist: 0, straight: 0, lost: 0, n: 0 });
-  el.innerHTML = html`<div class="card-head"><div class="hint">${t("sh.legs.hint", { src: t(`sh.legs.src.${field.source}`) })}</div>
-      <label class="field" style="margin-left:auto"><span>${t("prov.runner")}</span><select id="sh-legs-of">${R.map((r) => html`<option value="${r.uid}" ${raw(r === who ? "selected" : "")}>${r.name}</option>`)}</select></label></div>
-    <div class="table-wrap"><table class="data compact sh-legs"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}</th><th class="r">${t("an.col.best")}</th>
+  el.innerHTML = html`<div class="card-head">
+      <label class="field"><span>${t("prov.runner")}</span><select id="sh-legs-of">${R.map((r) => html`<option value="${r.uid}" ${raw(r === who ? "selected" : "")}>${r.name}</option>`)}</select></label></div>
+    <div class="table-wrap" title="${t("sh.legs.hint", { src: t(`sh.legs.src.${field.source}`) })}"><table class="data compact sh-legs"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}</th><th class="r">${t("an.col.best")}</th>
       <th class="r">${t("an.col.rank")}</th><th class="r">${t("an.col.lost")}</th><th class="r">${t("an.col.trace")}</th><th class="r">${t("an.col.straight")}</th><th class="r">${t("an.col.detour")}</th><th class="r">${t("an.col.pace")}</th></tr></thead>
     <tbody>${rows.map((l) => html`<tr data-leg="${l.j}" class="${l.mistake ? "an-mistake" : ""}" style="cursor:pointer">
       <td>${ctrlLabel(l.j)}${ctrls[l.j].code ? html` <span class="muted">${ctrls[l.j].code}</span>` : ""}</td>
