@@ -2422,6 +2422,7 @@ body.full-win .tr-app { border: 0; }
 .tr-pub-opts .tr-check, .tr-pub-live { align-items: flex-start; } .tr-pub-opts small, .tr-pub-live small { display: block; color: var(--ink-3); }
 .tr-pub-live { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); }
 .tr-pub-go { display: flex; gap: 8px; flex-wrap: wrap; }
+.tr-dlg-btns .tr-pub-why { flex: 1 1 260px; color: var(--ink-3); align-self: center; margin-right: auto; }
 .tr-checks { display: flex; flex-direction: column; gap: 4px; }
 .tr-err { color: var(--bad); font-size: 13px; }
 .tr-dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; flex-wrap: wrap; }

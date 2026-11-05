@@ -395,7 +395,7 @@ const forUsers = withUser(async (ctx, user) => {
       let pw = null;
       if (vis === "password") {
         const p = String(b.password || "");
-        if (p.length < 4 || p.length > 100) return json({ error: "password" }, 400);
+        if (p.length < 2 || p.length > 100) return json({ error: "password" }, 400);
         const h = await hashPassword(p, env);
         pw = { pw_hash: h.hash, pw_salt: h.salt, pw_iter: h.iter };
       }
@@ -463,7 +463,7 @@ const forUsers = withUser(async (ctx, user) => {
       if (meta.vis !== "public") meta.visitors = false;                     // open to visitors only when open to every account
       if (b.password) {
         const p = String(b.password);
-        if (p.length < 4 || p.length > 100) return json({ error: "password" }, 400);
+        if (p.length < 2 || p.length > 100) return json({ error: "password" }, 400);
         const h = await hashPassword(p, env);
         meta.pw = { pw_hash: h.hash, pw_salt: h.salt, pw_iter: h.iter };
       }

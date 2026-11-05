@@ -198,7 +198,8 @@ export const onRequest = withUser(async (ctx, user) => {
           ? { salt: e.salt, check: e.check, iter: Number(e.iter) || 250000 } : null;
       }
       if (b.map !== undefined) meta.map = b.map ? { name: clean(b.map.name, 200), type: clean(b.map.type, 60), size: Number(b.map.size) || 0 } : null;
-      if (b.published !== undefined) meta.published = b.published ? { analysis: clean(b.published.analysis, 20), at: nowIso() } : null;
+      if (b.published !== undefined) meta.published = b.published ? { analysis: clean(b.published.analysis, 20),
+        analyses: (Array.isArray(b.published.analyses) ? b.published.analyses : []).slice(-20).map((x) => clean(x, 20)).filter(Boolean), at: nowIso() } : null;
       meta.updated = nowIso();
       await saveMeta(env, meta);
       return json({ ok: true, event: meta });

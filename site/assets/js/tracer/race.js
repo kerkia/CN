@@ -19,6 +19,7 @@ import { where } from "./ribbon-data.js";
 import { t, tn, locale } from "./lang.js";
 import { provDir, sees } from "../auth.js";
 import { current as siteCountry } from "../country.js";
+import { bar, setBar } from "../waitbar.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -515,8 +516,8 @@ export async function sendCourses(E) {
 /** Each course (each variation of a forked one, up to 12 in all) as a circuit of the event's map analysis: its map with the course
  *  printed on it, the controls' positions on that image, the georeference — after the race only for a competition. One dialog holds
  *  every setting of the analysis (owner, 2026-11-05: the setter had to go to Orga to finish it): its title and date, who opens it,
- *  what the runners may do, published at once or kept as a draft; then the analysis opens from here. Publishing again updates the
- *  event's analysis (its circuits and settings), never a second one. */
+ *  what the runners may do; « Publier » or « Enregistrer en brouillon »; a window follows at once with the work's progress, then the
+ *  analysis opens from it. Publishing again updates the event's analysis (its circuits and settings), never a second one. */
 const OPT_KEYS = ["upload", "solo", "mymaps", "notes", "variants", "view3d", "video", "routes"];
 export async function publish(E) {
   const ev = E.ev;
@@ -534,36 +535,65 @@ export async function publish(E) {
     if (!r.ok) { const e = new Error(j?.error || `http ${r.status}`); e.code = j?.error; throw e; }
     return j;
   };
-  // the event's analysis already published (this event's, else the competition's own), its settings shown as they are
-  let prev = null;
+  // the analyses already published from this event (owner, 2026-11-05: a second publication, under another name and date, had
+  // replaced the first): the dialog's first choice says which one is updated, a new one by default. A competition has one, its own.
+  const known = [];
   try {
-    let pid = E.meta.published?.analysis || null;
-    if (!pid && isRace) pid = ((await call("")).analyses || []).find((a) => a.kind === "race" && a.race === info.provKey && a.organiser)?.id || null;
-    if (pid) prev = (await call(`/${pid}`)).analysis || null;
-  } catch (e) { prev = null; }
+    const p0 = E.meta.published || {};
+    const ids = [...(p0.analyses || []), p0.analysis].filter(Boolean).reverse();
+    if (isRace) { const own = ((await call("")).analyses || []).find((a) => a.kind === "race" && a.race === info.provKey && a.organiser)?.id; if (own) ids.unshift(own); }
+    for (const id of new Set(ids)) {
+      try {
+        const a = (await call(`/${id}`)).analysis;
+        if (a && (isRace ? a.kind === "race" && a.race === info.provKey : a.kind !== "race")) known.push(a);
+      } catch (e) { /* deleted since */ }
+    }
+  } catch (e) { /* none known */ }
+  if (isRace) known.splice(1);
+  const targetOf = (o) => (isRace ? known[0] || null : known.find((a) => a.id === o?.target) || null);
   const { designs, circuitOf } = await import("./circuits.js");
   const des = designs(ev);
   const provRace = info.provKey ? await getData(`prov/${info.provKey}.json`) : null;
   const circuitNames = [...new Set((provRace?.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))];
-  const vis0 = prev?.vis || (isRace ? "public" : "club"), opts0 = prev?.opts || {};
-  const chk = (on) => (on ? "checked" : "");
-  const v = await modal(E, { title: t("trc.race.pubTitle"), wide: true, ok: t(prev ? "trc.race.pubUpdate" : "trc.race.publish"), body: `
-    <p>${t(isRace ? "trc.race.pubIntroRace" : "trc.race.pubIntroTraining")}${prev ? ` ${esc(t("trc.race.pubAgain"))}` : ""}</p>
-    <h3 class="tr-h3">${t("trc.race.pubCourses")}</h3>
+  const day = (d) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString(locale()) : "");
+  const courseRows = `<h3 class="tr-h3">${t("trc.race.pubCourses")}</h3>
     <table class="tr-table"><thead><tr><th></th><th>${t("trc.race.thCourse")}</th>${circuitNames.length ? `<th>${t("trc.race.thResultsCourse")}</th>` : ""}</tr></thead><tbody>
     ${des.map((d, i) => `<tr><td><input type="checkbox" name="p${i}" ${i < 12 ? "checked" : ""}></td><td>${esc(d.name)}</td>
       ${circuitNames.length ? `<td><select name="k${i}"><option value="">—</option>${circuitNames.map((n) => `<option ${norm(n) === norm(d.name) || norm(n).split(" ")[0] === norm(d.name).split(" ")[0] ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td>` : ""}</tr>`).join("")}</tbody></table>
-    ${field(t("trc.race.pubDpi"), '<input name="dpi" value="150" inputmode="numeric">', t("trc.race.pubDpiHint"))}
+    ${field(t("trc.race.pubDpi"), '<input name="dpi" value="150" inputmode="numeric">', t("trc.race.pubDpiHint"))}`;
+  // the settings shown: the chosen analysis's, else the event's
+  const fill = (form, a) => {
+    const f = form.elements;
+    f.title.value = a?.title || E.meta.title || "";
+    f.date.value = a?.date || E.meta.date || today;
+    f.vis.value = a?.vis || (isRace ? "public" : "club");
+    f.vis.dispatchEvent(new Event("change"));
+    f.visitors.checked = !!(a?.visitors && f.vis.value === "public");
+    f.pw.value = "";
+    for (const k of OPT_KEYS) f[`o_${k}`].checked = (a?.opts || {})[k] !== false;
+    const pwOld = a?.vis === "password";
+    form.querySelector("[data-pw] .tr-field > span").textContent = t(pwOld ? "sh.pw.new" : "trc.race.pubPw");
+    f.pw.placeholder = t(pwOld ? "sh.pw.keep" : "sh.pw.ph");
+    form.querySelector("[data-again]").hidden = !a;
+    form.closest(".tr-dialog").querySelector('[data-v="draft"]').textContent = t(a && !a.draft ? "sh.m.unpublish" : "trc.race.saveDraft");
+  };
+  // two ways to accept: published (the runners open it at once) or saved as a draft its organisers alone see
+  const v = await modal(E, { title: t("trc.race.pubTitle"), wide: true, ok: t("trc.race.publish"), cancel: null,
+    extra: `<small class="tr-pub-why">${esc(t("trc.race.pubButtons"))}</small><button type="button" class="btn" data-x="cancel">${esc(t("trc.dlg.cancel"))}</button>
+      <button type="submit" class="btn" data-v="draft">${esc(t("trc.race.saveDraft"))}</button>`, body: `
+    <p>${t(isRace ? "trc.race.pubIntroRace" : "trc.race.pubIntroTraining")} <span data-again hidden>${esc(t("trc.race.pubAgain"))}</span></p>
+    ${!isRace && known.length ? field(t("trc.race.pubTarget"), `<select name="target"><option value="">${esc(t("trc.race.pubNew"))}</option>${known.map((a) =>
+      `<option value="${esc(a.id)}">${esc(t("trc.race.pubUpdateOf", { name: a.title, date: day(a.date) }))}</option>`).join("")}</select>`, t("trc.race.pubTargetHint")) : ""}
     <h3 class="tr-h3">${t("sh.m.pub")}</h3>
-    ${field(t("trc.race.pubName"), `<input name="title" maxlength="120" value="${esc(prev?.title || E.meta.title || "")}">`, t("trc.race.pubNameHint"))}
-    ${field(t("f.date"), `<input name="date" type="date" value="${esc(prev?.date || E.meta.date || today)}">`)}
-    ${field(t("sh.col.access"), `<select name="vis">${["public", "club", "password"].map((x) => `<option value="${x}" ${x === vis0 ? "selected" : ""}>${esc(t(`sh.vis.${x}.long`))}</option>`).join("")}</select>`)}
-    <div data-pw ${vis0 === "password" ? "" : "hidden"}>${field(t(prev?.vis === "password" ? "sh.pw.new" : "trc.race.pubPw"), `<input name="pw" type="text" autocomplete="off" placeholder="${prev?.vis === "password" ? esc(t("sh.pw.keep")) : ""}">`)}</div>
-    <label class="tr-check" data-visitors ${vis0 === "public" ? "" : "hidden"} title="${esc(t("sh.visitors.hint"))}"><input type="checkbox" name="visitors" ${chk(prev?.visitors && vis0 === "public")}> ${esc(t("sh.visitors"))}</label>
+    ${field(t("trc.race.pubName"), '<input name="title" maxlength="120">', t("trc.race.pubNameHint"))}
+    ${field(t("f.date"), '<input name="date" type="date">')}
+    ${field(t("sh.col.access"), `<select name="vis">${["public", "club", "password"].map((x) => `<option value="${x}">${esc(t(`sh.vis.${x}.long`))}</option>`).join("")}</select>`)}
+    <div data-pw hidden>${field(t("trc.race.pubPw"), '<input name="pw" type="text" autocomplete="off">')}</div>
+    <label class="tr-check" data-visitors hidden title="${esc(t("sh.visitors.hint"))}"><input type="checkbox" name="visitors"> ${esc(t("sh.visitors"))}</label>
     <h3 class="tr-h3">${t("sh.m.opts")}</h3>
-    <ul class="tr-pub-opts">${OPT_KEYS.map((k) => `<li><label class="tr-check"><input type="checkbox" name="o_${k}" ${chk(opts0[k] !== false)}>
+    <ul class="tr-pub-opts">${OPT_KEYS.map((k) => `<li><label class="tr-check"><input type="checkbox" name="o_${k}">
       <span><b>${esc(t(`sh.opt.${k}`))}</b> <small>${esc(t(`sh.opt.${k}.hint`))}</small></span></label></li>`).join("")}</ul>
-    <label class="tr-check tr-pub-live"><input type="checkbox" name="live" ${chk(!prev || !prev.draft)}> <span><b>${esc(t("trc.race.pubLive"))}</b> <small>${esc(t("trc.race.pubLiveHint"))}</small></span></label>`,
+    ${courseRows}`,
   onOpen: (form) => {
     const vis = form.elements.vis;
     vis.addEventListener("change", () => {
@@ -571,6 +601,8 @@ export async function publish(E) {
       form.querySelector("[data-visitors]").hidden = vis.value !== "public";
       if (vis.value !== "public") form.elements.visitors.checked = false;
     });
+    form.elements.target?.addEventListener("change", () => fill(form, targetOf({ target: form.elements.target.value })));
+    fill(form, targetOf({ target: "" }));
   },
   validate: (o) => {
     const n = des.filter((_, i) => o[`p${i}`]).length;
@@ -578,49 +610,77 @@ export async function publish(E) {
     if (n > 12) return t("trc.race.pubMax");
     if ((o.title || "").trim().length < 3) return t("trc.race.pubTitleShort");
     // a password: needed when there is none yet, else kept when left empty
-    if (o.vis === "password" && (o.pw || "").length < (prev?.vis === "password" ? (o.pw ? 4 : 0) : 4)) return t("trc.race.pubPwShort");
+    if (o.vis === "password" && (o.pw || "").length < (targetOf(o)?.vis === "password" && !o.pw ? 0 : 2)) return t("trc.race.pubPwShort");
     return null;
   } });
   if (!v) return;
-  const pick = des.map((d, i) => ({ ...d, i })).filter((d) => v[`p${d.i}`]);
+  const prev = targetOf(v);
+  const pick = des.map((d, i) => ({ ...d, i })).filter((d) => v[`p${d.i}`]), live = v._submit !== "draft";
+  // the window opens at once (owner, 2026-11-05: the wait came before any sign): each circuit is printed with its course, then sent
+  const box = progressBox(E, t(live ? "trc.race.pubTitle" : "trc.race.saveDraft"));
+  const total = 2 + 2 * pick.length + 2;
+  let done = 0;
+  const step = (msg) => { box.say(msg, done / total); E.status(msg, "busy", done / total); done++; };
   try {
-    E.status(t("trc.race.pubCreating"), "busy");
+    step(t("trc.race.pubCreating"));
     let aid = prev?.id || null, kind = prev?.kind || (isRace ? "race" : "club");
     if (!aid) {
       const created = await call("", { method: "POST", body: isRace ? { kind: "race", race: info.provKey, title: v.title, date: v.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined, via: "tracer" }
         : { kind: "club", title: v.title, date: v.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined, via: "tracer", country: siteCountry() } });
       aid = created.id;
     }
+    step(t("trc.race.pubCreating"));
     const cur = await call(`/${aid}`);
     const courses = (cur.analysis?.courses || []).filter((c) => !pick.some((_, j) => c.n === j));
     const dpi = Math.max(72, Math.min(300, Math.round(num(v.dpi)) || 150));
     for (let j = 0; j < pick.length; j++) {
       const d = pick[j];
-      E.status(t("trc.race.pubCourseBusy", { i: j + 1, n: pick.length, name: d.name }), "busy");
+      step(t("trc.race.pubCourseBusy", { i: j + 1, n: pick.length, name: d.name }));
       const c = await circuitOf(E, d, dpi);
+      step(t("trc.race.pubCourseSend", { i: j + 1, n: pick.length, name: d.name }));
       await call(`/${aid}/map/${j}`, { method: "PUT", body: c.blob, headers: { "Content-Type": "image/png" } });
       courses.push({ n: j, name: d.name.slice(0, 60), circuit: v[`k${d.i}`] || "", r: c.r, map: { w: c.w, h: c.h, type: "image/png", v: Date.now() }, geo: c.geo, controls: c.controls });
     }
     // the circuits, then every setting of the dialog — published, or kept as a draft its organisers alone see
+    step(t("trc.race.pubSaving"));
     await call(`/${aid}`, { method: "PUT", body: { courses: courses.sort((a, b) => a.n - b.n) } });
-    const set = { title: v.title, date: v.date || today, vis: v.vis, visitors: v.vis === "public" && !!v.visitors, draft: !v.live,
+    const set = { title: v.title, date: v.date || today, vis: v.vis, visitors: v.vis === "public" && !!v.visitors, draft: !live,
       opts: Object.fromEntries(OPT_KEYS.map((k) => [k, !!v[`o_${k}`]])) };
     if (v.vis === "password" && v.pw) set.password = v.pw;
+    step(t("trc.race.pubSaving"));
     await call(`/${aid}`, { method: "PUT", body: set });
     // the event's card remembers its analysis: « Bilan après la course » reads its shared traces, a new publication updates it
-    try { const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { published: { analysis: aid } } }); if (r?.event) E.meta = r.event; } catch (e) { /* the review will not find it */ }
+    // (and the list of all its analyses, offered for an update next time)
+    const p0 = E.meta.published || {}, all = [...(p0.analyses || []), p0.analysis].filter((x) => x && x !== aid);
+    try { const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { published: { analysis: aid, analyses: [...new Set(all), aid].slice(-20) } } }); if (r?.event) E.meta = r.event; } catch (e) { /* the review will not find it */ }
     E.status(t("trc.race.ready"), "ok");
     // opened from here (the setter's intent), in a tab of its own: the runners' view, or its organisers' page
     const view = `#/${kind === "race" ? "analyse-competition" : "analyse-club"}?id=${aid}`, manage = `#/orga-analyses?id=${aid}`;
-    await modal(E, { title: t("trc.race.published"), ok: null, cancel: t("trc.race.close"), body: `
-      <p>${esc(tn(prev ? "trc.race.pubDoneUpdated" : "trc.race.pubDone", pick.length))} ${esc(t(v.live ? "trc.race.pubDoneLive" : "trc.race.pubDoneDraft"))}</p>
+    box.done(t(live ? "trc.race.published" : "trc.race.pubSaved"), `
+      <p>${esc(tn(prev ? "trc.race.pubDoneUpdated" : "trc.race.pubDone", pick.length))} ${esc(t(live ? "trc.race.pubDoneLive" : "trc.race.pubDoneDraft"))}</p>
       <p class="tr-pub-go"><a class="btn btn-primary" href="${view}" target="_blank" rel="noopener">${esc(t("trc.race.pubOpen"))}</a>
-        <a class="btn" href="${manage}" target="_blank" rel="noopener">${esc(t("trc.race.pubManage"))}</a></p>` });
+        <a class="btn" href="${manage}" target="_blank" rel="noopener">${esc(t("trc.race.pubManage"))}</a></p>`);
   } catch (err) {
     E.status(t("trc.race.failed"), "err");
     const why = { "not organiser": t("trc.race.pubWhyNotOrg"), race: t("trc.race.pubWhyRace"), courses: t("trc.race.pubWhyCourses"), rate: t("trc.race.pubWhyRate"), "too many": t("trc.race.pubWhyRate"),
       noclub: t("trc.race.pubWhyNoClub"), password: t("trc.race.pubPwShort"), fields: t("trc.race.pubTitleShort") }[err.code] || err.message;
-    E.toast(t("trc.race.pubFail", { why }), 7000);
+    box.done(t("trc.race.failed"), `<p class="tr-err">${esc(t("trc.race.pubFail", { why }))}</p>`);
   }
+}
+/** The publication's window: a line saying what is being done and a bar, then its outcome with « Fermer ». */
+function progressBox(E, title) {
+  const m = document.createElement("div");
+  m.className = "tr-modal";
+  m.innerHTML = `<div class="tr-dialog" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h2>${esc(title)}</h2>
+    <div data-body><p data-say></p>${bar(0)}<p class="muted"><small>${esc(t("trc.race.pubWait"))}</small></p></div>
+    <div class="tr-dlg-btns"><button type="button" class="btn" data-x="close" hidden>${esc(t("trc.race.close"))}</button></div></div>`;
+  (E.root || document.body).appendChild(m);
+  const btn = m.querySelector("[data-x=close]"), close = () => m.remove();
+  btn.addEventListener("click", close);
+  m.addEventListener("keydown", (e) => { if (e.key === "Escape" && !btn.hidden) { e.stopPropagation(); close(); } });
+  return {
+    say(msg, frac) { m.querySelector("[data-say]").textContent = msg; setBar(m.querySelector("progress"), frac); },
+    done(head, html) { m.querySelector("h2").textContent = head; m.querySelector("[data-body]").innerHTML = html; btn.hidden = false; btn.focus(); },
+  };
 }
 

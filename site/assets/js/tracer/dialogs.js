@@ -52,6 +52,7 @@ export function modal(E, { title, body, ok = "OK", cancel = t("trc.dlg.cancel"),
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const v = values();
+      v._submit = e.submitter?.dataset?.v || "";        // a dialog with two ways to accept (« Enregistrer » / « Publier »)
       const err = validate ? await validate(v, form) : null;
       if (err) { const p = form.querySelector(".tr-err"); p.textContent = err; p.hidden = false; return; }
       done(v);

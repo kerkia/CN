@@ -1318,9 +1318,10 @@ export function build(X) {
           <ul class="mx-list">
             <li><b>publier les circuits vers l'analyse de carte</b> (${W("publish")}) : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
               leur trace GPS. La même fenêtre règle toute l'analyse : son nom (qui peut différer de celui de l'événement), sa date, qui l'ouvre (tous les comptes, avec ou
-              sans les visiteurs, le club, un mot de passe), ce que les coureurs peuvent y faire, et si elle est publiée tout de suite ou gardée en brouillon ; puis elle
-              s'ouvre d'un clic, ou sa page de gestion (Orga › Analyses de carte, où tout reste modifiable). Publier à nouveau met à jour l'analyse de l'événement, ses
-              circuits et ses réglages, sans en créer une autre ;</li>
+              sans les visiteurs, le club, un mot de passe), les actions activées pour les coureurs ; puis « Publier », ou « Enregistrer en brouillon » (seuls ses
+              organisateurs la voient). Une fenêtre suit l'avancement — chaque circuit est imprimé sur sa carte puis envoyé —, puis ouvre l'analyse d'un clic, ou sa
+              page de gestion (Orga › Analyses de carte, où tout reste modifiable). Une nouvelle publication crée une autre analyse, ou met à jour, au choix, l'une de
+              celles déjà publiées depuis l'événement (ses circuits et ses réglages remplacés, les traces partagées gardées) ; une compétition n'a qu'une analyse ;</li>
             <li><b>envoyer les circuits à « Résultats »</b> (${W("send-results")}) : un complément aux résultats, pas des résultats. Le fichier de résultats exporté
               par le logiciel de chronométrage (MeOS, OE…) en IOF XML donne déjà la longueur, la dénivelée et les postes de chaque circuit : avec lui, cet envoi n'apporte
               rien. Il sert quand les résultats publiés viennent d'ailleurs — un PDF, liveresultat, WinSplits, O'Live, une page HTML sans en-tête de circuit — et n'ont
