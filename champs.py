@@ -1,6 +1,9 @@
-"""France's individual championships for Stats' « Palmarès » (owner, 2026-11-05): the Championnat de France Moyenne Distance
-(CFMD), Longue Distance (CFLD), de Sprint (CFS) and de Nuit (CFN, formerly the Championnat National de Nuit, CNN), every edition
-the results database holds — FFCO's archive starts in 2011, so the editions before are not there.
+"""France's individual championships for Stats' « Palmarès » (owner, 2026-11-05): on foot the Championnat de France Moyenne
+Distance (CFMD), Longue Distance (CFLD), de Sprint (CFS) and de Nuit (CFN, formerly the Championnat National de Nuit, CNN), and
+the VTT and ski championships (middle, long, sprint), every edition the results database holds — FFCO's archive starts in 2011, so
+the editions before are not there. A championship's key is its discipline and its format: « fmd », « fld », « fsp », « fnu »,
+« vmd », « vld », « vsp », « smd », « sld », « ssp » (the race's « specialite » says the discipline: a VTT or ski championship's
+title names the same formats as a foot one's).
 
 Read from the database at every run (cheap: a few thousand rows): `fr/champs.json`, each edition's place, day, races and each
 category's podium, and `fr/champs/<champ>-<year>.json`, each category's whole ranking, for the page `pages/relayhistory.js`
@@ -22,8 +25,10 @@ from pathlib import Path
 
 import privacy
 
-VERSION = 1
-CHAMPS = ("cfmd", "cfld", "cfs", "cfn")
+VERSION = 2   # 2026-11-05: keyed by discipline and format, VTT and ski added (they had been taken for the foot ones)
+DISCS = {"PEDESTRE": "f", "VTT": "v", "SKI": "s"}
+FORMATS = ("md", "ld", "sp", "nu")
+CHAMPS = tuple(d + f for d in ("f", "v", "s") for f in FORMATS if not (d != "f" and f == "nu"))
 # a race that is no championship's title race, whatever its name says
 LEFT_OUT = re.compile(r"QUALIF|FINALES? B\b|\bOPEN\b|SANS INSCRIPTION|UNIVERSITAIRE|\bLIGUE\b|VOSGES|NON SELECTION|COURSE OPEN")
 STATUS = {"pm": "pm", "abandon": "ab", "abd": "ab", "absent": "abs", "disq": "dsq", "disqualifie": "dsq", "nc": "nc",
@@ -35,22 +40,19 @@ def fold(s: str) -> str:
     return "".join(c for c in s if not unicodedata.combining(c)).upper()
 
 
-def champ_of(title: str) -> str | None:
-    """The championship a race's title names, or None."""
+def champ_of(title: str, specialite: str = "Pédestre") -> str | None:
+    """The championship a race names — its discipline (from the race's « specialite ») and its format (from its title) —, or None."""
     t = fold(title)
-    if LEFT_OUT.search(t) or "RELAIS" in t:
+    disc = DISCS.get(re.sub(r"[^A-Z]", "", fold(specialite)))
+    if not disc or LEFT_OUT.search(t) or "RELAIS" in t:
         return None
     if not re.search(r"CHAMPIONNAT (DE FRANCE|NATIONAL)|\bCF(MD|LD|S|N)\b|\bCNN\b", t):
         return None
-    if re.search(r"\bNUIT\b|\bCFN\b|\bCNN\b", t):
-        return "cfn"
-    if re.search(r"\bSPRINT\b|\bCFS\b", t):
-        return "cfs"
-    if re.search(r"MOYENNE DISTANCE|\bCFMD\b", t):
-        return "cfmd"
-    if re.search(r"LONGUE DISTANCE|\bCFLD\b|DE FRANCE LD\b", t):
-        return "cfld"
-    return None
+    fmt = ("nu" if re.search(r"\bNUIT\b|\bCFN\b|\bCNN\b", t) else "sp" if re.search(r"\bSPRINT\b|\bCFS\b", t)
+           else "md" if re.search(r"MOYENNE DISTANCE|\bCFMD\b", t) else "ld" if re.search(r"LONGUE DISTANCE|\bCFLD\b|DE FRANCE LD\b", t)
+           else None)
+    key = disc + fmt if fmt else None
+    return key if key in CHAMPS else None
 
 
 def rank_of(title: str) -> tuple[int, set | None]:
@@ -80,9 +82,9 @@ def _time(s: str) -> str | None:
 
 def compile_(db: sqlite3.Connection, anon: privacy.Anon) -> tuple[dict, dict]:
     races: dict[tuple[str, int], list] = {}
-    for cid, date, title, location, groupe in db.execute(
-            "select course_id, date_iso, title, location, groupe from competitions where has_results = 1 order by date_iso"):
-        ch = champ_of(title or "")
+    for cid, date, title, location, groupe, spec in db.execute(
+            "select course_id, date_iso, title, location, groupe, specialite from competitions where has_results = 1 order by date_iso"):
+        ch = champ_of(title or "", spec or "")
         if not ch or (groupe or "").strip() != "B1" or not date:
             continue
         pr, only = rank_of(title)

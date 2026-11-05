@@ -32,7 +32,9 @@ const compOf = (cat) => (cat === "crs" ? "crs" : cat.startsWith("cne") ? "cne" :
 const GROUPS = { all: MAIN, cne: COMP.cne, ...Object.fromEntries(MAIN.map((c) => [c, [c]])) };
 const PAGE = "#/relais-nationaux";
 // the individual championships, and the categories' groups of their palmarès
-const CHAMPS = ["cfmd", "cfld", "cfs", "cfn"];
+// a championship's key is its discipline (f on foot, v VTT, s ski) and its format (champs.py), « fmd » … « ssp »
+const DISCS = ["f", "v", "s"], FMTS = ["md", "ld", "sp", "nu"];
+const CHAMPS = DISCS.flatMap((d) => FMTS.filter((m) => d === "f" || m !== "nu").map((m) => d + m));
 const ageOf = (cat) => Number(/\d+/.exec(cat || "")?.[0] || 0);
 const CGROUPS = { all: () => true, elite: (c) => ageOf(c) === 21, young: (c) => ageOf(c) <= 20, vet: (c) => ageOf(c) >= 35 };
 
@@ -103,16 +105,16 @@ export async function render(main, { query }) {
     club: file.clubs[query.club] ? query.club : null,
     ecomp: COMPS.includes(query.ecomp) ? query.ecomp : "cfc",
     // the individual championships' tabs
-    ch: CHAMPS.includes(query.ch) ? query.ch : "all", cg: CGROUPS[query.cg] ? query.cg : "all", cs: ["H", "D"].includes(query.cs) ? query.cs : "",
+    cd: DISCS.includes(query.cd) ? query.cd : "all", cf: FMTS.includes(query.cf) ? query.cf : "all", cg: CGROUPS[query.cg] ? query.cg : "all", cs: ["H", "D"].includes(query.cs) ? query.cs : "",
     cw: query.cw === "clubs" ? "clubs" : "runners", cde: Number(query.cde) || null, ca: Number(query.ca) || null,
-    cc: CHAMPS.includes(query.cc) ? query.cc : "cfmd", rc: CHAMPS.includes(query.rc) ? query.rc : "cfmd", ry: Number(query.ry) || null, rk: query.rk || null,
+    cc: CHAMPS.includes(query.cc) ? query.cc : "fmd", rc: CHAMPS.includes(query.rc) ? query.rc : "fmd", ry: Number(query.ry) || null, rk: query.rk || null,
   };
   const sync = () => replaceQuery({
     cat: f.group === "cfc1" ? null : f.group, de: f.from === years[0] ? null : f.from, a: f.to === years[years.length - 1] ? null : f.to,
     bareme: f.scale === "pts" ? null : f.scale, comp: f.comp === "cfc" ? null : f.comp, annee: f.year, rcat: f.cat,
     club: f.club, ecomp: f.ecomp === "cfc" ? null : f.ecomp,
-    ch: f.ch === "all" ? null : f.ch, cg: f.cg === "all" ? null : f.cg, cs: f.cs || null, cw: f.cw === "runners" ? null : f.cw,
-    cde: f.cde && f.cde !== chYears[0] ? f.cde : null, ca: f.ca && f.ca !== chYears[chYears.length - 1] ? f.ca : null, cc: f.cc === "cfmd" ? null : f.cc, rc: f.rc === "cfmd" ? null : f.rc, ry: f.ry, rk: f.rk,
+    cd: f.cd === "all" ? null : f.cd, cf: f.cf === "all" ? null : f.cf, cg: f.cg === "all" ? null : f.cg, cs: f.cs || null, cw: f.cw === "runners" ? null : f.cw,
+    cde: f.cde && f.cde !== chYears[0] ? f.cde : null, ca: f.ca && f.ca !== chYears[chYears.length - 1] ? f.ca : null, cc: f.cc === "fmd" ? null : f.cc, rc: f.rc === "fmd" ? null : f.rc, ry: f.ry, rk: f.rk,
   });
 
   main.innerHTML = html`
@@ -395,12 +397,17 @@ export async function render(main, { query }) {
 
 
   // ---- The individual championships ----------------------------------------------------------------------------------
-  const chName = (c) => t(`ch.name.${c}`);
+  const chName = (c) => `${t(`ch.disc.${c[0]}`)} · ${t(`ch.fmt.${c.slice(1)}`)}`;
   const chEds = (c) => Object.entries(champs?.editions?.[c] || {}).map(([y, e]) => ({ y: Number(y), ...e }));
   const chYears = [...new Set(CHAMPS.flatMap((c) => chEds(c).map((e) => e.y)))].sort((a, b) => a - b);
   const who = (lic, name) => (lic ? html`<a href="${link.runner(lic)}">${name}</a>` : name);
   const clubOf = (code) => (code ? data.clubName(code) : "");
-  const chSeg = (id, v, all) => seg(id, [...(all ? [["all", t("ch.all")]] : []), ...CHAMPS.map((c) => [c, t(`ch.short.${c}`)])], v);
+  const has = (c) => chEds(c).length > 0;
+  // a discipline, then its formats that have editions; `all` adds « every » to both
+  const discSeg = (id, v, all) => seg(id, [...(all ? [["all", t("ch.allDisc")]] : []), ...DISCS.filter((d) => FMTS.some((m) => has(d + m))).map((d) => [d, t(`ch.disc.${d}`)])], v);
+  const fmtSeg = (id, d, v, all) => seg(id, [...(all ? [["all", t("ch.allFmt")]] : []),
+    ...FMTS.filter((m) => (d === "all" ? DISCS.some((x) => has(x + m)) : has(d + m))).map((m) => [m, t(`ch.fmt.${m}`)])], v);
+  const pickKey = (d, m) => (has(d + m) ? d + m : FMTS.map((x) => d + x).find(has) || d + m);
   const edFiles = new Map();
   const edition = (c, y) => {
     const k = `${c}-${y}`;
@@ -414,7 +421,7 @@ export async function render(main, { query }) {
     if (!f.cde || !chYears.includes(f.cde)) f.cde = chYears[0];
     if (!f.ca || !chYears.includes(f.ca)) f.ca = chYears[chYears.length - 1];
     sync();
-    const chs = f.ch === "all" ? CHAMPS : [f.ch];
+    const chs = CHAMPS.filter((c) => (f.cd === "all" || c[0] === f.cd) && (f.cf === "all" || c.slice(1) === f.cf));
     const okCat = (c) => CGROUPS[f.cg](c) && (!f.cs || c.startsWith(f.cs));
     const by = new Map(), clubs = new Map();
     let nEds = 0;
@@ -446,7 +453,8 @@ export async function render(main, { query }) {
     const yearOpts = (v) => chYears.map((y) => html`<option value="${y}" ${raw(y === v ? "selected" : "")}>${y}</option>`);
     el.innerHTML = html`
       <div class="filters">
-        <div class="field"><span>${t("ch.f.champ")}</span>${chSeg("chc", f.ch, true)}</div>
+        <div class="field"><span>${t("ch.f.disc")}</span>${discSeg("chd", f.cd, true)}</div>
+        <div class="field"><span>${t("ch.f.fmt")}</span>${fmtSeg("chf", f.cd, f.cf, true)}</div>
         <label class="field"><span>${t("rh.f.cat")}</span><select id="ch-group">
           ${Object.keys(CGROUPS).map((g) => html`<option value="${g}" ${raw(g === f.cg ? "selected" : "")}>${t(`ch.grp.${g}`)}</option>`)}</select></label>
         <div class="field"><span>${t("ch.f.sex")}</span>${seg("chs", [["", t("ch.sex.all")], ["H", t("ch.sex.H")], ["D", t("ch.sex.D")]], f.cs)}</div>
@@ -460,11 +468,16 @@ export async function render(main, { query }) {
         ${top ? tile(t("rh.tile.most"), top.name, tn("rh.titles", top.gold)) : ""}
       </div>
       <section class="card">
-        <div class="card-head"><div><h2>${f.ch === "all" ? t("ch.all") : chName(f.ch)} · ${f.cde}–${f.ca}</h2>
+        <div class="card-head"><div><h2>${f.cd === "all" ? t("ch.allDisc") : t(`ch.disc.${f.cd}`)} · ${f.cf === "all" ? t("ch.allFmt") : t(`ch.fmt.${f.cf}`)} · ${f.cde}–${f.ca}</h2>
           <div class="hint">${t(f.cw === "clubs" ? "ch.palm.hint.clubs" : "ch.palm.hint")}</div></div></div>
         <div id="ch-palm"></div>
       </section>`;
-    $$('[data-seg="chc"]', el).forEach((b) => b.addEventListener("click", () => { f.ch = b.dataset.value; draw.champ(); }));
+    $$('[data-seg="chd"]', el).forEach((b) => b.addEventListener("click", () => {
+      f.cd = b.dataset.value;
+      if (f.cd !== "all" && f.cf !== "all" && !has(f.cd + f.cf)) f.cf = "all";
+      draw.champ();
+    }));
+    $$('[data-seg="chf"]', el).forEach((b) => b.addEventListener("click", () => { f.cf = b.dataset.value; draw.champ(); }));
     $$('[data-seg="chs"]', el).forEach((b) => b.addEventListener("click", () => { f.cs = b.dataset.value; draw.champ(); }));
     $$('[data-seg="chw"]', el).forEach((b) => b.addEventListener("click", () => { f.cw = b.dataset.value; draw.champ(); }));
     $("#ch-group", el).addEventListener("change", (e) => { f.cg = e.target.value; draw.champ(); });
@@ -484,7 +497,7 @@ export async function render(main, { query }) {
         { key: "bronze", label: html`${medal(3)}<span class="sr-only">${t("rh.col.bronze")}</span>`, align: "r", cls: "num", sort: (r) => r.bronze, render: (r) => num(r.bronze) },
         { key: "total", label: t("ch.col.total"), align: "r", cls: "num", sort: (r) => r.total },
         ...(clubs_ ? [] : [{ key: "cats", label: t("ch.col.cats"), sort: (r) => [...r.cats].join(), render: (r) => [...r.cats].sort().map(fmtCat).join(", ") }]),
-        { key: "chs", label: t("ch.col.champs"), sort: (r) => [...r.chs].join(), render: (r) => CHAMPS.filter((c) => r.chs.has(c)).map((c) => t(`ch.short.${c}`)).join(", ") },
+        { key: "chs", label: t("ch.col.champs"), sort: (r) => [...r.chs].join(), render: (r) => CHAMPS.filter((c) => r.chs.has(c)).map(chName).join(", ") },
         { key: "years", label: t("ch.col.years"), cls: "num", sort: (r) => r.from, render: (r) => (r.from === r.to ? String(r.from) : `${r.from}–${r.to}`) },
       ],
     });
@@ -500,12 +513,14 @@ export async function render(main, { query }) {
       return w ? who(w[1], w[2]) : html`<span class="dim">—</span>`;
     };
     el.innerHTML = html`
-      <div class="filters"><div class="field"><span>${t("ch.f.champ")}</span>${chSeg("che", f.cc, false)}</div></div>
+      <div class="filters"><div class="field"><span>${t("ch.f.disc")}</span>${discSeg("ched", f.cc[0], false)}</div>
+        <div class="field"><span>${t("ch.f.fmt")}</span>${fmtSeg("chef", f.cc[0], f.cc.slice(1), false)}</div></div>
       <section class="card">
         <div class="card-head"><div><h2>${chName(f.cc)}</h2><div class="hint">${t("ch.ed.hint")}</div></div></div>
         <div id="ch-eds"></div>
       </section>`;
-    $$('[data-seg="che"]', el).forEach((b) => b.addEventListener("click", () => { f.cc = b.dataset.value; draw.ceds(); }));
+    $$('[data-seg="ched"]', el).forEach((b) => b.addEventListener("click", () => { f.cc = pickKey(b.dataset.value, f.cc.slice(1)); draw.ceds(); }));
+    $$('[data-seg="chef"]', el).forEach((b) => b.addEventListener("click", () => { f.cc = f.cc[0] + b.dataset.value; draw.ceds(); }));
     dataTable($("#ch-eds", el), {
       rows: eds, sortKey: "y", sortDir: -1,
       columns: [
@@ -533,7 +548,8 @@ export async function render(main, { query }) {
     sync();
     el.innerHTML = html`
       <div class="filters">
-        <div class="field"><span>${t("ch.f.champ")}</span>${chSeg("chr", f.rc, false)}</div>
+        <div class="field"><span>${t("ch.f.disc")}</span>${discSeg("chrd", f.rc[0], false)}</div>
+        <div class="field"><span>${t("ch.f.fmt")}</span>${fmtSeg("chrf", f.rc[0], f.rc.slice(1), false)}</div>
         <label class="field"><span>${t("rh.f.year")}</span><select id="ch-year">
           ${eds.map((y) => html`<option value="${y}" ${raw(y === f.ry ? "selected" : "")}>${y}</option>`)}</select></label>
         <label class="field"><span>${t("ch.col.cat")}</span><select id="ch-cat">
@@ -544,7 +560,8 @@ export async function render(main, { query }) {
           <div class="hint">${ed?.at || ""}${ed?.date ? ` · ${fmtDate(ed.date)}` : ""}</div></div></div>
         <div id="ch-rank"><div class="loading">${t("misc.loading")}</div></div>
       </section>`;
-    $$('[data-seg="chr"]', el).forEach((b) => b.addEventListener("click", () => { f.rc = b.dataset.value; f.rk = null; draw.crank(); }));
+    $$('[data-seg="chrd"]', el).forEach((b) => b.addEventListener("click", () => { f.rc = pickKey(b.dataset.value, f.rc.slice(1)); draw.crank(); }));
+    $$('[data-seg="chrf"]', el).forEach((b) => b.addEventListener("click", () => { f.rc = f.rc[0] + b.dataset.value; draw.crank(); }));
     $("#ch-year", el).addEventListener("change", (e) => { f.ry = Number(e.target.value); draw.crank(); });
     $("#ch-cat", el).addEventListener("change", (e) => { f.rk = e.target.value; draw.crank(); });
     const body = await edition(f.rc, f.ry);
