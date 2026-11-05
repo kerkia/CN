@@ -974,7 +974,7 @@ async function ocadImport(box, ctx, preset = null) {
           if (lb) { await api(`/${id}/layers/${n}`, { method: "PUT", body: lb, key: keyOf(id) }); layers = { map: mv, src: read.E.map.format }; }
         } catch (e) { console.warn(e); }                    // the routes then read the image's colours
         out.push({ n, name: d.name.slice(0, 60), circuit: $(`[data-k="${i}"]`)?.value || old?.circuit || "", r: c.r,
-          map: { w: c.w, h: c.h, type: "image/png", v: mv }, geo: c.geo, controls: c.controls, ...(layers ? { layers } : {}),
+          map: { w: c.w, h: c.h, type: "image/png", v: mv }, geo: c.geo, controls: c.controls, printed: true, ...(layers ? { layers } : {}),
           ...(old?.variants ? { variants: old.variants } : {}), ...(old?.exercises ? { exercises: old.exercises } : {}),
           ...(read.E.ev.courses[d.id]?.kind === "score" ? { score: true } : {}) });
       }
@@ -1203,6 +1203,10 @@ async function editor(box, ctx) {
     if (st.controls.length < 2) return (note.textContent = t("sh.e.noCtrls"));
     if (st.mapFile && !$("#sh-e-consent").checked) return (note.textContent = t("sh.e.consentNeeded"));
     const n = course?.n ?? Math.max(-1, ...A.courses.map((c) => c.n)) + 1;
+    // the course printed on the map: most of its controls on circles read there (the replay then does not draw it again)
+    const rings = st.detect?.controls || [], ctl = st.controls.filter((p) => p.kind === "control");
+    const printed = st.detect ? ctl.length > 0 && ctl.filter((p) => rings.some((c) => Math.hypot(c.x - p.x, c.y - p.y) < (c.r || st.r))).length >= 0.6 * ctl.length
+      : st.mapFile || !course ? false : course.printed;
     note.textContent = t("sh.saving");
     try {
       // the map kept as it came, at its full resolution (a PDF's page as a lossless PNG)
@@ -1218,7 +1222,7 @@ async function editor(box, ctx) {
         controls: st.controls.map(({ kind, code, x, y }) => ({ kind, code: code || "", x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 })),
         // what the runners share besides (the route choices…) goes on with the circuit
         ...(course?.variants ? { variants: course.variants } : {}), ...(course?.exercises ? { exercises: course.exercises } : {}),
-        ...($("#sh-e-score").checked ? { score: true } : {}) };
+        ...($("#sh-e-score").checked ? { score: true } : {}), ...(typeof printed === "boolean" ? { printed } : {}) };
       const courses = [...A.courses.filter((c) => c.n !== n), entry].sort((a, b) => a.n - b.n);
       await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
       mv.destroy(); box.innerHTML = "";
@@ -1300,13 +1304,17 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   // track, rather than « Inter-postes » chosen earlier that day); their widths stay remembered
   const lp = { tab: "runners", collapsed: false };
   const rp = { tab: "display", collapsed: false };
-  let future = prefs.future === "faint" ? "faint" : "hide", showCourse = prefs.showCourse !== false;
+  // the course drawn over the map: by default only where the map does not show it already (owner, 2026-11-05) — a circuit printed
+  // by the Tracer or the OCAD import, or whose controls were read on the map; the choice kept apart for each kind of map
+  const printed = typeof course.printed === "boolean" ? course.printed : A.via === "tracer";
+  let courseOn = prefs.showCourse !== false, courseOver = prefs.courseOver === true;
+  let future = prefs.future === "faint" ? "faint" : "hide", showCourse = printed ? courseOver : courseOn;
   let orient = prefs.orient === "leg" ? "leg" : "north", lastTurn = 0;      // the map turned to the leg (as « Analyse solo »)
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
   let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
   let showStrip = prefs.strip !== false;                   // the runners' paces under the map
   let ex3d = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].includes(prefs.ex3d) ? prefs.ex3d : 1.5;   // the 3D view's vertical exaggeration
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, wv: 2, future, showCourse, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, wv: 2, future, showCourse: courseOn, courseOver, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   const MODE0 = modes.includes("wait") ? "wait" : "mass";   // waiting at the controls by default (owner, 2026-11-05)
   let mode = modes.includes(init.m) ? init.m : MODE0, fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
@@ -1966,7 +1974,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-orient").addEventListener("change", (e) => { orient = e.target.value; savePrefs(); if (leg) setLeg(leg); else frame(); });
     $("#sh-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); mv.setAlpha(mapAlpha / 100); savePrefs(); mv.draw(); });
     $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });
-    $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; savePrefs(); mv.draw(); });
+    $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; if (printed) courseOver = showCourse; else courseOn = showCourse; savePrefs(); mv.draw(); });
     $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
     $("#sh-strip-on").addEventListener("change", (e) => setStrip(e.target.checked));
     rcmPanel(); opts3d();

@@ -649,7 +649,7 @@ export async function publish(E) {
           if (blob) { await call(`/${aid}/layers/${j}`, { method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" } }); layers = { map: mv, src: E.map.format }; }
         } catch (e) { console.warn(e); }                   // the routes then read the image's colours
       }
-      courses.push({ n: j, name: d.name.slice(0, 60), circuit: v[`k${d.i}`] || "", r: c.r, map: { w: c.w, h: c.h, type: "image/png", v: mv }, geo: c.geo, controls: c.controls, ...(layers ? { layers } : {}) });
+      courses.push({ n: j, name: d.name.slice(0, 60), circuit: v[`k${d.i}`] || "", r: c.r, map: { w: c.w, h: c.h, type: "image/png", v: mv }, geo: c.geo, controls: c.controls, printed: true, ...(layers ? { layers } : {}) });
     }
     // the circuits, then every setting of the dialog — published, or kept as a draft its organisers alone see
     step(t("trc.race.pubSaving"));
