@@ -23,9 +23,11 @@ import { link, replaceQuery } from "../app.js";
 
 const POINTS = [100, 80, 60, 50, 45, 40, 36, 32, 29, 26, 24, 22, 20, 18, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1];
 const pointsOf = (p) => (p && p <= POINTS.length ? POINTS[p - 1] : 0);
-const MAIN = ["cfc1", "ttg", "cneH", "cneD", "cneJ", "cneM"];      // the categories of the palmarès
-const COMP = { cfc: ["cfc1", "cfc2", "cfc3", "cfc4", "ttg"], cne: ["cneH", "cneD", "cneJ", "cneM"] };
-const compOf = (cat) => (cat.startsWith("cne") ? "cne" : "cfc");
+const MAIN = ["cfc1", "ttg", "cneH", "cneD", "cneJ", "cneM", "crs"];      // the categories of the palmarès
+// the CFC, the CNE and, since 2026-11-05, the Championnat de France de Relais Sprint (one mixed relay, since 2017)
+const COMP = { cfc: ["cfc1", "cfc2", "cfc3", "cfc4", "ttg"], cne: ["cneH", "cneD", "cneJ", "cneM"], crs: ["crs"] };
+const COMPS = Object.keys(COMP);
+const compOf = (cat) => (cat === "crs" ? "crs" : cat.startsWith("cne") ? "cne" : "cfc");
 // the palmarès' choices: every category, CNE's four, or one
 const GROUPS = { all: MAIN, cne: COMP.cne, ...Object.fromEntries(MAIN.map((c) => [c, [c]])) };
 const PAGE = "#/relais-nationaux";
@@ -95,11 +97,11 @@ export async function render(main, { query }) {
     from: years.includes(Number(query.de)) ? Number(query.de) : years[0],
     to: years.includes(Number(query.a)) ? Number(query.a) : years[years.length - 1],
     scale: query.bareme === "med" ? "med" : "pts",
-    comp: query.comp === "cne" ? "cne" : "cfc",
+    comp: COMPS.includes(query.comp) ? query.comp : "cfc",
     year: Number(query.annee) || null,
     cat: query.rcat || null,
     club: file.clubs[query.club] ? query.club : null,
-    ecomp: query.ecomp === "cne" ? "cne" : "cfc",
+    ecomp: COMPS.includes(query.ecomp) ? query.ecomp : "cfc",
     // the individual championships' tabs
     ch: CHAMPS.includes(query.ch) ? query.ch : "all", cg: CGROUPS[query.cg] ? query.cg : "all", cs: ["H", "D"].includes(query.cs) ? query.cs : "",
     cw: query.cw === "clubs" ? "clubs" : "runners", cde: Number(query.cde) || null, ca: Number(query.ca) || null,
@@ -251,7 +253,7 @@ export async function render(main, { query }) {
     const win = secs(ed.rows.find((r) => r.place === 1)?.time);
     el.innerHTML = html`
       <div class="filters">
-        <div class="field"><span>${t("rh.f.comp")}</span>${seg("rhc", [["cfc", t("rh.compShort.cfc")], ["cne", t("rh.compShort.cne")]], f.comp)}</div>
+        <div class="field"><span>${t("rh.f.comp")}</span>${seg("rhc", COMPS.map((c) => [c, t(`rh.compShort.${c}`)]), f.comp)}</div>
         <label class="field"><span>${t("rh.f.year")}</span><select id="rh-year">
           ${yrs.map((y) => html`<option value="${y}" ${raw(y === f.year ? "selected" : "")}>${y}</option>`)}</select></label>
         <div class="field"><span>${t("rh.f.cat")}</span>${seg("rhk", cats.map((c) => [c, label(c)]), f.cat)}</div>
@@ -357,7 +359,7 @@ export async function render(main, { query }) {
     const el = $('[data-panel="editions"]', main);
     sync();
     const comp = f.ecomp;
-    const cats = comp === "cfc" ? ["cfc1", "ttg"] : COMP.cne;
+    const cats = comp === "cfc" ? ["cfc1", "ttg"] : COMP[comp];
     const eds = Object.entries(file.editions[comp]).map(([y, e]) => ({ y: Number(y), ...e })).sort((a, b) => b.y - a.y);
     const winner = (c, y) => {
       const w = [...(ix[c]?.[y]?.clubs.values() || [])].find((r) => r.cplace === 1);
@@ -366,7 +368,7 @@ export async function render(main, { query }) {
     const count = (c, y) => ix[c]?.[y]?.rows.length || 0;
     el.innerHTML = html`
       <div class="filters">
-        <div class="field"><span>${t("rh.f.comp")}</span>${seg("rhe", [["cfc", t("rh.compShort.cfc")], ["cne", t("rh.compShort.cne")]], comp)}</div>
+        <div class="field"><span>${t("rh.f.comp")}</span>${seg("rhe", COMPS.map((c) => [c, t(`rh.compShort.${c}`)]), comp)}</div>
       </div>
       <section class="card">
         <div class="card-head"><div><h2>${t(`rh.comp.${comp}`)}</h2><div class="hint">${t(`rh.ed.hint.${comp}`)}</div></div></div>
@@ -375,7 +377,7 @@ export async function render(main, { query }) {
     $$('[data-seg="rhe"]', el).forEach((b) => b.addEventListener("click", () => { f.ecomp = b.dataset.value; draw.editions(); }));
     const teams = (e) => (comp === "cfc"
       ? ["cfc1", "cfc2", "cfc3", "cfc4"].map((c) => count(c, e.y)).filter(Boolean).join(" · ")
-      : COMP.cne.map((c) => count(c, e.y) || "–").join(" · "));
+      : COMP[comp].map((c) => count(c, e.y) || "–").join(" · "));
     dataTable($("#rh-eds", el), {
       rows: eds, sortKey: "y", sortDir: -1,
       columns: [

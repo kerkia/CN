@@ -27,7 +27,7 @@ import paths
 
 SRC = paths.DATA_DIR / "relays"
 NAMES = paths.CACHE / "reference_names.json"       # FFCO's club list (build_site.reference_names)
-VERSION = 1
+VERSION = 2   # 2026-11-05: the sprint relay championship (crs)
 
 # the categories of the page: CFC's four divisions (D1-D4 2000-2006, N1/N2/Promotion Nationale/Promotion 2007-2009,
 # N1-N4 since 2010) and its youth relay, the Trophée Thierry Gueorgiou (since 2008); CNE's four relays. The open
@@ -35,6 +35,9 @@ VERSION = 1
 CFC_DIV = {"D1": "cfc1", "N1": "cfc1", "D2": "cfc2", "N2": "cfc2", "D3": "cfc3", "N3": "cfc3", "Promotion Nationale": "cfc3",
            "D4": "cfc4", "N4": "cfc4", "Promotion": "cfc4", "Trophée Thierry Gueorgiou": "ttg"}
 CNE_CAT = {"Hommes": "cneH", "Dames": "cneD", "Jeunes": "cneJ", "Mini-relais": "cneM"}
+# the Championnat de France de Relais Sprint (CFRS, since 2017; owner, 2026-11-05): one mixed relay of four, a woman's leg first
+# and last; gathered on 2026-11-05 from FFCO's archive (archives.ffcorientation.fr, each edition's « Résultats complets »): crs.csv
+CRS_CAT = {"Mixte": "crs"}
 STATUS = {"ok": "", "pm": "pm", "abandon": "ab", "aband": "ab", "absent": "abs", "disq": "dsq", "nc": "nc",
           "hors délai": "hd", "temps max": "hd"}
 
@@ -62,6 +65,13 @@ EDITIONS = {
         2018: ("Pavoux", "04", "full"), 2019: ("Cheillé", "37", "partial"), 2020: ("", "", "cancelled"),
         2021: ("Les Rives", "34", "full"), 2022: ("Saint-Jean-de-Braye", "45", "full"), 2023: ("La Palmyre", "17", "full"),
         2024: ("Fameck", "57", "full"), 2025: ("Arbonne-la-Forêt", "77", "full"), 2026: ("Le Bessat", "42", "full"),
+    },
+    # 2018 and 2021: the département only (Rambouillet and the Corrèze's town not confirmed)
+    "crs": {
+        2017: ("Casteljaloux", "47", "full"), 2018: ("Yvelines", "78", "full"), 2019: ("Le Bourget-du-Lac", "73", "full"),
+        2020: ("", "", "cancelled"), 2021: ("Corrèze", "19", "full"), 2022: ("Argentat", "19", "full"),
+        2023: ("Oyonnax-Bellignat", "01", "full"), 2024: ("Saint-Maximin-la-Sainte-Baume", "83", "full"),
+        2025: ("Lacanau", "33", "full"), 2026: ("Mulhouse", "68", "full"),
     },
 }
 # what is known of the editions without a file: the champion of CFC's first division, CNE 2015's podium places
@@ -108,7 +118,7 @@ ALIAS = {
     "ACA": "1307", "AMSO": "3408", "OZONE": "8812", "ARO BIS": "6208", "COMULHOUSE": "6803", "ECHO 73 CHAMBERY": "7305",
     "ASC ORLEANS": "4504", "AS SAMOIS ASSAMOIS": "7715", "POITIERS C": "8607", "TALANT SO": "2108", "OE": "4203",
     "OE42D": "4203", "CO BOUCLE DE LA SEINE": "2704", "BEF BALISE": "2508", "O87": "8702", "OE42D1": "4203", "SO VALENCE": "2605", "COCSINELLES": "7309",
-    "CORREZE": "1905", "CORREZE CO": "1905", "CORREZE C CORREZE CO": "1905", "BRIVE": "1905", "NCO": "6008",
+    "O JURA": "3913", "OJURA": "3913", "COC COLMAR": "6804", "CORREZE": "1905", "CORREZE CO": "1905", "CORREZE C CORREZE CO": "1905", "BRIVE": "1905", "NCO": "6008",
 }
 # whole names (folded) a club gave its teams: TAD's puns of 2021-2022 (« Full MeTAD Jacket », « La Grande TADrouille »)
 TEAM_RE = [(re.compile(r"METAD JACKET|TADROUILLE|TADASHIAN|NAKTADMURA|INSTADGRAM|INGLORIOUS BASTADS|STAD WARS|TIC ET TAD"), "5907")]
@@ -118,7 +128,7 @@ CODE_FIX = {"5709": "5907"}
 NOISE = set("HOMMES HOMME DAMES DAME FEMMES FEMME JEUNES JEUNE JEUNS JUNIOR JUNIORS MINI RELAIS MINIRELAIS MR TTG OPEN "
             "EQUIPE EQ N° NO H D J M F G A B C TEAM HOM FEM REL".split())
 # teams that are no club's: open and mixed teams, military teams, leagues' and départements' selections, empty places
-NOT_CLUB = re.compile(r"^(?:VACANT|ABANDON|NONPARTAN|MIL |PASSO|LIGUE|CDCO|LARCO|LGECO|LHFCO|LNACO|HNOCCITANIE|"
+NOT_CLUB = re.compile(r"^(?:ECHO ASUL|VACANT|ABANDON|NONPARTAN|MIL |PASSO|LIGUE|CDCO|LARCO|LGECO|LHFCO|LNACO|HNOCCITANIE|"
                       r"LBRCO|BELGIQUE|IFK |OL ZIMMERBERG|OLK |OLG |SLOW LONDON|DELAI|PM$|EQUIPE$|$)")
 OPEN = re.compile(r"\bOPEN\b")
 # words too common to name a club alone (« S.O. VALENCE » is not SO Lunéville's)
@@ -219,14 +229,15 @@ def _team(name: str) -> str:
     return s.strip(" -") or name
 
 
-def compile_(cfc: list[dict], cne: list[dict], names: dict[str, str]) -> dict:
-    clubs = Clubs(cfc + cne, names)
+def compile_(cfc: list[dict], cne: list[dict], names: dict[str, str], crs: list[dict] | None = None) -> dict:
+    crs = crs or []
+    clubs = Clubs(cfc + cne + crs, names)
     rows: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     divs: dict[int, dict[str, str]] = defaultdict(dict)        # CFC: the divisions' names of each year
     used = Counter()
-    for src, key in ((cfc, "division"), (cne, "category")):
+    for src, key, table in ((cfc, "division", CFC_DIV), (cne, "category", CNE_CAT), (crs, "category", CRS_CAT)):
         for r in src:
-            cat = (CFC_DIV if src is cfc else CNE_CAT).get(r[key])
+            cat = table.get(r[key])
             st = STATUS.get(r["status"].strip().lower())
             if not cat or st is None:
                 continue
@@ -263,7 +274,7 @@ def build(fr_out: Path, src: Path = SRC) -> bool:
     if not (src / "cfc.csv").exists() or not (src / "cne.csv").exists():
         return False
     names = json.loads(NAMES.read_text(encoding="utf-8"))["clubs"] if NAMES.exists() else {}
-    out = compile_(_read(src / "cfc.csv"), _read(src / "cne.csv"), names)
+    out = compile_(_read(src / "cfc.csv"), _read(src / "cne.csv"), names, _read(src / "crs.csv") if (src / "crs.csv").exists() else [])
     text = json.dumps(out, ensure_ascii=False, separators=(",", ":"))
     path = fr_out / "relays.json"
     if path.exists() and path.read_text(encoding="utf-8") == text:
