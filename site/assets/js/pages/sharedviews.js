@@ -144,6 +144,7 @@ function gapsView(el, X) {
         : html`<label class="field"><span>${t("sh.gref")}</span><select id="sh-gref">${GAP_REFS.map((k) => html`<option value="${k}" ${raw(k === gref ? "selected" : "")}>${t(`sh.gref.${k}`)}</option>`)}
             <optgroup label="${t("sh.gref.runner")}">${X.runners.map((r) => html`<option value="r${r.uid}" ${raw(`r${r.uid}` === gref ? "selected" : "")}>${r.name}</option>`)}</optgroup></select></label>
           <label class="field"><span>${t("sh.gx")}</span><select id="sh-gx">${["ctrl", "dist"].map((k) => html`<option value="${k}" ${raw(k === (state.gx || "ctrl") ? "selected" : "")}>${t(`sh.gx.${k}`)}</option>`)}</select></label>`}</div>
+    ${duel ? "" : html`<div class="sh-gap-key">${R.map((r) => html`<span class="${r === state.sel ? "on" : ""}"><span class="sh-swatch" style="background:${r.colour}"></span>${r.name}</span>`)}</div>`}
     <div class="chart" id="sh-gap-chart"></div>
     <p class="hint" style="margin:6px 2px 0">${duel ? t("sh.duel.hint", { a: A.name, b: B?.name || "—" }) : t("sh.gaps.hint", { src: t(`sh.legs.src.${X.fieldLegs().source}`) })}</p>`;
   $$("[data-gm]", el).forEach((b) => b.addEventListener("click", () => { state.gm = b.dataset.gm === "duel" ? "duel" : null; gapsView(el, X); X.changed(); }));
