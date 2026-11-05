@@ -4174,6 +4174,8 @@ export default {
   "st.alerts.booking.hint": "Un départ réservé déplacé ou annulé par les organisateurs, et le rappel la veille",
   "agd.book": "Réserver un horaire",
   "agd.booked": "Horaires réservés",
+  "os.bk.btn": "Ouvrir la réservation",
+  "os.bk.manage": "Gérer la réservation",
   "os.bk.title": "Réservation des horaires",
   "os.bk.hint": "Les coureurs réservent eux-mêmes leur départ sur Ozimut au lieu d'un tableau partagé ; à la clôture, la liste de départ est publiée.",
   "os.bk.go": "Ouvrir la réservation",

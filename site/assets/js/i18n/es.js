@@ -5228,6 +5228,8 @@ export default {
   "st.alerts.booking.hint": "Una salida reservada que los organizadores han movido o anulado, y el recordatorio la víspera",
   "agd.book": "Reservar una hora de salida",
   "agd.booked": "Horas de salida reservadas",
+  "os.bk.btn": "Abrir la reserva",
+  "os.bk.manage": "Gestionar la reserva",
   "os.bk.title": "Reserva de horas de salida",
   "os.bk.hint": "Los corredores reservan su salida en Ozimut en lugar de en una tabla compartida; al cierre, se publica la lista de salida.",
   "os.bk.go": "Abrir la reserva",

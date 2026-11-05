@@ -1745,7 +1745,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   published start list on « Résultats » gives its organisers (and administrators) the same file, without card numbers.
 - **Réservation des horaires** (owner, 2026-11-03: the Google Sheets clubs pass round for runners to put their names down for a start
   time — Balise 77's: three tabs of three circuits, a start every 2 minutes, long and short on the odd minutes, the middle one on the
-  even, « 4 minutes between two runners of a club »): **Orga › Horaires › « Ouvrir la réservation »** (`#/orga-horaires?course=<key>&resa=1`,
+  even, « 4 minutes between two runners of a club »): **Orga › Horaires › « Ouvrir la réservation »** (each row of Horaires' list has the button beside « Déposer les horaires », « Gérer la réservation » once opened — owner, 2026-11-05: it was found only inside a competition's page; `#/orga-horaires?course=<key>&resa=1`,
   `pages/bookingorg.js`, organisers as for the start lists: `_lib/club.js` `organises`; competitions `a<agenda id>` and `d<declared id>`)
   sets the circuits (first and last start, interval: `{ id, name, first, last, step }` in seconds), the gap between two runners of a
   club — **whatever their circuits** —, the closing time (Paris), runners per account (10), the card number asked or not (owner: the

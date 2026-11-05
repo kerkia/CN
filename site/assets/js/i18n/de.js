@@ -5228,6 +5228,8 @@ export default {
   "st.alerts.booking.hint": "Ein reservierter Start, den die Veranstalter verschoben oder storniert haben, und die Erinnerung am Vortag",
   "agd.book": "Startzeit reservieren",
   "agd.booked": "Reservierte Startzeiten",
+  "os.bk.btn": "Reservierung öffnen",
+  "os.bk.manage": "Reservierung verwalten",
   "os.bk.title": "Reservierung der Startzeiten",
   "os.bk.hint": "Die Läufer reservieren ihren Start selbst auf Ozimut statt in einer geteilten Tabelle; bei Schluss der Reservierung wird die Startliste veröffentlicht.",
   "os.bk.go": "Reservierung öffnen",

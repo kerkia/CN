@@ -75,11 +75,12 @@ export async function render(main, { query = {} } = {}) {
     $("#os-list").innerHTML = list.length ? html`<table class="data compact"><thead><tr><th>${t("f.date")}</th><th>${t("prov.race")}</th>
         <th>${t("sh.org.col.org")}</th><th class="r">${t("os.col.reg")}</th><th>${t("os.col.now")}</th><th></th></tr></thead>
       <tbody>${list.map((x) => html`<tr><td class="num">${fmtDate(x.e.date, "short")}</td>
-        <td><a href="#/orga-horaires?course=${encodeURIComponent(x.key)}">${x.e.name}</a>${x.e.place ? html` <span class="muted">· ${x.e.place}</span>` : ""}</td>
-        <td class="muted">${x.e.org || "—"}</td>
+        <td class="os-race"><a href="#/orga-horaires?course=${encodeURIComponent(x.key)}">${x.e.name}</a>${x.e.place ? html` <span class="muted">· ${x.e.place}</span>` : ""}</td>
+        <td class="muted os-org">${x.e.org || "—"}</td>
         <td class="r num">${x.e.reg?.count ? fmt(x.e.reg.count) : ""}</td>
         <td>${status(x)}</td>
-        <td class="r"><a class="btn btn-sm btn-primary" href="#/orga-horaires?course=${encodeURIComponent(x.key)}">${t("os.deposit")}</a></td></tr>`)}</tbody></table>`
+        <td class="r" style="white-space:nowrap"><a class="btn btn-sm btn-primary" href="#/orga-horaires?course=${encodeURIComponent(x.key)}">${t("os.deposit")}</a>
+          <a class="btn btn-sm" href="#/orga-horaires?course=${encodeURIComponent(x.key)}&resa=1" title="${t("os.bk.hint")}">${t(booked.has(x.key) ? "os.bk.manage" : "os.bk.btn")}</a></td></tr>`)}</tbody></table>`
       : html`<div class="empty">${club || me?.admin ? t("os.none", { club: club || "—", n: ORG_DAYS }) : !auth.sees("FR") ? t("sh.org.noCountry") : t("sh.org.noclub")}</div>`;
   };
   draw();

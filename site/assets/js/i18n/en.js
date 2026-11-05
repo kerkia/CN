@@ -5009,6 +5009,8 @@ export default {
   "st.alerts.booking.hint": "A booked start moved or cancelled by the organisers, and the reminder the day before",
   "agd.book": "Book a start time",
   "agd.booked": "Booked start times",
+  "os.bk.btn": "Open booking",
+  "os.bk.manage": "Manage booking",
   "os.bk.title": "Start time booking",
   "os.bk.hint": "Runners book their own start on Ozimut instead of a shared sheet; at the closing, the start list is published.",
   "os.bk.go": "Open the booking",
