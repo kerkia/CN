@@ -297,6 +297,9 @@ export const cfc = () => getJson("cfc.json");
  *  (relays.py): { clubs: {code: [short, FFCO's name]}, editions: {cfc|cne: {year: {at, dep, st, div}}},
  *  rows: {category: {year: [[place, team, club, time, status]]}} }. */
 export const relays = () => getJson("relays.json");
+// the individual championships (champs.py): the index of editions and podiums, and one edition's whole rankings
+export const champs = () => getJson("champs.json");
+export const champEdition = (key) => getJson(`champs/${key}.json`);
 /** Competitors of a season, counted: [[category, club, discipline flags (1 forest, 2 sprint), n]]. */
 export const pyramid = async (season) => (await getJson(`pyramid/${season}.json`))?.rows || [];
 /** Upcoming events of the FFCO agenda (built daily by ffco_scraper/agenda.py). */

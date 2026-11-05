@@ -1,4 +1,8 @@
-// « Relais nationaux » (#/relais-nationaux, menu « Classement » after « Clubs »; owner, 2026-10-26): the history of France's
+// « Palmarès » (« Relais » until 2026-11-05, owner; #/relais-nationaux, Stats' menu): France's national relays and, since
+// 2026-11-05, its individual championships (CFMD, CFLD, CFS, CFN — champs.py builds fr/champs.json and fr/champs/*.json from the
+// results database, 2011 on: tabs « Champions », « Éditions championnats », « Classements championnats »).
+//
+// The relays (2026-10-26): the history of France's
 // two club relays — the Championnat de France des Clubs (CFC, since 1999; its first division, D1 then N1, and its youth relay,
 // the Trophée Thierry Gueorgiou) and the Critérium National des Équipes (CNE, since 2006: men, women, youth, mini-relay) —
 // every team of every edition found in the archives (relays.py builds fr/relays.json).
@@ -9,7 +13,7 @@
 // their place in the ranking but take no club place, and a club's second team none either (CFC's official podiums skip
 // a club's lower team too). Points: the World Cup's old scale, 100 for the first down to 1 for the 30th.
 
-import { html, raw, $, $$, fmt, ord } from "../util.js";
+import { html, raw, $, $$, fmt, ord, fmtDate, fmtCat } from "../util.js";
 import { t, tn } from "../i18n.js";
 import * as data from "../data.js";
 import * as auth from "../auth.js";
@@ -25,6 +29,10 @@ const compOf = (cat) => (cat.startsWith("cne") ? "cne" : "cfc");
 // the palmarès' choices: every category, CNE's four, or one
 const GROUPS = { all: MAIN, cne: COMP.cne, ...Object.fromEntries(MAIN.map((c) => [c, [c]])) };
 const PAGE = "#/relais-nationaux";
+// the individual championships, and the categories' groups of their palmarès
+const CHAMPS = ["cfmd", "cfld", "cfs", "cfn"];
+const ageOf = (cat) => Number(/\d+/.exec(cat || "")?.[0] || 0);
+const CGROUPS = { all: () => true, elite: (c) => ageOf(c) === 21, young: (c) => ageOf(c) <= 20, vet: (c) => ageOf(c) >= 35 };
 
 /** "4:45:39" or "45:39" → seconds; null when not a time. */
 function secs(s) {
@@ -59,11 +67,12 @@ function index(file) {
 
 export async function render(main, { query }) {
   main.innerHTML = html`<div class="loading">${t("misc.loading")}</div>`;
-  const file = await data.relays().catch(() => null);
-  if (!file?.rows) {
+  const [rel, champs] = await Promise.all([data.relays().catch(() => null), data.champs().catch(() => null)]);
+  if (!rel?.rows && !champs?.editions) {
     main.innerHTML = html`<div class="notice">${t("rh.none")}</div>`;
     return;
   }
+  const file = rel?.rows ? rel : { rows: {}, clubs: {}, editions: { cfc: {}, cne: {} } };
   const ix = index(file);
   const short = (c) => file.clubs[c]?.[0] || c;
   const full = (c) => file.clubs[c]?.[1] || "";
@@ -78,7 +87,8 @@ export async function render(main, { query }) {
     html`<span><i style="background:${s.color}"></i>${s.name}</span>`)}</div>`;
   const medal = (p) => (p && p <= 3 ? html`<span class="rh-med rh-med-${p}" aria-hidden="true"></span>` : "");
 
-  const TABS = [["palmares", t("rh.tab.palmares")], ["annee", t("rh.tab.year")], ["club", t("rh.tab.club")], ["editions", t("rh.tab.editions")]];
+  const TABS = [...(rel?.rows ? [["palmares", t("rh.tab.palmares")], ["annee", t("rh.tab.year")], ["editions", t("rh.tab.editions")], ["club", t("rh.tab.club")]] : []),
+    ...(champs?.editions ? [["champ", t("rh.tab.champ")], ["ceds", t("rh.tab.ceds")], ["crank", t("rh.tab.crank")]] : [])];
   const tab0 = tabFrom(TABS, query);
   const f = {
     group: GROUPS[query.cat] ? query.cat : "cfc1",
@@ -90,11 +100,17 @@ export async function render(main, { query }) {
     cat: query.rcat || null,
     club: file.clubs[query.club] ? query.club : null,
     ecomp: query.ecomp === "cne" ? "cne" : "cfc",
+    // the individual championships' tabs
+    ch: CHAMPS.includes(query.ch) ? query.ch : "all", cg: CGROUPS[query.cg] ? query.cg : "all", cs: ["H", "D"].includes(query.cs) ? query.cs : "",
+    cw: query.cw === "clubs" ? "clubs" : "runners", cde: Number(query.cde) || null, ca: Number(query.ca) || null,
+    cc: CHAMPS.includes(query.cc) ? query.cc : "cfmd", rc: CHAMPS.includes(query.rc) ? query.rc : "cfmd", ry: Number(query.ry) || null, rk: query.rk || null,
   };
   const sync = () => replaceQuery({
     cat: f.group === "cfc1" ? null : f.group, de: f.from === years[0] ? null : f.from, a: f.to === years[years.length - 1] ? null : f.to,
     bareme: f.scale === "pts" ? null : f.scale, comp: f.comp === "cfc" ? null : f.comp, annee: f.year, rcat: f.cat,
     club: f.club, ecomp: f.ecomp === "cfc" ? null : f.ecomp,
+    ch: f.ch === "all" ? null : f.ch, cg: f.cg === "all" ? null : f.cg, cs: f.cs || null, cw: f.cw === "runners" ? null : f.cw,
+    cde: f.cde && f.cde !== chYears[0] ? f.cde : null, ca: f.ca && f.ca !== chYears[chYears.length - 1] ? f.ca : null, cc: f.cc === "cfmd" ? null : f.cc, rc: f.rc === "cfmd" ? null : f.rc, ry: f.ry, rk: f.rk,
   });
 
   main.innerHTML = html`
@@ -104,7 +120,10 @@ export async function render(main, { query }) {
     <div data-panel="annee"></div>
     <div data-panel="club"></div>
     <div data-panel="editions"></div>
-    <p class="hint rh-sources">${t("rh.sources")}</p>`;
+    <div data-panel="champ"></div>
+    <div data-panel="ceds"></div>
+    <div data-panel="crank"></div>
+    <p class="hint rh-sources">${rel?.rows ? t("rh.sources") : ""} ${champs?.editions ? t("ch.sources") : ""}</p>`;
   const draw = {};
   let show = null;
 
@@ -372,6 +391,181 @@ export async function render(main, { query }) {
     });
   };
 
+
+  // ---- The individual championships ----------------------------------------------------------------------------------
+  const chName = (c) => t(`ch.name.${c}`);
+  const chEds = (c) => Object.entries(champs?.editions?.[c] || {}).map(([y, e]) => ({ y: Number(y), ...e }));
+  const chYears = [...new Set(CHAMPS.flatMap((c) => chEds(c).map((e) => e.y)))].sort((a, b) => a - b);
+  const who = (lic, name) => (lic ? html`<a href="${link.runner(lic)}">${name}</a>` : name);
+  const clubOf = (code) => (code ? data.clubName(code) : "");
+  const chSeg = (id, v, all) => seg(id, [...(all ? [["all", t("ch.all")]] : []), ...CHAMPS.map((c) => [c, t(`ch.short.${c}`)])], v);
+  const edFiles = new Map();
+  const edition = (c, y) => {
+    const k = `${c}-${y}`;
+    if (!edFiles.has(k)) edFiles.set(k, data.champEdition(k).catch(() => null));
+    return edFiles.get(k);
+  };
+
+  // « Champions »: the runners (or their clubs) by their titles and medals over the period
+  draw.champ = () => {
+    const el = $('[data-panel="champ"]', main);
+    if (!f.cde || !chYears.includes(f.cde)) f.cde = chYears[0];
+    if (!f.ca || !chYears.includes(f.ca)) f.ca = chYears[chYears.length - 1];
+    sync();
+    const chs = f.ch === "all" ? CHAMPS : [f.ch];
+    const okCat = (c) => CGROUPS[f.cg](c) && (!f.cs || c.startsWith(f.cs));
+    const by = new Map(), clubs = new Map();
+    let nEds = 0;
+    const add = (map, key, base, p, ch, cat, y) => {
+      if (!map.has(key)) map.set(key, { ...base, gold: 0, silver: 0, bronze: 0, cats: new Set(), chs: new Set(), from: y, to: y });
+      const r = map.get(key);
+      if (p === 1) r.gold++; else if (p === 2) r.silver++; else r.bronze++;
+      r.cats.add(cat); r.chs.add(ch); r.from = Math.min(r.from, y); r.to = Math.max(r.to, y);
+      if (y >= (r.clubY || 0)) { r.club = base.club; r.clubY = y; }
+    };
+    for (const ch of chs) {
+      for (const e of chEds(ch)) {
+        if (e.y < f.cde || e.y > f.ca) continue;
+        nEds++;
+        for (const [cat, rows] of Object.entries(e.cats)) {
+          if (!okCat(cat)) continue;
+          for (const [p, lic, name, club] of rows) {
+            add(by, lic ? `l${lic}` : `n${name}`, { lic, name, club }, p, ch, cat, e.y);
+            if (club) add(clubs, club, { club }, p, ch, cat, e.y);
+          }
+        }
+      }
+    }
+    const medals = (r) => r.gold * 1e6 + r.silver * 1e3 + r.bronze;
+    const rows = [...(f.cw === "clubs" ? clubs : by).values()].sort((a, b) => medals(b) - medals(a));
+    rows.forEach((r, i) => { r.rank = i + 1; r.total = r.gold + r.silver + r.bronze; });
+    const champions = [...by.values()].filter((r) => r.gold);
+    const top = [...champions].sort((a, b) => b.gold - a.gold)[0];
+    const yearOpts = (v) => chYears.map((y) => html`<option value="${y}" ${raw(y === v ? "selected" : "")}>${y}</option>`);
+    el.innerHTML = html`
+      <div class="filters">
+        <div class="field"><span>${t("ch.f.champ")}</span>${chSeg("chc", f.ch, true)}</div>
+        <label class="field"><span>${t("rh.f.cat")}</span><select id="ch-group">
+          ${Object.keys(CGROUPS).map((g) => html`<option value="${g}" ${raw(g === f.cg ? "selected" : "")}>${t(`ch.grp.${g}`)}</option>`)}</select></label>
+        <div class="field"><span>${t("ch.f.sex")}</span>${seg("chs", [["", t("ch.sex.all")], ["H", t("ch.sex.H")], ["D", t("ch.sex.D")]], f.cs)}</div>
+        <label class="field"><span>${t("rh.f.from")}</span><select id="ch-from">${yearOpts(f.cde)}</select></label>
+        <label class="field"><span>${t("rh.f.to")}</span><select id="ch-to">${yearOpts(f.ca)}</select></label>
+        <div class="field"><span>${t("ch.f.who")}</span>${seg("chw", [["runners", t("ch.who.runners")], ["clubs", t("ch.who.clubs")]], f.cw)}</div>
+      </div>
+      <div class="tiles" style="margin-bottom:16px">
+        ${tile(t("rh.tile.editions"), fmt(nEds))}
+        ${tile(t("ch.tile.champions"), fmt(champions.length))}
+        ${top ? tile(t("rh.tile.most"), top.name, tn("rh.titles", top.gold)) : ""}
+      </div>
+      <section class="card">
+        <div class="card-head"><div><h2>${f.ch === "all" ? t("ch.all") : chName(f.ch)} · ${f.cde}–${f.ca}</h2>
+          <div class="hint">${t(f.cw === "clubs" ? "ch.palm.hint.clubs" : "ch.palm.hint")}</div></div></div>
+        <div id="ch-palm"></div>
+      </section>`;
+    $$('[data-seg="chc"]', el).forEach((b) => b.addEventListener("click", () => { f.ch = b.dataset.value; draw.champ(); }));
+    $$('[data-seg="chs"]', el).forEach((b) => b.addEventListener("click", () => { f.cs = b.dataset.value; draw.champ(); }));
+    $$('[data-seg="chw"]', el).forEach((b) => b.addEventListener("click", () => { f.cw = b.dataset.value; draw.champ(); }));
+    $("#ch-group", el).addEventListener("change", (e) => { f.cg = e.target.value; draw.champ(); });
+    $("#ch-from", el).addEventListener("change", (e) => { f.cde = Math.min(Number(e.target.value), f.ca); draw.champ(); });
+    $("#ch-to", el).addEventListener("change", (e) => { f.ca = Math.max(Number(e.target.value), f.cde); draw.champ(); });
+    const num = (v) => (v ? fmt(v) : html`<span class="dim">·</span>`);
+    const clubs_ = f.cw === "clubs";
+    dataTable($("#ch-palm", el), {
+      rows, sortKey: "rank", sortDir: 1,
+      rowClass: (r) => (myClub && r.club === myClub ? "me" : ""),
+      columns: [
+        { key: "rank", label: t("rh.col.rank"), cls: "rank num", sort: (r) => r.rank, defaultDir: 1 },
+        ...(clubs_ ? [] : [{ key: "name", label: t("ch.col.runner"), sort: (r) => (r.name || "").toLowerCase(), defaultDir: 1, render: (r) => who(r.lic, r.name) }]),
+        { key: "club", label: t("rh.col.club"), sort: (r) => clubOf(r.club).toLowerCase(), defaultDir: 1, render: (r) => clubOf(r.club) },
+        { key: "gold", label: html`${medal(1)}<span class="sr-only">${t("rh.col.gold")}</span>`, align: "r", cls: "num", sort: (r) => r.gold, render: (r) => num(r.gold) },
+        { key: "silver", label: html`${medal(2)}<span class="sr-only">${t("rh.col.silver")}</span>`, align: "r", cls: "num", sort: (r) => r.silver, render: (r) => num(r.silver) },
+        { key: "bronze", label: html`${medal(3)}<span class="sr-only">${t("rh.col.bronze")}</span>`, align: "r", cls: "num", sort: (r) => r.bronze, render: (r) => num(r.bronze) },
+        { key: "total", label: t("ch.col.total"), align: "r", cls: "num", sort: (r) => r.total },
+        ...(clubs_ ? [] : [{ key: "cats", label: t("ch.col.cats"), sort: (r) => [...r.cats].join(), render: (r) => [...r.cats].sort().map(fmtCat).join(", ") }]),
+        { key: "chs", label: t("ch.col.champs"), sort: (r) => [...r.chs].join(), render: (r) => CHAMPS.filter((c) => r.chs.has(c)).map((c) => t(`ch.short.${c}`)).join(", ") },
+        { key: "years", label: t("ch.col.years"), cls: "num", sort: (r) => r.from, render: (r) => (r.from === r.to ? String(r.from) : `${r.from}–${r.to}`) },
+      ],
+    });
+  };
+
+  // « Éditions championnats »: each edition's place, day, field and élite winners
+  draw.ceds = () => {
+    const el = $('[data-panel="ceds"]', main);
+    sync();
+    const eds = chEds(f.cc).sort((a, b) => b.y - a.y);
+    const win = (e, cat) => {
+      const w = e.cats?.[cat]?.find((r) => r[0] === 1);
+      return w ? who(w[1], w[2]) : html`<span class="dim">—</span>`;
+    };
+    el.innerHTML = html`
+      <div class="filters"><div class="field"><span>${t("ch.f.champ")}</span>${chSeg("che", f.cc, false)}</div></div>
+      <section class="card">
+        <div class="card-head"><div><h2>${chName(f.cc)}</h2><div class="hint">${t("ch.ed.hint")}</div></div></div>
+        <div id="ch-eds"></div>
+      </section>`;
+    $$('[data-seg="che"]', el).forEach((b) => b.addEventListener("click", () => { f.cc = b.dataset.value; draw.ceds(); }));
+    dataTable($("#ch-eds", el), {
+      rows: eds, sortKey: "y", sortDir: -1,
+      columns: [
+        { key: "y", label: t("rh.col.year"), cls: "num", sort: (r) => r.y,
+          render: (r) => html`<a href="${PAGE}?onglet=crank&rc=${f.cc}&ry=${r.y}" data-ry="${r.y}">${r.y}</a>` },
+        { key: "at", label: t("rh.col.at"), sort: (r) => r.at || "" },
+        { key: "date", label: t("ch.col.date"), cls: "num", sort: (r) => r.date, render: (r) => fmtDate(r.date) },
+        { key: "n", label: t("ch.col.finishers"), align: "r", cls: "num dim", sort: (r) => r.n, render: (r) => fmt(r.n) },
+        { key: "cats", label: t("ch.col.ncats"), align: "r", cls: "num dim", sort: (r) => Object.keys(r.cats).length, render: (r) => fmt(Object.keys(r.cats).length) },
+        { key: "wH", label: t("ch.col.winner", { cat: fmtCat("H21") }), sort: (r) => r.cats?.H21?.[0]?.[2] || "~", render: (r) => win(r, "H21") },
+        { key: "wD", label: t("ch.col.winner", { cat: fmtCat("D21") }), sort: (r) => r.cats?.D21?.[0]?.[2] || "~", render: (r) => win(r, "D21") },
+      ],
+    });
+    $$("a[data-ry]", el).forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); f.rc = f.cc; f.ry = Number(a.dataset.ry); f.rk = null; show("crank"); }));
+  };
+
+  // « Classements championnats »: one edition's ranking, category by category
+  draw.crank = async () => {
+    const el = $('[data-panel="crank"]', main);
+    const eds = chEds(f.rc).map((e) => e.y).sort((a, b) => b - a);
+    if (!eds.includes(f.ry)) f.ry = eds[0];
+    const ed = champs.editions[f.rc]?.[f.ry];
+    const cats = Object.keys(ed?.cats || {});
+    if (!cats.includes(f.rk)) f.rk = cats.includes("H21") ? "H21" : cats[0];
+    sync();
+    el.innerHTML = html`
+      <div class="filters">
+        <div class="field"><span>${t("ch.f.champ")}</span>${chSeg("chr", f.rc, false)}</div>
+        <label class="field"><span>${t("rh.f.year")}</span><select id="ch-year">
+          ${eds.map((y) => html`<option value="${y}" ${raw(y === f.ry ? "selected" : "")}>${y}</option>`)}</select></label>
+        <label class="field"><span>${t("ch.col.cat")}</span><select id="ch-cat">
+          ${cats.map((c) => html`<option value="${c}" ${raw(c === f.rk ? "selected" : "")}>${fmtCat(c)}</option>`)}</select></label>
+      </div>
+      <section class="card">
+        <div class="card-head"><div><h2>${chName(f.rc)} ${f.ry} · ${fmtCat(f.rk)}</h2>
+          <div class="hint">${ed?.at || ""}${ed?.date ? ` · ${fmtDate(ed.date)}` : ""}</div></div></div>
+        <div id="ch-rank"><div class="loading">${t("misc.loading")}</div></div>
+      </section>`;
+    $$('[data-seg="chr"]', el).forEach((b) => b.addEventListener("click", () => { f.rc = b.dataset.value; f.rk = null; draw.crank(); }));
+    $("#ch-year", el).addEventListener("change", (e) => { f.ry = Number(e.target.value); draw.crank(); });
+    $("#ch-cat", el).addEventListener("change", (e) => { f.rk = e.target.value; draw.crank(); });
+    const body = await edition(f.rc, f.ry);
+    const box = $("#ch-rank", el);
+    if (!box) return;
+    const list = body?.cats?.[f.rk] || [];
+    if (!list.length) { box.innerHTML = html`<div class="empty">${t("rh.none")}</div>`; return; }
+    const w = secs(list.find((r) => r[0] === 1)?.[4]);
+    const rows = list.map(([place, lic, name, club, time, st], i) => ({ i, place, lic, name, club, time, st,
+      gap: place && w != null && secs(time) != null ? secs(time) - w : null }));
+    dataTable(box, {
+      rows, sortKey: "i", sortDir: 1,
+      rowClass: (r) => (myClub && r.club === myClub ? "me" : ""),
+      columns: [
+        { key: "i", label: t("rh.col.place"), cls: "rank num", sort: (r) => r.i, defaultDir: 1,
+          render: (r) => (r.place ? html`${medal(r.place)}${r.place}` : html`<span class="dim">${t(`ch.status.${r.st || "nc"}`)}</span>`) },
+        { key: "name", label: t("ch.col.runner"), sort: (r) => (r.name || "").toLowerCase(), defaultDir: 1, render: (r) => who(r.lic, r.name) },
+        { key: "club", label: t("rh.col.club"), sort: (r) => clubOf(r.club).toLowerCase(), defaultDir: 1, render: (r) => clubOf(r.club) },
+        { key: "time", label: t("rh.col.time"), align: "r", cls: "num", sort: (r) => secs(r.time) ?? 1e9, defaultDir: 1, render: (r) => r.time || "" },
+        { key: "gap", label: t("rh.col.gap"), align: "r", cls: "num dim", sort: (r) => r.gap ?? 1e9, defaultDir: 1, render: (r) => (r.gap ? `+${clock(r.gap)}` : "") },
+      ],
+    });
+  };
   show = bindPageTabs(main, TABS, tab0, (k) => draw[k]());
   // a club's name anywhere opens its tab
   main.addEventListener("click", (e) => {

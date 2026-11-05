@@ -53,6 +53,7 @@ import countries.fr as france  # noqa: E402
 import notify  # noqa: E402  (digest e-mails for subscribed accounts)
 import paths  # noqa: E402  (the data folder, outside the project folder)
 import relays  # noqa: E402  (the national relays' history: CFC and CNE, from R2 relays/)
+import champs  # noqa: E402  (the individual championships' palmarès, from the database)
 PAGES_PROJECT = os.environ.get("CN_PAGES_PROJECT", "observatoire-cn")
 DEPLOY_PENDING = paths.DATA_DIR / "deploy.pending"     # site rebuilt, not yet published
 # Bumped when a method's definition changes: the next run (of any kind) recomputes it once, everywhere.
@@ -303,6 +304,8 @@ def main() -> None:
             if ensure_public(args.db, fr_out):                  # France's public copy, written once if missing
                 DEPLOY_PENDING.touch()
             if relays.build(fr_out):                            # « Relais nationaux »: fr/relays.json, when its CSVs changed
+                DEPLOY_PENDING.touch()
+            if champs.build(args.db, fr_out):                   # « Palmarès »: fr/champs.json and fr/champs/, from the database
                 DEPLOY_PENDING.touch()
             if countries.write_index(args.out):                 # site/data/meta.json: the countries and what they have
                 DEPLOY_PENDING.touch()
