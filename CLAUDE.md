@@ -2047,7 +2047,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   several at 95 %, the best at 60 % with 20 points over the next — else the runner chooses), then the usual consent. « Ajouter ma
   trace » and « Ajouter des traces de test… » sit in the top line too and find the circuit the same way (test tracks had all gone to
   the circuit shown, whose analyses then came out empty). « Itinéraires » computes when opened, and with the whole course shown every
-  leg in turn, listed below (`rcmOne`, `rcmTurnOn`). **Two views** in the top line, « Carte » and « Analyse des temps » (« Temps intermédiaires » until 2026-11-05; the switch in the flag's pale orange, the line beside it only the event's date and type — « Entraînement club » or « Compétition » —, no organiser, access or « vous organisez »)
+  leg in turn, listed below (`rcmOne`, `rcmTurnOn`). **Two views** in the top line, « Carte » and « Analyse des temps » (« Temps intermédiaires » until 2026-11-05; the switch in the flag's pale orange, the line beside it only the event's date and type — « Entraînement club » or « Compétition » —, no organiser nor « vous organisez »; at the line's right end, over the settings, who may open it, `sh.access.*`: « Accès : tous les comptes », « … visiteurs sans compte compris », « Accès restreint : membres du club » / « : mot de passe »)
   (`?vue=temps`): the second is Arena's split analysis (`splits.js` `renderEmbedded`: no head, nothing written into the address, its
   views' tabs kept in the page) fed with a document built from the tracks (`splitsDoc`: one class per circuit, each track's passes,
   its place among those who passed every control and finished, its start's Paris clock time); the map tab keeps « Analyses »' own

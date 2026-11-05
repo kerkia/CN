@@ -1869,6 +1869,7 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
 }
 /* « Analyse club » / « Analyse compétition » (pages/shared.js) */
 .sh-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0 0 8px; font-size: 13.5px; }
+.sh-top .sh-access { margin-left: auto; }   /* who may open the analysis, at the line's right end (over the settings) */
 .sh-title { font-size: 15px; }
 .sh-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .sh-setup { margin-bottom: 12px; }
