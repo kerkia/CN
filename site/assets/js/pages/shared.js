@@ -362,7 +362,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     <div class="sh-top">
       <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
       <span class="sh-tabs" id="sh-tabs"></span>
-      ${organiser ? html`<span class="tag" title="${t("sh.mine.tip")}">${t("sh.mine")}</span>` : ""}${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}</div>
+      ${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}</div>
     <div id="sh-viewer"></div>
     <div id="sh-splits" class="sh-splits" hidden></div>`;
   // two views of the analysis (owner, 2026-11-04): the map (the replay, its panels) and Arena's split analysis of the times the

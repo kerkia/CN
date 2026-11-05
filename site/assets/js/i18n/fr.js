@@ -1509,7 +1509,7 @@ export default {
   "sh.race.lede": "Les compétitions que leurs organisateurs ont préparées — cartes et circuits : choisissez la vôtre, déposez votre trace GPS, et comparez-la à celles des autres comme sur Livelox, à côté des résultats publiés.",
   "sh.club.none": "Aucun entraînement prêt pour l'instant : un organisateur doit d'abord déposer sa carte et ses circuits.", "sh.race.none": "Aucune compétition prête pour l'instant : son organisateur doit d'abord déposer les cartes et les circuits.",
   "sh.club.default": "Entraînement du {d}",
-  "sh.new": "Créer une analyse", "sh.create": "Créer", "sh.mine": "vous organisez",
+  "sh.new": "Créer une analyse", "sh.create": "Créer",
   "sh.col.title": "Titre", "sh.col.owner": "Organisateur", "sh.col.access": "Accès", "sh.col.courses": "Circuits",
   "sh.vis.public": "Tous", "sh.vis.club": "Club", "sh.vis.password": "Mot de passe",
   "sh.vis.public.long": "tous les licenciés connectés à Ozimut", "sh.vis.club.long": "les membres de mon club", "sh.vis.password.long": "les personnes qui ont le mot de passe :",
@@ -3225,7 +3225,6 @@ export default {
   // Coach's analyses, one page each (owner, 2026-10-30)
   "coach.solo.race": "Une compétition", "coach.solo.free": "Un entraînement ou une autre course",
   "coach.multi.race": "Compétitions", "coach.multi.club": "Entraînements",
-  "sh.mine.tip": "Vous en êtes l'organisateur : gérez-la dans le module Orga.",
   "cty.need.guest": "Sans compte, Stats montre le coureur, le classement et les courses sur la période que la fédération publie librement. Créez un compte et rejoignez la France pour tout voir.",
   // the home page in four modules (owner, 2026-10-30)
   "tour.mod.try": "Essayer {mod} sans compte", "tour.mod.orga.cta": "Créer un compte pour organiser",

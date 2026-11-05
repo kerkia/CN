@@ -2057,7 +2057,6 @@ export default {
   "sh.club.default": "Training on {d}",
   "sh.new": "Create an analysis",
   "sh.create": "Create",
-  "sh.mine": "organised by you",
   "sh.col.title": "Title",
   "sh.col.owner": "Organiser",
   "sh.col.access": "Access",
@@ -4061,7 +4060,6 @@ export default {
   // Coach's analyses, one page each (owner, 2026-10-30)
   "coach.solo.race": "A competition", "coach.solo.free": "A training session or another race",
   "coach.multi.race": "Competitions", "coach.multi.club": "Training",
-  "sh.mine.tip": "You organise it: manage it in the Orga module.",
   "cty.need.guest": "Without an account, Stats shows the runner, the ranking and the races over the period the federation publishes openly. Create an account and join France to see everything.",
   // the home page in four modules (owner, 2026-10-30)
   "tour.mod.try": "Try {mod} without an account", "tour.mod.orga.cta": "Create an account to organise",
