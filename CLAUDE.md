@@ -2130,8 +2130,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   for the « Entrainement Gif » test event (scanned map, invented georeferencing, routes over the map's colours, variants and
   mistakes): `C:\kerkia\cn-data\Test files\fake-tracks\gen_tracks.py`.
   **Runners shown**: a click on a name shows or hides that trace (any number; « Toutes », « Aucune », « Inverser », « La
-  mienne »), ⌖ follows one runner, the ⌖ of the list's first row « Tous les coureurs affichés » the group, none lit = the map
-  stays where it is left (owner, 2026-11-05: the « Suivre » drop-down of the bar, which repeated it, is gone; `followMarks`); the timeline spans the runners shown; kept for the visit (`sessionStorage ocn.an.vis.*`).
+  mienne »); the « Suivre » column (⌖) says who is followed — the list's first row « Tous les coureurs affichés » the group, a runner that runner, one always lit — and the bar's « ⌖ Suivre » push button (`pan`, pressed in the flag's orange) whether the map pans with them: a hand on the map or ⤢ ▭ releases it, one click resumes it (owner, 2026-11-05: who and whether apart; `followMarks`, `?p=0`); the bar holds the transport, speed, « Suivre », the start mode — « Attente aux postes » by default, « Attente et pause aux postes » stopping the replay where everyone sets off from each control, « Départ en masse depuis le poste » followed by its control — and the time line; ⤢ ↗ sit in the top line, right of the access; the timeline spans the runners shown; kept for the visit (`sessionStorage ocn.an.vis.*`).
   **Display** (owner, 2026-10-14: no curves per runner here, the map is what is compared): the right panel's « Affichage »
   as on « Analyse solo » — width (4 steps), « Trace à venir » (masquée by default / estompée: each runner's route to its
   finish, faint), tail, the map's and the traces' opacity, the course overlay — kept in `localStorage ocn.sh.prefs`.
