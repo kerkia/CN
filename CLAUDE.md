@@ -349,7 +349,7 @@ under the mouse (`.ma-pop`) and in the chosen event's card: `analyses/<id>/thumb
 `GET|PUT /api/analyses/<id>/thumb/<n>`, the visitors' `/v/<id>/thumb/<n>`), made by the organisers' browser — `shared.js
 courseThumb`, the organisers' page making those missing (`thumbsDue`, from the analysis's `thumbs`) — and dropped by the server when a
 circuit's map or controls change; the list's `thumb` (the first circuit with one), `runners`, `upload`, `cc`, `orgName` come from one
-listing of `analyses/` (`dataCounts`). The chosen event (`?id=`) offers three ways in: « Voir avec tous les coureurs » (the shared
+listing of `analyses/` (`dataCounts`). A click on a row (or Enter) chooses the event and nothing more — no link in the list opens an analysis (owner, 2026-11-05: a name linked to the shared analysis was taken for the way in) —; its card, above the map, (`?id=`) offers three ways in, the thumbnail under them: « Voir avec tous les coureurs » (the shared
 analysis), « Ajouter ma trace et comparer » (the same page with `ajout=1`: its track drop opens at once, `offerTrack`, a track handed
 over taken by it), « Analyser ma trace seule sur cette carte » (**« Analyse solo » on the organiser's map**, route `analysisOrga`,
 `#/analyse-orga?id=&c=`) — each as the organisers' switches `upload` / `solo` allow, the last two for an account; a password's event

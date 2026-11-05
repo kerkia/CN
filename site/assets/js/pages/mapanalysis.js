@@ -51,7 +51,7 @@ export async function render(main, r) {
     <div id="ma-filters"></div>
     <div class="ma-pick">
       <section class="card ma-list"><div class="table-wrap" id="ma-table"><div class="empty">${t("misc.loading")}</div></div></section>
-      <aside class="ma-side"><div class="ma-map" id="ma-map" hidden></div><section class="card ma-detail" id="ma-detail"></section></aside>
+      <aside class="ma-side"><section class="card ma-detail" id="ma-detail"></section><div class="ma-map" id="ma-map" hidden></div></aside>
     </div>
     <div class="ma-pop" id="ma-pop" hidden><img alt=""></div>`;
 
@@ -117,7 +117,7 @@ export async function render(main, r) {
         <th class="r">${t("sh.col.courses")}</th><th class="r" title="${t("ma.col.runners.tip")}">${t("ma.col.runners")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === selected ? "sel" : ""}">
         <td class="num">${fmtDate(e.date, "short")}</td>
-        <td class="ma-name"><a href="${multiHref(e.a)}" data-open>${e.name}</a>${e.locked ? html` <span title="${t("ma.locked")}">🔒</span>` : ""}${clubTag(e)}${e.draft ? html` <span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}${e.place ? html`<div class="muted ma-sub">${e.place}</div>` : ""}</td>
+        <td class="ma-name"><b class="ma-ev">${e.name}</b>${e.locked ? html` <span title="${t("ma.locked")}">🔒</span>` : ""}${clubTag(e)}${e.draft ? html` <span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}${e.place ? html`<div class="muted ma-sub">${e.place}</div>` : ""}</td>
         <td><span class="tag">${t(`ma.kind.${e.kind}`)}</span></td><td class="muted ma-club" title="${clubName(e.org)}">${clubName(e.org) || "—"}</td>
         <td class="r num">${e.courses}</td><td class="r num">${e.runners}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(items.length ? "ra.emptyFilter" : "ma.events.none")}</div>`;
@@ -146,7 +146,6 @@ export async function render(main, r) {
     box.innerHTML = html`<div class="card-body">
       <h2 class="ma-d-title">${e.name}</h2><p class="muted">${facts.join(" · ")}</p>
       <p><span class="tag">${t(`ma.kind.${e.kind}`)}</span>${clubTag(e)} ${tn("ma.courses", e.courses)} · ${tn("ma.runners", e.runners)}</p>
-      <div class="ma-d-thumb" id="ma-d-thumb" hidden><img alt="${t("ma.thumb.alt", { name: e.name })}"></div>
       ${locked ? html`<p class="muted">${t("ma.locked.ask")}</p>
         <div class="row" style="gap:8px"><input type="password" id="ma-pw" placeholder="${t("sh.pw")}" autocomplete="off" style="width:180px">
         <button type="button" class="btn btn-primary" id="ma-unlock">${t("ma.unlock")}</button></div><p class="muted" id="ma-pw-note"></p>`
@@ -155,7 +154,8 @@ export async function render(main, r) {
         ${me && a.upload !== false ? way(multiHref(a, true), t("ma.go.add"), t("ma.go.add.hint"), true) : ""}
         ${me && a.solo !== false ? way(orgaHref(a.id), t("ma.go.solo"), t("ma.go.solo.hint")) : ""}
         ${!me ? html`<p class="muted">${raw(t("ma.go.account", { a: `<a href="#/compte/inscription">`, b: "</a>" }))}</p>`
-          : a.upload === false && !a.organiser ? html`<p class="muted">${t("ma.go.closed")}</p>` : ""}</div>`}</div>`;
+          : a.upload === false && !a.organiser ? html`<p class="muted">${t("ma.go.closed")}</p>` : ""}</div>`}
+      <div class="ma-d-thumb" id="ma-d-thumb" hidden><img alt="${t("ma.thumb.alt", { name: e.name })}"></div></div>`;
     thumbOf(e).then((url) => { const b = $("#ma-d-thumb"); if (url && b && selected === e.key) { $("img", b).src = url; b.hidden = false; } });
     const go = async () => {
       try {
@@ -219,13 +219,14 @@ export async function render(main, r) {
     map?.show(shown, selected);
   }
   wide.addEventListener("change", mountMap);
-  table.addEventListener("click", (e) => { const r = e.target.closest("tr[data-key]"); if (r && !e.target.closest("[data-open]")) select(r.dataset.key); });
-  table.addEventListener("dblclick", (e) => { const r = e.target.closest("tr[data-key]"); if (r) location.hash = multiHref(byKey.get(r.dataset.key).a); });
+  // a row chosen shows its card (the three ways in); nothing in the list opens an analysis by itself (owner, 2026-11-05)
+  const reveal = () => { if (!wide.matches) $("#ma-detail").scrollIntoView({ behavior: "smooth", block: "start" }); };
+  table.addEventListener("click", (e) => { const r = e.target.closest("tr[data-key]"); if (r) { select(r.dataset.key); reveal(); } });
   table.addEventListener("mouseover", (e) => { const r = e.target.closest("tr[data-key]"); if (r) map?.hover(r.dataset.key); });
   table.addEventListener("mouseleave", () => { map?.hover(null); hidePop(); });
   table.addEventListener("keydown", (e) => {
     const r = e.target.closest("tr[data-key]");
-    if (r && e.key === "Enter") { e.preventDefault(); if (selected === r.dataset.key) location.hash = multiHref(byKey.get(r.dataset.key).a); else select(r.dataset.key); }
+    if (r && e.key === "Enter") { e.preventDefault(); select(r.dataset.key); reveal(); $("#ma-detail .ma-go")?.focus({ preventScroll: true }); }
   });
   draw();
   mountMap();
