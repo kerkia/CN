@@ -80,11 +80,12 @@ function splitsView(el, X) {
     <div class="table-wrap"><table class="data compact sh-splits"${raw(freezeAttrs(1, 1))}><thead><tr><th>${t("prov.name")}</th>${Array.from({ length: legsN }, (_, j) => html`<th class="r" data-legh="${j + 1}" style="cursor:pointer">${ctrlLabel(j + 1)}</th>`)}<th class="r">${t("an.total")}</th></tr></thead>
     <tbody>${R.map((r) => html`<tr><td><span class="sh-swatch" style="background:${r.colour}"></span> ${r.name}${r.published ? html` <span class="tag" title="${t("sh.pub.tip")}">${t("sh.pub")}</span>` : ""}</td>
       ${Array.from({ length: legsN }, (_, j) => { const v = legTime(r, j + 1), c = r.passes[j + 1] != null ? r.passes[j + 1] - r.start : null, rv = ref && ref !== r ? legTime(ref, j + 1) : null;
-        return html`<td class="r num${v != null && v === best[j] ? " sh-best" : ""}">${v != null ? html`${clock(v)} <span class="muted">(${rankOf(r, j + 1)})</span>` : "—"}
+        return html`<td class="r num${v != null && v === best[j] ? " sh-best" : ""}" data-legh="${j + 1}" style="cursor:pointer">${v != null ? html`${clock(v)} <span class="muted">(${rankOf(r, j + 1)})</span>` : "—"}
           <div class="sh-sub muted">${c != null ? clock(c) : ""}${v != null && rv != null ? html` <span class="${v > rv ? "delta-down" : "delta-up"}">${signed(v - rv)}</span>` : ""}</div></td>`; })}
       <td class="r num"><b>${total(r) != null ? clock(total(r)) : "—"}</b>${ref && ref !== r && total(r) != null && total(ref) != null ? html`<div class="sh-sub ${total(r) > total(ref) ? "delta-down" : "delta-up"}">${signed(total(r) - total(ref))}</div>` : ""}</td></tr>`)}</tbody></table></div>`;
   $("#sh-ref", el).addEventListener("change", (e) => { X.state.ref = X.runners.find((r) => r.uid === Number(e.target.value)) || null; X.refChanged(); });
-  $$("[data-legh]", el).forEach((th) => th.addEventListener("click", () => X.setLeg(Number(th.dataset.legh))));
+  // a control's heading or any of its cells opens the leg on the map (owner, 2026-11-05: the cells did nothing)
+  $$("[data-legh]", el).forEach((c) => c.addEventListener("click", () => X.setLeg(Number(c.dataset.legh))));
 }
 
 // ---- one runner's legs, as « Analyse solo » (time lost, detour, pace)
