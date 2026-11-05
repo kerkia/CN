@@ -220,7 +220,8 @@ export async function render(main, { query = {}, route } = {}) {
           <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
-        ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOk ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : [])] }))}
+        ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOk ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : []),
+          { key: "export", label: t("an.tab.export"), tip: t("an.tab.export.tip") }] }))}
       </div>
     </div>`;
   if (!perso && !here.length && !races.some((r) => r.key === query.course)) {
@@ -255,7 +256,8 @@ export async function render(main, { query = {}, route } = {}) {
   let olderReading = false;                                                // the calibration restored was made by an earlier reading
   const prefs = loadPrefs();
   let view = { k: 1, ox: 0, oy: 0 }, follow = !!prefs.follow, colour = typeof prefs.colour === "string" ? prefs.colour : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
-  let width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;              // the trace's thickness, × the base
+  // the trace's thickness, × the base: thick by default, as « Analyse de carte » (owner, 2026-11-05: a width saved before is reset once)
+  let width = prefs.wv === 2 && WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;
   let future = prefs.future === "faint" ? "faint" : "hide";            // the trace still to run: hidden, or faded
   // the map turned so that the leg being run points up (owner, 2026-11-02, after RouteGadget), else north up; `rot` the angle
   // (radians, clockwise on the screen) about the canvas's centre, after the view — the view itself stays north up
@@ -282,7 +284,7 @@ export async function render(main, { query = {}, route } = {}) {
   // both panels unfolded at every opening, « Inter-postes » and « Affichage » (owner, 2026-11-04); their widths stay remembered
   const lp = { tab: "legs", collapsed: false };
   const rp = { tab: "display", collapsed: false };
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, wv: 2, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
     shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, orient })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
@@ -1801,13 +1803,15 @@ export async function render(main, { query = {}, route } = {}) {
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
         </div><div id="an-3d-opts" hidden></div>
+      ${short.map((x) => html`<div class="notice" style="margin-top:8px">${x}</div>`)}
+      ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
+    // the third tab (owner, 2026-11-05): what leaves the page — an image of the map, the map and the run into « Mes cartes »
+    rightP.pane("export").innerHTML = html`
       <div class="an-opts an-shot"><b>${t("an.shot.title")}</b>
         <label><span>${t("an.shot.zone")}</span><select id="an-shot-zone"><option value="race" ${raw(shot.zone === "race" ? "selected" : "")}>${t("an.shot.zone.race")}</option><option value="map" ${raw(shot.zone === "map" ? "selected" : "")}>${t("an.shot.zone.map")}</option></select></label>
         <label><span>${t("an.shot.type")}</span><select id="an-shot-type"><option value="png" ${raw(shot.type === "png" ? "selected" : "")}>PNG</option><option value="jpeg" ${raw(shot.type === "jpeg" ? "selected" : "")}>JPEG</option></select></label>
         <label><span>${t("an.shot.legend")}</span><input type="checkbox" id="an-shot-legend" ${raw(shot.legend ? "checked" : "")}></label>
-        <button type="button" class="btn btn-sm btn-primary" id="an-shot">⤓ ${t("an.shot.save")}</button><span class="muted an-shot-state" id="an-shot-state"></span></div><div id="an-mymaps"></div>
-      ${short.map((x) => html`<div class="notice" style="margin-top:8px">${x}</div>`)}
-      ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
+        <button type="button" class="btn btn-sm btn-primary" id="an-shot">⤓ ${t("an.shot.save")}</button><span class="muted an-shot-state" id="an-shot-state"></span></div><div id="an-mymaps"></div>`;
     if (routesOk) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
     $("#an-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#an-prev").addEventListener("click", () => jumpLeg(-1));

@@ -1314,7 +1314,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
   let showStrip = prefs.strip !== false;                   // the runners' paces under the map
   let ex3d = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].includes(prefs.ex3d) ? prefs.ex3d : 1.5;   // the 3D view's vertical exaggeration
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, wv: 2, future, showCourse: courseOn, courseOver, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
+  // the picture exported (« Export »): the part of the map in view or all of it, PNG or JPEG, with a title and the runners' colours
+  const shot = { zone: prefs.shotZone === "map" ? "map" : "view", type: prefs.shotType === "jpeg" ? "jpeg" : "png", legend: prefs.shotLegend !== false };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, tail, width, wv: 2, future, showCourse: courseOn, courseOver, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   const MODE0 = modes.includes("wait") ? "wait" : "mass";   // waiting at the controls by default (owner, 2026-11-05)
   let mode = modes.includes(init.m) ? init.m : MODE0, fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
@@ -1347,7 +1349,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${showStrip ? "▾" : "▸"} ${t("sh.strip.title")}</button>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
-      ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOn ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : [])] }))}</div>`;
+      ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOn ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : []),
+        { key: "export", label: t("an.tab.export"), tip: t("sh.tab.export.tip") }] }))}</div>`;
   const layEl = $("#sh-layout");
   /** The panels' widths (a rail when folded), the window's height below the top line. */
   function applyLayout() {
@@ -1766,7 +1769,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <div class="row" style="gap:6px;align-items:center"><button type="button" class="btn btn-sm" id="sh-note-save">${t("sh.note.save")}</button><span class="muted" id="sh-note-state"></span></div>
         <p class="hint" style="margin:0">${t("sh.note.hint")}</p>` : ""}
         ${A.visitors ? html`<label class="an-opt"><input type="checkbox" id="sh-mine-vis" ${raw(myRun().visitors ? "checked" : "")}> ${t("sh.visitors.mine")}</label>` : ""}</div>` : ""}
-      ${myRun() && mymapsOn ? html`<div class="sh-mine" id="sh-mymaps"></div>` : ""}
       ${auth.session()?.admin ? html`<div class="sh-mine"><b>${t("sh.test.title")}</b>
         <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-test-add">${t("sh.test.add")}</button>
         ${myTests().length ? html`<button type="button" class="btn btn-sm" id="sh-test-rm">${t("sh.test.remove", { n: myTests().length })}</button>` : ""}</div>
@@ -1815,14 +1817,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       catch (err) { e.target.checked = !e.target.checked; alert(errText(err)); }
     });
     $("#sh-note-save")?.addEventListener("click", () => saveNote($("#sh-note").value));
-    // « Enregistrer dans Mes cartes » (owner, 2026-11-04: an organiser's switch): one's run on the organiser's map, as « Analyse
-    // solo » saves it (trace/mymapsave.js) — the map as stored, one's route in its pixels with its times
-    if ($("#sh-mymaps")) import("../trace/mymapsave.js").then((M) => M.mount($("#sh-mymaps"), () => {
-      const r = myRun(), ext = /png/.test(mapBlob?.type) ? "png" : /webp/.test(mapBlob?.type) ? "webp" : "jpg";
-      return { file: mapBlob ? new File([mapBlob], `${course.name || "map"}.${ext}`, { type: mapBlob.type }) : null, image, track: r?.tr, pxs: r?.pxs, pys: r?.pys,
-        offset: r?.start ?? null, total: r && r.finish != null ? r.finish - r.start : null, geo: course.geo, title: [A.title, course.name].filter(Boolean).join(" · "),
-        controls: r ? ctrls.map((p, j) => ({ k: p.kind, x: p.x, y: p.y, t: r.passes[j] != null ? r.passes[j] - r.start : null })) : [] };
-    })).catch((e) => console.error(e));
     $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); await ownDel(ownKey(id, course.n)); reload(); } catch (e) { alert(errText(e)); } });
     $("#sh-test-add")?.addEventListener("click", () => $("#sh-test-file").click());
     $("#sh-test-file")?.addEventListener("change", (e) => { const fs = [...e.target.files]; e.target.value = ""; if (fs.length) uploadTests(fs); });
@@ -1942,10 +1936,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="sh-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
           <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => (leg || !LEG_ONLY.includes(c)) && (c !== "variant" || variantsOn)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
-          <label><input type="checkbox" id="sh-course" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
+          <label><input type="checkbox" id="sh-course-on" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
           <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div>
         <div id="sh-3d-opts" hidden></div>`;
     if (routesOn) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
+    if (!rightP.pane("export").childElementCount) exportPane();
     // adding one's track from the top line (addDialog); an administrator's test tracks only at the bottom of « Circuits » (owner, 2026-11-05)
     $("#sh-bar-add")?.addEventListener("click", addDialog);
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
@@ -1974,10 +1969,94 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-orient").addEventListener("change", (e) => { orient = e.target.value; savePrefs(); if (leg) setLeg(leg); else frame(); });
     $("#sh-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); mv.setAlpha(mapAlpha / 100); savePrefs(); mv.draw(); });
     $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });
-    $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; if (printed) courseOver = showCourse; else courseOn = showCourse; savePrefs(); mv.draw(); });
+    $("#sh-course-on").addEventListener("change", (e) => { showCourse = e.target.checked; if (printed) courseOver = showCourse; else courseOn = showCourse; savePrefs(); mv.draw(); });
     $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
     $("#sh-strip-on").addEventListener("change", (e) => setStrip(e.target.checked));
     rcmPanel(); opts3d();
+  }
+  /** « Export » (owner, 2026-11-05): an image of the map with what it shows, and one's own run with the map into « Mes cartes ». */
+  function exportPane() {
+    const pane = rightP.pane("export"), mine = myRun(), me = auth.session();
+    pane.innerHTML = html`
+      <div class="an-opts an-shot"><b>${t("an.shot.title")}</b>
+        <label><span>${t("an.shot.zone")}</span><select id="sh-shot-zone"><option value="view" ${raw(shot.zone === "view" ? "selected" : "")}>${t("sh.shot.zone.view")}</option><option value="map" ${raw(shot.zone === "map" ? "selected" : "")}>${t("an.shot.zone.map")}</option></select></label>
+        <label><span>${t("an.shot.type")}</span><select id="sh-shot-type"><option value="png" ${raw(shot.type === "png" ? "selected" : "")}>PNG</option><option value="jpeg" ${raw(shot.type === "jpeg" ? "selected" : "")}>JPEG</option></select></label>
+        <label><span>${t("an.shot.legend")}</span><input type="checkbox" id="sh-shot-legend" ${raw(shot.legend ? "checked" : "")}></label>
+        <p class="hint" style="margin:0">${t("sh.shot.hint")}</p>
+        <button type="button" class="btn btn-sm btn-primary" id="sh-shot">⤓ ${t("an.shot.save")}</button><span class="muted an-shot-state" id="sh-shot-state"></span></div>
+      ${you.visitor || !mymapsOn || !me || me.demo ? "" : mine ? html`<div id="sh-mymaps"></div>`
+        : html`<div class="an-opts"><b>${t("nav.myMaps")}</b><p class="hint" style="margin:0">${t("sh.mymaps.noRun")}</p></div>`}`;
+    const set = () => { shot.zone = $("#sh-shot-zone").value; shot.type = $("#sh-shot-type").value; shot.legend = $("#sh-shot-legend").checked; savePrefs(); };
+    ["#sh-shot-zone", "#sh-shot-type", "#sh-shot-legend"].forEach((s) => $(s).addEventListener("change", set));
+    $("#sh-shot").addEventListener("click", exportImage);
+    // « Enregistrer dans Mes cartes » (owner, 2026-11-04: an organiser's switch): one's run on the organiser's map, as « Analyse
+    // solo » saves it (trace/mymapsave.js) — the map as stored, one's route in its pixels with its times
+    if ($("#sh-mymaps")) import("../trace/mymapsave.js").then((M) => M.mount($("#sh-mymaps"), () => {
+      const r = myRun(), ext = /png/.test(mapBlob?.type) ? "png" : /webp/.test(mapBlob?.type) ? "webp" : "jpg";
+      return { file: mapBlob ? new File([mapBlob], `${course.name || "map"}.${ext}`, { type: mapBlob.type }) : null, image, track: r?.tr, pxs: r?.pxs, pys: r?.pys,
+        offset: r?.start ?? null, total: r && r.finish != null ? r.finish - r.start : null, geo: course.geo, title: [A.title, course.name].filter(Boolean).join(" · "),
+        controls: r ? ctrls.map((p, j) => ({ k: p.kind, x: p.x, y: p.y, t: r.passes[j] != null ? r.passes[j] - r.start : null })) : [] };
+    })).catch((e) => console.error(e));
+  }
+  /** The map as the replay shows it now (the runners shown, the course, the routes…), at the map's own resolution, north up: the
+   *  part in view or all of it; lines in the map's millimetres (a control circle is 6 mm across). */
+  function exportImage() {
+    if (!image) return;
+    const W = image.width, H = image.height;
+    let x0 = 0, y0 = 0, x1 = W, y1 = H;
+    if (shot.zone === "view") {
+      const { w, h } = mv.box(), cs = [[0, 0], [w, 0], [w, h], [0, h]].map(([a, b]) => mv.toImg(a, b));
+      const bx = [Math.max(0, Math.floor(Math.min(...cs.map((p) => p[0])))), Math.max(0, Math.floor(Math.min(...cs.map((p) => p[1])))),
+        Math.min(W, Math.ceil(Math.max(...cs.map((p) => p[0])))), Math.min(H, Math.ceil(Math.max(...cs.map((p) => p[1]))))];
+      if (bx[2] - bx[0] > 20 && bx[3] - bx[1] > 20) [x0, y0, x1, y1] = bx;
+    }
+    const k = Math.min(1, Math.sqrt(40e6 / ((x1 - x0) * (y1 - y0))));
+    const cw = Math.round((x1 - x0) * k), ch = Math.round((y1 - y0) * k);
+    const cv = document.createElement("canvas");
+    cv.width = cw; cv.height = ch;
+    const g = cv.getContext("2d");
+    g.fillStyle = "#ffffff"; g.fillRect(0, 0, cw, ch);
+    g.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+    g.globalAlpha = mapAlpha / 100; g.drawImage(image, 0, 0); g.globalAlpha = 1;
+    g.lineCap = "round"; g.lineJoin = "round";
+    const mm = (course.r || 20) / 3;
+    drawOver(g, mv.view, (p) => Math.max(p * 0.2 * mm, 0.6 / k));
+    g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
+    const shown = runners.filter((r) => r.visible);
+    const title = [A.title, course.name].filter(Boolean).join(" · ");
+    if (shot.legend) {
+      const fs = Math.max(12, Math.min(40, Math.round(Math.min(cw, ch) / 42))), pad = Math.round(fs * 0.6);
+      const panel = (x, y, w, h) => { g.fillStyle = "rgba(255, 255, 255, 0.9)"; g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, h, pad); else g.rect(x, y, w, h); g.fill(); };
+      const font = (px, bold) => { g.font = `${bold ? "650 " : ""}${px}px system-ui, sans-serif`; };
+      const lines = [[title, true], [[A.date ? fmtDate(A.date) : "", leg ? legName(leg) : ""].filter(Boolean).join(" · "), false]].filter(([s]) => s);
+      // the runners' colours, when each runner has their own (a dozen at most)
+      const names = cmode() === "runner" && shown.length <= 12 ? shown.map((r) => [r.colour, r.test ? initials(r) : r.name]) : [];
+      g.textBaseline = "top";
+      let tw = 0;
+      for (const [s, b] of lines) { font(fs, b); tw = Math.max(tw, g.measureText(s).width); }
+      font(Math.round(fs * 0.85)); for (const [, n] of names) tw = Math.max(tw, g.measureText(n).width + fs * 1.3);
+      font(Math.round(fs * 0.7)); tw = Math.max(tw, g.measureText("ozimut.com").width);
+      const lh = Math.round(fs * 1.3), nh = Math.round(fs * 1.1), th = lines.length * lh + names.length * nh + Math.round(fs * 0.9);
+      panel(pad, pad, Math.min(cw - 2 * pad, tw + 2 * pad), th + pad);
+      g.fillStyle = "#1d1d1d";
+      lines.forEach(([s, b], n) => { font(fs, b); g.fillText(s, 2 * pad, 1.5 * pad + n * lh, cw - 4 * pad); });
+      let y = 1.5 * pad + lines.length * lh;
+      font(Math.round(fs * 0.85));
+      for (const [c, n] of names) { g.fillStyle = c; g.fillRect(2 * pad, y + fs * 0.2, fs * 0.9, fs * 0.5); g.fillStyle = "#1d1d1d"; g.fillText(n, 2 * pad + fs * 1.3, y, cw - 4 * pad - fs * 1.3); y += nh; }
+      font(Math.round(fs * 0.7)); g.fillStyle = "#e8641c"; g.fillText("ozimut.com", 2 * pad, y);
+    }
+    const slug = (s) => (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+    const type = shot.type === "jpeg" ? "jpeg" : "png", name = `ozimut-${A.date || "carte"}${slug(title) ? `-${slug(title)}` : ""}${leg ? `-${leg}` : ""}.${type === "jpeg" ? "jpg" : "png"}`;
+    const state = $("#sh-shot-state");
+    if (state) state.textContent = t("an.shot.making");
+    cv.toBlob((blob) => {
+      if (!blob) { if (state) state.textContent = t("an.shot.failed"); return; }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+      if (state) state.textContent = t("an.shot.done", { w: fmt(cw), h: fmt(ch) });
+    }, `image/${type}`, 0.92);
   }
   function hud() {
     const sl = $("#sh-time"); if (sl) sl.value = String(Math.round(T));
