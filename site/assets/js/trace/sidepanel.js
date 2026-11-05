@@ -6,6 +6,9 @@
 import { html, raw, $, $$ } from "../util.js";
 import { t } from "../i18n.js";
 
+/** The map following the runners (a crosshair): the push button of both analyses' control bar. */
+export const PAN_ICON = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><path d="M8 .8v3M8 12.2v3M.8 8h3M12.2 8h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+
 /** The panel's markup: id, side ("left" | "right"), tabs [{ key, label }]; each tab's pane is a div[data-pane=key] the page
  *  fills (inner: the panes' markup by key, optional). */
 export function panelHtml({ id, side, tabs, inner = {}, cls = "" }) {

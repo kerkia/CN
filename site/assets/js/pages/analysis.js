@@ -46,7 +46,8 @@ import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON } from "../trace/sidepanel.js";
+import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
@@ -208,16 +209,19 @@ export async function render(main, { query = {}, route } = {}) {
     <section class="card" id="an-files"></section>
     <div class="an-dropall" id="an-dropall" hidden>${t("an.dropAll")}</div>
     <div id="an-work" hidden>
+      <div class="sh-top sh-top3 an-top" id="an-top" hidden></div>
       <div class="an-layout" id="an-layout">
-        <div class="an-bar" id="an-bar" hidden></div>
         ${raw(panelHtml({ id: "an-left", side: "left", cls: "an-left", tabs: [{ key: "graphs", label: t("an.tab.graphs"), tip: t("an.tab.graphs.tip") }, { key: "legs", label: t("an.tab.legs"), tip: t("an.tab.legs.tip") },
           ...(routesOk ? [{ key: "routes", label: t("an.tab.routes"), tip: t("an.tab.routes.tip") }] : [])],
           inner: { graphs: html`<div class="an-chips" id="an-chips"></div><canvas id="an-strip"></canvas>`, legs: html`<div id="an-legs"></div>`, routes: html`<div class="rc-busy" id="an-rc-busy" hidden></div><div id="an-rc"></div>` } }))}
         <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
+        <div class="an-mapcol"><div class="an-bar sh-bar" id="an-bar" hidden></div>
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
           <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button></div>
           <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
+        <div class="sh-stripbar" id="an-stripbar" hidden><button type="button" class="sh-strip-tog" id="an-ps-tog" aria-expanded="true" title="${t("an.strip.fold")}">▾ ${t("sh.strip.title")}</button><span class="an-bar-stats" id="an-stats"></span></div>
+        <canvas class="sh-strip" id="an-ps" hidden></canvas></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
         ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOk ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : []),
@@ -269,6 +273,7 @@ export async function render(main, { query = {}, route } = {}) {
   let chans = new Set(Array.isArray(prefs.chans) && !oldDefault ? prefs.chans : ["pace", ...Object.keys(CHANNEL_COLOUR)]);
   const pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);     // the map's and the trace's opacity, %
+  let showStrip = prefs.strip !== false;                   // the pace under the map, as « Analyse de carte »'s (owner, 2026-11-05)
   // the picture exported (« Exporter une image »): the race's part of the map or all of it, PNG or JPEG, with the title and legend
   const shot = { zone: prefs.shotZone === "map" ? "map" : "race", type: prefs.shotType === "jpeg" ? "jpeg" : "png", legend: prefs.shotLegend !== false };
   // the 3D view (trace/view3d.js, a prototype): off at each visit; its vertical exaggeration and relief kept
@@ -284,7 +289,7 @@ export async function render(main, { query = {}, route } = {}) {
   // both panels unfolded at every opening, « Inter-postes » and « Affichage » (owner, 2026-11-04); their widths stay remembered
   const lp = { tab: "legs", collapsed: false };
   const rp = { tab: "display", collapsed: false };
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, wv: 2, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, wv: 2, strip: showStrip, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
     shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, orient })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
@@ -896,7 +901,8 @@ export async function render(main, { query = {}, route } = {}) {
     close3d(); $("#an-3d").hidden = true; rcReset(); measure.stop(); $("#an-measure").hidden = true;
     $("#an-legs").innerHTML = ""; $("#an-left").hidden = true; $("#an-right").hidden = true; $("#an-bar").hidden = true; $("#an-side").hidden = false;
     $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
-    $("#an-hud").textContent = ""; $("#an-legend").hidden = true; showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
+    $("#an-hud").textContent = ""; $("#an-legend").hidden = true; $("#an-top").hidden = true; $("#an-stripbar").hidden = true; $("#an-ps").hidden = true;
+    showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
   };
   /** The playback's layout as set: the panels' widths (a rail when folded), the height. */
   function applyLayout() {
@@ -919,28 +925,11 @@ export async function render(main, { query = {}, route } = {}) {
   $("#an-left").hidden = true; $("#an-right").hidden = true;
   const onWinResize = () => fitHeight();
   window.addEventListener("resize", onWinResize);
-  /** During the playback the race's pickers and the files card give way to one line (owner, 2026-10-14). */
+  /** During the playback the race's pickers and the files card give way to the map (owner, 2026-11-05: no line about the race
+   *  and the files any more — they are the step before; files dropped on the page still replace them). */
   function showPanels(on) {
     $("#an-pick").hidden = (perso && !orgaMode) || !on; $("#an-rf").hidden = perso || !on; $("#an-files").hidden = !on;
-    const brief = $("#an-brief");
-    brief.hidden = on;
-    // during the playback the race's line sits in the map's top left corner, so that the site's menus can stay as on
-    // every page (owner, 2026-10-15: the second row hidden and a tab turned into a menu confused); back above after
-    if (on) { $("#an-rf").before(brief); return; }
-    ($("#an-bar-brief") || $(".an-map")).prepend(brief);
-    const r = runner(), rc = races.find((x) => x.key === key);
-    brief.innerHTML = html`<button type="button" class="btn btn-sm" id="an-brief-edit" aria-expanded="false">${t("an.brief.edit")} ▾</button>
-      <span>${orgaMode ? html`<b>${orga.A.title}</b> · ${files.map?.name || ""}` : perso ? html`<b>${t("an.perso.title")}</b>` : html`<b>${rc?.name || ""}</b> · ${klass()?.name || ""} · ${r?.name || ""}`}</span>
-      <span class="muted">${[files.map?.name, files.trace?.name && track ? `${files.trace.name} (${clock(track.dur)})` : files.trace?.name, files.geo?.name || files.world?.name, files.iof?.name].filter(Boolean).join(" · ")}</span>`;
-    // the race's and the files' choices open above the display, which stays; changing one of them starts a new
-    // calibration (its inputs changed) — the display itself has nothing to recalibrate (owner, 2026-10-14)
-    $("#an-brief-edit").addEventListener("click", (e) => {
-      const open = $("#an-files").hidden;
-      $("#an-pick").hidden = (perso && !orgaMode) || !open; $("#an-rf").hidden = perso || !open; $("#an-files").hidden = !open;
-      e.currentTarget.setAttribute("aria-expanded", String(open));
-      e.currentTarget.textContent = `${t("an.brief.edit")} ${open ? "▴" : "▾"}`;
-      fitHeight();
-    });
+    $("#an-brief").hidden = true;
   }
   const setStatus = (s) => { status = s; side(); };
   const calKey = () => `${CAL_KEY}.${key}.${di}.${ci}.${runner()?.name}.${map?.width}x${map?.height}`;
@@ -1772,23 +1761,33 @@ export async function render(main, { query = {}, route } = {}) {
     const short = [traceShortNote(), timesNote()].filter(Boolean);
     const stat = (label, id, sub = "") => html`<span class="an-stat"><span class="muted">${label}</span> <b id="${id}">—</b>${sub ? raw(sub) : ""}</span>`;
     // the controls above the map: the race's line, play, the time slider, and what the trace says now
+    // the top line as « Analyse de carte »'s (owner, 2026-11-05): what is played, and on an organiser's map who may open it
+    const rc0 = races.find((x) => x.key === key), day0 = parisDay(track.ms0 + offset * 1000);
+    $("#an-top").innerHTML = html`<span class="sh-top-l">${orgaMode ? html`<b class="sh-title">${orga.A.title}</b><span class="muted">${[orga.A.date ? fmtDate(orga.A.date) : "", t(orga.A.kind === "race" ? "ma.kind.race" : "sh.kind.club")].filter(Boolean).join(" · ")}</span>`
+        : perso ? html`<b class="sh-title">${t("an.perso.title")}</b><span class="muted">${fmtDate(day0)}</span>`
+        : html`<b class="sh-title">${rc0?.name || race?.name || ""}</b><span class="muted">${[fmtDate(day0), klass()?.name, withTimes ? runner()?.name : ""].filter(Boolean).join(" · ")}</span>`}</span>
+      <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis}`)}</span>` : ""}<span class="fw-btns">${raw(fwButtons())}</span></span>`;
+    $("#an-top").hidden = false;
+    // the controls over the map's column, as « Analyse de carte »'s: follow, the transport, the speed, the time
     $("#an-bar").innerHTML = html`
-      <div class="an-bar-row"><span class="an-bar-brief" id="an-bar-brief"></span>
+      <div class="an-bar-row">
         <span class="an-transport">
+          <button type="button" class="btn btn-sm sh-pan${follow ? " on" : ""}" id="an-follow" aria-pressed="${follow}" aria-label="${t(follow ? "sh.pan.stop" : "sh.pan.start")}" title="${t("an.follow.hint")}">${raw(PAN_ICON)}</button>
           <button type="button" class="btn btn-sm" id="an-prev" title="${t("an.prevLeg")}">⏮</button>
           <button type="button" class="btn btn-sm btn-primary" id="an-play" title="${t("an.play")}">▶</button>
           <button type="button" class="btn btn-sm" id="an-next" title="${t("an.nextLeg")}">⏭</button>
-          <select id="an-speed" aria-label="${t("an.speed")}">${SPEEDS.map((v) => html`<option value="${v}" ${raw(v === speed ? "selected" : "")}>× ${v}</option>`)}</select>
-          <button type="button" class="btn btn-sm an-follow" id="an-follow" aria-pressed="${follow}" title="${t("an.follow.hint")}">⌖ ${t("an.follow.short")}</button></span>
+          <select id="an-speed" aria-label="${t("an.speed")}">${SPEEDS.map((v) => html`<option value="${v}" ${raw(v === speed ? "selected" : "")}>×${v}</option>`)}</select></span>
         <input type="range" class="an-bar-time" id="an-time" min="0" max="${Math.ceil(total)}" step="0.5" value="0" aria-label="${t("an.time")}">
-        <span class="fw-btns">${raw(fwButtons())}</span></div>
-      <div class="an-bar-stats">
-        ${stat(t("an.time"), "an-t", html` <span class="muted" id="an-t-sub"></span>`)}
+        <span class="sh-clock"><b id="an-t"></b> <span class="muted" id="an-t-sub"></span></span></div>`;
+    // what the trace says now: in the pace's bar under the map (owner, 2026-11-05)
+    $("#an-stats").innerHTML = html`
         ${stat(t(known ? "an.leg" : "an.legNear"), "an-leg", html` <span class="muted" id="an-leg-sub"></span>`)}
         ${stat(t("an.pace"), "an-pace", html` <span class="muted">${t("an.pace.short")}</span>`)}
         ${stat(t("an.dist"), "an-dist", html` <span class="muted" id="an-dist-sub"></span>`)}
         ${avail.filter((c) => c !== "ele").map((c) => stat(t(CHANNEL_LABEL[c]), `an-ch-${c}`, html` <span class="muted">${unitOf(c)}</span>`))}
-        ${short.map((x) => html`<span class="an-warn" title="${x}">⚠ ${x}</span>`)}</div>`;
+        ${short.map((x) => html`<span class="an-warn" title="${x}">⚠ ${x}</span>`)}`;
+    $("#an-stripbar").hidden = false; $("#an-ps").hidden = !showStrip;
+    $("#an-ps-tog").setAttribute("aria-expanded", String(showStrip)); $("#an-ps-tog").textContent = `${showStrip ? "▾" : "▸"} ${t("sh.strip.title")}`;
     showPanels(false);
     $("#an-bar").hidden = false; $("#an-side").hidden = true; $("#an-left").hidden = false; $("#an-right").hidden = false;
     // the right panel: the display, and (administrators) the computed routes' settings
@@ -1802,6 +1801,7 @@ export async function render(main, { query = {}, route } = {}) {
           <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((v) => html`<option value="${v}" ${raw(v === tail ? "selected" : "")}>${v ? clock(v) : t("an.tail.all")}</option>`)}</select></label>
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="an-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("an.traceAlpha")}</span><input type="range" id="an-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
+          <label><span>${t("sh.strip.show")}</span><input type="checkbox" id="an-strip-on" ${raw(showStrip ? "checked" : "")}></label>
         </div><div id="an-3d-opts" hidden></div>
       ${short.map((x) => html`<div class="notice" style="margin-top:8px">${x}</div>`)}
       ${rmsM != null || geoHow ? html`<div class="an-fitbox muted">${rmsM != null ? html`${t("an.cal.fit")} ${fmt(rmsM)} m` : ""}${geoHow ? html`${rmsM != null ? " · " : ""}${t("an.st.geo")} ${geoHow}` : ""}</div>` : ""}`;
@@ -1822,6 +1822,16 @@ export async function render(main, { query = {}, route } = {}) {
     slider.addEventListener("pointerdown", () => { scrubbing = true; });
     slider.addEventListener("pointerup", () => { scrubbing = false; });
     $("#an-follow").addEventListener("click", () => { setFollow(!follow); draw(); });
+    $("#an-strip-on").addEventListener("change", (e) => setStrip(e.target.checked));
+    $("#an-ps-tog").onclick = () => setStrip(!showStrip);
+    // a click or a drag on the pace seeks, as on « Analyse de carte »
+    const ps = $("#an-ps");
+    let psDrag = false;
+    const psSeek = (e) => { stop(); seek(stripFraction(ps, e.offsetX) * total); };
+    ps.onpointerdown = (e) => { psDrag = true; try { ps.setPointerCapture(e.pointerId); } catch (err) { /* synthetic */ } psSeek(e); };
+    ps.onpointermove = (e) => { if (psDrag) psSeek(e); };
+    ps.onpointerup = ps.onpointercancel = () => { psDrag = false; };
+    applyLayout();
     // the trace's colour applies to the plain trace only: hidden while it is coloured by a measure
     $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; vSet = false; $("#an-colour-row").hidden = colour !== "plain"; savePrefs(); paceLegend(); draw(); });
     const shotSet = () => { shot.zone = $("#an-shot-zone").value; shot.type = $("#an-shot-type").value; shot.legend = $("#an-shot-legend").checked; savePrefs(); };
@@ -1892,7 +1902,39 @@ export async function render(main, { query = {}, route } = {}) {
     view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: top + hh / 2 - ((y0 + y1) / 2) * k };
     lastBox = { w, h };
   }
-  function setFollow(on) { follow = on; savePrefs(); const b = $("#an-follow"); if (b) b.setAttribute("aria-pressed", String(on)); }
+  function setFollow(on) {
+    follow = on; savePrefs();
+    const b = $("#an-follow");
+    if (b) { b.setAttribute("aria-pressed", String(on)); b.classList.toggle("on", on); b.setAttribute("aria-label", t(on ? "sh.pan.stop" : "sh.pan.start")); }
+  }
+  /** The pace under the map, shown or folded (the bar with the figures stays). */
+  function setStrip(on) {
+    showStrip = on; savePrefs();
+    $("#an-ps").hidden = !on;
+    const b = $("#an-ps-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${on ? "▾" : "▸"} ${t("sh.strip.title")}`; }
+    const c = $("#an-strip-on"); if (c) c.checked = on;
+    fitHeight(); paceStrip();
+  }
+  // the race's pace over its own time, smoothed over a few seconds to half a minute, the controls marked (made once per width)
+  let psCache = null;
+  function paceStrip() {
+    const cv = $("#an-ps");
+    if (!cv || cv.hidden || !cv.clientWidth || !track || !(total > 0)) return;
+    const K = stripSamples(cv), sig = `${K}|${offset}|${total}|${track.n}`;
+    if (psCache?.sig !== sig) {
+      const half = Math.max(3, Math.min(15, total / 80)), vals = new Array(K).fill(null);
+      for (let k = 0; k < K; k++) {
+        const s = offset + (k / (K - 1)) * total, a = Math.max(offset, s - half), b = Math.min(offset + total, s + half);
+        if (b - a >= 2) vals[k] = (cumAt(track, b) - cumAt(track, a)) / (b - a);
+      }
+      psCache = { sig, vals };
+    }
+    const step = [30, 60, 120, 300, 600, 900, 1800, 3600].find((s) => total / s <= Math.max(2, cv.clientWidth / 90)) || 3600;
+    const ticks = [];
+    for (let x = 0; x <= total; x += step) ticks.push({ f: x / total, label: clock(x) });
+    const marks = sequenceKnown() ? legs.slice(0, -1).filter((l) => l.t1 != null).map((l) => ({ f: l.t1 / total, label: l.label || String(l.n) })) : [];
+    drawPaceStrip(cv, { series: [{ colour: colourBy() ? "#1c5fd6" : traceColour, vals: psCache.vals, bold: true }], cursor: tNow / total, ticks, marks });
+  }
   /** The map's turn: the leg being run up (its controls from one to the other), else north up; kept between legs it cannot read. */
   let lastTurn = 0;
   /** Leg j's turn (its first control to its second up), or null when they are not both placed. */
@@ -1956,6 +1998,7 @@ export async function render(main, { query = {}, route } = {}) {
     set("#an-dist-sub", len ? `${t("an.course.len")} ${fmt(len / 1000, 1)} km` : "");
     for (const c of Object.keys(track.ch)) { const v = valueAt(track, c, s); set(`#an-ch-${c}`, v == null || Number.isNaN(v) ? "—" : fmt(v, c === "temp" ? 1 : 0)); }
     $("#an-hud").textContent = `${clock(tNow)}${leg ? ` · ${leg.n}` : ""}`;
+    paceStrip();
     if (rcs.on) rcCurrent();
   }
   function legsTable() {

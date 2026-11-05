@@ -29,9 +29,9 @@ import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON } from "../trace/sidepanel.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
-import { gridPlan, loadGrid, CREDIT } from "../trace/terrain.js";
+import { gridPlan, loadGrid, heightAt, CREDIT } from "../trace/terrain.js";
 import { detectCourse } from "../trace/course.js";
 import { alignTrack, visitOrder, passesInOrder } from "../trace/align.js";
 import { readZip, parseKml, fitFromKml, isWorldFileName, parseWorldFile, crsFromWkt, guessCrs, fitFromWorld, parseIofCourse, projector } from "../trace/georef.js";
@@ -39,7 +39,7 @@ import { readMap, isImage, imageBlob } from "../trace/mapfile.js";
 import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses, scorePasses } from "../trace/share.js";
 import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
-import { paceRange, paceColour, paceLegend, rampColour, rampLegend } from "../trace/pacecolour.js";
+import { paceRange, paceColour, paceLegend, rampColour, rampLegend, colourOf, legendHtml } from "../trace/pacecolour.js";
 import { legVariants, resample, VARIANT_COLOURS } from "../trace/routes.js";
 import { deviations, corridorScore, bearingError } from "../trace/corridor.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
@@ -71,12 +71,14 @@ const COLOURS = ["#e6194b", "#1f77b4", "#2ca02c", "#ff7f0e", "#17becf", "#8c564b
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];
 const COURSE = "#a626a4";
-const COLOUR_BY = ["runner", "pace", "legtime", "variant"];        // the last two in a leg's view only
+// the altitude and the slope from the terrain model's heights under each route (owner, 2026-11-05: « Analyse solo »'s colourings
+// that apply here — the shared traces keep no altitude, heart rate or cadence)
+const COLOUR_BY = ["runner", "pace", "ele", "slope", "legtime", "variant"];        // the last two in a leg's view only
+const HEIGHT_BY = ["ele", "slope"];
 const LEG_ONLY = ["legtime", "variant"];
 const MODES = ["clock", "mass", "from", "wait", "waitpause"];
 // the start modes' icons (owner, 2026-11-05: the bar fits over the map, the mode a menu of icon and name), 16 px line drawings
 // the map's panning button, a crosshair (owner, 2026-11-05)
-const PAN_ICON = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><path d="M8 .8v3M8 12.2v3M.8 8h3M12.2 8h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 const MODE_ICON = {
   clock: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.2V8l2.6 1.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   mass: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 3.5v9" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 4.5h7m-2-2 2 2-2 2M4.5 11.5h7m-2-2 2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -1346,7 +1348,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
           <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button>${videoOn ? html`<button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden>` : ""}</div>
         <div class="an-hud" id="sh-hud"></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
-        <button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${showStrip ? "▾" : "▸"} ${t("sh.strip.title")}</button>
+        <div class="sh-stripbar"><button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${showStrip ? "▾" : "▸"} ${t("sh.strip.title")}</button><span class="an-bar-stats" id="sh-stats"></span></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
       ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOn ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : []),
@@ -1477,6 +1479,40 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   function paceScale() {
     const shown = runners.filter((r) => r.visible);
     [vLo, vHi] = paceRange(...shown.map((r) => r.tr.v.subarray(indexAt(r.tr, r.start), indexAt(r.tr, r.finish ?? r.tr.dur) + 1)));
+    heightScale();
+  }
+  // the heights under the routes: the terrain model's grid (the 3D view's and the computed routes'), loaded when a colouring asks
+  let hts, hLo = 0, hHi = 1;                                 // undefined: not asked; "loading", "failed", or the grid
+  function hseries(r, m) {
+    if (!hts?.z) return null;
+    if (!r.hTr) {
+      const W = image.width, H = image.height, ele = new Float32Array(r.tr.n);
+      for (let i = 0; i < r.tr.n; i++) ele[i] = heightAt(hts, W, H, r.pxs[i], r.pys[i]);
+      r.hTr = { ...r.tr, ch: { ...r.tr.ch, ele } };
+    }
+    return m === "ele" ? r.hTr.ch.ele : (r.hSlope ||= (() => { const s = new Float32Array(r.tr.n); const tr = r.hTr;
+      for (let i = 0; i < tr.n; i++) { const a = indexAt(tr, tr.t[i] - 10), b = indexAt(tr, tr.t[i] + 10), d = tr.cum[b] - tr.cum[a]; s[i] = d >= 8 ? (100 * (tr.ch.ele[b] - tr.ch.ele[a])) / d : NaN; }
+      return s; })());
+  }
+  function heightScale() {
+    const m = cmode();
+    if (!HEIGHT_BY.includes(m) || !hts?.z) return;
+    const vs = [];
+    for (const r of runners.filter((x) => x.visible)) {
+      const s = hseries(r, m), i1 = indexAt(r.tr, r.finish ?? r.tr.dur);
+      if (s) for (let i = indexAt(r.tr, r.start); i <= i1; i++) if (Number.isFinite(s[i])) vs.push(s[i]);
+    }
+    if (!vs.length) return;
+    vs.sort((a, b) => a - b);
+    let lo = vs[Math.floor(vs.length * 0.05)], hi = vs[Math.floor(vs.length * 0.95)];
+    if (m === "slope") { const k = Math.max(Math.abs(lo), Math.abs(hi), 2); lo = -k; hi = k; }
+    [hLo, hHi] = hi > lo ? [lo, hi] : [lo - 1, hi + 1];
+  }
+  function needHeights() {
+    if (!HEIGHT_BY.includes(cmode()) || hts !== undefined) return;
+    hts = "loading";
+    heights3d().then((g) => { hts = g?.z ? g : "failed"; }, (e) => { console.warn(e); hts = "failed"; })
+      .then(() => { heightScale(); legend(); mv.draw(); sync3d(); });
   }
   /** The colours in use: a leg's colours only in a leg's view. */
   const cmode = () => (!leg && LEG_ONLY.includes(colourBy) ? "runner" : colourBy);
@@ -1484,8 +1520,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const el = $("#sh-legend");
     if (!el) return;
     const m = cmode();
+    needHeights();
     el.hidden = m === "runner";
     if (m === "pace") el.innerHTML = paceLegend(vLo, vHi);
+    else if (HEIGHT_BY.includes(m)) {
+      if (hts?.z) { heightScale(); el.innerHTML = `${legendHtml(m, hLo, hHi)}<div class="muted sh-legend-note">${html`${t("sh.legend.model")}`}</div>`; }
+      else el.innerHTML = html`<div class="an-legend-title">${t(hts === "failed" ? "sh.legend.noHeights" : "sh.legend.heightsLoading")}</div>`.toString();
+    }
     else if (m === "legtime") {
       const ts = legRanks().times;
       el.hidden = !ts.length;
@@ -1510,9 +1551,10 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   /** Runner r's route from index a to b: one colour, or each step by its pace. */
   function stroke(g, r, a, b, lwPx, alpha, head = null) {
     if (b <= a) return;
-    if (cmode() === "pace") {
+    const m = cmode(), sv = m === "pace" ? r.tr.v : HEIGHT_BY.includes(m) ? hseries(r, m) : null;
+    if (sv) {
       g.lineWidth = lwPx; g.globalAlpha = alpha;
-      for (let i = a + 1; i <= b; i++) { g.strokeStyle = paceColour(r.tr.v[i], vLo, vHi); g.beginPath(); g.moveTo(r.pxs[i - 1], r.pys[i - 1]); g.lineTo(r.pxs[i], r.pys[i]); g.stroke(); }
+      for (let i = a + 1; i <= b; i++) { g.strokeStyle = m === "pace" ? paceColour(sv[i], vLo, vHi) : colourOf(m, sv[i], hLo, hHi); g.beginPath(); g.moveTo(r.pxs[i - 1], r.pys[i - 1]); g.lineTo(r.pxs[i], r.pys[i]); g.stroke(); }
       if (head) { g.beginPath(); g.moveTo(r.pxs[b], r.pys[b]); g.lineTo(head[0], head[1]); g.stroke(); }
       return;
     }
@@ -2064,6 +2106,24 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const tt = $("#sh-t"); if (tt) tt.textContent = label;
     const sub = $("#sh-t-sub"); if (sub) sub.textContent = !leg && (mode === "wait" || mode === "waitpause") ? (() => { let j = 1; while (j < legsN && T >= waits[j]) j++; return legName(j); })() : "";
     $("#sh-hud").textContent = label;
+    stats();
+  }
+  /** The runner followed, at the replay's time: their race time, leg, pace over the last 30 s and distance run (owner, 2026-11-05:
+   *  as « Analyse solo » says of its trace), in the pace's bar under the map; nothing when no runner is followed. */
+  function stats() {
+    const el = $("#sh-stats");
+    if (!el) return;
+    const r = follow === "sel" && sel?.visible ? sel : null, s = r ? sAt(r, T) : null;
+    if (!r || s == null) { if (el.textContent) el.innerHTML = ""; return; }
+    const end = r.finish ?? r.tr.dur, at = Math.max(r.start, Math.min(end, s)), win = Math.min(30, at - r.start);
+    let j = 0;
+    while (j < legsN && r.passes[j + 1] != null && at >= r.passes[j + 1]) j++;
+    const d = cumAt(r.tr, at) - cumAt(r.tr, r.start);
+    const stat = (label, v) => html`<span class="an-stat"><span class="muted">${label}</span> <b>${v}</b></span>`;
+    el.innerHTML = html`<span class="sh-stats-name"><span class="sh-swatch" style="background:${r.colour}"></span>${r.test ? initials(r) : r.name}</span>
+      ${stat(t("an.time"), clock(Math.max(0, at - r.start)))}${score ? "" : stat(t("an.leg"), j < legsN ? legName(j + 1) : t("an.finish"))}
+      ${stat(t("an.pace"), win >= 5 ? pace((cumAt(r.tr, at) - cumAt(r.tr, at - win)) / win) : "—")}
+      ${stat(t("an.dist"), `${fmt(d >= 1000 ? d / 1000 : d, d >= 1000 ? 2 : 0)} ${d >= 1000 ? "km" : "m"}`)}`.toString();
   }
   function reset() { stop(); [T0, T1] = range(); T = T0; right(); frame(); }
   function setLeg(j) {
@@ -2496,8 +2556,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     }
     const m = cmode();
     if (m === "pace") paceScale();
-    const key = `${sig}|${m}|${vLo}|${vHi}|${m === "runner" || m === "pace" ? "" : v3list.map(routeColour).join(",")}`;
-    v3.setStyle({ colourOf: (i, k) => (m === "pace" ? paceColour(v3list[k].tr.v[i], vLo, vHi) : routeColour(v3list[k])), colourKey: key,
+    const hs = HEIGHT_BY.includes(m) && hts?.z;
+    const key = `${sig}|${m}|${vLo}|${vHi}|${hs ? `${hLo}|${hHi}` : ""}|${m === "runner" || m === "pace" || hs ? "" : v3list.map(routeColour).join(",")}`;
+    v3.setStyle({ colourOf: (i, k) => (m === "pace" ? paceColour(v3list[k].tr.v[i], vLo, vHi) : hs ? colourOf(m, hseries(v3list[k], m)[i], hLo, hHi) : routeColour(v3list[k])), colourKey: key,
       width, future, tail: leg ? 0 : tail, mapAlpha, traceAlpha });
     const k = sel ? v3list.indexOf(sel) : -1;
     v3.setFollow(!pan ? false : follow === "sel" && k >= 0 ? "chase" : "group", Math.max(0, k));
