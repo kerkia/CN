@@ -8,13 +8,14 @@
 // track (#/analyse-solo). The tiles of 2026-11-01 are gone (`?choix=` addresses lead here); a race's analysis with its
 // published times (#/analyse?course=) stays Arena's.
 
-import { html, raw, $, $$, fmtDate, normalise } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, normalise } from "../util.js";
 import { t, tn, has } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as country from "../country.js";
 import * as agendaMap from "../agendamap.js";
-import { getProv } from "./provisional.js";
+import { getProv, clock } from "./provisional.js";
 import { replaceQuery } from "../app.js";
+import * as MM from "../trace/mymaps.js";
 
 const HOME = "#/analyse-carte";
 /** Where a published event opens: its analysis with every runner (`add`: its track drop at once), or « Analyse solo » on its map. */
@@ -43,6 +44,14 @@ const since = (months) => {
 /** A club as the results write it (« 0109 - O'BUGEY ») without its number. */
 const clubName = (s) => String(s || "").replace(/^\s*\d{3,4}\s*-\s*/, "").trim();
 
+/** A map's centre [lat, lon] from its georeference (pixels of a w × h image), or null. */
+function centreOf(m) {
+  const g = m.geo;
+  if (!g || !m.w || !m.h) return null;
+  const det = g.a * g.e - g.b * g.d, x = m.w / 2 - g.c, y = m.h / 2 - g.f;
+  return det ? [(g.a * y - g.d * x) / det, (g.e * x - g.b * y) / det] : null;
+}
+
 export async function render(main, r) {
   const me = auth.session(), q0 = r.query;
   main.innerHTML = html`
@@ -67,6 +76,18 @@ export async function render(main, r) {
       cc: a.cc || (rc ? country.of(rc) : ""), org: a.orgName || rc?.org || "", courses: a.courses, runners: a.runners || 0,
       locked: a.access === "locked", clubOnly: a.vis === "club", draft: !!a.draft, organiser: !!a.organiser, thumb: a.thumb ?? null };
   });
+  // the account's solo analyses (owner, 2026-11-05): each run « Analyse solo » kept in « Mes cartes », seen by its owner alone,
+  // reopened by « Rejouer » — in every country's list
+  if (me && !me.demo) {
+    try {
+      const mm = await MM.list();
+      for (const m of mm.maps || []) for (const run of m.runs || []) {
+        if (run.source !== "solo" && run.source !== "drawn") continue;
+        all.push({ key: `s:${run.id}`, solo: { m, run }, name: run.title || m.title || t("ma.solo.untitled"), date: run.day || m.day || "", kind: "solo",
+          place: m.place || "", pos: centreOf(m), cc: "", org: "", courses: null, runners: null, thumb: m.thumb ? "mm" : null });
+      }
+    } catch (e) { console.warn(e); }                     // the events alone
+  }
   // the site's country's events; another country picked takes its own in place (onCountry: nothing else moves)
   let cc, items, byKey, clubs;
   const forCountry = () => {
@@ -81,7 +102,7 @@ export async function render(main, r) {
   // ---- the filters, kept in the address
   const st = {
     per: Object.hasOwn(PERIODS, q0.per) ? q0.per : "12",
-    type: ["race", "club"].includes(q0.type) ? q0.type : "all",
+    type: ["race", "club", "solo"].includes(q0.type) ? q0.type : "all",
     club: clubs.includes(q0.club) ? q0.club : "",
     q: q0.q || "",
   };
@@ -92,7 +113,7 @@ export async function render(main, r) {
     html`<button type="button" class="seg-btn${k === cur ? " on" : ""}" data-${name}="${k}" aria-pressed="${k === cur}">${l}</button>`)}</div>`;
   $("#ma-filters").innerHTML = html`<div class="filters ma-filters">
       <div class="field"><span>${t("ma.per")}</span>${seg("per", [["3", t("ma.per.3")], ["12", t("ma.per.12")], ["all", t("ma.per.all")]], st.per)}</div>
-      <div class="field"><span>${t("ma.type")}</span>${seg("type", [["all", t("ma.kind.all")], ["race", t("ma.kinds.race")], ["club", t("ma.kinds.club")]], st.type)}</div>
+      <div class="field"><span>${t("ma.type")}</span>${seg("type", [["all", t("ma.kind.all")], ["race", t("ma.kinds.race")], ["club", t("ma.kinds.club")], ...(me && !me.demo ? [["solo", t("ma.kinds.solo")]] : [])], st.type)}</div>
       <label class="field"><span>${t("ma.club")}</span><select id="ma-club"></select></label>
       <label class="field"><span>${t("ma.search")}</span><input type="search" id="ma-q" value="${st.q}" placeholder="${t("ma.search.ph")}" style="width:220px"></label></div>
     <div id="ma-hint"></div>`;
@@ -130,7 +151,7 @@ export async function render(main, r) {
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === selected ? "sel" : ""}">
         <td class="num ma-when">${fmtDate(e.date, "short")}<div class="ma-l2"><span class="tag">${t(`ma.kind.${e.kind}`)}</span></div></td>
         <td class="ma-name"><b class="ma-ev">${e.name}</b>${e.locked ? html` <span title="${t("ma.locked")}">🔒</span>` : ""}${clubTag(e)}${e.draft ? html` <span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}<div class="muted ma-sub ma-l2">${[e.place, clubName(e.org)].filter(Boolean).join(" · ") || "—"}</div></td>
-        <td class="r num">${e.courses}<div class="ma-l2 muted">${e.runners}</div></td></tr>`)}</tbody></table>`
+        <td class="r num">${e.courses ?? "—"}<div class="ma-l2 muted">${e.runners ?? "—"}</div></td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(items.length ? "ra.emptyFilter" : "ma.events.none")}</div>`;
     // where an event comes from (named, not linked: no page leads into another module)
     $("#ma-table").insertAdjacentHTML("beforeend", html`<p class="hint ma-how">${t("ma.events.how", { path: `${t("mod.orga")} › ${t("nav.orgAnalyses")}` })}</p>`);
@@ -142,6 +163,7 @@ export async function render(main, r) {
   // ---- a circuit's thumbnail (the organiser's map with its course drawn), read once a visit
   const thumbs = new Map();
   const thumbOf = (e) => {
+    if (e.solo) return Promise.resolve(e.solo.m.thumb ? MM.mapUrl(e.solo.m.id, "thumb") : null);
     if (e.thumb == null || (e.locked && !keyOf(e.key))) return Promise.resolve(null);
     if (!thumbs.has(e.key)) thumbs.set(e.key, api(`/${e.key}/thumb/${e.thumb}`, { blob: true, key: keyOf(e.key) }).then((b) => URL.createObjectURL(b)).catch(() => null));
     return thumbs.get(e.key);
@@ -151,6 +173,7 @@ export async function render(main, r) {
   function detail() {
     const e = byKey.get(selected), box = $("#ma-detail");
     if (!e) { box.innerHTML = html`<div class="card-body"><p class="muted">${t("ma.pick.hint")}</p></div>`; return; }
+    if (e.solo) { soloDetail(e, box); return; }
     const a = e.a, locked = e.locked && !keyOf(e.key);
     const facts = [fmtDate(e.date), e.place, clubName(e.org)].filter(Boolean);
     const way = (href, label, hint, primary = false) => html`<a class="btn ${primary ? "btn-primary" : ""} ma-go" href="${href}"><b>${label}</b><span>${hint}</span></a>`;
@@ -178,6 +201,24 @@ export async function render(main, r) {
     };
     $("#ma-unlock")?.addEventListener("click", go);
     $("#ma-pw")?.addEventListener("keydown", (ev) => { if (ev.key === "Enter") go(); });
+  }
+  /** A solo analysis chosen: what it is, and the way back into it (« Rejouer ») or to its map in « Mes cartes ». */
+  function soloDetail(e, box) {
+    const { m, run } = e.solo;
+    const facts = [fmtDate(e.date), e.place, run.dist ? `${fmt(run.dist / 1000, 2)} km` : "", run.dur ? clock(run.dur) : ""].filter(Boolean);
+    box.innerHTML = html`<div class="card-body">
+      <h2 class="ma-d-title">${e.name}</h2><p class="muted">${facts.join(" · ")}</p>
+      <p><span class="tag">${t("ma.kind.solo")}</span> <span class="muted">${t("ma.solo.mine")}</span></p>
+      <div class="ma-ways"><button type="button" class="btn btn-primary ma-go" id="ma-replay"><b>${t("ma.solo.replay")}</b><span>${t("ma.solo.replay.hint")}</span></button>
+        <a class="btn ma-go" href="#/mes-cartes?carte=${m.id}"><b>${t("ma.solo.mymaps")}</b><span>${t("ma.solo.mymaps.hint")}</span></a></div>
+      <p class="muted" id="ma-solo-note"></p>
+      <div class="ma-d-thumb" id="ma-d-thumb" hidden><img alt="${t("ma.thumb.alt", { name: e.name })}"></div></div>`;
+    thumbOf(e).then((url) => { const b = $("#ma-d-thumb"); if (url && b && selected === e.key) { $("img", b).src = url; b.hidden = false; } });
+    $("#ma-replay").addEventListener("click", async (ev) => {
+      ev.currentTarget.disabled = true;
+      try { await MM.replay(m, run, e.name); }
+      catch (err) { console.error(err); $("#ma-solo-note").textContent = t("ma.solo.err"); $("#ma-replay").disabled = false; }
+    });
   }
   function select(key) {
     selected = key;

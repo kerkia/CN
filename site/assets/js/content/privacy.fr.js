@@ -110,6 +110,7 @@ export const body = (SITE, { world = false } = {}) => `
         ni les autres données personnelles  supprimer le lien arrête ce partage. Vous supprimez une course ou une carte à tout
         moment  tout est effacé avec votre compte. Une demande d'import depuis DOMA est un message envoyé à l'équipe Ozimut, comme
         ceux de « Nous écrire ».</p>
+      <p>Une analyse faite dans « Analyse solo » y est enregistrée de la même façon dès que vous en voyez la course, sauf si vous décochez « Garder cette analyse dans mon compte » : la carte, et votre course en positions et heures seulement. Elle apparaît dans « Analyse de carte », visible de vous seul ; vous la supprimez dans « Mes cartes ».</p>
       <h2 style="font-size:16px">Réservation des horaires de départ</h2>
       <p>Quand les organisateurs d'une compétition ouvrent la réservation de ses horaires de départ, un compte réserve un départ pour
         lui-même et pour les coureurs qu'il ajoute à « Mes coureurs » (sa famille, des amis, licenciés ou non) : leur prénom, leur nom,
@@ -253,5 +254,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Crédits :</b> les symboles et les textes des définitions de postes (Coach › Définitions de postes, le tracé des circuits)
         viennent de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         sous <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licence BSD</a>.</p>
-      <p class="muted">Dernière mise à jour : 4 novembre 2026.</p>
+      <p class="muted">Dernière mise à jour : 5 novembre 2026.</p>
 `;

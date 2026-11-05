@@ -1278,7 +1278,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   // the layout (owner, 2026-11-01, as « Analyse solo »'s): the controls above the map, a panel of tabs on each side of it (the
   // runners, the analyses, the computed routes, one's own curves; the display and the computing), resized and folded
   const px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
-  let lw = px(prefs.lw, 200, 1400, 320), rw = px(prefs.rw, 200, 700, 270);
+  // the panels' widths: this analysis's own once moved (owner, 2026-11-05: remembered per analysis), else the last ones
+  const LAY = `ocn.sh.lay.${id}`, lay = (() => { try { return JSON.parse(localStorage.getItem(LAY) || "null") || {}; } catch (e) { return {}; } })();
+  let lw = px(lay.lw ?? prefs.lw, 200, 1400, 320), rw = px(lay.rw ?? prefs.rw, 200, 700, 270);
   // both panels unfolded at every opening, « Coureurs » and « Affichage » (owner, 2026-11-04: « Coureurs », where one adds one's
   // track, rather than « Inter-postes » chosen earlier that day); their widths stay remembered
   const lp = { tab: "runners", collapsed: false };
@@ -1295,7 +1297,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   let ex3d = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].includes(prefs.ex3d) ? prefs.ex3d : 1.5;   // the 3D view's vertical exaggeration
   // the picture exported (« Export »): the part of the map in view or all of it, PNG or JPEG, with a title and the runners' colours
   const shot = { zone: ["race", "map"].includes(prefs.shotZone) ? prefs.shotZone : "view", type: prefs.shotType === "jpeg" ? "jpeg" : "png", legend: prefs.shotLegend !== false };
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, tail, width, wv: 2, future, showCourse: courseOn, courseOver, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(LAY, JSON.stringify({ lw, rw })); localStorage.setItem(PREFS_KEY, JSON.stringify({ shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, tail, width, wv: 2, future, showCourse: courseOn, courseOver, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   const MODE0 = modes.includes("wait") ? "wait" : "mass";   // waiting at the controls by default (owner, 2026-11-05)
   let mode = modes.includes(init.m) ? init.m : MODE0, fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;

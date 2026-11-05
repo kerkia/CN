@@ -49,6 +49,7 @@ import * as RC from "../trace/routeplan.js";
 import { panelHtml, bindPanel, bindSplitter, PAN_ICON } from "../trace/sidepanel.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
+import { videoPanel } from "./sharedvideo.js";
 
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];                   // seconds of trace behind the runner; 0: all of it
@@ -218,8 +219,9 @@ export async function render(main, { query = {}, route } = {}) {
         <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
         <div class="an-mapcol"><div class="an-bar sh-bar" id="an-bar" hidden></div>
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
-          <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
-            <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button></div>
+          <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
+            <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button>
+            <button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-video-btn" title="${t("sh.video.add")}" hidden>🎥</button><input type="file" id="an-video-file" accept="video/*" hidden></div>
           <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="sh-stripbar" id="an-stripbar" hidden><button type="button" class="sh-strip-tog" id="an-ps-tog" aria-expanded="true" title="${t("an.strip.fold")}">▾ ${t("sh.strip.title")}</button><span class="an-bar-stats" id="an-stats"></span></div>
         <canvas class="sh-strip" id="an-ps" hidden></canvas></div>
@@ -262,7 +264,7 @@ export async function render(main, { query = {}, route } = {}) {
   const prefs = loadPrefs();
   // « Suivre » on at every opening, the view still until the race is played or its time moved by the reader (owner, 2026-11-05: as
   // « Analyse de carte »); `opening` keeps the whole map fitted while the panels settle, until the reader moves it
-  let still = true, opening = false;
+  let still = true, opening = false, video = null;           // video: the headcam (pages/sharedvideo.js), made with the map's tools
   let view = { k: 1, ox: 0, oy: 0 }, follow = true, colour = typeof prefs.colour === "string" ? prefs.colour : "plain", marks = true, tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, speed = 10, playing = false, tNow = 0;
   // the trace's thickness, × the base: thick by default, as « Analyse de carte » (owner, 2026-11-05: a width saved before is reset once)
   let width = prefs.wv === 2 && WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;
@@ -297,7 +299,7 @@ export async function render(main, { query = {}, route } = {}) {
   // both panels unfolded at every opening, « Inter-postes » and « Affichage » (owner, 2026-11-04); their widths stay remembered
   const lp = { tab: "legs", collapsed: false };
   const rp = { tab: "display", collapsed: false };
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, wv: 2, strip: showStrip, showCourse: courseOn, courseOver, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
+  const savePrefs = () => { try { if (calibrated && traceSig()) localStorage.setItem(`ocn.an.lay.${traceSig()}`, JSON.stringify({ gw, sw })); localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, wv: 2, strip: showStrip, showCourse: courseOn, courseOver, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
     shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, orient })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
@@ -486,12 +488,15 @@ export async function render(main, { query = {}, route } = {}) {
       ${drawBlock()}
       ${cutBlock()}
       ${genBlock()}
-      <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
+      ${keepable() ? html`<label class="an-keep"><input type="checkbox" id="an-keep" ${raw(keepOn() ? "checked" : "")}> <b>${t("an.keep")}</b></label>
+        <p class="muted" style="font-size:13px;margin:2px 0 0">${t(keepOn() ? "an.keep.hint" : "an.keep.off")}</p>` : ""}
+      <p class="muted" style="font-size:13px;margin:10px 0 0">${keepable() && keepOn() ? t("an.private.kept") : t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
         ${(files.map && !orgaMode) || files.trace ? html` <button type="button" class="btn btn-sm" id="an-forget" style="margin-left:8px">${t("an.forget")}</button>` : ""}</p>
       <details class="an-formats" ${raw(orgaMode ? "hidden" : "")}><summary>${t("an.formats")}</summary><ul>
         <li>${t("an.formats.map")}</li><li>${t("an.formats.trace")}</li><li>${t("an.formats.geo")}</li><li>${t("an.formats.iof")}</li><li>${t("an.formats.ocad")}</li></ul></details>
       </div>`;
     $("#an-in").addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
+    $("#an-keep")?.addEventListener("change", (e) => { try { localStorage.setItem("ocn.an.keep", e.target.checked ? "1" : "0"); } catch (err) { /* this visit */ } filesCard(); });
     $("#an-cam")?.addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
     phone.bind("an-phone", { kind: orgaMode ? "trace" : "any", multiple: !orgaMode, onFiles: (f) => take(f) });
     $("#an-forget")?.addEventListener("click", () => {
@@ -906,6 +911,7 @@ export async function render(main, { query = {}, route } = {}) {
     prepare();
   }
   const hideResults = () => {
+    video?.close(); $("#an-video-btn").hidden = true;
     close3d(); $("#an-3d").hidden = true; rcReset(); measure.stop(); $("#an-measure").hidden = true;
     $("#an-legs").innerHTML = ""; $("#an-left").hidden = true; $("#an-right").hidden = true; $("#an-bar").hidden = true; $("#an-side").hidden = false;
     $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
@@ -1774,7 +1780,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-top").innerHTML = html`<span class="sh-top-l">${orgaMode ? html`<b class="sh-title">${orga.A.title}</b><span class="muted">${[orga.A.date ? fmtDate(orga.A.date) : "", t(orga.A.kind === "race" ? "ma.kind.race" : "sh.kind.club")].filter(Boolean).join(" · ")}</span>`
         : perso ? html`<b class="sh-title">${t("an.perso.title")}</b><span class="muted">${fmtDate(day0)}</span>`
         : html`<b class="sh-title">${rc0?.name || race?.name || ""}</b><span class="muted">${[fmtDate(day0), klass()?.name, withTimes ? runner()?.name : ""].filter(Boolean).join(" · ")}</span>`}</span>
-      <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis}`)}</span>` : ""}<span class="fw-btns">${raw(fwButtons())}</span></span>`;
+      <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis}`)}</span>` : ""}<span class="muted an-kept" id="an-kept"></span><span class="fw-btns">${raw(fwButtons())}</span></span>`;
     $("#an-top").hidden = false;
     // the controls over the map's column, as « Analyse de carte »'s: follow, the transport, the speed, the time
     $("#an-bar").innerHTML = html`
@@ -1847,9 +1853,8 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-shot").addEventListener("click", () => exportImage());
     // « Enregistrer dans Mes cartes » (owner, 2026-11-01): the map and the run as drawn here (trace/mymapsave.js)
     if (!orgaOpt("mymaps", true) || track?.drawn?.replay) $("#an-mymaps").hidden = true;   // a replay is already there
-    else import("../trace/mymapsave.js").then((M) => M.mount($("#an-mymaps"), () => ({ file: files.map?.file || null, image: map, track, pxs, pys, offset, total,
-      geo: fit ? geoFromFit(fit, track) : null, title: orgaMode ? orga.A.title : perso ? "" : [race?.name, klass()?.name].filter(Boolean).join(" · "),
-      controls: targets.filter((g) => g.pos).map((g) => ({ k: g.kind, x: g.pos[0], y: g.pos[1], t: timeOf(g) })) }))).catch((e) => console.error(e));
+    else import("../trace/mymapsave.js").then((M) => M.mount($("#an-mymaps"), mmState, { kept: () => keptOf(), onKept: setKept })).catch((e) => console.error(e));
+    keepAnalysis();
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
     $("#an-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); savePrefs(); draw(); });
     $("#an-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); draw(); });
@@ -1873,13 +1878,15 @@ export async function render(main, { query = {}, route } = {}) {
     if (known) legsTable(); else $("#an-legs").innerHTML = "";
     sizeStrip();
     paceLegend();
+    // the panels' widths this analysis had (owner, 2026-11-05: remembered per analysis — per trace, a replay of a kept one too)
+    try { const l = JSON.parse(localStorage.getItem(`ocn.an.lay.${traceSig()}`) || "null"); if (l) { gw = px(l.gw, 160, 1400, gw); sw = px(l.sw, 200, 700, sw); applyLayout(); } } catch (e) { /* the last ones */ }
     // the whole map, as « Analyse de carte » opens (owner, 2026-11-05); the runner followed once played
     still = true; opening = true;
     showCourse = coursePrinted() ? courseOver : courseOn;
     const sc = $("#an-course-on"); if (sc) sc.checked = showCourse;
     fitView();
     seek(0);
-    $("#an-3d").hidden = !orgaOpt("view3d", true); $("#an-measure").hidden = false;
+    $("#an-3d").hidden = !orgaOpt("view3d", true); $("#an-measure").hidden = false; $("#an-video-btn").hidden = !orgaOpt("video", true);
     soloSeen();
     const gc = $("#an-gen-credit");
     gc.hidden = !LM.isGenerated(files.map?.name);
@@ -1918,6 +1925,51 @@ export async function render(main, { query = {}, route } = {}) {
     follow = on; savePrefs();
     const b = $("#an-follow");
     if (b) { b.setAttribute("aria-pressed", String(on)); b.classList.toggle("on", on); b.setAttribute("aria-label", t(on ? "sh.pan.stop" : "sh.pan.start")); }
+  }
+  // ---- the analysis kept in the account (owner, 2026-11-05): at « Voir la course » the map and the run as drawn go to « Mes cartes »,
+  // listed in « Analyse de carte » as a solo analysis that « Rejouer » opens again; only positions and times (the watch's other
+  // channels on the runner's choice, in « Export »); a calibration made again replaces the run kept; the account can say no
+  // (`ocn.an.keep`); never a replay (it is kept already), nor where the organiser keeps their map out of « Mes cartes »
+  function keepable() { const me = auth.session(); return !!me && !me.demo && orgaOpt("mymaps", true); }
+  function keepOn() { try { return localStorage.getItem("ocn.an.keep") !== "0"; } catch (e) { return true; } }
+  /** What « Mes cartes » keeps of this analysis (trace/mymapsave.js). */
+  function mmState() {
+    return { file: files.map?.file || null, image: map, track, pxs, pys, offset, total, geo: fit ? geoFromFit(fit, track) : null, title: keepTitle(),
+      controls: targets.filter((g) => g.pos).map((g) => ({ k: g.kind, x: g.pos[0], y: g.pos[1], t: timeOf(g) })) };
+  }
+  function keepTitle() {
+    if (orgaMode) return [orga.A.title, orga.A.courses.length > 1 ? orga.A.courses.find((c) => c.n === orgaN)?.name : ""].filter(Boolean).join(" · ");
+    // the map file's own name (a KMZ's image named after the KMZ: « carte.kmz › files/carte.png » → « carte »)
+    if (perso) return (files.map?.name || "").split("›")[0].replace(/\.[a-z0-9]+\s*$/i, "").replace(/[_-]+/g, " ").trim();
+    return [races.find((x) => x.key === key)?.name || race?.name, klass()?.name, withTimes ? runner()?.name : ""].filter(Boolean).join(" · ");
+  }
+  const keptKey = () => `ocn.an.kept.${traceSig()}`;
+  function keptOf() { try { return JSON.parse(localStorage.getItem(keptKey()) || "null"); } catch (e) { return null; } }
+  function setKept(rec) { try { localStorage.setItem(keptKey(), JSON.stringify({ ...keptOf(), ...rec })); } catch (e) { /* this visit */ } keptNote("done"); }
+  /** The calibration's own mark: another one (the controls moved, the clock shifted) is another run to keep. */
+  const calMark = () => JSON.stringify([fit && [fit.m11, fit.m12, fit.m21, fit.m22, fit.tx, fit.ty].map((v) => Math.round(v * 1e4) / 1e4), Math.round((offset || 0) * 10), Math.round(total || 0),
+    targets.filter((g) => g.pos).map((g) => g.pos.map(Math.round))]);
+  function keptNote(state) {
+    const el = $("#an-kept");
+    if (!el) return;
+    el.textContent = state ? t(`an.kept.${state}`) : "";
+    el.title = state === "done" ? t("an.kept.tip") : "";
+  }
+  let keeping = null;
+  async function keepAnalysis() {
+    if (!keepable() || !keepOn() || track?.drawn?.replay || !map || !pxs) return;
+    const mark = calMark(), was = keptOf();
+    if (was?.cal === mark) { keptNote("done"); return; }
+    if (keeping) return;
+    keptNote("saving");
+    try {
+      keeping = (await import("../trace/mymapsave.js")).keep(mmState(), { title: keepTitle() });
+      const res = await keeping;
+      if (was?.run && was.run !== res.runs[0].id) (await import("../trace/mymaps.js")).deleteRun(was.run).catch(() => {});   // the former calibration's
+      try { localStorage.setItem(keptKey(), JSON.stringify({ map: res.map.id, run: res.runs[0].id, cal: mark })); } catch (e) { /* this visit */ }
+      keptNote("done");
+    } catch (e) { console.warn(e); keptNote(e.status === 503 ? "" : "err"); }
+    finally { keeping = null; }
   }
   /** The pace under the map, shown or folded (the bar with the figures stays). */
   function setStrip(on) {
@@ -1996,6 +2048,7 @@ export async function render(main, { query = {}, route } = {}) {
     if (raf) clearInterval(raf);
     raf = 0;
     const b = $("#an-play"); if (b) b.textContent = "▶";
+    video?.sync(true);
   }
   function hud() {
     if (!calibrated) return;
@@ -2013,7 +2066,7 @@ export async function render(main, { query = {}, route } = {}) {
     set("#an-dist-sub", len ? `${t("an.course.len")} ${fmt(len / 1000, 1)} km` : "");
     for (const c of Object.keys(track.ch)) { const v = valueAt(track, c, s); set(`#an-ch-${c}`, v == null || Number.isNaN(v) ? "—" : fmt(v, c === "temp" ? 1 : 0)); }
     $("#an-hud").textContent = `${clock(tNow)}${leg ? ` · ${leg.n}` : ""}`;
-    paceStrip();
+    paceStrip(); video?.sync();
     if (rcs.on) rcCurrent();
   }
   function legsTable() {
@@ -2135,6 +2188,13 @@ export async function render(main, { query = {}, route } = {}) {
   $("#an-fit").addEventListener("click", () => { if (!map) return; opening = false; if (v3) { setFollow(false); v3.setFollow(false); v3.fitTrace(); return; } if (calibrated) { fitTrace(); setFollow(false); } else fitView(); draw(); });
   $("#an-map").addEventListener("click", () => { opening = false; if (v3) { setFollow(false); v3.setFollow(false); v3.fitMap(); return; } if (map) { fitView(); draw(); } });
   $("#an-3d").addEventListener("click", () => toggle3d());
+  // a headcam video in step with the race (pages/sharedvideo.js, as « Analyse de carte »'s; owner, 2026-11-05): a file of this
+  // device, never sent; its offset kept on this device per trace
+  const SOLO = { uid: 0, get name() { return (withTimes && runner()?.name) || t("an.perso.title"); } };
+  video = videoPanel($(".an-map"), { runners: [SOLO], get key() { return `ocn.an.video.${traceSig() || "none"}`; }, playing: () => playing, speed: () => speed,
+    pick: () => SOLO, raceTime: () => (calibrated ? tNow : null) });
+  $("#an-video-btn").addEventListener("click", () => $("#an-video-file").click());
+  $("#an-video-file").addEventListener("change", (e) => { const f = e.target.files[0]; if (f) { video.open(f); video.sync(true); } e.target.value = ""; });
   const ro = new ResizeObserver(() => {
     if (!map) return;
     const b = box();
@@ -2750,7 +2810,7 @@ export async function render(main, { query = {}, route } = {}) {
     window.removeEventListener("resize", onWinResize);
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
     window.removeEventListener("ocn:inbox", onInbox);
-    document.removeEventListener("keydown", onDrawKey); measure.destroy();
+    document.removeEventListener("keydown", onDrawKey); measure.destroy(); video?.close();
     themeWatch.disconnect();
     stop(); ro.disconnect(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files }, orgaKey: orgaMode ? key : null };

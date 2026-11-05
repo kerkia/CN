@@ -202,17 +202,8 @@ export async function render(main, { query = {} } = {}) {
       $$("[data-replay]").forEach((b) => b.addEventListener("click", async () => {
         const r = m.runs.find((x) => x.id === b.dataset.replay);
         b.disabled = true;
-        try {
-          const d = MM.decodeRun(await MM.getRun(r.id, token));
-          const name = r.title || m.title || t("mm.untitledRun");
-          const gpx = MM.replayGpx(m, d, name, r);
-          if (!gpx) throw new Error("geo");
-          const blob = await (await fetch(MM.mapUrl(m.id, "map", token), { credentials: "same-origin" })).blob();
-          const ext = /png/.test(blob.type) ? "png" : /webp/.test(blob.type) ? "webp" : "jpg";
-          const files = [new File([blob], MM.fileName(m.title || t("mm.untitled"), m.day, ext), { type: blob.type }),
-            new File([gpx], MM.fileName(name, r.day, "gpx"), { type: "application/gpx+xml" })];
-          await (await import("../pwa.js")).toSolo(files, { play: true });
-        } catch (e) { console.error(e); b.disabled = false; alert(t("mm.replay.err")); }
+        try { await MM.replay(m, r, r.title || m.title || t("mm.untitledRun"), token); }
+        catch (e) { console.error(e); b.disabled = false; alert(t("mm.replay.err")); }
       }));
       $$("[data-show]").forEach((b) => b.addEventListener("change", () => { if (b.checked) hidden.delete(b.dataset.show); else hidden.add(b.dataset.show); drawSide(); paint(); }));
       $$("[data-ren]").forEach((b) => b.addEventListener("click", async () => {

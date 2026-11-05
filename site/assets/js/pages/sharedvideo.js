@@ -1,4 +1,4 @@
-// A headcam video beside « Analyse multi »'s replay (after 3DRerun): a video file chosen on this device — never sent,
+// A headcam video beside « Analyse de carte »'s replay and « Analyse solo »'s playback (after 3DRerun): a video file chosen on this device — never sent,
 // read through an object URL — played in step with one runner's race. The offset is the video's time at the runner's
 // start: typed, or set by « Caler ici » once the video shows the moment the replay shows (the start's beep, a control).
 // While the replay plays at up to × 16 the video plays at the same rate, put back in step when it drifts by over half a
@@ -13,8 +13,9 @@ import { t } from "../i18n.js";
 
 export function videoPanel(host, X) {
   let url = null, video = null, last = 0;
-  const saved = (() => { try { return JSON.parse(localStorage.getItem(X.key) || "null") || {}; } catch (e) { return {}; } })();
-  let who = X.runners.find((r) => r.uid === saved.uid) || X.pick(), offset = Number.isFinite(saved.offset) ? saved.offset : 0;
+  // the runner and offset kept for this analysis (or trace), read when a video is opened: the key may only be known then
+  const load = () => { try { return JSON.parse(localStorage.getItem(X.key) || "null") || {}; } catch (e) { return {}; } };
+  let who = null, offset = 0;
   const save = () => { try { localStorage.setItem(X.key, JSON.stringify({ uid: who?.uid, offset })); } catch (e) { /* this visit only */ } };
   const box = document.createElement("div");
   box.className = "sh-video";
@@ -24,7 +25,7 @@ export function videoPanel(host, X) {
     box.innerHTML = html`<div class="sh-video-head"><b>${t("sh.video.title")}</b><button type="button" class="btn btn-sm" data-vclose title="${t("sh.video.close")}">✕</button></div>
       <video playsinline muted preload="auto"></video>
       <div class="sh-video-row">
-        <select data-vwho title="${t("prov.runner")}">${X.runners.map((r) => html`<option value="${r.uid}" ${raw(r === who ? "selected" : "")}>${r.name}</option>`)}</select>
+        ${X.runners.length > 1 ? html`<select data-vwho title="${t("prov.runner")}">${X.runners.map((r) => html`<option value="${r.uid}" ${raw(r === who ? "selected" : "")}>${r.name}</option>`)}</select>` : ""}
         <label title="${t("sh.video.offset.tip")}">${t("sh.video.offset")} <input type="number" data-voff step="0.1" value="${Math.round(offset * 10) / 10}" style="width:72px"> s</label>
         <button type="button" class="btn btn-sm" data-vhere title="${t("sh.video.here.tip")}">${t("sh.video.here")}</button>
         <button type="button" class="btn btn-sm" data-vmute>${t("sh.video.sound")}</button></div>
@@ -32,7 +33,7 @@ export function videoPanel(host, X) {
     video = $("video", box);
     video.src = url;
     $("[data-vclose]", box).addEventListener("click", close);
-    $("[data-vwho]", box).addEventListener("change", (e) => { who = X.runners.find((r) => r.uid === Number(e.target.value)) || who; save(); sync(true); });
+    $("[data-vwho]", box)?.addEventListener("change", (e) => { who = X.runners.find((r) => r.uid === Number(e.target.value)) || who; save(); sync(true); });
     $("[data-voff]", box).addEventListener("change", (e) => { const v = Number(e.target.value); if (Number.isFinite(v)) { offset = v; save(); sync(true); } });
     // « Caler ici »: the video's current frame is the replay's moment
     $("[data-vhere]", box).addEventListener("click", () => { const rt = X.raceTime(who); if (rt == null) return; offset = video.currentTime - rt; save(); $("[data-voff]", box).value = String(Math.round(offset * 10) / 10); });
@@ -42,6 +43,8 @@ export function videoPanel(host, X) {
   }
   function open(file) {
     close();
+    const saved = load();
+    who = X.runners.find((r) => r.uid === saved.uid) || X.pick(); offset = Number.isFinite(saved.offset) ? saved.offset : 0;
     url = URL.createObjectURL(file);
     box.hidden = false;
     draw();

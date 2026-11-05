@@ -111,6 +111,7 @@ export const body = (SITE, { world = false } = {}) => `
         oder andere persönliche Daten; das Löschen des Links beendet das Teilen. Du kannst einen Lauf oder eine Karte jederzeit löschen;
         alles wird mit deinem Konto gelöscht. Eine Anfrage zum Import aus DOMA ist eine Nachricht an das Ozimut-Team, wie die über
         „Kontakt“.</p>
+      <p>Eine in der „Einzelanalyse“ gemachte Analyse wird dort auf dieselbe Weise gespeichert, sobald du ihren Lauf ansiehst, außer du entfernst das Häkchen bei „Diese Analyse in meinem Konto behalten“: die Karte und dein Lauf, nur als Positionen und Zeiten. Sie erscheint in der „Kartenanalyse“, nur für dich sichtbar; du löschst sie in „Meine Karten“.</p>
       <h2 style="font-size:16px">Reservierung der Startzeiten</h2>
       <p>Wenn die Veranstalter eines Wettkampfs die Reservierung der Startzeiten öffnen, reserviert ein Konto einen Start für sich
         und für die Läufer, die es unter „Meine Läufer“ hinzufügt (seine Familie, Freunde, mit oder ohne Verein): ihr Vor- und
@@ -255,5 +256,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
         stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
-      <p class="muted">Letzte Aktualisierung: 4. November 2026.</p>
+      <p class="muted">Letzte Aktualisierung: 5. November 2026.</p>
 `;

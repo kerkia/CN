@@ -185,6 +185,21 @@ ${seg.join("\n")}
 `;
 }
 
+/**
+ * « Rejouer » (owner, 2026-11-04; « Analyse de carte »'s saved solo analyses too, 2026-11-05): map m and its run r handed to
+ * « Analyse solo », played at once — the map as kept and the run as a GPX (replayGpx). name: the run's title; token: a link's.
+ */
+export async function replay(m, r, name, token) {
+  const d = decodeRun(await getRun(r.id, token));
+  const gpx = replayGpx(m, d, name, r);
+  if (!gpx) throw new Error("geo");
+  const blob = await (await fetch(mapUrl(m.id, "map", token), { credentials: "same-origin" })).blob();
+  const ext = /png/.test(blob.type) ? "png" : /webp/.test(blob.type) ? "webp" : "jpg";
+  const files = [new File([blob], fileName(m.title || name, m.day, ext), { type: blob.type }),
+    new File([gpx], fileName(name, r.day, "gpx"), { type: "application/gpx+xml" })];
+  await (await import("../pwa.js")).toSolo(files, { play: true });
+}
+
 const runCache = new Map();
 export async function getRun(id, token) {
   const k = `${token || ""}:${id}`;
