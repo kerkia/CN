@@ -2279,7 +2279,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   `geoFromVector`) and draws the engine's layers on the image's pixels (`layers`; the worker's op `layers` instead of `init`, no
   colours read): areas by their fill colour (hatching: blue marsh, olive/purple out of bounds; pattern green/black: slow), colour by
   colour from the bottom of the colour table; lines by symbol number (501-508 paths drawn solid, of their three kinds; 201, 515, 518, and 521/524 as
-  lines block — a path crossing them stays open, an out-of-bounds area never; 202, 415, 416, 513-523's passable ones handrails;
+  lines block, at their line's own width (a fence's ticks span 1.8 mm), opened only at a crossing point (519; ISOM 2000's 525) — owner, 2026-11-05: a path crossing them or running along them opened them, and the routes of « Entrainement OPA Montigny » went through a fenced enclosure; a path still crosses water and buildings, never an out-of-bounds area; 202, 415, 416, 513-523's passable ones handrails;
   blue lines streams); contours, points, text and course left out. « Analyse solo »: a .ocd/.omap/.xmap dropped with no image is
   the map (rendered by `mapsrc.openMap`, georeferenced by its own grid: `files.geo.corners`), else (or from the routes box) a
   companion `files.vector` placed through its georeference and the calibration (`throughGeo`, refused under a fifth of the image

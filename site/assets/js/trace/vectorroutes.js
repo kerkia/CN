@@ -9,7 +9,9 @@
 //   colour table, so that a green over a yellow wins as on the map;
 // - lines by their symbol number: roads and vehicle tracks (501-504), footpaths (505), small paths and rides (506-508) — the
 //   three kinds of path, solid even when the map dashes them; impassable
-//   cliffs, walls and fences (201, 515, 518, and ISOM 2000's 521 and 524 when they are lines) block; passable walls, fences and
+//   cliffs, walls and fences (201, 515, 518, and ISOM 2000's 521 and 524 when they are lines) block, drawn at their line's own
+//   width (not the span of a fence's ticks) and crossed only at a crossing point (519, ISOM 2000's 525: owner, 2026-11-05 — a
+//   path crossing an impassable fence or running along it opens nothing, as ISOM says); passable walls, fences and
 //   cliffs, vegetation boundaries are handrails; blue lines are streams.
 // Contours, points, text and the course are not drawn. A map that is not the one shown is placed through both georeferences.
 
@@ -21,6 +23,8 @@ export const VECTOR_ACCEPT = ".ocd,.omap,.xmap";
 const PATHS = new Map([[501, 3], [502, 3], [503, 3], [504, 3], [505, 2], [506, 1], [507, 1], [508, 1]]);  // the path layer's kinds (routechoice.js PATH)
 const BLOCKS = new Set([201, 515, 518, 521, 524]);
 const HANDRAILS = new Set([202, 416, 415, 513, 514, 516, 517, 519, 520, 522, 523]);
+const CROSSING = 519, CROSSING_2000 = 525;                     // the crossing point of an impassable wall or fence (ISOM 2017, ISOM 2000)
+const CROSSING_M = 3, CROSSING_MM = 0.6;                       // a crossing point's opening: its symbol's half size, at least so many metres and mm
 
 /**
  * Read a vector map: { map (VMap), format, version, scale, ox, oy, w, h (the frame in mm, as the Tracer opens it), geo (the
@@ -161,10 +165,18 @@ export function layers(v, T, W, H, extra = null) {
   // the areas, colour by colour from the bottom of the colour table
   const z = new Map(map.colors.map((c, i) => [c, i]));
   const groups = new Map();
-  const counts = { areas: 0, paths: 0, blocks: 0, hands: 0, streams: 0 };
+  const counts = { areas: 0, paths: 0, blocks: 0, hands: 0, streams: 0, crossings: 0 };
+  // ISOM 2000 numbers its impassable wall and fence 521 and 524, its crossing point 525 (ISOM 2017's small tower)
+  const iso2000 = map.symdefs.some((d) => d.kind === "line" && d.symbols.length && [521, 524].includes(Math.floor(parseFloat(d.id))));
+  const crossings = [];
   for (const d of map.symdefs) {
     if (!d.visible) continue;
     const isArea = d.kind === "area", isLine = d.kind === "line";
+    if (d.kind === "point") {
+      const n = Math.floor(parseFloat(d.id));
+      if (n === CROSSING || (iso2000 && n === CROSSING_2000)) for (const s of d.symbols) if (s.visible !== false && Number.isFinite(s.x)) crossings.push([s.x, s.y, s.bbox ? Math.max(s.bbox[2] - s.bbox[0], s.bbox[3] - s.bbox[1]) / 2 : 0]);
+      continue;
+    }
     if (!isArea && !isLine) continue;
     for (const s of d.symbols) {
       if (s.visible === false) continue;
@@ -180,7 +192,9 @@ export function layers(v, T, W, H, extra = null) {
         if (!role) continue;
         const key = `line|${role}`;
         if (!groups.has(key)) groups.set(key, { role, list: [] });
-        groups.get(key).list.push({ path: s.path, width: Math.max(d.maxThick || d.width || 0.25, 0.1) });
+        // what blocks, at its line's own width: a fence's ticks span 1.8 mm and would swallow the track beside it
+        const width = role === "block" && d.color && d.width > 0 ? d.width : d.maxThick || d.width || 0.25;
+        groups.get(key).list.push({ path: s.path, width: Math.max(width, 0.1) });
         counts[{ path1: "paths", path2: "paths", path3: "paths", block: "blocks", hand: "hands", blue: "streams" }[role]]++;
       }
     }
@@ -200,6 +214,17 @@ export function layers(v, T, W, H, extra = null) {
     for (const l of grp.list) { g.lineWidth = Math.max(l.width, minMm); g.stroke(path2d(l.path.commands())); }
     read(into, value);
   }
+  // an impassable line is crossed at its crossing points only; a path drawn over it or along it opens nothing
+  if (crossings.length && groups.has("line|block")) {
+    const r0 = Math.max(CROSSING_MM, CROSSING_M / ((map.scale || 10000) / 1000));
+    begin();
+    for (const [x, y, r] of crossings) { g.beginPath(); g.arc(x, y, Math.max(r0, r), 0, 2 * Math.PI); g.fill(); }
+    const hole = new Uint8Array(N);
+    read(hole, 1);
+    for (let i = 0; i < N; i++) if (hole[i] && block[i]) block[i] = 0;
+    counts.crossings = crossings.length;
+  }
+  for (let i = 0; i < N; i++) if (block[i]) path[i] = 0;
   // the setter's out-of-bounds areas over everything, their boundaries as walls (a path stays closed across them)
   const poly = (pts, close) => { const p = new Path2D(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); if (close) p.closePath(); return p; };
   if (extra?.areas?.length) {

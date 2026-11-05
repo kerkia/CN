@@ -721,9 +721,10 @@ export function costs(G, s, mpc) {
     // the overprint near a control is the course's own circle or number: the ground under it is taken as runnable forest
     const freed = ov?.[k] === 1 && rel?.[k];
     let v = G.block?.[k] ? Infinity : freed ? 1 : F[cls[k]];
-    // a vector map's path crosses a wall or a fence (a gate), never an area out of bounds; on an image a line read as a path opens
-    // nothing impassable (the black edge of a building, of an area out of bounds), nor does a gap bridged
-    if (bm === "paths" && path[k] && cls[k] !== A.OOB && (G.vector ? raw[k] || v < Infinity : v < Infinity)) { v = Math.min(v, FP[path[k]]); isPath[k] = 1; }
+    // a vector map's path crosses water or a building (a bridge, a passage), never an area out of bounds nor an impassable wall or
+    // fence (its crossing points are holes in it: trace/vectorroutes.js); on an image a line read as a path opens nothing impassable
+    // (the black edge of a building, of an area out of bounds), nor does a gap bridged
+    if (bm === "paths" && path[k] && cls[k] !== A.OOB && !G.block?.[k] && (G.vector ? raw[k] || v < Infinity : v < Infinity)) { v = Math.min(v, FP[path[k]]); isPath[k] = 1; }
     else if (bm === "obstacles" && raw[k]) v = Infinity;
     // a forbidden route is crossed, not followed: slow along it, its path no handrail
     if (ov?.[k] === 2 && !rel?.[k]) { v = Math.max(v, FORBIDDEN_ROUTE); isPath[k] = 0; }
