@@ -1717,7 +1717,9 @@ body.an-theatre .an-right { grid-area: side; }
 .rc-hint { font-size: 12px; color: var(--ink-3); margin: 8px 0 0; }
 .rc-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; }
 .rc-leg { font-size: 12.5px; margin: 6px 0 0; }
-.rc-leg div { display: flex; gap: 6px; align-items: baseline; margin: 2px 0; }
+/* (every div of the list made a row: each leg's block came out as columns) */
+.rc-leg .rc-leg-all { display: block; width: 100%; text-align: left; padding: 4px 6px; border-radius: 8px; font-style: italic; color: var(--ink-2); border: 1px solid transparent; }
+.rc-leg .rc-leg-all.cur { border-color: var(--flag); background: var(--flag-wash); }
 .an-side { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; max-height: min(76vh, 780px); overflow-y: auto; font-size: 13.5px; }
 .an-side .hint { font-size: 12.5px; color: var(--ink-3); margin: 0 0 8px; }
 .an-side-title { font-size: 12px; font-weight: 650; color: var(--ink-3); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }

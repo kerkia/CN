@@ -1262,7 +1262,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   the map (`.an-bar`: the race's line, play, speed, follow, the time slider, ⤢ ↗; Solo's figures of the moment on a second line —
   time, leg, pace, distance, the file's channels, ⚠ for a cut trace —; Multi's start mode, or in a leg's view the leg and « ← Tout le parcours » (owner, 2026-11-05: the leg is chosen in « Inter-postes », whose first row is the whole course and which marks the leg shown; the start mode's explanation its tooltip; « Ajouter ma trace » in the top line, left of the access)), then a panel of tabs
   on each side of the map (every tab with a tooltip saying what it holds, `tip`; the legs tables' explanation a tooltip on the table, not a paragraph above it — owner,
-  2026-11-05; Multi's « Itinéraires » starts the computation when opened and shows its progress or failure while it has no route; `trace/sidepanel.js`: `panelHtml`, `bindPanel` — tabs, a fold button ‹ / › that leaves a rail of the
+  2026-11-05; Multi's « Itinéraires » starts the computation when opened and shows its progress or failure while it has no route, lists every leg computed with « Tout le parcours » first and the leg shown marked, as « Inter-postes » does; a leg opened from either is framed whole and stays so until played — `still` —, a followed runner no longer recentring it on the first control; `trace/sidepanel.js`: `panelHtml`, `bindPanel` — tabs, a fold button ‹ / › that leaves a rail of the
   tabs' names, a click there reopens on that tab —, `bindSplitter`): Solo left « Courbes » (the curves), « Inter-postes » (the legs'
   table, when the sequence is known), « Itinéraires » (administrators: the computed routes leg by leg, the current leg marked and
   brought into view, the runner's own route measured on the same model — time, length, climb — with Choix and Exécution); right
@@ -2068,7 +2068,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   OCAD's view setting « hide layout » says (`map.hideLayout` read, not used); PDFs print them (`PdfTarget.image`: PNG/JPEG embedded
   as they are, BMP/GIF as a PNG — before, « layout bitmaps are not printed »). Templates (other files a map refers to) are still not
   drawn: a logo kept outside the .ocd cannot be shown.
-- **Beta notices** (`beta.js`; owner, 2026-10-16): the tools just made and little tested — « Tracer », « Analyse multi » (the runners'
+- **Beta notices** (`beta.js`; owner, 2026-10-16; the map analyses — runners' and organisers' pages — out of beta since 2026-11-05, owner: no notice, tag or menu mark; `beta.js` keeps the entry unused): the tools just made and little tested — « Tracer », « Analyse multi » (the runners'
   and the organisers' pages, one notice for all) and « Organisation › Direct » — open with a notice to acknowledge (`betaNotice(tool)`:
   just made, little tested, a beta to try and to report on; Tracer: not yet for real competitions, fine for training maps; Analyse
   multi: errors may remain in calibrations, traces and times; Direct: not yet alone for a competition's live results, try it at a
