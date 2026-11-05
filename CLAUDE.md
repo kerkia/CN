@@ -1270,7 +1270,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   map), « Itinéraires » (administrators), « Mes courbes » (with one's own trace); right « Affichage », « Calcul ». **Every analysis
   opens with both panels unfolded, on « Inter-postes » and « Affichage »** (owner, 2026-11-04; Solo's curves while its sequence is
   not known — `sequenceKnown` also counts the course's order read on the map, `mapOrdered`, since that day —, `sidepanel.bindPanel`
-  showing the tab asked for as soon as it is offered); the widths are kept in the pages' prefs (`gw`, `sw`; Multi `lw`, `rw`), the
+  showing the tab asked for as soon as it is offered); **a map analysis opens on its whole map, filling the map's area** (owner, 2026-11-05: it opened on the runners gathered at the start), fitted again as the panels settle until the reader moves it, the runners followed once the replay is played or its time moved (`still`; an address naming a time or a leg keeps its view); the widths are kept in the pages' prefs (`gw`, `sw`; Multi `lw`, `rw`), the
   folds and tabs only for the visit; the layout fills the window below its top (`fitHeight` / `fit`), the panels scroll on their own. Solo's
   « courbes sous la carte » choice is gone. Under 900 px everything stacks: the bar, the map, then each panel 60 vh high (folded: a row
   of its tabs). Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
