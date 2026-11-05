@@ -2642,6 +2642,7 @@ export default {
   "rc.st.north.one": "{n} north line taken out",
   "rc.st.north.other": "{n} north lines taken out",
   "rc.decision": "Decision map",
+  "rc.decision.pickLeg": "Decision map: choose a leg, or follow a runner (⌖), to see it.",
   "rc.decision.hint": "The time lost going through each point, against the best route: the dark green valleys are the good ways through, orange the variants' limit.",
   "rc.decision.key": "on a best route → up to +{p}%",
   "rc.warn.grey": "{p}% of the map is read as bare rock or buildings: its colours were probably misread (a dark or tinted photo). Check “Show the terrain as read”.",

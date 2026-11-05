@@ -1490,10 +1490,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   }
   function drawOver(g, view, lw) {
     drawExercise(g, lw);
-    if (rcm.on && leg) {                                 // the route choices computed (administrators, a prototype)
+    // the computed routes: the terrain as read over the whole map, the decision map of the leg shown — on the whole course, of the
+    // leg the followed runner is on (owner, 2026-11-05: both boxes did nothing on the whole course, where « Itinéraires » now opens)
+    if (rcm.on) {
       if (rcm.pic) { g.save(); g.globalAlpha = 0.6; g.imageSmoothingEnabled = false; g.drawImage(rcm.pic.canvas, 0, 0, rcm.pic.canvas.width * rcm.pic.cell, rcm.pic.canvas.height * rcm.pic.cell); g.restore(); }
-      RC.drawDecision(g, rcmDecision(leg));
-      RC.drawRoutes(g, rcm.routes[leg], lw, rcmPace(), clock);
+      const j = leg || runLeg();
+      if (j) RC.drawDecision(g, rcmDecision(j));
+      if (leg) RC.drawRoutes(g, rcm.routes[leg], lw, rcmPace(), clock);
     }
     if (showCourse) drawCourse(g, leg ? ctrls.slice(leg - 1, leg + 1) : ctrls, course.r || 20, lw, 0.75, leg ? ctrls.slice(0, leg - 1).filter((p) => p.kind === "control").length : 0, !score);
     const shown = runners.filter((r) => r.visible), ta = traceAlpha / 100;
@@ -1543,12 +1546,20 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   /** The map's turn: the leg shown up — a leg's view its leg, else the leg of the runner followed —, else north up. */
   function mapTurn() {
     if (orient !== "leg" || score) return 0;
-    let j = leg;
-    if (!j && sel) { const s = sAt(sel, T); if (s != null) { j = 1; while (j < legsN && sel.passes[j] != null && s >= sel.passes[j]) j++; } }
+    const j = leg || runLeg(true);
     const a = j ? ctrls[j - 1] : null, b = j ? ctrls[j] : null;
     if (a && b && Math.hypot(b.x - a.x, b.y - a.y) > 1) lastTurn = -Math.PI / 2 - Math.atan2(b.y - a.y, b.x - a.x);
     else if (!j) lastTurn = 0;
     return lastTurn;
+  }
+  /** The leg the followed runner (any: the runner marked, followed or not) is on at the replay's time; 0 when none. */
+  function runLeg(any = false) {
+    if (!sel || (!any && follow !== "sel")) return 0;
+    const s = sAt(sel, T);
+    if (s == null) return 0;
+    let j = 1;
+    while (j < legsN && sel.passes[j] != null && s >= sel.passes[j]) j++;
+    return j;
   }
   function turn() { const r = mapTurn(); mv.setRotation(r); const na = $("#sh-northarrow"); if (na) { na.hidden = !r; na.style.transform = `rotate(${r}rad)`; } }
   function frame() { turn(); followView(); mv.draw(); hud(); drawOwn(); drawStrip(); video?.sync(); saveUrl(); }
@@ -2075,7 +2086,10 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         if (rcm.on) rcmLeg(); else { rcm.token++; mv.draw(); rcmList(); }
       } else if (what === "picture-on") { rcm.picOn = true; rcmPicture(); }
       else if (what === "picture-off") { rcm.picOn = false; rcm.pic = null; mv.draw(); }
-      else if (what === "decision-on" || what === "decision-off") { rcm.decOn = what === "decision-on"; rcm.dec = null; rcm.decAsk = ""; mv.draw(); }
+      else if (what === "decision-on" || what === "decision-off") {
+        rcm.decOn = what === "decision-on"; rcm.dec = null; rcm.decAsk = ""; mv.draw();
+        if (rcm.decOn && !leg && !runLeg()) rcmStatus(t("rc.decision.pickLeg"));     // a leg's map: nothing to draw on the whole course yet
+      }
       else if (what === "pace") { rcmList(); mv.draw(); }
       else { if (what === "reset") rcmPanel(); rcm.routes = []; rcm.mine = []; rcm.auto = []; rcmLeg(); }
     });
@@ -2227,7 +2241,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       return true;
     }
   }
-  window.anDebugRoutes = () => ({ on: rcm.on, info: rcm.info, dem: rcm.dem, leg, routes: rcm.routes[leg], mine: rcm.mine[leg], settings: rcm.s, calib: rcm.calib });
+  window.anDebugRoutes = () => ({ on: rcm.on, pic: rcm.pic, picOn: rcm.picOn, info: rcm.info, dem: rcm.dem, leg, routes: rcm.routes[leg], mine: rcm.mine[leg], settings: rcm.s, calib: rcm.calib });
   async function rcmPicture() {
     try { await rcmPlan(); rcm.pic = await rcm.plan.picture(); } catch (e) { rcm.pic = null; }
     if (!rcm.picOn) rcm.pic = null;

@@ -2782,6 +2782,7 @@ export default {
   "rc.st.north.one": "{n} Nordlinie entfernt",
   "rc.st.north.other": "{n} Nordlinien entfernt",
   "rc.decision": "Entscheidungskarte",
+  "rc.decision.pickLeg": "Entscheidungskarte: Wähle eine Teilstrecke oder folge einem Läufer (⌖), um sie zu sehen.",
   "rc.decision.hint": "Die Zeit, die man verliert, wenn man durch einen Punkt läuft, gegenüber der besten Route: Die dunkelgrünen Täler sind die guten Durchgänge, Orange die Grenze der Varianten.",
   "rc.decision.key": "auf einer besten Route → bis +{p} %",
   "rc.warn.grey": "{p} % der Karte werden als nackter Fels oder Gebäude gelesen: Ihre Farben wurden wohl falsch gelesen (ein dunkles oder farbstichiges Foto). Prüfe „Gelände wie gelesen anzeigen“.",

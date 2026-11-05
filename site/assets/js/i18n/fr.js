@@ -1924,6 +1924,7 @@ export default {
   "rc.st.north.one": "{n} ligne du nord retirée",
   "rc.st.north.other": "{n} lignes du nord retirées",
   "rc.decision": "Carte des décisions",
+  "rc.decision.pickLeg": "Carte des décisions : choisissez un inter-poste, ou suivez un coureur (⌖), pour la voir.",
   "rc.decision.hint": "Le temps perdu en passant par chaque point, contre le meilleur itinéraire : les vallées vert foncé sont les bons passages, l’orange la limite des variantes.",
   "rc.decision.key": "sur un meilleur itinéraire → jusqu’à +{p} %",
   "rc.warn.grey": "{p} % de la carte est lu comme du rocher nu ou des bâtiments : ses couleurs ont sans doute été mal lues (une photo sombre ou teintée). Vérifiez « Voir le terrain tel que lu ».",

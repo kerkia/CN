@@ -2782,6 +2782,7 @@ export default {
   "rc.st.north.one": "{n} línea de norte retirada",
   "rc.st.north.other": "{n} líneas de norte retiradas",
   "rc.decision": "Mapa de decisiones",
+  "rc.decision.pickLeg": "Mapa de decisiones: elige un tramo, o sigue a un corredor (⌖), para verlo.",
   "rc.decision.hint": "El tiempo perdido al pasar por cada punto, frente a la mejor ruta: los valles verde oscuro son los buenos pasos, el naranja el límite de las variantes.",
   "rc.decision.key": "en una de las mejores rutas → hasta +{p} %",
   "rc.warn.grey": "El {p} % del mapa se lee como roca desnuda o edificios: sus colores se han leído mal, sin duda (una foto oscura o con dominante de color). Comprueba «Ver el terreno tal como se ha leído».",
