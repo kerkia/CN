@@ -1942,9 +1942,16 @@ export async function render(main, { query = {}, route } = {}) {
   function keepable() { const me = auth.session(); return !!me && !me.demo && orgaOpt("mymaps", true) && !track?.drawn?.replay; }
   function keepOn() { try { return localStorage.getItem("ocn.an.keep") !== "0"; } catch (e) { return true; } }
   function setKeepOn(on) { try { localStorage.setItem("ocn.an.keep", on ? "1" : "0"); } catch (e) { /* this visit */ } }
-  /** The box « Enregistrer l'analyse », with what it keeps in its tooltip. */
-  const keepBox = () => (keepable() ? html`<label class="an-keep" title="${t("an.keep.hint")}"><input type="checkbox" class="an-keep-cb" ${raw(keepOn() ? "checked" : "")}> ${t("an.keep")}</label>` : "");
-  const bindKeepBox = (root) => $$(".an-keep-cb", root).forEach((cb) => cb.addEventListener("change", () => setKeepOn(cb.checked)));
+  /** The box « Enregistrer l'analyse », with what it keeps in its tooltip, and the analysis's name (owner, 2026-11-05: named before
+   *  it is saved; renamed later in « Analyse de carte »): the name typed this visit, else the one it was kept under, else the race's. */
+  let keepName = null;
+  const nameNow = () => keepName ?? keptOf()?.title ?? keepTitle();
+  const keepBox = () => (keepable() ? html`<label class="an-keep" title="${t("an.keep.hint")}"><input type="checkbox" class="an-keep-cb" ${raw(keepOn() ? "checked" : "")}> ${t("an.keep")}</label>
+    <label class="an-keep-name"><span>${t("an.keep.name")}</span><input type="text" class="an-keep-title" maxlength="200" value="${nameNow()}" placeholder="${t("an.keep.name.ph")}" ${raw(keepOn() ? "" : "disabled")}></label>` : "");
+  const bindKeepBox = (root) => {
+    $$(".an-keep-cb", root).forEach((cb) => cb.addEventListener("change", () => { setKeepOn(cb.checked); $$(".an-keep-title", root).forEach((x) => { x.disabled = !cb.checked; }); }));
+    $$(".an-keep-title", root).forEach((x) => x.addEventListener("input", () => { keepName = x.value.trim(); }));
+  };
   /** What the playback draws of this analysis: what « Mes cartes » and the analysis kept take (trace/mymapsave.js). */
   function mmState() {
     return { file: files.map?.file || null, image: map, track, pxs, pys, offset, total, geo: fit ? geoFromFit(fit, track) : null, title: keepTitle(),
@@ -1985,15 +1992,18 @@ export async function render(main, { query = {}, route } = {}) {
     let was = keptOf();
     // kept already, unless deleted meanwhile (« Analyse de carte », or another device)
     if (was && !(await SK.list().catch(() => null))?.some((a) => a.id === was.id)) { forgetKept(); was = null; }
-    if (was?.cal === mark) { keptNote("done"); return; }
+    if (was?.cal === mark && keepName == null) { keptNote("done"); return; }
     if (!asked && !keepOn()) { keptNote(""); return; }
     if (keeping) return;
     keptNote("saving");
     try {
-      keeping = SK.save(mmState(), { id: was?.id || null, title: keepTitle(), source: orgaMode ? "orga" : track.source === "drawn" ? "drawn" : "solo",
+      // the name typed; else, saved again, the name it has (the server keeps it, a rename since included); else the race's
+      const title = keepName || (was ? "" : keepTitle());
+      keeping = SK.save(mmState(), { id: was?.id || null, title, source: orgaMode ? "orga" : track.source === "drawn" ? "drawn" : "solo",
         orga: orgaMode ? { id: orga.id, n: orgaN } : null });
       const res = await keeping;
-      try { localStorage.setItem(keptKey(), JSON.stringify({ id: res.id, cal: mark })); } catch (e) { /* this visit */ }
+      try { localStorage.setItem(keptKey(), JSON.stringify({ id: res.id, cal: mark, title: title || was?.title || "" })); } catch (e) { /* this visit */ }
+      keepName = null;
       keptNote("done");
     } catch (e) { console.warn(e); keptNote("err"); }
     finally { keeping = null; }

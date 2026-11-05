@@ -200,18 +200,37 @@ export async function render(main, r) {
     $("#ma-unlock")?.addEventListener("click", go);
     $("#ma-pw")?.addEventListener("keydown", (ev) => { if (ev.key === "Enter") go(); });
   }
-  /** A kept solo analysis chosen: what it is, « Rejouer l'analyse » (straight to its playback) and « Supprimer l'analyse ». */
+  /** A kept solo analysis chosen: what it is, and a box « Analyse » with « Rejouer » (straight to its playback), « Renommer »
+   *  and « Supprimer » (owner, 2026-11-05: small buttons side by side). */
   function soloDetail(e, box) {
     const a = e.solo;
     const facts = [fmtDate(e.date), a.dist ? `${fmt(a.dist / 1000, 2)} km` : "", a.dur ? clock(a.dur) : ""].filter(Boolean);
     box.innerHTML = html`<div class="card-body">
       <h2 class="ma-d-title">${e.name}</h2><p class="muted">${facts.join(" · ")}</p>
       <p><span class="tag">${t("ma.kind.solo")}</span> <span class="muted">${t("ma.solo.mine")}</span></p>
-      <div class="ma-ways"><a class="btn btn-primary ma-go" href="#/analyse-solo?analyse=${a.id}"><b>${t("ma.solo.replay")}</b><span>${t("ma.solo.replay.hint")}</span></a>
-        <button type="button" class="btn ma-go" id="ma-solo-del"><b>${t("ma.solo.delete")}</b><span>${t("ma.solo.delete.hint")}</span></button></div>
-      <p class="muted" id="ma-solo-note"></p>
+      <fieldset class="ma-solo-box"><legend>${t("ma.solo.box")}</legend>
+        <div class="ma-solo-acts"><a class="btn btn-sm btn-primary" href="#/analyse-solo?analyse=${a.id}" title="${t("ma.solo.replay.hint")}">${t("ma.solo.replay")}</a>
+          <button type="button" class="btn btn-sm" id="ma-solo-ren">${t("ma.solo.rename")}</button>
+          <button type="button" class="btn btn-sm" id="ma-solo-del" title="${t("ma.solo.delete.hint")}">${t("ma.solo.delete")}</button></div>
+        <form class="ma-solo-name" id="ma-solo-form" hidden><input type="text" id="ma-solo-title" maxlength="200" value="${e.name}" aria-label="${t("an.keep.name")}">
+          <button type="submit" class="btn btn-sm btn-primary">${t("sh.save")}</button><button type="button" class="btn btn-sm" id="ma-solo-cancel">${t("sh.cancel")}</button></form>
+        <p class="muted" id="ma-solo-note"></p></fieldset>
       <div class="ma-d-thumb" id="ma-d-thumb" hidden><img alt="${t("ma.thumb.alt", { name: e.name })}"></div></div>`;
     thumbOf(e).then((url) => { const b = $("#ma-d-thumb"); if (url && b && selected === e.key) { $("img", b).src = url; b.hidden = false; } });
+    const form = $("#ma-solo-form"), input = $("#ma-solo-title");
+    $("#ma-solo-ren").addEventListener("click", () => { form.hidden = false; input.focus(); input.select(); });
+    $("#ma-solo-cancel").addEventListener("click", () => { form.hidden = true; input.value = e.name; });
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const title = input.value.trim();
+      if (!title || title === e.name) { form.hidden = true; return; }
+      $$("button", form).forEach((x) => { x.disabled = true; });
+      try {
+        await SK.rename(a.id, title);
+        a.title = title; e.name = title;
+        draw();                                              // the list and this card again, the event still chosen
+      } catch (err) { console.error(err); $("#ma-solo-note").textContent = t("ma.solo.renErr"); $$("button", form).forEach((x) => { x.disabled = false; }); }
+    });
     $("#ma-solo-del").addEventListener("click", async (ev) => {
       if (!confirm(t("ma.solo.delete.confirm", { name: e.name }))) return;
       ev.currentTarget.disabled = true;

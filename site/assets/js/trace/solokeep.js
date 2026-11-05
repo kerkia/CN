@@ -30,6 +30,8 @@ export async function remove(id) {
   } catch (e) { /* the page checks the list anyway */ }
 }
 export const thumbUrl = (sha) => `${API}/maps/${sha}/thumb`;
+/** An analysis renamed: { analysis } (its summary). */
+export const rename = (id, title) => call(`/${id}`, { method: "PATCH", body: { title } });
 
 /** The map's bytes and type, sent unless the account holds them already (and its thumbnail). */
 async function sendMap(s) {
@@ -64,7 +66,12 @@ export async function save(s, { id = null, title = "", source = "solo", orga = n
  * cartes »' « Rejouer » (mymaps.replayGpx), so that « Analyse solo » lays the run through the georeference and controls kept.
  */
 export async function load(id) {
-  const a = await call(`/${id}`);
+  const res = await fetch(`${API}/${id}`, { credentials: "same-origin" });
+  if (res.status === 401) window.dispatchEvent(new Event("cnx:unauthorised"));
+  if (!res.ok) { const e = new Error(`HTTP ${res.status}`); e.status = res.status; throw e; }
+  const a = await res.json();
+  const named = res.headers.get("X-Title");                     // renamed since it was kept
+  if (named != null) a.title = decodeURIComponent(named);
   const gpx = MM.replayGpx({ w: a.map.w, h: a.map.h, geo: a.geo }, MM.decodeRun(a.rec), a.title || "", { dist: a.dist });
   if (!gpx) throw new Error("geo");
   const r = await fetch(`${API}/maps/${a.map.sha}`, { credentials: "same-origin" });

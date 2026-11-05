@@ -1851,6 +1851,12 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
 .ma-detail p { margin: 6px 0; }
 .ma-d-thumb { margin: 12px 0 2px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
 .ma-d-thumb img { display: block; width: 100%; max-height: 300px; object-fit: contain; }
+.ma-solo-box { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px 8px; margin: 10px 0 0; }
+.ma-solo-box legend { padding: 0 4px; font-weight: 600; font-size: 13px; }
+.ma-solo-acts, .ma-solo-name { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ma-solo-name { margin-top: 8px; } .ma-solo-name input { flex: 1; min-width: 10em; }
+.ma-solo-box #ma-solo-note:empty { display: none; }
+.an-keep-name { display: flex; align-items: center; gap: 6px; font-size: 13px; flex: 1 1 100%; } .an-keep-name input { flex: 1; min-width: 8em; }
 .ma-ways { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .ma-go { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 8px 12px; text-align: left; white-space: normal; height: auto; }
 .ma-go b { font-size: 14px; }

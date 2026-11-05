@@ -9,7 +9,8 @@
 //
 //   GET    /api/solo                  { analyses: [summary + id] }
 //   POST   /api/solo                  the analysis (JSON) -> { id }        PUT /api/solo/<id>  the same, replacing it
-//   GET    /api/solo/<id>             the analysis                         DELETE /api/solo/<id>  it, and its map once unused
+//   GET    /api/solo/<id>             the analysis (its current title also in X-Title, URI-encoded: a rename touches the summary only)
+//   PATCH  /api/solo/<id>             { title } -> { analysis }  (renamed)   DELETE /api/solo/<id>  it, and its map once unused
 //   GET    /api/solo/maps/<sha>/has   { map, thumb }  (what the browser need not send again)
 //   PUT    /api/solo/maps/<sha>       the image as the body;  PUT …/maps/<sha>/thumb  the thumbnail
 //   GET    /api/solo/maps/<sha>  |  /maps/<sha>/thumb
@@ -122,7 +123,27 @@ export async function onRequest(ctx) {
     // ---- an analysis
     const id = parts[0] || "";
     if (parts.length > 1 || (id && !ID.test(id))) return json({ error: "not found" }, 404);
-    if (method === "GET") return id ? serve(env, aKey(uid, id)).then((r) => { r.headers.set("Cache-Control", "private, no-store"); return r; }) : json({ error: "not found" }, 404);
+    if (method === "GET") {
+      const obj = id ? await env.BUCKET.get(aKey(uid, id)) : null;
+      if (!obj) return json({ error: "not found" }, 404);
+      let title = "";
+      try { title = JSON.parse(obj.customMetadata?.s || "null")?.title || ""; } catch (e) { /* the record's own */ }
+      return new Response(obj.body, { headers: { "Content-Type": "application/json", "Cache-Control": "private, no-store", "X-Title": encodeURIComponent(title) } });
+    }
+    if (method === "PATCH") {
+      if (!(await allow(env, `solo:${uid}`, 300, 3600))) return json({ error: "rate" }, 429);
+      const b = await bodyJson(request);
+      if (!b || typeof b.title !== "string") return json({ error: "fields" }, 400);
+      const obj = id ? await env.BUCKET.get(aKey(uid, id)) : null;
+      if (!obj) return json({ error: "not found" }, 404);
+      let s;
+      try { s = JSON.parse(obj.customMetadata?.s || "null"); } catch (e) { s = null; }
+      if (!s) return json({ error: "server" }, 500);
+      s = { ...s, title: clean(b.title, 200), updated: nowIso() };
+      // the record copied as it is (not read: it may be large); the summary carries the new title
+      await env.BUCKET.put(aKey(uid, id), await obj.arrayBuffer(), { httpMetadata: { contentType: "application/json" }, customMetadata: { s: JSON.stringify(s) } });
+      return json({ analysis: s });
+    }
     if (method === "DELETE") {
       const obj = await env.BUCKET.head(aKey(uid, id));
       if (!obj) return json({ error: "not found" }, 404);
@@ -143,7 +164,11 @@ export async function onRequest(ctx) {
       if (!id) return json({ error: "not found" }, 404);
       const was = await env.BUCKET.head(aKey(uid, id));
       if (!was) return json({ error: "not found" }, 404);
-      try { created = JSON.parse(was.customMetadata?.s || "null")?.created || created; } catch (e) { /* now */ }
+      try {
+        const old = JSON.parse(was.customMetadata?.s || "null");
+        created = old?.created || created;
+        if (!a.title && old?.title) a.title = old.title;           // a calibration made again keeps the name given (a rename too)
+      } catch (e) { /* now */ }
     } else {
       if (id) return json({ error: "method" }, 405);
       if ((await listAll(env, uid)).length >= MAX_COUNT) return json({ error: "full" }, 409);

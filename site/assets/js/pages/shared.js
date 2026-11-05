@@ -2096,11 +2096,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     stats();
   }
   /** The runner followed, at the replay's time: their race time, leg, pace over the last 30 s and distance run (owner, 2026-11-05:
-   *  as « Analyse solo » says of its trace), in the pace's bar under the map; nothing when no runner is followed. */
+   *  as « Analyse solo » says of its trace), in the pace's bar under the map — the runner followed, else the one runner shown
+   *  (owner, 2026-11-05: a runner chosen alone on the map showed nothing); nothing with several and none followed. */
   function stats() {
     const el = $("#sh-stats");
     if (!el) return;
-    const r = follow === "sel" && sel?.visible ? sel : null, s = r ? sAt(r, T) : null;
+    const shown = runners.filter((x) => x.visible);
+    const r = follow === "sel" && sel?.visible ? sel : shown.length === 1 ? shown[0] : null, s = r ? sAt(r, T) : null;
     if (!r || s == null) { if (el.textContent) el.innerHTML = ""; return; }
     const end = r.finish ?? r.tr.dur, at = Math.max(r.start, Math.min(end, s)), win = Math.min(30, at - r.start);
     let j = 0;
