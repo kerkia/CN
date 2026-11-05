@@ -75,6 +75,8 @@ const COLOUR_BY = ["runner", "pace", "legtime", "variant"];        // the last t
 const LEG_ONLY = ["legtime", "variant"];
 const MODES = ["clock", "mass", "from", "wait", "waitpause"];
 // the start modes' icons (owner, 2026-11-05: the bar fits over the map, the mode a menu of icon and name), 16 px line drawings
+// the map's panning button, a crosshair (owner, 2026-11-05)
+const PAN_ICON = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="4.6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="1.4" fill="currentColor"/><path d="M8 .8v3M8 12.2v3M.8 8h3M12.2 8h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
 const MODE_ICON = {
   clock: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.2V8l2.6 1.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
   mass: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 3.5v9" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 4.5h7m-2-2 2 2-2 2M4.5 11.5h7m-2-2 2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -1556,7 +1558,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const a = $("[data-follow-all]");
     if (a) { a.classList.toggle("on", follow === "all"); a.setAttribute("aria-pressed", String(follow === "all")); }
     const p = $("#sh-pan");
-    if (p) { p.classList.toggle("on", pan); p.setAttribute("aria-pressed", String(pan)); }
+    if (p) { p.classList.toggle("on", pan); p.setAttribute("aria-pressed", String(pan)); const l = t(pan ? "sh.pan.stop" : "sh.pan.start"); p.setAttribute("aria-label", l); p.title = `${l} — ${t("sh.pan.tip")}`; }
   }
   /** The pace strip shown or folded: the bar over it and « Affichage »'s box say the same (owner, 2026-11-05). */
   function setStrip(on) {
@@ -1915,8 +1917,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           <button type="button" class="btn btn-sm" id="sh-prev" title="${t("sh.leg.prev")}">⏮</button>
           <button type="button" class="btn btn-sm btn-primary" id="sh-play">${playing ? "⏸" : "▶"}</button>
           <button type="button" class="btn btn-sm" id="sh-next" title="${t("sh.leg.next")}">⏭</button>
-          <select id="sh-speed">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select>
-          <button type="button" class="btn btn-sm sh-pan${pan ? " on" : ""}" id="sh-pan" aria-pressed="${pan}" title="${t("sh.pan.tip")}">⌖ ${t("sh.pan")}</button></span>
+          <select id="sh-speed" aria-label="${t("an.speed")}">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>×${s}</option>`)}</select>
+          <button type="button" class="btn btn-sm sh-pan${pan ? " on" : ""}" id="sh-pan" aria-pressed="${pan}" aria-label="${t(pan ? "sh.pan.stop" : "sh.pan.start")}" title="${t(pan ? "sh.pan.stop" : "sh.pan.start")} — ${t("sh.pan.tip")}">${raw(PAN_ICON)}</button></span>
         <input type="range" class="an-bar-time" id="sh-time" min="${Math.floor(T0)}" max="${Math.ceil(T1)}" step="1" value="${Math.round(T)}" aria-label="${t("an.time")}">
         <span class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></span>
         </div>`;
