@@ -1924,8 +1924,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         </div>`;
     const topAdd = $("#sh-top-add");
     if (topAdd) topAdd.innerHTML = you.visitor ? "" : html`${!canAdd ? "" : runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-bar-add">${t("sh.trace.replace")}</button>`
-      : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
-      ${admin ? html`<button type="button" class="btn btn-sm" id="sh-bar-test">${t("sh.test.add")}</button>` : ""}`;
+      : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}`;
     rightP.pane("display").innerHTML = html`
         <div class="an-opts">
           <label><span>${t("an.width")}</span><select id="sh-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
@@ -1939,11 +1938,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div>
         <div id="sh-3d-opts" hidden></div>`;
     if (routesOn) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
-    // adding one's track (and an administrator's test tracks) from the top line: the buttons live in the « Coureurs » tab, while
-    // the page opens on « Inter-postes » (owner, 2026-11-04: the upload could not be found) — that tab shown, the file chooser opened
-    const toRunners = (input) => { leftP.fold(false); leftP.show("runners"); $(input)?.click(); };
+    // adding one's track from the top line (addDialog); an administrator's test tracks only at the bottom of « Circuits » (owner, 2026-11-05)
     $("#sh-bar-add")?.addEventListener("click", addDialog);
-    $("#sh-bar-test")?.addEventListener("click", () => toRunners("#sh-test-file"));
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-pan").addEventListener("click", () => { pan = !pan; if (pan) still = false; followMarks(); frame(); });
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));

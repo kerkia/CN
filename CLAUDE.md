@@ -2049,7 +2049,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   and browser, `localStorage ocn.sh.offered.<id>`; after the beta notice); **the circuit is found from the track**
   (`matchCircuits`: the controls passed in the circuit's order, `coursePasses`; `sureCircuit`: the only one at 90 %, the longest of
   several at 95 %, the best at 60 % with 20 points over the next — else the runner chooses), then the usual consent. « Ajouter ma
-  trace » and « Ajouter des traces de test… » sit in the top line too and find the circuit the same way (test tracks had all gone to
+  trace » (the top line) and « Ajouter des traces de test… » (the bottom of « Circuits » only since 2026-11-05) find the circuit the same way (test tracks had all gone to
   the circuit shown, whose analyses then came out empty). « Itinéraires » computes when opened, and with the whole course shown every
   leg in turn, listed below (`rcmOne`, `rcmTurnOn`). **Two views** in the top line, « Carte » and « Analyse des temps » (« Temps intermédiaires » until 2026-11-05; the switch in the flag's pale orange, the line beside it only the event's date and type — « Entraînement club » or « Compétition » —, no organiser nor « vous organisez »; at the line's right end, over the settings, who may open it, `sh.access.*`: « Accès : tous les comptes », « … visiteurs sans compte compris », « Accès restreint : membres du club » / « : mot de passe »)
   (`?vue=temps`): the second is Arena's split analysis (`splits.js` `renderEmbedded`: no head, nothing written into the address, its
