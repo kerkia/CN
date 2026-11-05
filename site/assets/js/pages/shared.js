@@ -1333,7 +1333,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   const rightP = bindPanel($("#sh-rp"), rp, { onChange: () => { savePrefs(); applyLayout(); } });
   bindSplitter($("#sh-split-l"), layEl, "left", (w, rect) => { lw = Math.round(Math.min(rect.width - (rp.collapsed ? 34 : rw) - 300, Math.max(180, w))); if (lp.collapsed) leftP.fold(false, true); applyLayout(); }, savePrefs);
   bindSplitter($("#sh-split-r"), layEl, "right", (w, rect) => { rw = Math.round(Math.min(rect.width - (lp.collapsed ? 34 : lw) - 300, Math.max(200, w))); if (rp.collapsed) rightP.fold(false, true); applyLayout(); }, savePrefs);
-  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y, e) => { if (measure?.click(x, y)) return; if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; const s = $("#sh-follow"); if (s) s.value = "none"; } } });
+  const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y, e) => { if (measure?.click(x, y)) return; if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && follow !== "none") { follow = "none"; followMarks(); } } });
   // « Mesurer »: a line clicked on the map, its length by the circuit's georeference (trace/measure.js)
   const RAD = Math.PI / 180;
   const measure = measureTool($("#sh-measure"), { redraw: () => mv.draw(), out: $("#sh-measure-out"), metres: (a, b) => {
@@ -1525,6 +1525,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     if (v3) sync3d();
   }
   const initials = (r) => (r.test ? `#${(r.uid - 1e9) % 1000}` : r.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 3));   // a test runner: its number
+  // who is followed, shown in the runners' list (owner, 2026-11-05: the « Suivre » drop-down repeated the list's ⌖ column; a ⌖ on the
+  // « all the runners shown » row follows the group, on a runner that runner, none lit: the map stays where it is left)
+  function followMarks() {
+    $$("[data-follow]").forEach((b) => { const on = follow === "sel" && sel?.uid === Number(b.dataset.follow); b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+    const a = $("[data-follow-all]");
+    if (a) { a.classList.toggle("on", follow === "all"); a.setAttribute("aria-pressed", String(follow === "all")); }
+  }
   function followView() {
     if (follow === "none" || still) return;
     const pts = (follow === "sel" && sel ? [sel] : runners.filter((r) => r.visible)).map((r) => { const s = sAt(r, T); if (s == null) return null; return toPx(r.fit, ...posAt(r.tr, s)); }).filter(Boolean);
@@ -1685,12 +1692,14 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       <div class="row" style="gap:4px;margin-bottom:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-all">${t("sh.all")}</button><button type="button" class="btn btn-sm" id="sh-none">${t("sh.none")}</button>
         <button type="button" class="btn btn-sm" id="sh-invert">${t("sh.invert")}</button>${runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-mine-only">${t("sh.meOnly")}</button>` : ""}</div>
       ${rowsL.length ? html`<div class="sh-runner sh-runner-head" aria-hidden="true"><span class="sh-h-show">${t("sh.col.show")}</span><span>${t("prov.runner")}</span><span class="sh-h-follow">${t("sh.col.follow")}</span><span>${t("prov.time")}</span></div>` : ""}
+      ${rowsL.length ? html`<div class="sh-runner sh-runner-all" title="${t("sh.followAll.tip")}"><span></span><span></span><span class="sh-name">${t("sh.followAll")}</span>
+        <button type="button" class="sh-follow-one${follow === "all" ? " on" : ""}" data-follow-all aria-pressed="${follow === "all"}" title="${t("sh.followAll.tip")}">⌖</button><span></span></div>` : ""}
       ${rowsL.length ? html`<div class="sh-runners">${rowsL.map((r) => {
         const lt = leg ? legTime(r, leg) : null, dist = leg && lt != null ? cumAt(r.tr, r.passes[leg]) - cumAt(r.tr, r.passes[leg - 1]) : null;
         return html`<div class="sh-runner${r === sel ? " sel" : ""}${r.visible ? "" : " off"}" data-uid="${r.uid}" role="checkbox" aria-checked="${r.visible}">
           <input type="checkbox" data-vis="${r.uid}" ${raw(r.visible ? "checked" : "")} tabindex="-1"><span class="sh-swatch" style="background:${r.colour}"></span>
           <span class="sh-name">${leg && legTime(r, leg) != null ? html`<span class="sh-vtag" style="--v:${routeVar(r).c}" title="${routeVar(r).name}">${routeVar(r).key}</span> ` : ""}${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}${r.test ? html` <span class="tag">${t("sh.test.tag")}</span>` : ""}</span>
-          <button type="button" class="sh-follow-one${r === sel ? " on" : ""}" data-follow="${r.uid}" title="${t("sh.followOne")}">⌖</button>
+          <button type="button" class="sh-follow-one${r === sel && follow === "sel" ? " on" : ""}" data-follow="${r.uid}" aria-pressed="${r === sel && follow === "sel"}" title="${t("sh.followOne")}">⌖</button>
           <span class="num muted">${leg ? (lt != null ? html`${clock(lt)}${lt > bestLeg ? html` <span class="sh-behind">${signed(lt - bestLeg)}</span>` : ""}` : "—")
             : r.official?.time != null ? clock(r.official.time) : total(r) != null ? `~${clock(total(r))}` : "—"}</span>
           ${score ? html`<span class="sh-sub muted">${t("sh.score.n", { n: visitsOf(r).length, m: scoreN })}</span>` : leg && dist != null ? html`<span class="sh-sub muted">${fmt(dist)} m · ${pace(dist / lt)}</span>` : r.official?.place ? html`<span class="sh-sub muted">${t("sh.place", { p: r.official.place })}</span>` : ""}
@@ -1730,10 +1739,17 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $$("[data-follow]").forEach((b) => b.addEventListener("click", (e) => {
       e.stopPropagation();
       const r = runners.find((x) => x.uid === Number(b.dataset.follow));
-      if (sel === r) { sel = null; if (follow === "sel") follow = "all"; }
+      // lit: stop following (the map stays where it is); else follow that runner
+      if (sel === r && follow === "sel") { sel = null; follow = "none"; }
       else { sel = r; r.visible = true; follow = "sel"; }
       shownChanged();
     }));
+    $("[data-follow-all]")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      follow = follow === "all" ? "none" : "all";
+      sync3d();
+      followMarks(); frame();
+    });
     $("#sh-course")?.addEventListener("change", (e) => onCourse?.(Number(e.target.value)));
     $("#sh-all").addEventListener("click", () => { runners.forEach((r) => { r.visible = true; }); shownChanged(); });
     $("#sh-none").addEventListener("click", () => { runners.forEach((r) => { r.visible = false; }); sel = null; shownChanged(); });
@@ -1845,7 +1861,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <label><span>${t("sh.leg")}</span><select id="sh-leg"><option value="0">${t("sh.leg.all")}</option>${Array.from({ length: legsN }, (_, j) => html`<option value="${j + 1}" ${raw(j + 1 === leg ? "selected" : "")}>${legName(j + 1)}</option>`)}</select></label>
         ${leg ? "" : html`<label title="${modeHint}"><span>${t("sh.mode")}</span><select id="sh-mode">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
         ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
-        <label><span>${t("sh.follow")}</span><select id="sh-follow">${FOLLOWS.map((f) => html`<option value="${f}" ${raw(f === follow ? "selected" : "")}>${t(`sh.follow.${f}`)}</option>`)}</select></label>
         <span class="muted sh-mode-hint" title="${modeHint}">${modeHint}</span>
         ${you.visitor ? "" : html`<span class="sh-bar-add">${runners.some((r) => r.mine) || !canAdd ? "" : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
           ${admin ? html`<button type="button" class="btn btn-sm" id="sh-bar-test">${t("sh.test.add")}</button>` : ""}</span>`}</div>`;
@@ -1875,7 +1890,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-leg").addEventListener("change", (e) => setLeg(Number(e.target.value)));
     $("#sh-mode")?.addEventListener("change", (e) => { mode = e.target.value; reset(); });
     $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); reset(); });
-    $("#sh-follow").addEventListener("change", (e) => { follow = e.target.value; frame(); });
     $("#sh-tail")?.addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-future").addEventListener("change", (e) => { future = e.target.value; savePrefs(); mv.draw(); });
@@ -2308,7 +2322,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       if (my !== v3token) return;
       v3sig = ""; v3list = []; v3leg = leg;
       const v = await open3d($("#sh-3d-host"), { image, W: image.width, H: image.height, grid: g, toM: (x, y) => toM(rcmFrame, x, y), toPx: (x, y) => toPx(rcmFrame, x, y),
-        traces: [], now: now3d, onUserMove: () => { follow = "none"; const el = $("#sh-follow"); if (el) el.value = "none"; } });
+        traces: [], now: now3d, onUserMove: () => { follow = "none"; followMarks(); } });
       if (my !== v3token) { v.dispose(); return; }
       v3 = v;
       v3.setExaggeration(ex3d);
@@ -2413,8 +2427,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   strip.addEventListener("pointerup", stripUp); strip.addEventListener("pointercancel", stripUp);
   const stripRo = new ResizeObserver(() => drawStrip());
   stripRo.observe(strip);
-  $("#sh-fit").addEventListener("click", () => { follow = "none"; right(); if (v3) { v3.setFollow(false); v3.fitTrace(); } else { fitRoutes(); mv.draw(); } });
-  $("#sh-fitmap").addEventListener("click", () => { follow = "none"; right(); if (v3) { v3.setFollow(false); v3.fitMap(); } else { mv.fitAll(); mv.draw(); } });
+  $("#sh-fit").addEventListener("click", () => { follow = "none"; followMarks(); right(); if (v3) { v3.setFollow(false); v3.fitTrace(); } else { fitRoutes(); mv.draw(); } });
+  $("#sh-fitmap").addEventListener("click", () => { follow = "none"; followMarks(); right(); if (v3) { v3.setFollow(false); v3.fitMap(); } else { mv.fitAll(); mv.draw(); } });
   $("#sh-zin").addEventListener("click", () => v3?.zoom(1.4));
   $("#sh-zout").addEventListener("click", () => v3?.zoom(1 / 1.4));
   $("#sh-3d")?.addEventListener("click", () => toggle3d());
