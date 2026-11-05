@@ -2516,7 +2516,12 @@ Every multiple-choice game was played through to its score page at phone size, w
   un autre pays »** (`country.hint(list)`, `hintList`; owner, 2026-10-29) offers only the countries that page has something for —
   the Agenda's those with an agenda, Résultats' and Analyse de course's those of their races, En direct's those of its list,
   Analyse multi's those of its analyses — in a small list under the line, then « Tous les pays… » (the header's menu); a pick
-  goes through `app.pickCountry` (« ocn:country ») — anyone may race abroad:
+  goes through `app.pickCountry` (« ocn:country », the header's menu too), **which never builds the page again** (owner,
+  2026-11-05: « Analyse de carte » was redrawn from scratch): a page that lists by country returns `onCountry` and takes the new
+  country in place (« Analyse de carte »: its events, clubs, map; the other filters kept), a page whose content is the country's
+  data (`COUNTRY_REDRAW`: `FR_ROUTES`, `needCountry`, the Agenda — its `carried` periods and filters —, the Documentation) is
+  redrawn in place as for a switch of method (`redraw`: no loading screen, scroll kept), any other page is left as it is (a
+  playback, « Direct » feeding a race, the Tracer…) — anyone may race abroad:
   a country's agenda, results and live races are open to every account, without CN (they are not ranked there); default the
   first accepted membership with data (`localStorage ocn.country` once picked); the Agenda's, Résultats' and En direct's lists
   keep the current country's (`country.of`: an item's `country`, France when it has none); a search on En direct looks in every

@@ -67,11 +67,16 @@ export async function render(main, r) {
       cc: a.cc || (rc ? country.of(rc) : ""), org: a.orgName || rc?.org || "", courses: a.courses, runners: a.runners || 0,
       locked: a.access === "locked", clubOnly: a.vis === "club", draft: !!a.draft, organiser: !!a.organiser, thumb: a.thumb ?? null };
   });
-  const cc = country.current();
-  // an event without a country (a training of before): in every country's list
-  const items = all.filter((e) => !e.cc || e.cc === cc).sort((a, b) => (b.date || "").localeCompare(a.date || "") || a.name.localeCompare(b.name));
-  const byKey = new Map(items.map((e) => [e.key, e]));
-  const clubs = [...new Set(items.map((e) => e.org).filter(Boolean))].sort((a, b) => clubName(a).localeCompare(clubName(b)));
+  // the site's country's events; another country picked takes its own in place (onCountry: nothing else moves)
+  let cc, items, byKey, clubs;
+  const forCountry = () => {
+    cc = country.current();
+    // an event without a country (a training of before): in every country's list
+    items = all.filter((e) => !e.cc || e.cc === cc).sort((a, b) => (b.date || "").localeCompare(a.date || "") || a.name.localeCompare(b.name));
+    byKey = new Map(items.map((e) => [e.key, e]));
+    clubs = [...new Set(items.map((e) => e.org).filter(Boolean))].sort((a, b) => clubName(a).localeCompare(clubName(b)));
+  };
+  forCountry();
 
   // ---- the filters, kept in the address
   const st = {
@@ -88,9 +93,15 @@ export async function render(main, r) {
   $("#ma-filters").innerHTML = html`<div class="filters ma-filters">
       <div class="field"><span>${t("ma.per")}</span>${seg("per", [["3", t("ma.per.3")], ["12", t("ma.per.12")], ["all", t("ma.per.all")]], st.per)}</div>
       <div class="field"><span>${t("ma.type")}</span>${seg("type", [["all", t("ma.kind.all")], ["race", t("ma.kinds.race")], ["club", t("ma.kinds.club")]], st.type)}</div>
-      <label class="field"><span>${t("ma.club")}</span><select id="ma-club"><option value="">${t("ma.club.all")}</option>${clubs.map((c) => html`<option value="${c}" ${raw(c === st.club ? "selected" : "")}>${clubName(c)}</option>`)}</select></label>
+      <label class="field"><span>${t("ma.club")}</span><select id="ma-club"></select></label>
       <label class="field"><span>${t("ma.search")}</span><input type="search" id="ma-q" value="${st.q}" placeholder="${t("ma.search.ph")}" style="width:220px"></label></div>
-    ${country.hint(all.map((e) => e.cc).filter(Boolean))}`;
+    <div id="ma-hint"></div>`;
+  const clubOptions = () => {
+    $("#ma-club").innerHTML = html`<option value="">${t("ma.club.all")}</option>${clubs.map((c) => html`<option value="${c}" ${raw(c === st.club ? "selected" : "")}>${clubName(c)}</option>`)}`;
+  };
+  const hintLine = () => { $("#ma-hint").innerHTML = country.hint(all.map((e) => e.cc).filter(Boolean)); };
+  clubOptions();
+  hintLine();
   for (const name of ["per", "type"]) {
     $$(`#ma-filters [data-${name}]`).forEach((b) => b.addEventListener("click", () => {
       st[name] = b.dataset[name];
@@ -231,7 +242,20 @@ export async function render(main, r) {
   draw();
   mountMap();
   if (selected) map?.select(selected);
-  return { title: t("ma.title"), cleanup: () => {
+  // another country (owner, 2026-11-05: the page was built again): its events, clubs and map, the other filters kept
+  async function onCountry() {
+    forCountry();
+    if (!clubs.includes(st.club)) st.club = "";
+    if (selected && !byKey.has(selected)) selected = null;
+    clubOptions();
+    hintLine();
+    map?.destroy?.(); map = null;
+    $("#ma-map").innerHTML = ""; $("#ma-map").hidden = true;
+    draw();
+    await mountMap();
+    if (selected) map?.select(selected);
+  }
+  return { title: t("ma.title"), onCountry, cleanup: () => {
     wide.removeEventListener("change", mountMap); map?.destroy?.(); hidePop();
     for (const p of thumbs.values()) p.then((u) => u && URL.revokeObjectURL(u));
   } };

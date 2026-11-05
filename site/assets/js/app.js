@@ -365,14 +365,26 @@ function menuKey(r) {
     : at;
 }
 
-/** The site's country chosen (the header's menu, a page's « Choisir un autre pays »): the page drawn again for it. */
-function pickCountry(cc) {
+/** The site's country chosen (the header's menu, a page's « Choisir un autre pays »). The page is never built again
+ *  (owner, 2026-11-05: « Analyse de carte » was redrawn from scratch): a page that lists by country takes the new one in
+ *  place (its `onCountry`); a page whose whole content is the country's data (the rankings, the Agenda, the Documentation)
+ *  is redrawn in place, its settings and scroll kept; any other page is left as it is (a playback, « Direct » feeding a
+ *  race, the Tracer…). */
+const COUNTRY_REDRAW = new Set([...FR_ROUTES, "needCountry", "agenda", "methods"]);
+async function pickCountry(cc) {
   if (!cc || cc === country.current()) return;
   country.pick(cc);
-  lastRoute = null;             // a page that follows its address (the Agenda) is built again, not just told its query
   // a runner named in the address is the other country's: the runner page opens on this country's own (store.useCountry)
   if (parseHash().route === "runner" && parseHash().arg) history.replaceState(null, "", "#/coureur");
-  data.useCountry(country.current()).then(() => { renderFooter(); route_(); });
+  await data.useCountry(country.current());
+  renderFooter();
+  if (current?.onCountry) {
+    renderHeader(parseHash());
+    try { await current.onCountry(country.current()); } catch (e) { console.error(e); }
+  } else if (COUNTRY_REDRAW.has(lastRoute)) {
+    lastRoute = null;           // a page that follows its address (the Agenda) is built again, not just told its query
+    await redraw();
+  } else renderHeader(parseHash());
 }
 // ---- the modules (owner, 2026-10-30) ----------------------------------------------------------------------------------
 // Ozimut is four modules — Arena (the competitions: coming, live, run), Stats (the rankings and their analyses), Coach
