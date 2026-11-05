@@ -845,7 +845,7 @@ export function build(X) {
       "export-images": "Une image par circuit, avec son fichier de calage quand la carte est géoréférencée.",
       "export-ocad": "Chaque circuit en carte OCAD ou OpenOrienteering Mapper, pour le finir ou l'imprimer avec ces logiciels.",
       "export-routegadget": "La carte en image et les circuits, à déposer sur RouteGadget.", "export-csv": "Les tableaux des rapports, pour un tableur.",
-      publish: "Après la course : les circuits dans l'analyse de carte, où les coureurs déposent leurs traces GPS.",
+      publish: "Après la course : les circuits dans l'analyse, où les coureurs déposent leurs traces GPS.",
       "send-results": "À partir du jour de la course : longueurs, dénivelées et postes de chaque circuit envoyés aux résultats du site.",
       "map-change": "Une autre carte (une version corrigée, un meilleur scan, le fichier OCAD) : les postes gardent leur place.",
       offline: "Garder l'événement sur cet appareil pour l'ouvrir sans réseau.",
@@ -1043,7 +1043,7 @@ export function build(X) {
             déduit le décalage, la rotation et l'échelle. Si l'échelle change, il propose de corriger la carte (la résolution de l'image ou l'échelle du PDF),
             les longueurs du circuit restant justes, ou les postes. Un .ppen fait sur une carte OCAD, importé avec la même carte OCAD, n'a pas besoin de calage.</p>
           <h3>Le géoréférencement</h3>
-          <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse de carte, il faut savoir où est la carte sur la Terre. Une carte OCAD ou Mapper géoréférencée
+          <p>Pour la dénivelée, le mode terrain, les GPX et l'analyse, il faut savoir où est la carte sur la Terre. Une carte OCAD ou Mapper géoréférencée
             (Lambert 93, UTM, les systèmes d'OCAD) et un TIFF géoréférencé le sont tout seuls. Sinon, ${W("georef")} : deux points de la
             carte (un carrefour, un angle de bâtiment) cliqués avec leur latitude et leur longitude — un clic droit sur Géoportail ou une carte en ligne les
             donne —, ou trois et plus pour une photo déformée ; ou un fichier de calage (.jgw, .pgw… avec son .prj) ; ou un KMZ de la même image. La fenêtre
@@ -1316,22 +1316,22 @@ export function build(X) {
           <p>Le jour de la course ou après (jamais avant : les circuits restent secrets, et les boutons d'Équipe et course › Après la course restent grisés jusque-là), le
             traceur peut :</p>
           <ul class="mx-list">
-            <li><b>publier les circuits vers l'analyse de carte</b> (${W("publish")}) : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
+            <li><b>publier les circuits vers l'analyse</b> (${W("publish")}) : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
               leur trace GPS. La même fenêtre règle toute l'analyse : son nom (qui peut différer de celui de l'événement), sa date, qui l'ouvre (tous les comptes, avec ou
               sans les visiteurs, le club, un mot de passe), les actions activées pour les coureurs ; puis « Publier », ou « Enregistrer en brouillon » (seuls ses
               organisateurs la voient). Une fenêtre suit l'avancement — chaque circuit est imprimé sur sa carte puis envoyé —, puis ouvre l'analyse d'un clic, ou sa
-              page de gestion (Orga › Analyses de carte, où tout reste modifiable). Une nouvelle publication crée une autre analyse, ou met à jour, au choix, l'une de
+              page de gestion (Orga › Analyses, où tout reste modifiable). Une nouvelle publication crée une autre analyse, ou met à jour, au choix, l'une de
               celles déjà publiées depuis l'événement (ses circuits et ses réglages remplacés, les traces partagées gardées) ; une compétition n'a qu'une analyse ;</li>
             <li><b>envoyer les circuits à « Résultats »</b> (${W("send-results")}) : un complément aux résultats, pas des résultats. Le fichier de résultats exporté
               par le logiciel de chronométrage (MeOS, OE…) en IOF XML donne déjà la longueur, la dénivelée et les postes de chaque circuit : avec lui, cet envoi n'apporte
               rien. Il sert quand les résultats publiés viennent d'ailleurs — un PDF, liveresultat, WinSplits, O'Live, une page HTML sans en-tête de circuit — et n'ont
               pas ces informations. Les circuits du tracé (en IOF XML) sont alors rapprochés de ceux des résultats par leur nom (« Circuit A » = « A ») ou par leurs postes,
               et seules les valeurs manquantes sont complétées, jamais les temps ni les places : la page de résultats de la course affiche la longueur et la dénivelée,
-              « Analyse de course » numérote les postes par leurs codes, et la dénivelée des courses passées sert aux estimations de temps du vainqueur des tracés à venir.
+              « Arena › Analyse » numérote les postes par leurs codes, et la dénivelée des courses passées sert aux estimations de temps du vainqueur des tracés à venir.
               Il faut un événement lié à une compétition, être membre du club organisateur et accepter la publication ; rien n'apparaît avant le lendemain de la course,
               et un nouvel envoi remplace le précédent ;</li>
             <li>lire le <b>bilan</b> (${W("rep-after")}) : pour chaque interposte, le meilleur temps et le temps médian, la part des coureurs qui s'y sont
-              trompés, les postes manquants (un boîtier à vérifier ?), et les <b>itinéraires</b> pris, d'après les traces partagées sur l'analyse de carte.</li>
+              trompés, les postes manquants (un boîtier à vérifier ?), et les <b>itinéraires</b> pris, d'après les traces partagées sur l'analyse.</li>
           </ul>
         </section>`,
       ruban: () => {

@@ -81,21 +81,21 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Analysen von GPS-Tracks</h2>
       <p>Die Seite „Einzelanalyse“ liest Karte und GPS-Track in deinem Browser: Es werden keine Daten an die Website übertragen, und diese
         Dateien werden nur für die Dauer des Besuchs aufbewahrt.</p>
-      <p>In der Kartenanalyse eines Trainings oder Wettkampfs lädt der Veranstalter die Karten und Bahnen hoch, und jeder
+      <p>In der Analyse eines Trainings oder Wettkampfs lädt der Veranstalter die Karten und Bahnen hoch, und jeder
         Teilnehmer kann seinen eigenen GPS-Track hinzufügen. Dieser wird dann übertragen und im Speicher der Website
         (Cloudflare) aufbewahrt, mit Name und Lizenznummer des Teilnehmers, beschränkt auf die Positionen und Uhrzeiten innerhalb der
         Kartenfläche (ohne Herzfrequenz, Kadenz und Wege außerhalb der Karte). Er ist für die Personen sichtbar, die die Analyse öffnen dürfen,
         je nach Wahl des Veranstalters: alle angemeldeten Lizenzinhaber, die Mitglieder seines Vereins oder die Inhaber des
         Passworts. Jeder Teilnehmer kann seinen GPS-Track jederzeit entfernen; er wird mit der Analyse und mit seinem Konto gelöscht. Die
         Karten einer Analyse werden aufbewahrt, solange die Analyse besteht; löscht der Veranstalter sein Konto, bleibt die Analyse erhalten,
-        ohne seinen Namen. In der Kartenanalyse einer Veranstaltung stammen deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz usw.) aus deiner
+        ohne seinen Namen. In der Analyse einer Veranstaltung stammen deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz usw.) aus deiner
         Datei, die in deinem Browser auf diesem Gerät gespeichert ist: Sie wird nicht übertragen, und nur du hast Zugriff darauf.</p>
       <p>Dein Kommentar zu deinem
         Lauf ist für dieselben Personen sichtbar wie dein Track; du kannst ihn jederzeit ändern oder löschen. Öffnet der Veranstalter die
         Analyse für Besucher ohne Konto, werden ihnen dein Track und dein Kommentar nur gezeigt, wenn du zustimmst (ein standardmäßig
         nicht angekreuztes Kästchen), mit deinem Namen, aber ohne deine Lizenznummer; du kannst diese Zustimmung jederzeit zurückziehen.
         In « Meine Karten » wird dein Kommentar zu einem Lauf mit ihm gespeichert und folgt denselben Regeln.</p>
-      <p>Damit der Veranstalter entscheiden kann (veröffentlichen, eine Funktion freigeben oder abschalten), zählt eine Kartenanalyse,
+      <p>Damit der Veranstalter entscheiden kann (veröffentlichen, eine Funktion freigeben oder abschalten), zählt eine Analyse,
         wer sie öffnet und wer eine Bahn allein in der „Einzelanalyse“ auf seiner Karte abspielt: die Nummer deines Kontos, der erste
         und der letzte Tag und die Zahl der Tage, höchstens einmal pro Tag; für Besucher ohne Konto nur eine Zahl pro Tag. Die
         Veranstalter sehen nur Summen, nie wer; sie selbst werden nicht gezählt. Diese Einträge werden mit der Analyse, mit der
@@ -111,7 +111,7 @@ export const body = (SITE, { world = false } = {}) => `
         oder andere persönliche Daten; das Löschen des Links beendet das Teilen. Du kannst einen Lauf oder eine Karte jederzeit löschen;
         alles wird mit deinem Konto gelöscht. Eine Anfrage zum Import aus DOMA ist eine Nachricht an das Ozimut-Team, wie die über
         „Kontakt“.</p>
-      <p>Wenn du in der „Einzelanalyse“ neben „Lauf ansehen“ das Häkchen bei „Analyse speichern“ setzt (standardmäßig gesetzt), werden die Karte und dein Lauf — nur Positionen und Zeiten, sonst nichts von der Uhr — in deinem Konto behalten, getrennt von „Meine Karten“: nur du siehst sie, in der „Kartenanalyse“, wo du die Analyse erneut abspielst oder löschst. Eine Karte wird dort nur einmal behalten und geht mit der letzten Analyse, die sie zeigt.</p>
+      <p>Wenn du in der „Einzelanalyse“ neben „Lauf ansehen“ das Häkchen bei „Analyse speichern“ setzt (standardmäßig gesetzt), werden die Karte und dein Lauf — nur Positionen und Zeiten, sonst nichts von der Uhr — in deinem Konto behalten, getrennt von „Meine Karten“: nur du siehst sie, in der „Analyse“, wo du die Analyse erneut abspielst oder löschst. Eine Karte wird dort nur einmal behalten und geht mit der letzten Analyse, die sie zeigt.</p>
       <h2 style="font-size:16px">Reservierung der Startzeiten</h2>
       <p>Wenn die Veranstalter eines Wettkampfs die Reservierung der Startzeiten öffnen, reserviert ein Konto einen Start für sich
         und für die Läufer, die es unter „Meine Läufer“ hinzufügt (seine Familie, Freunde, mit oder ohne Verein): ihr Vor- und

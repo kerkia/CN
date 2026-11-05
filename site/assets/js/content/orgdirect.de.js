@@ -66,7 +66,7 @@ export const file = `
 export const after = `
   <ul class="od-steps">
     <li>Ein Lauf, der mit einem Wettkampf deines Vereins verknüpft ist, wird alle paar Minuten gespeichert und unter
-      <b>Läufe › Ergebnisse</b> veröffentlicht: die Ergebnisse, die Zwischenzeiten (in der „Laufanalyse“) und vor dem Start die
+      <b>Läufe › Ergebnisse</b> veröffentlicht: die Ergebnisse, die Zwischenzeiten (in der „Analyse“) und vor dem Start die
       Startliste. Die Läufer erhalten die Benachrichtigung „einer meiner Läufe ist online“, sobald der Lauf beendet ist.</li>
     <li>„Jetzt veröffentlichen“ speichert ihn sofort, ohne auf die nächste Aktualisierung zu warten.</li>
     <li>Eine danach unter <b>Organisation › Ergebnisse</b> hochgeladene Ergebnisdatei hat Vorrang vor der Übertragung, ebenso die unter

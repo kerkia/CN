@@ -845,7 +845,7 @@ export function build(X) {
       "export-images": "Ein Bild pro Bahn, mit seinem World-File, wenn die Karte georeferenziert ist.",
       "export-ocad": "Jede Bahn als OCAD- oder OpenOrienteering-Mapper-Karte, um sie mit dieser Software fertigzustellen oder zu drucken.",
       "export-routegadget": "Die Karte als Bild und die Bahnen, zum Hochladen auf RouteGadget.", "export-csv": "Die Tabellen der Berichte, für eine Tabellenkalkulation.",
-      publish: "Nach dem Lauf: die Bahnen in der Kartenanalyse, wo die Läufer ihre GPS-Tracks hochladen.",
+      publish: "Nach dem Lauf: die Bahnen in der Analyse, wo die Läufer ihre GPS-Tracks hochladen.",
       "send-results": "Ab dem Lauftag: Länge, Steigung und Posten jeder Bahn werden an die Ergebnisse der Website geschickt.",
       "map-change": "Eine andere Karte (eine korrigierte Fassung, ein besserer Scan, die OCAD-Datei): Die Posten behalten ihren Platz.",
       offline: "Die Veranstaltung auf diesem Gerät behalten, um sie ohne Netz zu öffnen.",
@@ -1043,7 +1043,7 @@ export function build(X) {
             leitet daraus die Verschiebung, die Drehung und den Maßstab ab. Ändert sich der Maßstab, bietet sie an, entweder die Karte (die Auflösung des Bildes oder den Maßstab des PDF) zu korrigieren,
             wobei die Bahnlängen richtig bleiben, oder die Posten. Eine .ppen-Datei, die auf einer OCAD-Karte erstellt und mit derselben OCAD-Karte importiert wurde, muss nicht ausgerichtet werden.</p>
           <h3>Die Georeferenzierung</h3>
-          <p>Für die Steigung, den Geländemodus, die GPX-Dateien und die Kartenanalyse muss bekannt sein, wo die Karte auf der Erde liegt. Eine georeferenzierte OCAD- oder Mapper-Karte
+          <p>Für die Steigung, den Geländemodus, die GPX-Dateien und die Analyse muss bekannt sein, wo die Karte auf der Erde liegt. Eine georeferenzierte OCAD- oder Mapper-Karte
             (Lambert 93, UTM, die Systeme von OCAD) und ein georeferenziertes TIFF sind es von selbst. Sonst ${W("georef")}: zwei Punkte der
             Karte (eine Wegkreuzung, eine Gebäudeecke), angeklickt mit ihrer Breite und Länge – ein Rechtsklick auf Géoportail oder einer Online-Karte liefert
             sie –, oder drei und mehr für ein verzerrtes Foto; oder ein World-File (.jgw, .pgw… mit seiner .prj); oder ein KMZ desselben Bildes. Das Fenster
@@ -1316,23 +1316,23 @@ export function build(X) {
           <p>Am Tag des Laufs oder danach (nie vorher: Die Bahnen bleiben geheim, und die Schaltflächen unter Team und Lauf › Nach dem Lauf bleiben bis dahin ausgegraut) kann der
             Bahnleger:</p>
           <ul class="mx-list">
-            <li><b>die Bahnen in die Kartenanalyse übertragen</b> (${W("publish")}): Jede Bahn kommt dort mit ihrer Karte und ihrer Kalibrierung an, die Läufer müssen nur noch
+            <li><b>die Bahnen in die Analyse übertragen</b> (${W("publish")}): Jede Bahn kommt dort mit ihrer Karte und ihrer Kalibrierung an, die Läufer müssen nur noch
               ihren GPS-Track hochladen. Dasselbe Fenster stellt die ganze Analyse ein: ihren Namen (der vom Namen der Veranstaltung abweichen kann), ihr Datum, wer sie
               öffnet (alle Konten, mit oder ohne Besucher, der Verein, ein Passwort), die für die Läufer aktivierten Aktionen; dann „Veröffentlichen“ oder „Als Entwurf
               speichern“ (nur ihre Veranstalter sehen sie). Ein Fenster zeigt den Fortschritt — jede Bahn wird auf ihre Karte gedruckt und gesendet — und öffnet danach
-              die Analyse mit einem Klick, ebenso ihre Verwaltungsseite (Orga › Kartenanalysen, wo alles änderbar bleibt). Eine neue Veröffentlichung legt eine weitere
+              die Analyse mit einem Klick, ebenso ihre Verwaltungsseite (Orga › Analysen, wo alles änderbar bleibt). Eine neue Veröffentlichung legt eine weitere
               Analyse an oder aktualisiert, nach Wahl, eine der aus der Veranstaltung schon veröffentlichten (ihre Bahnen und Einstellungen ersetzt, die geteilten Tracks
               bleiben); ein Wettkampf hat nur eine Analyse;</li>
             <li><b>die Bahnen an „Ergebnisse“ senden</b> (${W("send-results")}): eine Ergänzung der Ergebnisse, keine Ergebnisse. Die Ergebnisdatei, die die
               Zeitnahme-Software (MeOS, OE…) als IOF XML exportiert, enthält bereits Länge, Steigung und Posten jeder Bahn: mit ihr bringt diese Übertragung nichts.
               Sie hilft, wenn die veröffentlichten Ergebnisse von anderswo stammen — ein PDF, liveresultat, WinSplits, O'Live, eine HTML-Seite ohne Bahnkopf — und diese
               Angaben fehlen. Die Bahnen der Bahnlegung (als IOF XML) werden dann den Bahnen der Ergebnisse über ihren Namen („Bahn A“ = „A“) oder ihre Posten zugeordnet,
-              und nur fehlende Werte werden ergänzt, nie Zeiten oder Plätze: Die Ergebnisseite des Laufs zeigt Länge und Steigung, die „Laufanalyse“ benennt die Posten
+              und nur fehlende Werte werden ergänzt, nie Zeiten oder Plätze: Die Ergebnisseite des Laufs zeigt Länge und Steigung, „Arena › Analyse“ benennt die Posten
               mit ihren Codes, und die Steigung vergangener Läufe fließt in die Schätzung der Siegerzeiten künftiger Bahnen ein. Nötig sind eine mit einem Wettkampf
               verknüpfte Veranstaltung, die Mitgliedschaft im ausrichtenden Verein und die Zustimmung zur Veröffentlichung; vor dem Tag nach dem Lauf erscheint nichts,
               und eine neue Übertragung ersetzt die vorige;</li>
             <li>die <b>Bilanz</b> lesen (${W("rep-after")}): für jede Teilstrecke die Bestzeit und die Medianzeit, der Anteil der Läufer, die sich dort
-              verlaufen haben, die Fehlstempel (eine Station zu prüfen?) und die gewählten <b>Routen</b>, nach den in der Kartenanalyse geteilten Tracks.</li>
+              verlaufen haben, die Fehlstempel (eine Station zu prüfen?) und die gewählten <b>Routen</b>, nach den in der Analyse geteilten Tracks.</li>
           </ul>
         </section>`,
       ruban: () => {

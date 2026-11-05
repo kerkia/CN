@@ -80,21 +80,21 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Analyses de traces GPS</h2>
       <p>La page « Analyse solo » lit la carte et la trace GPS dans votre navigateur : aucune donnée n'est transmise au site, et ces
         fichiers ne sont conservés que le temps de la visite.</p>
-      <p>Dans l'analyse de carte d'un entraînement ou d'une compétition, l'organisateur dépose les cartes et les parcours, et chaque
+      <p>Dans l'analyse d'un entraînement ou d'une compétition, l'organisateur dépose les cartes et les parcours, et chaque
         participant peut y ajouter sa propre trace. Celle-ci est alors transmise et conservée dans l'espace de stockage du site
         (Cloudflare), avec le nom et le numéro de licence du participant, réduite aux positions et aux heures situées sur l'emprise de
         la carte (sans fréquence cardiaque, cadence ni trajet hors de la carte). Elle est visible des personnes autorisées à ouvrir
         l'analyse, selon le choix de l'organisateur : tous les licenciés connectés, les membres de son club ou les détenteurs du mot
         de passe. Chaque participant peut retirer sa trace à tout moment ; elle est effacée avec l'analyse et avec son compte. Les
         cartes d'une analyse sont conservées tant que celle-ci existe ; si l'organisateur supprime son compte, l'analyse est maintenue,
-        sans son nom. Dans l'analyse de carte d'un événement, vos propres courbes (allure, fréquence cardiaque, cadence, etc.) proviennent de votre
+        sans son nom. Dans l'analyse d'un événement, vos propres courbes (allure, fréquence cardiaque, cadence, etc.) proviennent de votre
         fichier, conservé dans votre navigateur sur cet appareil : il n'est pas transmis, et vous seul y avez accès.</p>
       <p>Le commentaire que vous écrivez sur
         votre course est visible des mêmes personnes que votre trace ; vous le modifiez ou l'effacez à tout moment. Si l'organisateur
         ouvre l'analyse aux visiteurs sans compte, votre trace et votre commentaire ne leur sont montrés que si vous l'acceptez (une case
         décochée par défaut), avec votre nom mais sans votre numéro de licence ; vous retirez cet accord à tout moment. Dans « Mes
         cartes », le commentaire que vous écrivez sur une course est gardé avec elle et suit les mêmes règles qu'elle.</p>
-      <p>Pour aider l'organisateur à décider (publier, ouvrir ou fermer une fonction), une analyse de carte compte qui l'ouvre et qui
+      <p>Pour aider l'organisateur à décider (publier, ouvrir ou fermer une fonction), une analyse compte qui l'ouvre et qui
         rejoue un circuit seul dans « Analyse solo » sur sa carte : le numéro de votre compte, le premier et le dernier jour, et le
         nombre de jours, une fois par jour au plus ; pour les visiteurs sans compte, un nombre par jour seulement. Les organisateurs
         n'en voient que des totaux, jamais qui ; ils ne sont pas comptés eux-mêmes. Ces relevés sont effacés avec l'analyse, avec le
@@ -110,7 +110,7 @@ export const body = (SITE, { world = false } = {}) => `
         ni les autres données personnelles  supprimer le lien arrête ce partage. Vous supprimez une course ou une carte à tout
         moment  tout est effacé avec votre compte. Une demande d'import depuis DOMA est un message envoyé à l'équipe Ozimut, comme
         ceux de « Nous écrire ».</p>
-      <p>Si vous cochez « Enregistrer l'analyse » à côté de « Voir la course » dans « Analyse solo » (coché par défaut), la carte et votre course — positions et heures seulement, rien d'autre de la montre — sont gardées dans votre compte, à part de « Mes cartes » : vous seul les voyez, dans « Analyse de carte », où vous rejouez ou supprimez l'analyse. Une carte n'y est gardée qu'une fois et part avec la dernière analyse qui la montre.</p>
+      <p>Si vous cochez « Enregistrer l'analyse » à côté de « Voir la course » dans « Analyse solo » (coché par défaut), la carte et votre course — positions et heures seulement, rien d'autre de la montre — sont gardées dans votre compte, à part de « Mes cartes » : vous seul les voyez, dans « Analyse », où vous rejouez ou supprimez l'analyse. Une carte n'y est gardée qu'une fois et part avec la dernière analyse qui la montre.</p>
       <h2 style="font-size:16px">Réservation des horaires de départ</h2>
       <p>Quand les organisateurs d'une compétition ouvrent la réservation de ses horaires de départ, un compte réserve un départ pour
         lui-même et pour les coureurs qu'il ajoute à « Mes coureurs » (sa famille, des amis, licenciés ou non) : leur prénom, leur nom,

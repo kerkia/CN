@@ -66,7 +66,7 @@ export const file = `
 export const after = `
   <ul class="od-steps">
     <li>Une course liée à une compétition de votre club est enregistrée toutes les quelques minutes et publiée dans
-      <b>Courses › Résultats</b> : les résultats, les temps intermédiaires (dans « Analyse de course ») et, avant le départ, la liste
+      <b>Courses › Résultats</b> : les résultats, les temps intermédiaires (dans « Analyse ») et, avant le départ, la liste
       de départ. Les coureurs reçoivent l'alerte « une de mes courses est en ligne » une fois la course finie.</li>
     <li>« Publier maintenant » l'enregistre tout de suite, sans attendre la mise à jour suivante.</li>
     <li>Un fichier de résultats déposé ensuite sous <b>Organisation › Résultats</b> passe avant la diffusion, de même que la liste de

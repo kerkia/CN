@@ -79,21 +79,21 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">Análisis de tracks GPS</h2>
       <p>La página «Análisis individual» lee el mapa y el track GPS en tu navegador: no se transmite ningún dato al sitio, y esos
         archivos solo se conservan durante la visita.</p>
-      <p>En el análisis de mapa de un entrenamiento o de una competición, el organizador sube los mapas y los recorridos, y cada
+      <p>En el análisis de un entrenamiento o de una competición, el organizador sube los mapas y los recorridos, y cada
         participante puede añadir su propio track. Este se transmite entonces y se conserva en el espacio de almacenamiento del sitio
         (Cloudflare), con el nombre y el número de licencia del participante, reducido a las posiciones y horas situadas dentro de la superficie de
         el mapa (sin frecuencia cardiaca, cadencia ni trayecto fuera del mapa). Es visible para las personas autorizadas a abrir
         el análisis, según lo que elija el organizador: todos los federados con sesión iniciada, los miembros de su club o quienes tengan la
         contraseña. Cada participante puede retirar su track en cualquier momento; se borra con el análisis y con su cuenta. Los
         mapas de un análisis se conservan mientras este exista; si el organizador elimina su cuenta, el análisis se mantiene,
-        sin su nombre. En el análisis de mapa de un evento, tus propias gráficas (ritmo, frecuencia cardiaca, cadencia, etc.) proceden de tu
+        sin su nombre. En el análisis de un evento, tus propias gráficas (ritmo, frecuencia cardiaca, cadencia, etc.) proceden de tu
         archivo, guardado en tu navegador en este dispositivo: no se transmite, y solo tú tienes acceso a él.</p>
       <p>El comentario que escribes sobre tu carrera lo ven
         las mismas personas que tu track; lo cambias o lo borras cuando quieras. Si el organizador abre el análisis a los visitantes sin
         cuenta, tu track y tu comentario solo se les muestran si lo aceptas (una casilla sin marcar por defecto), con tu nombre pero sin tu
         número de licencia; retiras ese acuerdo cuando quieras. En « Mis mapas », el comentario que escribes sobre una carrera se guarda
         con ella y sigue las mismas reglas.</p>
-      <p>Para ayudar al organizador a decidir (publicar, abrir o cerrar una función), un análisis de mapa cuenta quién lo abre y quién
+      <p>Para ayudar al organizador a decidir (publicar, abrir o cerrar una función), un análisis cuenta quién lo abre y quién
         reproduce un recorrido en solitario en «Análisis individual» sobre su mapa: el número de tu cuenta, el primer y el último día y
         el número de días, como mucho una vez al día; para los visitantes sin cuenta, solo un número por día. Los organizadores solo
         ven totales, nunca quién; a ellos no se les cuenta. Estos registros se borran con el análisis, con el recorrido afectado y con
@@ -108,7 +108,7 @@ export const body = (SITE, { world = false } = {}) => `
         cuenta, pero nunca la frecuencia cardiaca ni los demás datos personales; eliminar el enlace pone fin al uso compartido. Puedes
         eliminar una carrera o un mapa en cualquier momento; todo se borra con tu cuenta. Una solicitud de importación desde DOMA es un
         mensaje enviado al equipo de Ozimut, como los de «Contacto».</p>
-      <p>Si marcas «Guardar el análisis» junto a «Ver la carrera» en «Análisis individual» (marcado por defecto), el mapa y tu carrera — solo posiciones y horas, nada más del reloj — se guardan en tu cuenta, aparte de «Mis mapas»: solo tú los ves, en «Análisis de mapa», donde vuelves a reproducir o borras el análisis. Un mapa se guarda allí una sola vez y se va con el último análisis que lo muestra.</p>
+      <p>Si marcas «Guardar el análisis» junto a «Ver la carrera» en «Análisis individual» (marcado por defecto), el mapa y tu carrera — solo posiciones y horas, nada más del reloj — se guardan en tu cuenta, aparte de «Mis mapas»: solo tú los ves, en «Análisis», donde vuelves a reproducir o borras el análisis. Un mapa se guarda allí una sola vez y se va con el último análisis que lo muestra.</p>
       <h2 style="font-size:16px">Reserva de horas de salida</h2>
       <p>Cuando los organizadores de una competición abren la reserva de sus horas de salida, una cuenta reserva una salida para sí
         misma y para los corredores que añade a «Mis corredores» (su familia, amigos, federados o no): su nombre y apellidos, el club

@@ -60,7 +60,7 @@ export const file = `
 export const after = `
   <ul class="od-steps">
     <li>A race tied to a competition of your club is saved every few minutes and published in <b>Races › Results</b>: the
-      results, the split times (in “Race analysis”) and, before the start, the start list. Runners get the “one of my races is
+      results, the split times (in “Analysis”) and, before the start, the start list. Runners get the “one of my races is
       online” alert once the race is over.</li>
     <li>“Publish now” saves it at once, without waiting for the next update.</li>
     <li>A results file deposited later under <b>Organising › Results</b> comes before the broadcast, as does a start list

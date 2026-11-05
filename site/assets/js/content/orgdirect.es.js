@@ -66,7 +66,7 @@ export const file = `
 export const after = `
   <ul class="od-steps">
     <li>Una carrera vinculada a una competición de tu club se guarda cada pocos minutos y se publica en
-      <b>Carreras › Resultados</b>: los resultados, los tiempos parciales (en «Análisis de carrera») y, antes de la salida, la lista
+      <b>Carreras › Resultados</b>: los resultados, los tiempos parciales (en «Análisis») y, antes de la salida, la lista
       de salida. Los corredores reciben la alerta «una de mis carreras está en línea» una vez terminada la carrera.</li>
     <li>«Publicar ahora» la guarda al instante, sin esperar a la siguiente actualización.</li>
     <li>Un archivo de resultados subido después en <b>Organización › Resultados</b> tiene prioridad sobre la emisión, al igual que la lista de

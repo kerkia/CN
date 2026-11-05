@@ -114,7 +114,7 @@ titles, Purple Pen); the source data from FFCO stays French. The module names **
 | Compétitions | Wettkämpfe | Competiciones |
 | Résultats | Ergebnisse | Resultados |
 | En direct | Live | En directo |
-| Analyse de course | Laufanalyse | Análisis de carrera |
+| Analyse | Analyse | Análisis |
 | Analyse solo / Analyse multi | Einzelanalyse / Gruppenanalyse | Análisis individual / Análisis de grupo |
 | Organisation | Organisation | Organización |
 | Direct (Organisation) | Live-Übertragung | Emisión en directo |

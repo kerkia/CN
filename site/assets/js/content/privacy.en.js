@@ -72,20 +72,20 @@ export const body = (SITE, { world = false } = {}) => `
       <h2 style="font-size:16px">GPS track analyses</h2>
       <p>The “Solo analysis” page reads the map and the GPS track in your browser: no data is sent to the site, and these files are
         kept only for the duration of the visit.</p>
-      <p>In the map analysis of a training session or a competition, the organiser uploads the maps and the courses, and each participant can
+      <p>In the analysis of a training session or a competition, the organiser uploads the maps and the courses, and each participant can
         add their own track. It is then sent to and kept in the site's storage (Cloudflare), with the participant's name and licence
         number, reduced to the positions and times within the map's area (without heart rate, cadence or any route off the map). It
         is visible to the people allowed to open the analysis, as the organiser chooses: all logged-in licence holders, the members
         of their club, or those who hold the password. Each participant can remove their track at any time; it is erased with the
         analysis and with their account. An analysis's maps are kept as long as it exists; if the organiser deletes their account,
-        the analysis remains, without their name. In an event's map analysis, your own graphs (pace, heart rate, cadence, etc.) come from
+        the analysis remains, without their name. In an event's analysis, your own graphs (pace, heart rate, cadence, etc.) come from
         your file, kept in your browser on this device: it is not sent, and only you have access to it.</p>
       <p>The comment you write on your race is seen by
         the same people as your trace; you change or delete it at any time. If the organiser opens the analysis to visitors without an
         account, your trace and your comment are shown to them only if you agree (a box unticked by default), with your name but
         without your licence number; you withdraw that agreement at any time. In « My maps », the comment you write on a run is kept
         with it and follows the same rules.</p>
-      <p>To help the organiser decide (publish, open or close a feature), a map analysis counts who opens it and who replays a course
+      <p>To help the organiser decide (publish, open or close a feature), an analysis counts who opens it and who replays a course
         alone in “Solo analysis” on its map: your account's number, the first and the last day, and the number of days, once a day at
         most; for visitors without an account, a number per day only. The organisers see totals only, never who; they are not counted
         themselves. These records are erased with the analysis, with the course concerned and with your account.</p>
@@ -98,7 +98,7 @@ export const body = (SITE, { world = false } = {}) => `
         link sees them with your name, even without an account, but never your heart rate or other personal data; deleting the link
         ends the sharing. You can delete a race or a map at any time; everything is erased with your account. A request to import from
         DOMA is a message sent to the Ozimut team, like those of “Contact us”.</p>
-      <p>If you tick “Save the analysis” beside “View the race” in “Solo analysis” (ticked by default), the map and your race — positions and times only, nothing else from the watch — are kept in your account, apart from “My maps”: you alone see them, in “Map analysis”, where you replay or delete the analysis. A map is kept there once and goes with the last analysis showing it.</p>
+      <p>If you tick “Save the analysis” beside “View the race” in “Solo analysis” (ticked by default), the map and your race — positions and times only, nothing else from the watch — are kept in your account, apart from “My maps”: you alone see them, in “Analysis”, where you replay or delete the analysis. A map is kept there once and goes with the last analysis showing it.</p>
       <h2 style="font-size:16px">Start time booking</h2>
       <p>When a competition's organisers open its start times to booking, an account books a start for itself and for the runners
         it adds to “My runners” (its family, friends, members of a club or not): their first and last names, the club and its

@@ -1657,6 +1657,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   runners add their trace to is its « analyse de carte » (map analysis, Kartenanalyse, análisis de mapa; Orga's page « Analyses de
   carte », « Ouvrir l'analyse de carte »); the runners' side, where it is told apart from « Analyse solo », is Coach's tile
   « Comparer avec les autres coureurs » (`ma.multi.title`). Code names (`multi`, `shared.js`, `beta.multi`) keep the old word.
+- **« Analyse », simply** (owner, 2026-11-05): Coach's « Analyse de carte » and Arena's « Analyse de course » are both « Analyse » (Analysis, Analyse, Análisis), Orga's « Analyses de carte » « Analyses », and in running text « l'analyse » — so the notes above saying « Analyse de carte » / « Analyse de course » mean these pages; a text that must say whose writes « Arena › Analyse » / « Coach › Analyse ». The Tracer's ribbon button is « Publier l'analyse »; the event page's left-panel tab « Analyses » is « Temps » (`sh.tab.views`). Routes and code names (`#/analyse-carte`, `mapAnalysis`, `nav.raceAnalysis`) unchanged.
 - **Vocabulary** (owner, 2026-10-14, as the World Ranking separates them; renamed 2026-10-19): a race's points are the
   « score Ozimut » / « score officiel » (`ui.scoreLabel`, i18n `score.*`; « score Top » until 2026-10-19), a runner's ranking
   value the « indice Ozimut » / « CN officiel » (`ui.cnLabel`, `ui.cnWords`, `cn.*`; « CN Top » until 2026-10-19); the

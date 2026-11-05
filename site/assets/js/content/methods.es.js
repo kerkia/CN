@@ -845,7 +845,7 @@ export function build(X) {
       "export-images": "Una imagen por recorrido, con su archivo de georreferencia cuando el mapa está georreferenciado.",
       "export-ocad": "Cada recorrido como mapa de OCAD u OpenOrienteering Mapper, para terminarlo o imprimirlo con esos programas.",
       "export-routegadget": "El mapa como imagen y los recorridos, para subir a RouteGadget.", "export-csv": "Las tablas de los informes, para una hoja de cálculo.",
-      publish: "Después de la carrera: los recorridos en el análisis de mapa, donde los corredores suben sus tracks GPS.",
+      publish: "Después de la carrera: los recorridos en el análisis, donde los corredores suben sus tracks GPS.",
       "send-results": "A partir del día de la carrera: longitud, desnivel y controles de cada recorrido enviados a los resultados del sitio.",
       "map-change": "Otro mapa (una versión corregida, un escaneo mejor, el archivo OCAD): los controles conservan su lugar.",
       offline: "Guardar el evento en este dispositivo para abrirlo sin conexión.",
@@ -1043,7 +1043,7 @@ export function build(X) {
             deduce de ello el desplazamiento, la rotación y la escala. Si la escala cambia, propone corregir el mapa (la resolución de la imagen o la escala del PDF),
             con lo que las longitudes del recorrido siguen siendo correctas, o los controles. Un .ppen hecho sobre un mapa OCAD, importado con el mismo mapa OCAD, no necesita alineación.</p>
           <h3>La georreferenciación</h3>
-          <p>Para el desnivel, el modo terreno, los GPX y el análisis de mapa, hay que saber dónde está el mapa en la Tierra. Un mapa OCAD o Mapper georreferenciado
+          <p>Para el desnivel, el modo terreno, los GPX y el análisis, hay que saber dónde está el mapa en la Tierra. Un mapa OCAD o Mapper georreferenciado
             (Lambert 93, UTM, los sistemas de OCAD) y un TIFF georreferenciado lo están por sí solos. Si no, ${W("georef")}: dos puntos del
             mapa (un cruce, una esquina de edificio) marcados con su latitud y su longitud —un clic derecho en Géoportail o en un mapa en línea las
             da—, o tres o más para una foto deformada; o un archivo de georreferencia (.jgw, .pgw… con su .prj); o un KMZ de la misma imagen. La ventana
@@ -1316,22 +1316,22 @@ export function build(X) {
           <p>El día de la carrera o después (nunca antes: los recorridos siguen siendo secretos, y los botones de Equipo y carrera › Después de la carrera siguen en gris hasta entonces), el
             trazador puede:</p>
           <ul class="mx-list">
-            <li><b>publicar los recorridos en el análisis de mapa</b> (${W("publish")}): cada recorrido llega con su mapa y su calibración, y los corredores solo tienen que subir
+            <li><b>publicar los recorridos en el análisis</b> (${W("publish")}): cada recorrido llega con su mapa y su calibración, y los corredores solo tienen que subir
               su track GPS. La misma ventana ajusta todo el análisis: su nombre (que puede ser distinto del del evento), su fecha, quién lo abre (todas las cuentas, con o sin
               visitantes, el club, una contraseña), las acciones activadas para los corredores; después «Publicar», o «Guardar como borrador» (solo lo ven sus
               organizadores). Una ventana sigue el avance — cada recorrido se imprime en su mapa y se envía — y luego abre el análisis con un clic, igual que su página de
-              gestión (Orga › Análisis de mapa, donde todo sigue siendo modificable). Una nueva publicación crea otro análisis o, a elección, actualiza uno de los ya
+              gestión (Orga › Análisis, donde todo sigue siendo modificable). Una nueva publicación crea otro análisis o, a elección, actualiza uno de los ya
               publicados desde el evento (sus recorridos y ajustes reemplazados, los tracks compartidos conservados); una competición tiene un solo análisis;</li>
             <li><b>enviar los recorridos a «Resultados»</b> (${W("send-results")}): un complemento de los resultados, no resultados. El archivo de resultados que
               exporta el software de cronometraje (MeOS, OE…) en IOF XML ya da la longitud, el desnivel y los controles de cada recorrido: con él, este envío no aporta
               nada. Sirve cuando los resultados publicados vienen de otra parte — un PDF, liveresultat, WinSplits, O'Live, una página HTML sin cabecera de recorrido — y
               no tienen esos datos. Los recorridos del trazado (en IOF XML) se asocian entonces a los de los resultados por su nombre («Recorrido A» = «A») o por sus
               controles, y solo se completan los valores que faltan, nunca los tiempos ni los puestos: la página de resultados de la carrera muestra la longitud y el
-              desnivel, el «Análisis de carrera» nombra los controles por sus códigos, y el desnivel de las carreras pasadas alimenta las estimaciones del tiempo del
+              desnivel, «Arena › Análisis» nombra los controles por sus códigos, y el desnivel de las carreras pasadas alimenta las estimaciones del tiempo del
               ganador de los recorridos por trazar. Hace falta un evento vinculado a una competición, ser miembro del club organizador y aceptar la publicación; nada
               aparece antes del día siguiente a la carrera, y un nuevo envío sustituye al anterior;</li>
             <li>leer el <b>balance</b> (${W("rep-after")}): para cada tramo, el mejor tiempo y el tiempo mediano, la proporción de corredores que se
-              equivocaron en él, los errores de tarjeta (¿una estación que revisar?), y las <b>rutas</b> elegidas, según los tracks compartidos en el análisis de mapa.</li>
+              equivocaron en él, los errores de tarjeta (¿una estación que revisar?), y las <b>rutas</b> elegidas, según los tracks compartidos en el análisis.</li>
           </ul>
         </section>`,
       ruban: () => {

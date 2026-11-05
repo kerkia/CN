@@ -20,7 +20,7 @@ export function build(X) {
     arena: html`Die Wettkämpfe: der Kalender, die Ergebnisse der Veranstalter, die Live-Ergebnisse und die Analyse der Zwischenzeiten.`,
     coach: owner ? html`Trainieren: die Analysen von GPS-Tracks, die Postenbeschreibungen, die Kartensymbole, die Spiele und die MAG.`
       : html`Trainieren: die Analysen von GPS-Tracks, die Spiele und die MAG.`,
-    orga: html`Die Werkzeuge der Veranstalter: Ergebnisse, Startzeiten, Live-Übertragung, GPS-Tracking, Kartenanalysen und Bahnlegung.`,
+    orga: html`Die Werkzeuge der Veranstalter: Ergebnisse, Startzeiten, Live-Übertragung, GPS-Tracking, Analysen und Bahnlegung.`,
   };
 
   // ======================================================================================================
@@ -65,7 +65,7 @@ export function build(X) {
   // ======================================================================================================
   // Arena
   // ======================================================================================================
-  const ARENA = [["competitions", "Die Wettkämpfe"], ["resultats", "Ergebnisse"], ["direct", "Live"], ["analyse", "Laufanalyse"]];
+  const ARENA = [["competitions", "Die Wettkämpfe"], ["resultats", "Ergebnisse"], ["direct", "Live"], ["analyse", "Analyse"]];
   function arena() {
     return chapters(ARENA, {
       competitions: () => html`
@@ -125,7 +125,7 @@ export function build(X) {
             html`Sobald eine Zwischenzeit eintrifft, analysiert „Analyse“ den Lauf live.`,
           ])}`)}`,
       analyse: () => html`
-        ${slide("Arena", "Laufanalyse", html`
+        ${slide("Arena", "Analyse", html`
           <p>Wenn Zwischenzeiten veröffentlicht sind, analysiert die Seite eines Laufs sie Bahn für Bahn in mehreren Ansichten: Tabelle, Rückstände,
             Durchgänge, Teilstrecken, Profil, Duell, Gruppen, Selbstständigkeit, Regelmäßigkeit und Bilanz.</p>`)}
         <section class="mx-slide">
@@ -175,13 +175,13 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Kartenanalyse"], ["solo", "Einzelanalyse"], ["multi", "Mit den anderen vergleichen"], ["cartes", "Meine Karten"], ...(owner ? [["definitions", "Postenbeschreibungen"], ["symboles", "Kartensymbole"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Analyse"], ["solo", "Einzelanalyse"], ["multi", "Mit den anderen vergleichen"], ["cartes", "Meine Karten"], ...(owner ? [["definitions", "Postenbeschreibungen"], ["symboles", "Kartensymbole"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Spiele"], ["vma", "MAG"], ["routes", "Berechnete Routen"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
-        ${slide("Coach", "Kartenanalyse", html`
-          <p>Die ${P("#/analyse-carte", "Kartenanalyse")} öffnet mit der Liste der Wettkämpfe und Trainings, deren Veranstalter Karte und Bahnen veröffentlicht hat.</p>
+        ${slide("Coach", "Analyse", html`
+          <p>Die ${P("#/analyse-carte", "Analyse")} öffnet mit der Liste der Wettkämpfe und Trainings, deren Veranstalter Karte und Bahnen veröffentlicht hat.</p>
           ${list([
             html`<b>Die Liste</b> lässt sich nach Zeitraum, Land (über der Liste), Art (Wettkämpfe oder Trainings), veranstaltendem Verein und Namen filtern;
               am Computer steht die Karte des Landes daneben, und die Karte des Events erscheint unter der Maus als Vorschaubild.`,
@@ -194,7 +194,7 @@ export function build(X) {
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Einzelanalyse", html`
-          <p>Die ${P("#/analyse-solo", "Solo-Analyse")} spielt deinen Lauf mit deinem GPS-Track auf deiner Karte ab. Du erreichst sie über die ${P("#/analyse-carte", "Kartenanalyse")}:
+          <p>Die ${P("#/analyse-solo", "Solo-Analyse")} spielt deinen Lauf mit deinem GPS-Track auf deiner Karte ab. Du erreichst sie über die ${P("#/analyse-carte", "Analyse")}:
             „Eigenes Event hinzufügen“ (ein Training, jeder Ausflug oder ein Wettkampf, dessen Karte du hast: Die Seite bietet seine veröffentlichten Zwischenzeiten
             an, wenn der Track davon stammt), oder die vom Veranstalter veröffentlichte Karte, ohne eigene Karte und ohne Kalibrierung.</p>
           ${list([
@@ -277,7 +277,7 @@ export function build(X) {
             In der ${P("#/analyse-solo", "Einzelanalyse")} werden alle Teilstrecken berechnet und der Reiter „Routen“ links der Karte führt sie Teilstrecke für Teilstrecke auf (die Einstellungen stehen im Reiter „Routenberechnung“ rechts); in
             „${P("#/analyse-club", "Mit den anderen vergleichen")}“ die angezeigte Teilstrecke, mit der Liste der Läufer. Es ist ein Prototyp: Die Routen folgen
             der Karte so, wie Ozimut sie liest, und dieses Lesen kann sich irren. Die Berechnung startet von selbst; man stoppt sie im Reiter „Routenberechnung“,
-            und der Veranstalter einer Kartenanalyse kann sie für seine Veranstaltung abschalten.</p>`)}
+            und der Veranstalter einer Analyse kann sie für seine Veranstaltung abschalten.</p>`)}
         ${slide("Coach · Test", "1. Die Karte anhand ihrer Farben lesen", html`
           <p>Die Karte ist ein Bild: Ozimut kennt nur ihre Farben. Jeder Punkt wird eingeordnet: Weiß (gut belaufbarer Wald), Gelb
             (offenes Gelände, mehr oder weniger licht), die drei Grüntöne nach ihrer Intensität, Oliv (Sperrgebiet) und die darübergedruckten „Druckfarben“ –
@@ -324,8 +324,8 @@ export function build(X) {
           <p>In der Einzelanalyse <b>ist</b> eine allein abgelegte OCAD- oder Mapper-Datei die Karte: hier gezeichnet, der Track über ihre
             Georeferenzierung kalibriert. Zusammen mit einem Bild der Karte abgelegt – oder im Feld „Berechnete Routen“ gewählt, in beiden Analysen –
             dient sie den Routen und wird über ihre Georeferenzierung auf das Bild gelegt: Sie muss eine haben und die angezeigte Karte abdecken.</p>
-          <p>Eine Kartenanalyse, die aus der Bahnlegung veröffentlicht wurde oder deren Bahnen aus einem OCAD-Projekt stammen (Orga ›
-            Kartenanalysen), behält, was die OCAD-Karte des Veranstalters über das Gelände sagt: Ihre Routen lesen deren Symbole, ohne dass du
+          <p>Eine Analyse, die aus der Bahnlegung veröffentlicht wurde oder deren Bahnen aus einem OCAD-Projekt stammen (Orga ›
+            Analysen), behält, was die OCAD-Karte des Veranstalters über das Gelände sagt: Ihre Routen lesen deren Symbole, ohne dass du
             eine Datei ablegen musst, und die Sperrgebiete und nicht zu überquerenden Grenzen, die der Bahnleger auf der Bahn gezeichnet hat,
             gehören dazu. Nur diese Zeichnung des Geländes wird mit der Bahn gesendet, nie die OCAD-Datei.</p>`)}
         ${slide("Coach · Test", "2. Die Zeit eines Schritts", html`
@@ -404,7 +404,7 @@ export function build(X) {
   // Orga (« Die Bahnlegung », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Wer veranstaltet"], ["resultats", "Ergebnisse"], ["horaires", "Startzeiten"], ["direct", "Live-Übertragung"], ["suivi", "GPS-Tracking"],
-    ["analyses", "Kartenanalysen"], ["declarer", "Erstellte Wettkämpfe"]];
+    ["analyses", "Analysen"], ["declarer", "Erstellte Wettkämpfe"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -413,7 +413,7 @@ export function build(X) {
             genutzt. Veranstalter eines Wettkampfs ist ${fr ? "jedes Mitglied seines veranstaltenden Vereins – des Vereins seines letzten bekannten Laufs – oder" : ""}
             das Konto, das ihn eingetragen hat, außerhalb Frankreichs. Ein Training dagegen kann jedes Konto anlegen.</p>
           ${list([
-            html`${P("#/orga-analyses", "Kartenanalysen")}: die Kartenanalyse der Wettkämpfe des Vereins und seiner Trainings vorbereiten.`,
+            html`${P("#/orga-analyses", "Analysen")}: die Analyse der Wettkämpfe des Vereins und seiner Trainings vorbereiten.`,
             html`${P("#/orga-resultats", "Ergebnisse")} und ${P("#/orga-horaires", "Startzeiten")}: die Ergebnisse und die Startliste hochladen.`,
             html`${P("#/orga-direct", "Live-Übertragung")}: die Ergebnisse live aus der Zeitmessungssoftware übertragen und den Link zum GPS-Tracking angeben.`,
             html`${P("#/orga-tracer", "Bahnlegung")}: die Bahnen legen; die Anleitung dazu ist der Reiter ${D("tracer", "Die Bahnlegung")}.`,
@@ -426,7 +426,7 @@ export function build(X) {
             <div class="mx-step"><b>Die Datei</b>Ein IOF-XML-Export deiner Software (am besten: Er enthält die Bahnen und die Zwischenzeiten),
               das HTML von OE oder MeOS oder ein PDF; gezippt oder nicht, höchstens 30 MB.</div>
             <div class="mx-step"><b>Die Prüfung</b>Die Datei wird in deinem Browser gelesen, nichts wird gesendet: Zusammenfassung, Ergebnisse Bahn für Bahn,
-              Zeitkontrolle (falsch gestellte Stationen, nicht gelöschte Chips) und alle Ansichten der Laufanalyse.</div>
+              Zeitkontrolle (falsch gestellte Stationen, nicht gelöschte Chips) und alle Ansichten der Analyse.</div>
             <div class="mx-step"><b>Die Veröffentlichung</b>„Veröffentlichen“ sendet sie: Der Lauf erscheint innerhalb weniger Minuten in Arena, als vom
               Veranstalter hochgeladen markiert, und wird nicht mehr anderswo gesucht. Ein neuer Upload ersetzt den vorherigen.</div>
           </div>`)}`,
@@ -465,10 +465,10 @@ export function build(X) {
             Routechoices …), gib seinen Link in ${P("#/orga-direct", "Orga › Live-Übertragung")} an: Er erscheint beim Wettkampf in Arena, mit seinen Ergebnissen
             und seinem Live-Bereich. Nur der Link wird veröffentlicht.</p>`)}`,
       analyses: () => html`
-        ${slide("Orga", "Eine Kartenanalyse vorbereiten", html`
-          <p>${P("#/orga-analyses", "Kartenanalysen")} hat vier Reiter: „Geöffnete Analysen“ (die bereits geöffneten, dort öffnet die Seite: eine
+        ${slide("Orga", "Eine Analyse vorbereiten", html`
+          <p>${P("#/orga-analyses", "Analysen")} hat vier Reiter: „Geöffnete Analysen“ (die bereits geöffneten, dort öffnet die Seite: eine
             wählen, dann „Analyse verwalten“), „Wettkampf öffnen“ (die Wettkämpfe deines Vereins der letzten 60 Tage, deren Analyse noch nicht geöffnet
-            ist: einen wählen, dann „Kartenanalyse öffnen“), „Neuer Wettkampf“ (außerhalb Frankreichs) und „Neues Training“. Eine Kartenanalyse wird
+            ist: einen wählen, dann „Analyse öffnen“), „Neuer Wettkampf“ (außerhalb Frankreichs) und „Neues Training“. Eine Analyse wird
             dann Bahn für Bahn vorbereitet:</p>
           ${list([
             html`<b>Die Karte</b>: ein Bild, ein PDF oder ein KMZ, unverändert gespeichert, ohne Qualitätsverlust.`,
@@ -482,12 +482,12 @@ export function build(X) {
             was die Läufer tun können (ihren Track hinzufügen, „Einzelanalyse“ auf deiner Karte, „Meine Karten“, Kommentare, Routenwahlen,
             3D-Ansicht, Video, berechnete Routen) und die Nutzung: die Konten, die sie geöffnet haben, die Tracks pro Bahn, wer sie allein
             abgespielt hat, ohne einen Track zu teilen — nur Zahlen, nie wer.</p>
-          <p>Die Läufer finden sie in Coach („Kartenanalyse › Mit den anderen vergleichen“). Die Bahnlegung kann ihre Bahnen auch samt Karte in eine Kartenanalyse veröffentlichen (bei einem
+          <p>Die Läufer finden sie in Coach („Analyse › Mit den anderen vergleichen“). Die Bahnlegung kann ihre Bahnen auch samt Karte in eine Analyse veröffentlichen (bei einem
             Wettkampf nach dem Lauf).</p>`)}`,
       declarer: () => html`
         ${slide("Orga", "Einen Wettkampf erstellen, außerhalb Frankreichs", html`
           <p>Die französischen Wettkämpfe kommen aus dem Kalender ${fr ? "der FFCO" : "des französischen Verbands"}. In den anderen Ländern erstellt ein Konto, das Mitglied des Landes ist, seinen
-            Wettkampf selbst, im Kasten „Meine erstellten Wettkämpfe“ der Seiten Ergebnisse und Startzeiten und im Reiter „Neuer Wettkampf“ der Kartenanalysen: Land, Verein, Name, Datum, Ort,
+            Wettkampf selbst, im Kasten „Meine erstellten Wettkämpfe“ der Seiten Ergebnisse und Startzeiten und im Reiter „Neuer Wettkampf“ der Analysen: Land, Verein, Name, Datum, Ort,
             Disziplin, Format, Website. Er erscheint dann in Arena bei den Wettkämpfen seines Landes, und sein Veranstalter kann dort Startliste,
             Ergebnisse und Analysen hochladen. Wer ihn erstellt hat, wird nicht veröffentlicht.</p>`)}`,
     });

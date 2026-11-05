@@ -20,7 +20,7 @@ export function build(X) {
     arena: html`The competitions: the calendar, the organisers' results, live results and the split-time analysis.`,
     coach: owner ? html`Training: GPS track analyses, control descriptions, map symbols, games and the MAS.`
       : html`Training: GPS track analyses, games and the MAS.`,
-    orga: html`The organisers' tools: results, start times, live feed, GPS tracking, map analyses and course setting.`,
+    orga: html`The organisers' tools: results, start times, live feed, GPS tracking, analyses and course setting.`,
   };
 
   // ======================================================================================================
@@ -65,7 +65,7 @@ export function build(X) {
   // ======================================================================================================
   // Arena
   // ======================================================================================================
-  const ARENA = [["competitions", "The competitions"], ["resultats", "Results"], ["direct", "Live"], ["analyse", "Race analysis"]];
+  const ARENA = [["competitions", "The competitions"], ["resultats", "Results"], ["direct", "Live"], ["analyse", "Analysis"]];
   function arena() {
     return chapters(ARENA, {
       competitions: () => html`
@@ -123,7 +123,7 @@ export function build(X) {
             html`As soon as a split time comes in, “Analysis” analyses the race live.`,
           ])}`)}`,
       analyse: () => html`
-        ${slide("Arena", "Race analysis", html`
+        ${slide("Arena", "Analysis", html`
           <p>When split times are published, a race's page analyses them course by course, in several views: Table, Gaps, Passings, Legs, Profile,
             Head-to-head, Groups, Autonomy, Regularity and Summary.</p>`)}
         <section class="mx-slide">
@@ -170,13 +170,13 @@ export function build(X) {
   // ======================================================================================================
   // Coach
   // ======================================================================================================
-  const COACH = [["carte", "Map analysis"], ["solo", "Solo analysis"], ["multi", "Compare with the other runners"], ["cartes", "My maps"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
+  const COACH = [["carte", "Analysis"], ["solo", "Solo analysis"], ["multi", "Compare with the other runners"], ["cartes", "My maps"], ...(owner ? [["definitions", "Control descriptions"], ["symboles", "Map symbols"]] : []),     // (the accounts named Le Helloco only, auth.owner)
     ["jeux", "Games"], ["vma", "MAS"], ["routes", "Computed routes"]];     // (every account's since 2026-11-04)
   function coach() {
     return chapters(COACH, {
       carte: () => html`
-        ${slide("Coach", "Map analysis", html`
-          <p>${P("#/analyse-carte", "Map analysis")} opens on the list of the competitions and training sessions whose organiser has published the map and courses.</p>
+        ${slide("Coach", "Analysis", html`
+          <p>${P("#/analyse-carte", "Analysis")} opens on the list of the competitions and training sessions whose organiser has published the map and courses.</p>
           ${list([
             html`<b>The list</b> is filtered by period, by country (above the list), by type (competitions or training sessions), by organising club and by name;
               on a computer, the country's map is beside it, and the event's map shows as a thumbnail under the mouse.`,
@@ -188,7 +188,7 @@ export function build(X) {
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Solo analysis", html`
-          <p>${P("#/analyse-solo", "Solo analysis")} replays your race on your map with your GPS track. You reach it from ${P("#/analyse-carte", "Map analysis")}:
+          <p>${P("#/analyse-solo", "Solo analysis")} replays your race on your map with your GPS track. You reach it from ${P("#/analyse-carte", "Analysis")}:
             “Add my own event” (a training session, any outing, or a competition whose map you have: the page offers its published split times when the track is
             from it), or the map the organiser has published, with no map to provide and no calibration to do.</p>
           ${list([
@@ -267,7 +267,7 @@ export function build(X) {
             an estimated time — and measures each runner's own route on the same model. In ${P("#/analyse-solo", "Solo analysis")}, every leg is
             computed and the "Routes" tab, left of the map, lists them leg by leg (the settings are in the "Route computing" tab, on the right); in “${P("#/analyse-club", "Compare with the other runners")}”, the leg shown, with the list of runners.
             It is a prototype: the routes follow the map as Ozimut reads it, and that reading can be wrong. The computing starts by itself; it is stopped in
-            the "Route computing" tab, and the organiser of a map analysis can switch it off for their event.</p>`)}
+            the "Route computing" tab, and the organiser of an analysis can switch it off for their event.</p>`)}
         ${slide("Coach · trial", "1. Reading the map by its colours", html`
           <p>The map is an image: Ozimut knows only its colours. Each pixel is classed: white (runnable forest), yellow (open land, lighter or
             darker), the three greens by their depth, olive (out of bounds), and the "inks" printed over them — black, grey, brown, blue and the
@@ -310,7 +310,7 @@ export function build(X) {
           <p>In Solo analysis, an OCAD or Mapper file dropped alone <b>is</b> the map: drawn here, the track placed by its georeferencing. Dropped
             with an image of the map — or chosen in the "Computed routes" box, in both analyses — it serves the routes, placed on the image by its
             georeferencing: it must have one, and cover the map shown.</p>
-          <p>A map analysis published from the course setting, or whose courses come from an OCAD project (Orga › Map analyses), keeps what
+          <p>An analysis published from the course setting, or whose courses come from an OCAD project (Orga › Analyses), keeps what
             the organiser's OCAD map says of the terrain: its routes read its symbols with no file to drop, and the out-of-bounds areas and the
             boundaries not to be crossed that the setter drew on the course are part of it. Only that drawing of the terrain is sent with the
             course, never the OCAD file.</p>`)}
@@ -386,7 +386,7 @@ export function build(X) {
   // Orga (« Course setting », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
   const ORGA = [["qui", "Who organises"], ["resultats", "Results"], ["horaires", "Start times"], ["direct", "Live feed"], ["suivi", "GPS tracking"],
-    ["analyses", "Map analyses"], ["declarer", "Created competitions"]];
+    ["analyses", "Analyses"], ["declarer", "Created competitions"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
@@ -395,7 +395,7 @@ export function build(X) {
             competition's organiser is ${fr ? "any member of its organising club — the club of their latest known race — or " : ""}the account that
             declared it, outside France. A training session can be created by any account.</p>
           ${list([
-            html`${P("#/orga-analyses", "Map analyses")}: preparing the map analysis of the club's competitions and of its training sessions.`,
+            html`${P("#/orga-analyses", "Analyses")}: preparing the analysis of the club's competitions and of its training sessions.`,
             html`${P("#/orga-resultats", "Results")} and ${P("#/orga-horaires", "Start times")}: uploading the results and the start list.`,
             html`${P("#/orga-direct", "Live feed")}: broadcasting the results live from the timing software, and giving the GPS tracking link.`,
             html`${P("#/orga-tracer", "Course setting")}: setting the courses; its guide is the ${D("tracer", "Course setting")} tab.`,
@@ -408,7 +408,7 @@ export function build(X) {
             <div class="mx-step"><b>The file</b>An IOF XML export from your software (the best: it carries the courses and the split times), or OE or MeOS
               HTML, or a PDF; zipped or not, 30 MB at most.</div>
             <div class="mx-step"><b>The check</b>The file is read in your browser, nothing is sent: summary, results course by course, the timing check
-              (units set wrong, cards not cleared), and every view of the race analysis.</div>
+              (units set wrong, cards not cleared), and every view of the analysis.</div>
             <div class="mx-step"><b>Publishing</b>“Publish” sends it: the race appears in Arena within minutes, marked as uploaded by the organiser, and
               is no longer looked for elsewhere. A new upload replaces the previous one.</div>
           </div>`)}`,
@@ -446,10 +446,10 @@ export function build(X) {
             its link in ${P("#/orga-direct", "Orga › Live feed")}: it appears on the competition in Arena, with its results and live page. Only the link is
             published.</p>`)}`,
       analyses: () => html`
-        ${slide("Orga", "Preparing a map analysis", html`
-          <p>${P("#/orga-analyses", "Map analyses")} has four tabs: “Opened analyses” (those already opened, where the page opens: choose one,
+        ${slide("Orga", "Preparing an analysis", html`
+          <p>${P("#/orga-analyses", "Analyses")} has four tabs: “Opened analyses” (those already opened, where the page opens: choose one,
             then “Manage the analysis”), “Open a competition” (your club's competitions of the last 60 days whose analysis is not opened yet: choose
-            one, then “Open the map analysis”), “New competition” (outside France) and “New training session”. A map analysis is then prepared
+            one, then “Open the analysis”), “New competition” (outside France) and “New training session”. An analysis is then prepared
             course by course:</p>
           ${list([
             html`<b>The map</b>: an image, a PDF or a KMZ, kept as it is, with no loss of quality.`,
@@ -461,12 +461,12 @@ export function build(X) {
             it, the publication (a new analysis stays a draft only the organisers see, until “Publish”), what the runners can do (add their track,
             “Solo analysis” on your map, “My maps”, comments, route choices, 3D view, video, computed routes), and the attendance: the accounts that
             opened it, the tracks per course, those who replayed it alone without sharing a track — counts only, never who.</p>
-          <p>Runners find it in Coach (“Map analysis › Compare with the other runners”). Course setting can also publish its courses, map included, to a map analysis (after the race for
+          <p>Runners find it in Coach (“Analysis › Compare with the other runners”). Course setting can also publish its courses, map included, to an analysis (after the race for
             a competition).</p>`)}`,
       declarer: () => html`
         ${slide("Orga", "Creating a competition, outside France", html`
           <p>French competitions come from ${fr ? "FFCO's" : "the French federation's"} calendar. In the other countries, an account that is a member of the country creates its competition
-            itself, in the “My created competitions” box of the Results and Start times pages, and in the “New competition” tab of Map analyses: country, club, name, date, place,
+            itself, in the “My created competitions” box of the Results and Start times pages, and in the “New competition” tab of Analyses: country, club, name, date, place,
             discipline, format, website. It then appears in Arena among its country's competitions, and its organiser can upload its start list, results
             and analyses. Who created it is not published.</p>`)}`,
     });
