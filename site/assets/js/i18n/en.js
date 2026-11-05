@@ -4776,7 +4776,7 @@ export default {
   "sh.followAll": "All the runners shown",
   "sh.followAll.tip": "Keep every ticked runner on screen; ⌖ on a runner to follow only them; no ⌖ lit: the map stays where you leave it.",
   "sh.tab.circuits.tip": "The course and its runners: tick those to show, ⌖ to follow one runner or all; add your track.",
-  "sh.tab.legs.tip": "One runner's legs: time, best time and rank, time lost, detour and pace. Click a row to see the leg on the map.",
+  "sh.tab.legs.tip": "One runner's legs: time, best time and rank, time lost, detour and pace. Click a row to see the leg on the map. A chosen leg shows each runner's route, all leaving the control together; ⏮ ⏭ for the next leg, “Whole course” to go back.",
   "sh.tab.views.tip": "Splits, gaps, route variants and exercises, for the runners shown.",
   "an.tab.routes.tip": "The best routes computed on the map, leg by leg, and each runner's own route measured on the same model.",
   "sh.tab.own.tip": "Your own curves (pace, heart rate, cadence…), from your file kept in this browser; only you see them.",

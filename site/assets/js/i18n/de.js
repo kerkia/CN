@@ -4995,7 +4995,7 @@ export default {
   "sh.followAll": "Alle angezeigten Läufer",
   "sh.followAll.tip": "Alle angehakten Läufer im Bild halten; ⌖ bei einem Läufer, um nur ihm zu folgen; kein ⌖ aktiv: Die Karte bleibt, wo du sie lässt.",
   "sh.tab.circuits.tip": "Die Bahn und ihre Läufer: Hake die anzuzeigenden an, ⌖, um einem Läufer oder allen zu folgen; füge deinen Track hinzu.",
-  "sh.tab.legs.tip": "Die Teilstrecken eines Läufers: Zeit, Bestzeit und Rang, verlorene Zeit, Umweg und Tempo. Klicke eine Zeile, um die Teilstrecke auf der Karte zu sehen.",
+  "sh.tab.legs.tip": "Die Teilstrecken eines Läufers: Zeit, Bestzeit und Rang, verlorene Zeit, Umweg und Tempo. Klicke eine Zeile, um die Teilstrecke auf der Karte zu sehen. Eine gewählte Teilstrecke zeigt die Route jedes Läufers, alle gemeinsam vom Posten gestartet; ⏮ ⏭ zur benachbarten Teilstrecke, „Ganze Bahn“ zurück.",
   "sh.tab.views.tip": "Zwischenzeiten, Abstände, Routenvarianten und Übungen, für die angezeigten Läufer.",
   "an.tab.routes.tip": "Die besten auf der Karte berechneten Routen, Teilstrecke für Teilstrecke, und die Route jedes Läufers, mit demselben Modell gemessen.",
   "sh.tab.own.tip": "Deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz…), aus deiner in diesem Browser gespeicherten Datei; nur du siehst sie.",

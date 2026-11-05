@@ -108,7 +108,8 @@ function legsView(el, X) {
       <label class="field"><span>${t("prov.runner")}</span><select id="sh-legs-of">${R.map((r) => html`<option value="${r.uid}" ${raw(r === who ? "selected" : "")}>${r.name}</option>`)}</select></label></div>
     <div class="table-wrap" title="${t("sh.legs.hint", { src: t(`sh.legs.src.${field.source}`) })}"><table class="data compact sh-legs"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}</th><th class="r">${t("an.col.best")}</th>
       <th class="r">${t("an.col.rank")}</th><th class="r">${t("an.col.lost")}</th><th class="r">${t("an.col.trace")}</th><th class="r">${t("an.col.straight")}</th><th class="r">${t("an.col.detour")}</th><th class="r">${t("an.col.pace")}</th></tr></thead>
-    <tbody>${rows.map((l) => html`<tr data-leg="${l.j}" class="${l.mistake ? "an-mistake" : ""}" style="cursor:pointer">
+    <tbody><tr data-leg="0" class="sh-legs-all${X.leg ? "" : " cur"}" style="cursor:pointer"><td colspan="9">${t("sh.leg.all")}</td></tr>
+    ${rows.map((l) => html`<tr data-leg="${l.j}" class="${l.mistake ? "an-mistake" : ""}${l.j === X.leg ? " cur" : ""}" style="cursor:pointer">
       <td>${ctrlLabel(l.j)}${ctrls[l.j].code ? html` <span class="muted">${ctrls[l.j].code}</span>` : ""}</td>
       <td class="r num">${l.time != null ? clock(l.time) : "—"}</td><td class="r num">${l.best != null ? clock(l.best) : "—"}</td>
       <td class="r num">${l.rank != null ? html`${l.rank}<span class="muted">/${l.n}</span>` : "—"}</td>

@@ -4995,7 +4995,7 @@ export default {
   "sh.followAll": "Todos los corredores mostrados",
   "sh.followAll.tip": "Mantener en pantalla a todos los corredores marcados; ⌖ en un corredor para seguir solo a él; ningún ⌖ activo: el mapa se queda donde lo dejes.",
   "sh.tab.circuits.tip": "El recorrido y sus corredores: marca los que mostrar, ⌖ para seguir a un corredor o a todos; añade tu track.",
-  "sh.tab.legs.tip": "Los tramos de un corredor: tiempo, mejor tiempo y puesto, tiempo perdido, rodeo y ritmo. Haz clic en una fila para ver el tramo en el mapa.",
+  "sh.tab.legs.tip": "Los tramos de un corredor: tiempo, mejor tiempo y puesto, tiempo perdido, rodeo y ritmo. Haz clic en una fila para ver el tramo en el mapa. Un tramo elegido muestra la ruta de cada corredor, saliendo todos juntos del control; ⏮ ⏭ para el tramo vecino, «Todo el recorrido» para volver.",
   "sh.tab.views.tip": "Tiempos parciales, diferencias, variantes de ruta y ejercicios, de los corredores mostrados.",
   "an.tab.routes.tip": "Las mejores rutas calculadas en el mapa, tramo a tramo, y la de cada corredor medida con el mismo modelo.",
   "sh.tab.own.tip": "Tus propias curvas (ritmo, frecuencia cardíaca, cadencia…), a partir de tu archivo guardado en este navegador; solo tú las ves.",

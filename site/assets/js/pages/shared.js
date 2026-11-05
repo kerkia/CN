@@ -363,6 +363,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted">${fmtDate(A.date)} · ${t(A.kind === "race" ? "ma.kind.race" : "sh.kind.club")}</span>
       <span class="sh-tabs" id="sh-tabs"></span>
       ${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}
+      <span class="sh-top-add" id="sh-top-add"></span>
       <span class="muted sh-access">${t(`sh.access.${A.vis === "public" && A.visitors ? "all" : A.vis}`)}</span></div>
     <div id="sh-viewer"></div>
     <div id="sh-splits" class="sh-splits" hidden></div>`;
@@ -1859,12 +1860,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <span class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></span>
         <span class="fw-btns">${raw(fwButtons())}</span></div>
       <div class="an-bar-row sh-bar-opts">
-        <label><span>${t("sh.leg")}</span><select id="sh-leg"><option value="0">${t("sh.leg.all")}</option>${Array.from({ length: legsN }, (_, j) => html`<option value="${j + 1}" ${raw(j + 1 === leg ? "selected" : "")}>${legName(j + 1)}</option>`)}</select></label>
-        ${leg ? "" : html`<label title="${modeHint}"><span>${t("sh.mode")}</span><select id="sh-mode">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
+        ${leg ? html`<span class="sh-bar-leg" title="${modeHint}"><b>${legName(leg)}</b> <button type="button" class="btn btn-sm" id="sh-leg-all">← ${t("sh.leg.all")}</button></span>` : html`<label title="${modeHint}"><span>${t("sh.mode")}</span><select id="sh-mode">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
         ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
-        <span class="muted sh-mode-hint" title="${modeHint}">${modeHint}</span>
-        ${you.visitor ? "" : html`<span class="sh-bar-add">${runners.some((r) => r.mine) || !canAdd ? "" : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
-          ${admin ? html`<button type="button" class="btn btn-sm" id="sh-bar-test">${t("sh.test.add")}</button>` : ""}</span>`}</div>`;
+        </div>`;
+    const topAdd = $("#sh-top-add");
+    if (topAdd) topAdd.innerHTML = you.visitor ? "" : html`${runners.some((r) => r.mine) || !canAdd ? "" : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
+      ${admin ? html`<button type="button" class="btn btn-sm" id="sh-bar-test">${t("sh.test.add")}</button>` : ""}`;
     rightP.pane("display").innerHTML = html`
         <div class="an-opts">
           <label><span>${t("an.width")}</span><select id="sh-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
@@ -1888,7 +1889,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
     $("#sh-speed").addEventListener("change", (e) => { speed = Number(e.target.value); });
     $("#sh-time").addEventListener("input", (e) => { T = Number(e.target.value); still = false; frame(); });
-    $("#sh-leg").addEventListener("change", (e) => setLeg(Number(e.target.value)));
+    $("#sh-leg-all")?.addEventListener("click", () => setLeg(0));
     $("#sh-mode")?.addEventListener("change", (e) => { mode = e.target.value; reset(); });
     $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); reset(); });
     $("#sh-tail")?.addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); mv.draw(); });

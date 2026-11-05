@@ -3945,7 +3945,7 @@ export default {
   "sh.followAll": "Tous les coureurs affichés",
   "sh.followAll.tip": "Garder tous les coureurs cochés à l'écran ; ⌖ sur un coureur pour ne suivre que lui, aucun ⌖ allumé : la carte reste où vous la laissez.",
   "sh.tab.circuits.tip": "Le circuit et ses coureurs : cochez ceux à afficher, ⌖ pour suivre un coureur ou tous ; ajoutez votre trace.",
-  "sh.tab.legs.tip": "Les inter-postes d'un coureur : temps, meilleur temps et rang, temps perdu, détour et allure. Cliquez une ligne pour voir l'inter-poste sur la carte.",
+  "sh.tab.legs.tip": "Les inter-postes d'un coureur : temps, meilleur temps et rang, temps perdu, détour et allure. Cliquez une ligne pour voir l'inter-poste sur la carte. Un inter-poste choisi montre l'itinéraire de chacun, partis ensemble du poste ; ⏮ ⏭ pour passer à l'inter-poste voisin, « Tout le parcours » pour revenir.",
   "sh.tab.views.tip": "Temps intermédiaires, écarts, variantes d'itinéraire et exercices, sur les coureurs affichés.",
   "an.tab.routes.tip": "Les meilleurs itinéraires calculés sur la carte, inter-poste par inter-poste, et celui de chaque coureur mesuré sur le même modèle.",
   "sh.tab.own.tip": "Vos propres courbes (allure, fréquence cardiaque, cadence…), d'après votre fichier gardé dans ce navigateur ; vous seul les voyez.",

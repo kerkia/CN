@@ -1918,9 +1918,10 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
 .sh-layout[data-lcol="1"] #sh-split-l::after, .sh-layout[data-rcol="1"] #sh-split-r::after { display: none; }
 .sh-bar-opts { gap: 4px 14px; font-size: 13px; }
 .sh-bar-opts label { display: inline-flex; align-items: center; gap: 6px; }
-.sh-mode-hint { flex: 1 1 200px; min-width: 0; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sh-bar-add { display: flex; gap: 6px; flex: 0 0 auto; margin-left: auto; }
-.sh-bar-opts:has(.sh-bar-add) .sh-mode-hint { flex-basis: 40px; }   /* the hint gives way to the buttons: one line */
+.sh-bar-leg { display: inline-flex; align-items: center; gap: 8px; }
+.sh-top .sh-top-add { display: inline-flex; gap: 6px; margin-left: auto; } .sh-top .sh-top-add + .sh-access { margin-left: 0; }
+.sh-legs tr.cur > td { background: var(--flag-wash); } .sh-legs tr.cur > td:first-child { box-shadow: inset 3px 0 0 var(--flag); }
+.sh-legs tr.sh-legs-all > td { font-style: italic; color: var(--ink-2); }
 .sh-lp [data-pane="own"]:not([hidden]) { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
 .sh-map { position: relative; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #e9e6dc; min-height: 0; }
 .sh-map canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
