@@ -84,7 +84,7 @@ export async function thumbnail(image) {
   const w = await toBlob(c, "image/webp", 0.8).catch(() => null);
   return w && w.type === "image/webp" ? w : toBlob(c, "image/jpeg", 0.82);
 }
-const typeOf = (blob, name = "") => (/^image\/(jpeg|png|webp)$/.test(blob.type) ? blob.type
+export const typeOf = (blob, name = "") => (/^image\/(jpeg|png|webp)$/.test(blob.type) ? blob.type
   : ({ jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" })[(name.split(".").pop() || "").toLowerCase()] || "");
 
 let ffP = null;

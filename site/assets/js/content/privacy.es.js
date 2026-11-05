@@ -108,7 +108,7 @@ export const body = (SITE, { world = false } = {}) => `
         cuenta, pero nunca la frecuencia cardiaca ni los demás datos personales; eliminar el enlace pone fin al uso compartido. Puedes
         eliminar una carrera o un mapa en cualquier momento; todo se borra con tu cuenta. Una solicitud de importación desde DOMA es un
         mensaje enviado al equipo de Ozimut, como los de «Contacto».</p>
-      <p>Un análisis hecho en «Análisis individual» se guarda allí de la misma manera en cuanto ves su carrera, salvo si desmarcas «Guardar este análisis en mi cuenta»: el mapa, y tu carrera solo como posiciones y horas. Aparece en «Análisis de mapa», visible solo para ti; lo eliminas en «Mis mapas».</p>
+      <p>Si marcas «Guardar el análisis» junto a «Ver la carrera» en «Análisis individual» (marcado por defecto), el mapa y tu carrera — solo posiciones y horas, nada más del reloj — se guardan en tu cuenta, aparte de «Mis mapas»: solo tú los ves, en «Análisis de mapa», donde vuelves a reproducir o borras el análisis. Un mapa se guarda allí una sola vez y se va con el último análisis que lo muestra.</p>
       <h2 style="font-size:16px">Reserva de horas de salida</h2>
       <p>Cuando los organizadores de una competición abren la reserva de sus horas de salida, una cuenta reserva una salida para sí
         misma y para los corredores que añade a «Mis corredores» (su familia, amigos, federados o no): su nombre y apellidos, el club

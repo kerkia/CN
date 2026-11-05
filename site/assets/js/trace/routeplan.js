@@ -242,7 +242,7 @@ export const minKm = (sPerM) => { const v = Math.round(sPerM * 1000); return `${
  */
 export function panelHtml(s, { on, picture, decision = false, status = "", progress = null, warn = "", auto = null, vector = null, calib = "" } = {}) {
   const range = (id, v, lo, hi, step, label, unit = "") => html`<label><span>${label}</span><span class="rc-range"><input type="range" id="${id}" min="${lo}" max="${hi}" step="${step}" value="${v}"><b id="${id}-v">${v}${unit}</b></span></label>`;
-  return html`<details class="an-settings rc-box" id="rc-box" open><summary>${t("rc.title")} <span class="pill rc-pill">${t("rc.admin")}</span></summary>
+  return html`<details class="an-settings rc-box" id="rc-box" open><summary>${t("rc.title")}</summary>
     <label class="rc-on"><input type="checkbox" id="rc-on" ${raw(on ? "checked" : "")}> ${t("rc.on")}</label>
     <div class="muted rc-status" id="rc-status" ${raw(progress == null ? "hidden" : "")}>${status}</div>
     <progress class="rc-prog" id="rc-prog" max="1" value="${progress ?? 0}" ${raw(progress == null ? "hidden" : "")}></progress>

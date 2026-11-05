@@ -93,6 +93,17 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
     await env.DB.batch([env.DB.prepare("DELETE FROM mymap_runs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("DELETE FROM mymap_links WHERE user_id = ?").bind(user.id), env.DB.prepare("DELETE FROM mymaps WHERE user_id = ?").bind(user.id)]);
   } catch (e) { /* no tables yet (migration 0019) */ }
+  // its kept solo analyses and their maps (api/solo)
+  try {
+    if (env.BUCKET) {
+      let cursor;
+      do {
+        const r = await env.BUCKET.list({ prefix: `solo/${user.id}/`, cursor, limit: 1000 });
+        if (r.objects.length) await env.BUCKET.delete(r.objects.map((o) => o.key));
+        cursor = r.truncated ? r.cursor : undefined;
+      } while (cursor);
+    }
+  } catch (e) { /* the account goes all the same */ }
   // « Nutrition »'s articles stay, under the name they were published with (migration 0017)
   try { await env.DB.prepare("UPDATE nut_posts SET author_id = NULL WHERE author_id = ?").bind(user.id).run(); } catch (e) {}
   try { await env.DB.prepare("DELETE FROM nut_likes WHERE user_id = ?").bind(user.id).run(); } catch (e) {}      // its likes go

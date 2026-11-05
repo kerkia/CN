@@ -111,7 +111,7 @@ export const body = (SITE, { world = false } = {}) => `
         oder andere persönliche Daten; das Löschen des Links beendet das Teilen. Du kannst einen Lauf oder eine Karte jederzeit löschen;
         alles wird mit deinem Konto gelöscht. Eine Anfrage zum Import aus DOMA ist eine Nachricht an das Ozimut-Team, wie die über
         „Kontakt“.</p>
-      <p>Eine in der „Einzelanalyse“ gemachte Analyse wird dort auf dieselbe Weise gespeichert, sobald du ihren Lauf ansiehst, außer du entfernst das Häkchen bei „Diese Analyse in meinem Konto behalten“: die Karte und dein Lauf, nur als Positionen und Zeiten. Sie erscheint in der „Kartenanalyse“, nur für dich sichtbar; du löschst sie in „Meine Karten“.</p>
+      <p>Wenn du in der „Einzelanalyse“ neben „Lauf ansehen“ das Häkchen bei „Analyse speichern“ setzt (standardmäßig gesetzt), werden die Karte und dein Lauf — nur Positionen und Zeiten, sonst nichts von der Uhr — in deinem Konto behalten, getrennt von „Meine Karten“: nur du siehst sie, in der „Kartenanalyse“, wo du die Analyse erneut abspielst oder löschst. Eine Karte wird dort nur einmal behalten und geht mit der letzten Analyse, die sie zeigt.</p>
       <h2 style="font-size:16px">Reservierung der Startzeiten</h2>
       <p>Wenn die Veranstalter eines Wettkampfs die Reservierung der Startzeiten öffnen, reserviert ein Konto einen Start für sich
         und für die Läufer, die es unter „Meine Läufer“ hinzufügt (seine Familie, Freunde, mit oder ohne Verein): ihr Vor- und

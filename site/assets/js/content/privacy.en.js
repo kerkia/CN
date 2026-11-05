@@ -98,7 +98,7 @@ export const body = (SITE, { world = false } = {}) => `
         link sees them with your name, even without an account, but never your heart rate or other personal data; deleting the link
         ends the sharing. You can delete a race or a map at any time; everything is erased with your account. A request to import from
         DOMA is a message sent to the Ozimut team, like those of “Contact us”.</p>
-      <p>An analysis made in “Solo analysis” is saved there the same way as soon as you view its race, unless you untick “Keep this analysis in my account”: the map, and your race as positions and times only. It appears in “Map analysis”, visible to you alone; you delete it in “My maps”.</p>
+      <p>If you tick “Save the analysis” beside “View the race” in “Solo analysis” (ticked by default), the map and your race — positions and times only, nothing else from the watch — are kept in your account, apart from “My maps”: you alone see them, in “Map analysis”, where you replay or delete the analysis. A map is kept there once and goes with the last analysis showing it.</p>
       <h2 style="font-size:16px">Start time booking</h2>
       <p>When a competition's organisers open its start times to booking, an account books a start for itself and for the runners
         it adds to “My runners” (its family, friends, members of a club or not): their first and last names, the club and its

@@ -110,7 +110,7 @@ export const body = (SITE, { world = false } = {}) => `
         ni les autres données personnelles  supprimer le lien arrête ce partage. Vous supprimez une course ou une carte à tout
         moment  tout est effacé avec votre compte. Une demande d'import depuis DOMA est un message envoyé à l'équipe Ozimut, comme
         ceux de « Nous écrire ».</p>
-      <p>Une analyse faite dans « Analyse solo » y est enregistrée de la même façon dès que vous en voyez la course, sauf si vous décochez « Garder cette analyse dans mon compte » : la carte, et votre course en positions et heures seulement. Elle apparaît dans « Analyse de carte », visible de vous seul ; vous la supprimez dans « Mes cartes ».</p>
+      <p>Si vous cochez « Enregistrer l'analyse » à côté de « Voir la course » dans « Analyse solo » (coché par défaut), la carte et votre course — positions et heures seulement, rien d'autre de la montre — sont gardées dans votre compte, à part de « Mes cartes » : vous seul les voyez, dans « Analyse de carte », où vous rejouez ou supprimez l'analyse. Une carte n'y est gardée qu'une fois et part avec la dernière analyse qui la montre.</p>
       <h2 style="font-size:16px">Réservation des horaires de départ</h2>
       <p>Quand les organisateurs d'une compétition ouvrent la réservation de ses horaires de départ, un compte réserve un départ pour
         lui-même et pour les coureurs qu'il ajoute à « Mes coureurs » (sa famille, des amis, licenciés ou non) : leur prénom, leur nom,

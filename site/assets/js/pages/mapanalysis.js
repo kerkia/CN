@@ -15,7 +15,7 @@ import * as country from "../country.js";
 import * as agendaMap from "../agendamap.js";
 import { getProv, clock } from "./provisional.js";
 import { replaceQuery } from "../app.js";
-import * as MM from "../trace/mymaps.js";
+import * as SK from "../trace/solokeep.js";
 
 const HOME = "#/analyse-carte";
 /** Where a published event opens: its analysis with every runner (`add`: its track drop at once), or « Analyse solo » on its map. */
@@ -76,15 +76,13 @@ export async function render(main, r) {
       cc: a.cc || (rc ? country.of(rc) : ""), org: a.orgName || rc?.org || "", courses: a.courses, runners: a.runners || 0,
       locked: a.access === "locked", clubOnly: a.vis === "club", draft: !!a.draft, organiser: !!a.organiser, thumb: a.thumb ?? null };
   });
-  // the account's solo analyses (owner, 2026-11-05): each run « Analyse solo » kept in « Mes cartes », seen by its owner alone,
-  // reopened by « Rejouer » — in every country's list
+  // the account's kept solo analyses (owner, 2026-11-05: « Analyse solo »'s « Enregistrer l'analyse », trace/solokeep.js), seen
+  // by their owner alone, replayed or deleted here — in every country's list
   if (me && !me.demo) {
     try {
-      const mm = await MM.list();
-      for (const m of mm.maps || []) for (const run of m.runs || []) {
-        if (run.source !== "solo" && run.source !== "drawn") continue;
-        all.push({ key: `s:${run.id}`, solo: { m, run }, name: run.title || m.title || t("ma.solo.untitled"), date: run.day || m.day || "", kind: "solo",
-          place: m.place || "", pos: centreOf(m), cc: "", org: "", courses: null, runners: null, thumb: m.thumb ? "mm" : null });
+      for (const a of await SK.list()) {
+        all.push({ key: `s:${a.id}`, solo: a, name: a.title || t("ma.solo.untitled"), date: a.day || "", kind: "solo",
+          place: "", pos: centreOf(a), cc: "", org: "", courses: null, runners: null, thumb: "solo" });
       }
     } catch (e) { console.warn(e); }                     // the events alone
   }
@@ -163,7 +161,7 @@ export async function render(main, r) {
   // ---- a circuit's thumbnail (the organiser's map with its course drawn), read once a visit
   const thumbs = new Map();
   const thumbOf = (e) => {
-    if (e.solo) return Promise.resolve(e.solo.m.thumb ? MM.mapUrl(e.solo.m.id, "thumb") : null);
+    if (e.solo) return Promise.resolve(SK.thumbUrl(e.solo.sha));
     if (e.thumb == null || (e.locked && !keyOf(e.key))) return Promise.resolve(null);
     if (!thumbs.has(e.key)) thumbs.set(e.key, api(`/${e.key}/thumb/${e.thumb}`, { blob: true, key: keyOf(e.key) }).then((b) => URL.createObjectURL(b)).catch(() => null));
     return thumbs.get(e.key);
@@ -202,22 +200,27 @@ export async function render(main, r) {
     $("#ma-unlock")?.addEventListener("click", go);
     $("#ma-pw")?.addEventListener("keydown", (ev) => { if (ev.key === "Enter") go(); });
   }
-  /** A solo analysis chosen: what it is, and the way back into it (« Rejouer ») or to its map in « Mes cartes ». */
+  /** A kept solo analysis chosen: what it is, « Rejouer l'analyse » (straight to its playback) and « Supprimer l'analyse ». */
   function soloDetail(e, box) {
-    const { m, run } = e.solo;
-    const facts = [fmtDate(e.date), e.place, run.dist ? `${fmt(run.dist / 1000, 2)} km` : "", run.dur ? clock(run.dur) : ""].filter(Boolean);
+    const a = e.solo;
+    const facts = [fmtDate(e.date), a.dist ? `${fmt(a.dist / 1000, 2)} km` : "", a.dur ? clock(a.dur) : ""].filter(Boolean);
     box.innerHTML = html`<div class="card-body">
       <h2 class="ma-d-title">${e.name}</h2><p class="muted">${facts.join(" · ")}</p>
       <p><span class="tag">${t("ma.kind.solo")}</span> <span class="muted">${t("ma.solo.mine")}</span></p>
-      <div class="ma-ways"><button type="button" class="btn btn-primary ma-go" id="ma-replay"><b>${t("ma.solo.replay")}</b><span>${t("ma.solo.replay.hint")}</span></button>
-        <a class="btn ma-go" href="#/mes-cartes?carte=${m.id}"><b>${t("ma.solo.mymaps")}</b><span>${t("ma.solo.mymaps.hint")}</span></a></div>
+      <div class="ma-ways"><a class="btn btn-primary ma-go" href="#/analyse-solo?analyse=${a.id}"><b>${t("ma.solo.replay")}</b><span>${t("ma.solo.replay.hint")}</span></a>
+        <button type="button" class="btn ma-go" id="ma-solo-del"><b>${t("ma.solo.delete")}</b><span>${t("ma.solo.delete.hint")}</span></button></div>
       <p class="muted" id="ma-solo-note"></p>
       <div class="ma-d-thumb" id="ma-d-thumb" hidden><img alt="${t("ma.thumb.alt", { name: e.name })}"></div></div>`;
     thumbOf(e).then((url) => { const b = $("#ma-d-thumb"); if (url && b && selected === e.key) { $("img", b).src = url; b.hidden = false; } });
-    $("#ma-replay").addEventListener("click", async (ev) => {
+    $("#ma-solo-del").addEventListener("click", async (ev) => {
+      if (!confirm(t("ma.solo.delete.confirm", { name: e.name }))) return;
       ev.currentTarget.disabled = true;
-      try { await MM.replay(m, run, e.name); }
-      catch (err) { console.error(err); $("#ma-solo-note").textContent = t("ma.solo.err"); $("#ma-replay").disabled = false; }
+      try {
+        await SK.remove(a.id);
+        all.splice(all.indexOf(e), 1);
+        selected = null;
+        await onCountry();
+      } catch (err) { console.error(err); $("#ma-solo-note").textContent = t("ma.solo.delErr"); $("#ma-solo-del").disabled = false; }
     });
   }
   function select(key) {

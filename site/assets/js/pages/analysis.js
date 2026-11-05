@@ -155,6 +155,9 @@ export async function render(main, { query = {}, route } = {}) {
   // not the browser copied this tab's session) and goes on with the playback instead of stopping on the files
   if (query.tag && /^[a-z0-9]{6,40}$/.test(query.tag)) { try { sessionStorage.setItem("ocn.an.tag", query.tag); } catch (e) { /* this visit */ } }
   let autoPlay = query.play === "1";
+  // a kept analysis replayed (« Analyse de carte »'s « Rejouer l'analyse », trace/solokeep.js): opened straight on the playback
+  const keptId = /^[a-z2-9]{8,40}$/.test(query.analyse || "") ? query.analyse : null;
+  let openedKept = null;                                   // { id, title } of the kept analysis being played
   setTabParams(() => ({ tag: sessionTag(), play: document.body.classList.contains("an-theatre") ? "1" : null, d3: v3on ? "1" : null }));
   let autoV3 = query.d3 === "1";
   // « Analyse solo » (menu « Entrainement »): the same page with no race — a training, a map and one's trace
@@ -209,6 +212,7 @@ export async function render(main, { query = {}, route } = {}) {
     <div id="an-rf">${RF ? RF.html : ""}${perso ? "" : country.hint(races.map(country.of))}</div>
     <div class="filters" id="an-pick"></div>
     <section class="card" id="an-files"></section>
+    <section class="card an-opening" id="an-opening" hidden><div class="card-body"><span class="an-spin" aria-hidden="true"></span> ${t("an.opening")}</div></section>
     <div class="an-dropall" id="an-dropall" hidden>${t("an.dropAll")}</div>
     <div id="an-work" hidden>
       <div class="sh-top sh-top3 an-top" id="an-top" hidden></div>
@@ -488,15 +492,14 @@ export async function render(main, { query = {}, route } = {}) {
       ${drawBlock()}
       ${cutBlock()}
       ${genBlock()}
-      ${keepable() ? html`<label class="an-keep"><input type="checkbox" id="an-keep" ${raw(keepOn() ? "checked" : "")}> <b>${t("an.keep")}</b></label>
-        <p class="muted" style="font-size:13px;margin:2px 0 0">${t(keepOn() ? "an.keep.hint" : "an.keep.off")}</p>` : ""}
-      <p class="muted" style="font-size:13px;margin:10px 0 0">${keepable() && keepOn() ? t("an.private.kept") : t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
+      ${orgaMode ? html`<div style="margin-top:8px">${keepBox()}</div>` : ""}
+      <p class="muted" style="font-size:13px;margin:10px 0 0">${t("an.private")}${restoredFiles ? html` <span class="pill">${t("an.files.kept")}</span>` : ""}
         ${(files.map && !orgaMode) || files.trace ? html` <button type="button" class="btn btn-sm" id="an-forget" style="margin-left:8px">${t("an.forget")}</button>` : ""}</p>
       <details class="an-formats" ${raw(orgaMode ? "hidden" : "")}><summary>${t("an.formats")}</summary><ul>
         <li>${t("an.formats.map")}</li><li>${t("an.formats.trace")}</li><li>${t("an.formats.geo")}</li><li>${t("an.formats.iof")}</li><li>${t("an.formats.ocad")}</li></ul></details>
       </div>`;
     $("#an-in").addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
-    $("#an-keep")?.addEventListener("change", (e) => { try { localStorage.setItem("ocn.an.keep", e.target.checked ? "1" : "0"); } catch (err) { /* this visit */ } filesCard(); });
+    bindKeepBox($("#an-files"));
     $("#an-cam")?.addEventListener("change", (e) => { take([...e.target.files]); e.target.value = ""; });
     phone.bind("an-phone", { kind: orgaMode ? "trace" : "any", multiple: !orgaMode, onFiles: (f) => take(f) });
     $("#an-forget")?.addEventListener("click", () => {
@@ -1209,6 +1212,7 @@ export async function render(main, { query = {}, route } = {}) {
     // and a run replayed from « Mes cartes » (its georeference and controls kept): played at once too
     const replayGo = autoPlay && !!track?.drawn?.replay && drawnHere();
     if ((orgaGo || replayGo) && fit && offset != null && targets.filter((g) => g.pos && g.tEst != null).length >= 2) { orgaGo = false; autoPlay = false; finish(); }
+    else if (replayGo) openShown(false);
   }
   const median = (xs) => { const v = [...xs].sort((a, b) => a - b); return v.length ? v[Math.floor((v.length - 1) / 2)] : 0; };
   /** The trace's sharp turns (over 50°) with no control placed nearby, probed on the map for a ring: the rings found. */
@@ -1431,7 +1435,7 @@ export async function render(main, { query = {}, route } = {}) {
         : html`<div class="muted">${mode === "manual" ? t("an.cal.need", { n: need }) : status}</div>`}</div>
       <label class="an-opt" style="margin-top:8px"><input type="checkbox" id="an-north" ${raw(northUp ? "checked" : "")}> ${t("an.northUp")}</label></div>
       <div class="an-actions">
-        <button type="button" class="btn btn-primary" id="an-done" ${raw(fit && offset != null ? "" : "disabled")}>${t("an.cal.done")}</button>
+        <button type="button" class="btn btn-primary" id="an-done" ${raw(fit && offset != null ? "" : "disabled")}>${t("an.cal.done")}</button>${keepBox()}
         ${whose?.other ? html`<button type="button" class="btn btn-sm" id="an-switch" data-di="${whose.other.di}" data-ci="${whose.other.ci}" data-ri="${whose.other.ri}" title="${t("an.switch.hint")}">${t("an.switch", { o: whose.other.name })}</button>` : ""}
         ${mode === "manual" ? html`${taus ? "" : html`<button type="button" class="btn btn-sm" id="an-add">${t("an.cal.add")}</button>`}
           <button type="button" class="btn btn-sm" id="an-skip">${t("an.cal.skip")}</button>
@@ -1456,6 +1460,7 @@ export async function render(main, { query = {}, route } = {}) {
     });
     $("#an-clear")?.addEventListener("click", () => { targets.forEach((g) => { g.pos = null; g.tEst = null; }); cur = 0; savePositions(); recompute(); side(); draw(); });
     $("#an-done").addEventListener("click", finish);
+    bindKeepBox($("#an-side"));
     $("#an-manual")?.addEventListener("click", () => { mode = "manual"; cur = nextTarget(0); if (cur < 0) cur = 0; side(); draw(); });
     $("#an-auto")?.addEventListener("click", () => prepare({ fresh: true }));
     $("#an-north").addEventListener("change", (e) => { northUp = e.target.checked; prepare(); });
@@ -1764,6 +1769,7 @@ export async function render(main, { query = {}, route } = {}) {
   // ---- 4. the playback ----------------------------------------------------------------------------------------------
   function finish() {
     if (!fit || offset == null) return;
+    openShown(false);
     calibrated = true; marks = false; tNow = 0;
     savePositions(true);
     steps(4);
@@ -1778,7 +1784,7 @@ export async function render(main, { query = {}, route } = {}) {
     // the top line as « Analyse de carte »'s (owner, 2026-11-05): what is played, and on an organiser's map who may open it
     const rc0 = races.find((x) => x.key === key), day0 = parisDay(track.ms0 + offset * 1000);
     $("#an-top").innerHTML = html`<span class="sh-top-l">${orgaMode ? html`<b class="sh-title">${orga.A.title}</b><span class="muted">${[orga.A.date ? fmtDate(orga.A.date) : "", t(orga.A.kind === "race" ? "ma.kind.race" : "sh.kind.club")].filter(Boolean).join(" · ")}</span>`
-        : perso ? html`<b class="sh-title">${t("an.perso.title")}</b><span class="muted">${fmtDate(day0)}</span>`
+        : perso ? html`<b class="sh-title">${openedKept?.title || t("an.perso.title")}</b><span class="muted">${fmtDate(day0)}</span>`
         : html`<b class="sh-title">${rc0?.name || race?.name || ""}</b><span class="muted">${[fmtDate(day0), klass()?.name, withTimes ? runner()?.name : ""].filter(Boolean).join(" · ")}</span>`}</span>
       <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis}`)}</span>` : ""}<span class="muted an-kept" id="an-kept"></span><span class="fw-btns">${raw(fwButtons())}</span></span>`;
     $("#an-top").hidden = false;
@@ -1852,8 +1858,9 @@ export async function render(main, { query = {}, route } = {}) {
     ["#an-shot-zone", "#an-shot-type", "#an-shot-legend"].forEach((s) => $(s).addEventListener("change", shotSet));
     $("#an-shot").addEventListener("click", () => exportImage());
     // « Enregistrer dans Mes cartes » (owner, 2026-11-01): the map and the run as drawn here (trace/mymapsave.js)
-    if (!orgaOpt("mymaps", true) || track?.drawn?.replay) $("#an-mymaps").hidden = true;   // a replay is already there
-    else import("../trace/mymapsave.js").then((M) => M.mount($("#an-mymaps"), mmState, { kept: () => keptOf(), onKept: setKept })).catch((e) => console.error(e));
+    // a run replayed from « Mes cartes » is there already; a kept analysis replayed may go there
+    if (!orgaOpt("mymaps", true) || (track?.drawn?.replay && !openedKept)) $("#an-mymaps").hidden = true;
+    else import("../trace/mymapsave.js").then((M) => M.mount($("#an-mymaps"), mmState)).catch((e) => console.error(e));
     keepAnalysis();
     $("#an-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); draw(); });
     $("#an-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); savePrefs(); draw(); });
@@ -1926,49 +1933,69 @@ export async function render(main, { query = {}, route } = {}) {
     const b = $("#an-follow");
     if (b) { b.setAttribute("aria-pressed", String(on)); b.classList.toggle("on", on); b.setAttribute("aria-label", t(on ? "sh.pan.stop" : "sh.pan.start")); }
   }
-  // ---- the analysis kept in the account (owner, 2026-11-05): at « Voir la course » the map and the run as drawn go to « Mes cartes »,
-  // listed in « Analyse de carte » as a solo analysis that « Rejouer » opens again; only positions and times (the watch's other
-  // channels on the runner's choice, in « Export »); a calibration made again replaces the run kept; the account can say no
-  // (`ocn.an.keep`); never a replay (it is kept already), nor where the organiser keeps their map out of « Mes cartes »
-  function keepable() { const me = auth.session(); return !!me && !me.demo && orgaOpt("mymaps", true); }
+  // ---- the analysis kept in the account (owner, 2026-11-05, second rule: « Voir is not saving »): « Enregistrer l'analyse », a
+  // box beside « Voir la course » (ticked by default, `ocn.an.keep`; in the files card on an organiser's map, where a trace plays at
+  // once), sends the map and the run as drawn to /api/solo (trace/solokeep.js) — positions and times only —, listed in « Analyse
+  // de carte » as a solo analysis, seen by its owner alone, replayed or deleted there; not « Mes cartes » (« Export » saves there).
+  // A calibration made again replaces the analysis kept for that trace; never a replay; the organiser's « Mes cartes » switch
+  // decides for a copy of their map. Unticked, the top line offers « Enregistrer l'analyse » during the playback.
+  function keepable() { const me = auth.session(); return !!me && !me.demo && orgaOpt("mymaps", true) && !track?.drawn?.replay; }
   function keepOn() { try { return localStorage.getItem("ocn.an.keep") !== "0"; } catch (e) { return true; } }
-  /** What « Mes cartes » keeps of this analysis (trace/mymapsave.js). */
+  function setKeepOn(on) { try { localStorage.setItem("ocn.an.keep", on ? "1" : "0"); } catch (e) { /* this visit */ } }
+  /** The box « Enregistrer l'analyse », with what it keeps in its tooltip. */
+  const keepBox = () => (keepable() ? html`<label class="an-keep" title="${t("an.keep.hint")}"><input type="checkbox" class="an-keep-cb" ${raw(keepOn() ? "checked" : "")}> ${t("an.keep")}</label>` : "");
+  const bindKeepBox = (root) => $$(".an-keep-cb", root).forEach((cb) => cb.addEventListener("change", () => setKeepOn(cb.checked)));
+  /** What the playback draws of this analysis: what « Mes cartes » and the analysis kept take (trace/mymapsave.js). */
   function mmState() {
     return { file: files.map?.file || null, image: map, track, pxs, pys, offset, total, geo: fit ? geoFromFit(fit, track) : null, title: keepTitle(),
       controls: targets.filter((g) => g.pos).map((g) => ({ k: g.kind, x: g.pos[0], y: g.pos[1], t: timeOf(g) })) };
   }
   function keepTitle() {
+    if (openedKept) return openedKept.title || "";
     if (orgaMode) return [orga.A.title, orga.A.courses.length > 1 ? orga.A.courses.find((c) => c.n === orgaN)?.name : ""].filter(Boolean).join(" · ");
     // the map file's own name (a KMZ's image named after the KMZ: « carte.kmz › files/carte.png » → « carte »)
     if (perso) return (files.map?.name || "").split("›")[0].replace(/\.[a-z0-9]+\s*$/i, "").replace(/[_-]+/g, " ").trim();
     return [races.find((x) => x.key === key)?.name || race?.name, klass()?.name, withTimes ? runner()?.name : ""].filter(Boolean).join(" · ");
   }
   const keptKey = () => `ocn.an.kept.${traceSig()}`;
-  function keptOf() { try { return JSON.parse(localStorage.getItem(keptKey()) || "null"); } catch (e) { return null; } }
-  function setKept(rec) { try { localStorage.setItem(keptKey(), JSON.stringify({ ...keptOf(), ...rec })); } catch (e) { /* this visit */ } keptNote("done"); }
-  /** The calibration's own mark: another one (the controls moved, the clock shifted) is another run to keep. */
+  function keptOf() { try { const k = JSON.parse(localStorage.getItem(keptKey()) || "null"); return k?.id ? k : null; } catch (e) { return null; } }
+  function forgetKept() { try { localStorage.removeItem(keptKey()); } catch (e) { /* nothing kept */ } }
+  /** The calibration's own mark: another one (the controls moved, the clock shifted) is another analysis to keep. */
   const calMark = () => JSON.stringify([fit && [fit.m11, fit.m12, fit.m21, fit.m22, fit.tx, fit.ty].map((v) => Math.round(v * 1e4) / 1e4), Math.round((offset || 0) * 10), Math.round(total || 0),
     targets.filter((g) => g.pos).map((g) => g.pos.map(Math.round))]);
+  /** The top line: kept (or being kept), else a button that keeps it. */
   function keptNote(state) {
     const el = $("#an-kept");
     if (!el) return;
+    if (!state && keepable() && map && pxs) {
+      el.innerHTML = html`<button type="button" class="btn btn-sm" id="an-keep-now" title="${t("an.keep.hint")}">${t("an.keep")}</button>`;
+      $("#an-keep-now").addEventListener("click", () => keepAnalysis(true));
+      el.title = "";
+      return;
+    }
     el.textContent = state ? t(`an.kept.${state}`) : "";
     el.title = state === "done" ? t("an.kept.tip") : "";
   }
   let keeping = null;
-  async function keepAnalysis() {
-    if (!keepable() || !keepOn() || track?.drawn?.replay || !map || !pxs) return;
-    const mark = calMark(), was = keptOf();
+  async function keepAnalysis(asked = false) {
+    if (openedKept) { keptNote("done"); return; }
+    if (!keepable() || !map || !pxs) { keptNote(""); return; }
+    const SK = await import("../trace/solokeep.js");
+    const mark = calMark();
+    let was = keptOf();
+    // kept already, unless deleted meanwhile (« Analyse de carte », or another device)
+    if (was && !(await SK.list().catch(() => null))?.some((a) => a.id === was.id)) { forgetKept(); was = null; }
     if (was?.cal === mark) { keptNote("done"); return; }
+    if (!asked && !keepOn()) { keptNote(""); return; }
     if (keeping) return;
     keptNote("saving");
     try {
-      keeping = (await import("../trace/mymapsave.js")).keep(mmState(), { title: keepTitle() });
+      keeping = SK.save(mmState(), { id: was?.id || null, title: keepTitle(), source: orgaMode ? "orga" : track.source === "drawn" ? "drawn" : "solo",
+        orga: orgaMode ? { id: orga.id, n: orgaN } : null });
       const res = await keeping;
-      if (was?.run && was.run !== res.runs[0].id) (await import("../trace/mymaps.js")).deleteRun(was.run).catch(() => {});   // the former calibration's
-      try { localStorage.setItem(keptKey(), JSON.stringify({ map: res.map.id, run: res.runs[0].id, cal: mark })); } catch (e) { /* this visit */ }
+      try { localStorage.setItem(keptKey(), JSON.stringify({ id: res.id, cal: mark })); } catch (e) { /* this visit */ }
       keptNote("done");
-    } catch (e) { console.warn(e); keptNote(e.status === 503 ? "" : "err"); }
+    } catch (e) { console.warn(e); keptNote("err"); }
     finally { keeping = null; }
   }
   /** The pace under the map, shown or folded (the bar with the figures stays). */
@@ -2786,10 +2813,20 @@ export async function render(main, { query = {}, route } = {}) {
   window.addEventListener("dragover", onDragOver); window.addEventListener("dragleave", onDragLeave); window.addEventListener("drop", onDrop);
 
   // ---- go
+  /** Opening straight on the playback (a kept analysis, a run replayed, a tab opened by « ↗ »): the files and the calibration
+   *  stay out of sight until it plays, or for 20 s at most (then whatever the page shows). */
+  let openTimer = 0;
+  function openShown(on) {
+    main.classList.toggle("an-opening-on", on);
+    $("#an-opening").hidden = !on;
+    clearTimeout(openTimer);
+    if (on) openTimer = setTimeout(() => openShown(false), 20000);
+  }
+  if (keptId || autoPlay) openShown(true);
   steps(1);
   await loadRace();
   pickers();
-  const memo = memos[pageMode] && (!orgaMode || memos[pageMode].orgaKey === key) ? memos[pageMode] : null;
+  const memo = !keptId && memos[pageMode] && (!orgaMode || memos[pageMode].orgaKey === key) ? memos[pageMode] : null;
   // files opened with the installed app or shared to it (pwa.js): they join the files of the visit, as if dropped
   const received = await takeInbox();
   if (memo) {
@@ -2799,13 +2836,25 @@ export async function render(main, { query = {}, route } = {}) {
     filesCard(); setup();
   } else {
     filesCard(); setup();
-    if (received.length) await restoreFromIdb(); else restoreFromIdb();
+    if (keptId) {
+      try {
+        const { a, files: fl } = await (await import("../trace/solokeep.js")).load(keptId);
+        openedKept = { id: keptId, title: a.title || "" };
+        autoPlay = true;
+        await take(fl, { remember: false });
+      } catch (e) {
+        console.error(e);
+        openShown(false);
+        $("#an-files").insertAdjacentHTML("afterbegin", html`<div class="notice" style="margin:12px">${t("ma.solo.err")}</div>`.toString());
+      }
+    } else if (received.length) await restoreFromIdb(); else restoreFromIdb();
   }
   if (received.length) take(received);
   const onInbox = async () => { const got = await takeInbox(); if (got.length) take(got); };
   window.addEventListener("ocn:inbox", onInbox);
   return { title: t(titleKey), cleanup: () => {
     document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
+    clearTimeout(openTimer); main.classList.remove("an-opening-on");
     leaveFull();
     window.removeEventListener("resize", onWinResize);
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
