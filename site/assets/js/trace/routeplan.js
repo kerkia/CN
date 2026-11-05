@@ -208,7 +208,22 @@ export function calibNote(s, c, multi) {
   const vals = { s: `${pctN(e.speeds.path)}${c.fitPath ? "" : def}`, c: `${fmt(e.climb, 1)} m${c.fitClimb ? "" : def}`, n: c.n, r: c.runners };
   return multi ? t("rc.cal.doneMulti", vals) : t("rc.cal.done", { ...vals, p: minKm(Object.values(c.pace)[0] || 0.36) });
 }
-export const setCalib = (text) => { const el = $("#rc-cal"); if (el) { el.textContent = text; el.hidden = !text; } };
+export const setCalib = (text, s = null, c = null) => { const el = $("#rc-cal"); if (el) { el.textContent = text; el.hidden = !text; } if (s) showFitted(s, c); };
+/** The values the calibration fitted, shown in the fields it rules (greyed while it is on; owner, 2026-11-05): the runners' median
+ *  pace, the climb and the terrain speeds; without a calibration that holds, the user's own values back. */
+export function showFitted(s, c) {
+  const box = $("#rc-box");
+  if (!box) return;
+  const on = !!(s.calib && c?.ok), e = on ? calibrated(s, c) : s;
+  const put = (id, v, unit) => { const el = $(`#${id}`, box); if (!el) return; el.value = v; const o = $(`#${id}-v`, box); if (o) o.textContent = `${fmt(v, v % 1 ? 1 : 0)}${unit}`; };
+  put("rc-climb", e.climb, " m");
+  for (const k of SPEED_KEYS) put(`rc-sp-${k}`, e.speeds[k], " %");
+  const p = $("#rc-pace", box);
+  if (p) {
+    const v = on ? Object.values(c.pace || {}).filter(Number.isFinite).sort((a, b) => a - b) : [];
+    p.value = v.length ? minKm(v[v.length >> 1]) : s.pace > 0 ? minKm(s.pace / 1000) : "";
+  }
+}
 /** A runner's reference pace (seconds per metre of white forest on the flat): the median of their legs' actual time over
  *  the model's time of the route they chose (`chosen`), kept between 3 and 20 min/km. */
 export function autoPace(pairs) {
@@ -270,6 +285,7 @@ export function bindPanel(root, s, onChange) {
   $("#rc-calib", box).addEventListener("change", (e) => {
     s.calib = e.target.checked; $("#rc-calgroup", box).disabled = s.calib;
     if (s.calib && s.pace) { s.pace = 0; $("#rc-pace", box).value = ""; }
+    if (!s.calib) showFitted(s, null);                       // the user's own values back
     set("search");
   });
   const slide = (id, apply) => {

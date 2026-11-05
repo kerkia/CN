@@ -1914,11 +1914,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
             <span class="sh-mode-menu" id="sh-mode-menu" role="menu" hidden>${modes.map((m) => html`<button type="button" role="menuitemradio" aria-checked="${m === mode}" data-mode="${m}" title="${t(`sh.mode.${m}.hint`)}">${raw(MODE_ICON[m])}<span>${t(`sh.mode.${m}`)}</span></button>`)}</span></span>
           ${mode === "from" ? html`<select id="sh-from" aria-label="${t("sh.from")}">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select>` : ""}`}</span>
         <span class="an-transport">
+          <button type="button" class="btn btn-sm sh-pan${pan ? " on" : ""}" id="sh-pan" aria-pressed="${pan}" aria-label="${t(pan ? "sh.pan.stop" : "sh.pan.start")}" title="${t(pan ? "sh.pan.stop" : "sh.pan.start")} — ${t("sh.pan.tip")}">${raw(PAN_ICON)}</button>
           <button type="button" class="btn btn-sm" id="sh-prev" title="${t("sh.leg.prev")}">⏮</button>
           <button type="button" class="btn btn-sm btn-primary" id="sh-play">${playing ? "⏸" : "▶"}</button>
           <button type="button" class="btn btn-sm" id="sh-next" title="${t("sh.leg.next")}">⏭</button>
-          <select id="sh-speed" aria-label="${t("an.speed")}">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>×${s}</option>`)}</select>
-          <button type="button" class="btn btn-sm sh-pan${pan ? " on" : ""}" id="sh-pan" aria-pressed="${pan}" aria-label="${t(pan ? "sh.pan.stop" : "sh.pan.start")}" title="${t(pan ? "sh.pan.stop" : "sh.pan.start")} — ${t("sh.pan.tip")}">${raw(PAN_ICON)}</button></span>
+          <select id="sh-speed" aria-label="${t("an.speed")}">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>×${s}</option>`)}</select></span>
         <input type="range" class="an-bar-time" id="sh-time" min="${Math.floor(T0)}" max="${Math.ceil(T1)}" step="1" value="${Math.round(T)}" aria-label="${t("an.time")}">
         <span class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></span>
         </div>`;
@@ -2145,6 +2145,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       vector: rcm.vec ? { name: rcm.vec.v.name, detail: rcm.vec.detail, used: !!vt, note: vt ? "" : t(rcm.vec.v.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") }
         : rcm.stored ? { name: t("rc.vec.stored"), detail: t("rc.vec.storedDetail"), used: true, fixed: true } : null,
       calib: RC.calibNote(rcm.s, rcm.calib, true) }))}`;
+    RC.showFitted(rcm.s, rcm.calib);
     RC.bindPanel(host, rcm.s, async (s, what, file) => {
       if (what === "vector" || what === "vector-clear") {
         if (what === "vector") {
@@ -2277,7 +2278,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       if (facts) { rcmFacts(facts); rcm.pic = null; }
       rcm.calib = rcm.s.calib ? await rcmCalibrate(my) : null;
       if (my !== rcm.token) return;
-      RC.setCalib(RC.calibNote(rcm.s, rcm.calib, true));
+      RC.setCalib(RC.calibNote(rcm.s, rcm.calib, true), rcm.s, rcm.calib);
       await rcm.plan.settings(rcmSettings());
       if (my !== rcm.token) return;
       const t0 = performance.now();

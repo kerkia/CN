@@ -2321,6 +2321,7 @@ export async function render(main, { query = {}, route } = {}) {
     host.innerHTML = RC.panelHtml(rcs.s, { on: rcs.on, picture: rcs.picOn, decision: rcs.decOn, status: rcs.status, progress: rcs.prog, warn: rcs.warn, auto: rcs.auto,
       calib: RC.calibNote(rcs.s, rcs.calib, false),
       vector: vrec ? { name: vrec.name, detail: vrec.detail, used: !!vr, fixed: !!files.map?.vec || !!vrec.stored, note: vr ? "" : t(vrec.vec?.v?.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null });
+    RC.showFitted(rcs.s, rcs.calib);
     RC.bindPanel(host, rcs.s, async (s, what, file) => {
       if (what === "vector" || what === "vector-clear") {
         if (what === "vector") {
@@ -2395,7 +2396,7 @@ export async function render(main, { query = {}, route } = {}) {
     if (!rcs.plan || !rcs.on || !rcs.info) return;
     const my = ++rcs.token;
     rcBusy(true);
-    rcs.routes = []; rcs.mine = []; rcs.auto = null; rcs.dec = null; rcs.decAsk = ""; rcs.calib = null; RC.setCalib("");
+    rcs.routes = []; rcs.mine = []; rcs.auto = null; rcs.dec = null; rcs.decAsk = ""; rcs.calib = null; RC.setCalib("", rcs.s, null);
     try {
       const facts = await rcs.plan.settings(rcs.s, (f) => { if (my === rcs.token) rcReading(f); });
       if (my !== rcs.token) return;
@@ -2443,7 +2444,7 @@ export async function render(main, { query = {}, route } = {}) {
           rcs.routes = []; rcs.mine = [];
           if (!(await pass("rc.st.calib", 0.5, 0.5))) return;
         }
-        RC.setCalib(RC.calibNote(rcs.s, c, false));
+        RC.setCalib(RC.calibNote(rcs.s, c, false), rcs.s, c);
       }
       rcs.auto = rcs.calib?.ok ? rcs.calib.pace[0] : RC.autoPace(rcs.mine.filter(Boolean).map((m) => ({ actual: m.actual, model: m.time })));
       const found = rcs.routes.filter(Boolean).length;
