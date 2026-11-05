@@ -72,7 +72,7 @@ export function build(X) {
         ${slide("Arena", "One page, every competition", html`
           <p>Arena is a single page, the chosen country's ${P("#/agenda", "Competitions")}: three boxes choose today's, the coming ones and those of the
             last 60 days. The calendar comes every morning from the federation's — races, and also training sessions, camps and courses. Filter by date,
-            discipline, region${fr ? ", département, and the races that count for the CN" : ""}; on a computer, a map shows where they take place.</p>
+            discipline, region${fr ? ", département, and the races that count for the CN" : ""}; on a computer, a map shows where they take place.${fr ? " The championships and nationales of the coming seasons also come from the national calendar, often provisional, before their organiser puts them on the agenda: they are marked “provisional”, and their date and organiser may still change." : ""}</p>
           ${list([
             html`<b>A coming competition</b> opens beside the list: the place and the way there, the announcement, ${fr ? "the number of entries per course, " : ""}the
               entry deadline, and buttons when they exist — the start list${fr ? " (with each runner's CN and the place it predicts)" : ""}, “Follow live”,

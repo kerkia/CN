@@ -205,7 +205,7 @@ async function clubRaces() {
   const out = [];
   try {
     const ag = await data.agenda();
-    for (const e of ag.events || []) if (e.kind === "c" && e.date >= today() && (me?.admin || orgCode(e.org) === club)) out.push({ key: `a${e.id}`, date: e.date, name: e.name, place: e.place, org: e.org, epr: e.epr || "", spec: e.spec || "", ll: where(e) });
+    for (const e of ag.events || []) if (e.kind === "c" && e.id && e.date >= today() && (me?.admin || orgCode(e.org) === club)) out.push({ key: `a${e.id}`, date: e.date, name: e.name, place: e.place, org: e.org, epr: e.epr || "", spec: e.spec || "", ll: where(e) });
   } catch (e) { /* no agenda */ }
   try {
     const idx = await getProv("index.json");

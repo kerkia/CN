@@ -2620,6 +2620,18 @@ Every multiple-choice game was played through to its score page at phone size, w
   (r/ and net/: a runner's number // 10 in France, // 100 elsewhere, `site_io.runner_bucket`, `data.bucketOf`) and
   `club_packs` (67, a prime: 64 left 10 files empty and one with 162 clubs; club/ and club_courses/ in `p<n>.json` by a hash of the club's code, `site_io.club_pack` = `data.clubPack`):
   Spain ~1,250 files instead of ~7,500.
+- **FFCO's national calendars in the Agenda** (owner, 2026-11-05): the « Calendrier national » PDFs of FFCO's page
+  `/les-pratiques/pratiquer-la-co/calendrier-national/` (the season's, the next ones « provisoire »: one-page tables of sub-groups B1
+  and C1) are read by `ffco_scraper/natcal.py` in every agenda build (`agenda.build`: one page a day, a PDF only when its address is
+  new — kept in agenda.json `natcal`, `VERSION`): the discipline from the block of the first column a row lies in (its merged cells
+  are split by pdfplumber; the rules drawn, not the fills), dates « 23-janv. », « 13/14-mars », « 8 au 14 juillet », « 18 ou 25-août »
+  (alternatives: `natcal.alt`), the organiser « 5703GE » / « CD73 » / « Ligue AR » as the agenda writes it (club names from
+  `clubdir.json`). A row the agenda already lists — a course of the same days and discipline, by its organiser's number or half its
+  name's words — is dropped; the others are events of kind « c » **without an id** (never a race of « Résultats », no alert, no
+  organiser's pick), tagged « provisoire » (« calendrier national » for a season's final one), CN « — », the details saying what the
+  calendar says (« sous réserve du retour d'expertise », « en attente de candidatures ») with the PDF; placed at their département's
+  centre. On 2026-11-05: 31 rows of 2027-2028 added, 6 already on the agenda. Python code reading agenda events must keep requiring
+  `e.id` for anything tied to a competition (races.sync, notify, the organisers' pickers do).
 - **Agendas of 29 more countries** (2026-10-23; the agenda only, the owner's request: « for every IOF country, its calendar
   where a clean way exists »). The study (six research agents, every IOF member, each source fetched with our user agent; samples
   kept in the session's scratch): a clean source is a public API, an export (CSV, iCal) or a stable server-rendered list, read

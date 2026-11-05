@@ -73,7 +73,7 @@ export function build(X) {
           <p>Arena es una sola página, las ${P("#/agenda", "Competiciones")} del país elegido: tres casillas eligen las de hoy, las próximas y las de los
             últimos 60 días. El calendario llega cada mañana del de la federación: las carreras, y también los entrenamientos, concentraciones y
             cursos. Se puede filtrar por fecha, disciplina, región${fr ? ", departamento y por las carreras que cuentan para el CN" : ""}; en un ordenador, un mapa
-            muestra dónde se celebran.</p>
+            muestra dónde se celebran.${fr ? " Los campeonatos y nacionales de las próximas temporadas también vienen del calendario nacional, a menudo provisional, antes de que su organizador los inscriba en la agenda: aparecen como «provisional», y su fecha y su organización aún pueden cambiar." : ""}</p>
           ${list([
             html`<b>Una competición próxima</b> se abre junto a la lista: el lugar y cómo llegar, el anuncio, ${fr ? "el número de inscritos por recorrido, " : ""}el
               cierre de inscripciones y botones cuando existen: la lista de salida${fr ? " (con el CN de cada uno y el puesto que permite esperar)" : ""},

@@ -127,8 +127,9 @@ def locate(cc: str, e: dict, *texts, keep_region: bool = False, expect=None, reg
 
 # the Agenda's map (owner, 2026-10-25): each event's position, `pos` [lat, lon] and [lat, lon, 1] when it is only its unit's
 # centre (a département, a province: the place not found); an event with GPS coordinates (`gps`) has none. Bump to place
-# every agenda's events again.
-POS_VERSION = 1
+# every agenda's events again. 2 (2026-11-05): France's and Spain's own names no longer read as another country
+# (« Championnat de France … » without a place was left off the map).
+POS_VERSION = 2
 
 
 def comparable(a: dict) -> dict:
@@ -356,7 +357,8 @@ HOME = {"AT": "austria", "BE": "belgium", "BG": "bulgaria", "BY": "belarus", "CH
         "DE": "germany", "DK": "denmark", "EE": "estonia", "GB": "united kingdom", "GE": "georgia", "HK": "hong kong",
         "HR": "croatia", "IE": "ireland", "IL": "israel", "IT": "italy", "JP": "japan", "KR": "korea", "LT": "lithuania",
         "MK": "north macedonia", "PL": "poland", "RO": "romania", "RS": "serbia", "SI": "slovenia", "SK": "slovakia",
-        "TR": "türkiye", "UA": "ukraine", "ZA": "south africa"}
+        "TR": "türkiye", "UA": "ukraine", "ZA": "south africa",
+        "FR": "france", "ES": "spain"}
 HOME_ALSO = {"GB": {"great britain", "scotland", "wales", "england"}, "CZ": {"czech republic"}, "TR": {"turkey"},
              "MK": {"macedonia"}}
 

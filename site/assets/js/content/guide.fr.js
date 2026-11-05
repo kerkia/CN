@@ -75,7 +75,7 @@ export function build(X) {
           <p>Arena est une seule page, les ${P("#/agenda", "Compétitions")} du pays choisi : trois cases choisissent celles d'aujourd'hui, celles à venir et
             celles des 60 derniers jours. L'agenda vient chaque matin du calendrier de la fédération — les courses, et aussi les entraînements, stages et
             formations. On filtre par date, spécialité, région${fr ? ", département, et aux courses comptant pour le CN" : ""} ; sur un ordinateur, une carte
-            montre où elles ont lieu.</p>
+            montre où elles ont lieu.${fr ? " Les championnats et nationales des saisons suivantes viennent aussi du calendrier national, souvent provisoire, avant que leur organisateur ne les inscrive à l'agenda : ils sont marqués « provisoire », leur date et leur organisation peuvent encore changer." : ""}</p>
           ${list([
             html`<b>Une compétition à venir</b> s'ouvre à côté de la liste : le lieu et l'itinéraire, l'annonce, ${fr ? "le nombre d'inscrits par circuit, " : ""}la
               clôture des inscriptions, et des boutons quand ils existent — la liste de départ${fr ? " (avec le CN de chacun et la place qu'il laisse attendre)" : ""},

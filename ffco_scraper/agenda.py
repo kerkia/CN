@@ -11,6 +11,8 @@ Sources (all public, no login):
   * licences.ffcorientation.fr/inscriptions/liste_course/<id>/   the number of registrants per circuit, for the
                                                      races of the next REG_DAYS days (the names are members-only:
                                                      not read)
+  * www.ffcorientation.fr's « Calendrier national » PDFs   the national competitions of this season and the next ones
+                                                     (« provisoire »), before their organisers list them (natcal.py)
 
 Run it by hand:   py -3 -m ffco_scraper.agenda --out site/data/fr/agenda.json
 update.py calls refresh() once a day (06:00 Paris time on GitHub).
@@ -56,7 +58,7 @@ REGIONS = {
     "Provence-Alpes-Côte d'Azur": "04 05 06 13 83 84",
 }
 OUTRE_MER = "Outre-mer"
-AGENDA_VERSION = 4     # bump when the content of agenda.json changes shape: the next deploy rebuilds it at once
+AGENDA_VERSION = 5     # bump when the content of agenda.json changes shape: the next deploy rebuilds it at once
 #   4 (2026-10-10): registrants per circuit (reg.circuits)
 ANN_VERSION = 2        # what is read from an announcement; 2 (2026-10-11): its circuits' table too — each read again once
 REG_DAYS = 21          # races whose registrants are counted circuit by circuit (one page each, once a day)
@@ -86,6 +88,16 @@ def get(url: str, retries: int = 3) -> str:
             err = e
             time.sleep(1.5 * (attempt + 1))
     raise RuntimeError(f"{url}: {err}")
+
+
+def get_bytes(url: str, limit: int = 12_000_000) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": UA})
+    with urllib.request.urlopen(req, timeout=45) as r:
+        data = r.read(limit + 1)
+    time.sleep(PAUSE)
+    if len(data) > limit:
+        raise RuntimeError(f"{url}: over {limit} bytes")
+    return data
 
 
 def _clean(s: str | None) -> str:
@@ -392,7 +404,8 @@ def circuit_counts(reg_id: int) -> list[list] | None:
 
 
 # ---- assemble --------------------------------------------------------------------------------------------------------
-def build(du: str | None = None, prev_events: list[dict] | None = None) -> dict:
+def build(du: str | None = None, prev_events: list[dict] | None = None, prev_natcal: list[dict] | None = None,
+          clubdir: dict | None = None) -> dict:
     du = du or date.today().isoformat()
     # one list from a few days back: the past days' rows cost no more request than a page of the list
     listed = list_courses((date.fromisoformat(du) - timedelta(days=RECENT_DAYS)).isoformat())
@@ -433,8 +446,20 @@ def build(du: str | None = None, prev_events: list[dict] | None = None) -> dict:
         events += [_csv_event(x, kind) for x in read_csv(types, du)]
     _add_announcements(events, prev_events or [])
     events = [e for e in events if e.get("date")]
+    names = dept_names()
+    # the national calendars' competitions not on the agenda yet (natcal.py)
+    from . import natcal
+    cals = natcal.calendars(get, get_bytes, prev_natcal or [])
+    clubs = {m.group(1): m.group(2) for e in events if (m := re.match(r"(\d{4}) - (.+)", e.get("org") or ""))}
+    ligues = dict(LIGUES)
+    for lg in (clubdir or {}).get("ligues", []):
+        ligues[lg["code"]] = lg["name"]
+        for d in lg.get("depts", []):
+            for c in d.get("clubs", []):
+                clubs.setdefault(c["code"], c["name"])
+    events += natcal.events(cals, events, du, clubs, names, ligues)
     events.sort(key=lambda e: (e["date"], e["name"].lower()))
-    depts, regions = locate(events, dept_names())
+    depts, regions = locate(events, names)
     return {
         "v": AGENDA_VERSION,
         "from": du,
@@ -444,6 +469,7 @@ def build(du: str | None = None, prev_events: list[dict] | None = None) -> dict:
         "regions": regions,
         "events": events,
         "recent": recent,
+        "natcal": cals,
     }
 
 
@@ -497,7 +523,11 @@ def refresh(out: Path, du: str | None = None) -> bool:
         old = json.loads(out.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         pass
-    new = build(du, (old or {}).get("events"))
+    try:
+        clubdir = json.loads((out.parent / "clubdir.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        clubdir = None
+    new = build(du, (old or {}).get("events"), (old or {}).get("natcal"), clubdir)
     if old and _digest(old) == _digest(new):
         return False
     new["generated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

@@ -73,7 +73,7 @@ export function build(X) {
           <p>Arena ist eine einzige Seite, die ${P("#/agenda", "Wettkämpfe")} des gewählten Landes: Drei Kästchen wählen die von heute, die kommenden und
             die der letzten 60 Tage. Der Kalender kommt jeden Morgen aus dem Kalender des Verbands – die Läufe, aber auch Trainings, Trainingslager und
             Kurse. Filtern kannst du nach Datum, Disziplin, Region${fr ? ", Département und nach Läufen, die für den CN zählen" : ""}; am Computer zeigt eine Karte,
-            wo sie stattfinden.</p>
+            wo sie stattfinden.${fr ? " Die Meisterschaften und Nationales der kommenden Saisons kommen außerdem aus dem nationalen Kalender, oft vorläufig, bevor ihr Ausrichter sie in den Terminkalender einträgt: Sie sind als „vorläufig“ markiert, Datum und Ausrichter können sich noch ändern." : ""}</p>
           ${list([
             html`<b>Ein kommender Wettkampf</b> öffnet sich neben der Liste: der Ort und der Weg dorthin, die Ausschreibung, ${fr ? "die Zahl der Anmeldungen pro Bahn, " : ""}der
               Anmeldeschluss und Schaltflächen, wenn es sie gibt – die Startliste${fr ? " (mit dem CN jedes Läufers und dem Rang, den er erwarten lässt)" : ""},

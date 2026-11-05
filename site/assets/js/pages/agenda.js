@@ -366,9 +366,9 @@ export async function render(main, { query }) {
     $("#table").innerHTML = shown.length ? html`<table class="data"><thead><tr>
         ${sortHead("date", t("agd.col.date"))}${sees("FR") && fr ? sortHead("cn", t("agd.col.cn")) : ""}${sortHead("event", t("agd.col.event"))}${sortHead("place", t(inWre ? "agd.col.country" : "agd.col.place"))}${places ? sortHead("region", levelName("region")) : ""}${sortHead("type", t("agd.col.type"))}</tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" data-period="${periodOf(e)}" tabindex="0" class="${e.key === st.selected ? "selected" : ""} ${e.cancelled ? "cancelled" : ""} ${e.past ? "past" : ""}">
-        <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim d-end"> → ${fmtDate(e.end, "short")}</span>` : ""}</td>
-        ${sees("FR") && fr ? html`<td class="c">${e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
-        <td class="n">${nameOf(e)}${wreTags(e)}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}${trackOf(e) ? html` <span class="tag" title="${t("trk.tagTip")}">${t("trk.tag")}</span>` : ""}${e.past ? pastTags(e) : ""}</td>
+        <td class="num nowrap d">${fmtDate(e.date, "short")}${e.end ? html`<span class="dim d-end"> → ${fmtDate(e.end, "short")}</span>` : ""}${(e.natcal?.alt || []).map((d) => html`<span class="dim d-end"> ${t("agd.nat.or")} ${fmtDate(d, "short")}</span>`)}</td>
+        ${sees("FR") && fr ? html`<td class="c">${e.natcal ? html`<span class="dim" title="${t("agd.nat.cnTip")}">—</span>` : e.cn ? html`<span class="tag tag-in"><span class="m-only">CN</span><span class="d-only">${t("agd.yes")}</span></span>` : html`<span class="dim"><span class="m-only">${t("agd.notCn")}</span><span class="d-only">${t("agd.no")}</span></span>`}</td>` : ""}
+        <td class="n">${nameOf(e)}${wreTags(e)}${natTag(e)}${e.cancelled ? html` <span class="tag">${t("agd.cancelled")}</span>` : ""}${starts.has(String(e.id)) ? html` <span class="tag" style="color:var(--accent)" title="${t("agd.startsTip")}">${t("agd.starts")}</span>` : ""}${lives.get(String(e.id))?.now ? html` <a class="lv-badge" href="#/direct/${lives.get(String(e.id)).id}" title="${t("agd.liveTip")}">${t("lv.badge")}</a>` : ""}${trackOf(e) ? html` <span class="tag" title="${t("trk.tagTip")}">${t("trk.tag")}</span>` : ""}${e.past ? pastTags(e) : ""}</td>
         <td class="p">${inWre && e.host ? html`<span class="nowrap">${country.flagImg(e.host)} ${country.name(e.host)}</span>${e.place ? html` <span class="dim">· ${e.place}</span>` : ""}`
           : html`${e.place || ""}${deptTag(e) ? html` <span class="dim">${deptTag(e)}</span>` : ""}`}</td>
         ${places ? html`<td class="r">${fmtRegion(e.region)}</td>` : ""}
@@ -403,6 +403,16 @@ export async function render(main, { query }) {
     }
   }
   /** A World Ranking Event's tags: « WRE » in its host country's list (the WRE list is all of them), « Coupe du monde ». */
+  // FFCO's national calendars (ffco_scraper/natcal.py; owner, 2026-11-05): a competition they list that the agenda does not yet
+  const natTag = (e) => (e.natcal ? html` <span class="tag" title="${t("agd.nat.tip")}">${t(e.natcal.prov ? "agd.nat.tag" : "agd.nat.tagFinal")}</span>` : "");
+  const natNote = (e) => {
+    const n = e.natcal;
+    if (!n) return "";
+    const d = n.printed ? fmtDate(n.printed) : "—";
+    return html`<div class="reg closed"><div class="dim">${t(n.prov ? "agd.nat.noteProv" : "agd.nat.note", { year: n.year, d })}${
+      n.expertise ? html` ${t("agd.nat.expertise")}` : ""}${n.pending ? html` ${t("agd.nat.pending")}` : ""}</div>
+      ${safeUrl(n.url) ? html`<p style="margin:6px 0 0"><a class="btn btn-sm" href="${n.url}" target="_blank" rel="noopener">${t("agd.nat.pdf")}</a></p>` : ""}</div>`;
+  };
   const wreTags = (e) => html`${e.wre && !inWre ? html` <span class="tag tag-wre" title="${t("agd.wre.tip")}">WRE</span>` : ""}${
     e.wc ? html` <span class="tag tag-wre" title="${t("agd.wc.tip")}">${t("agd.wc")}</span>` : ""}`;
   /** What « Résultats » found of a past competition: the organisers' results, split times, the official results. */
@@ -543,7 +553,7 @@ export async function render(main, { query }) {
   }
 
   function registration(e) {
-    if (e.kind !== "c" || e.declared) return "";                // a declared competition: its organiser's own registration
+    if (e.kind !== "c" || e.declared || e.natcal) return "";    // a declared competition: its organiser's own registration
     const r = e.reg;
     // (an agenda read from a calendar that does not tell the entries — `sources`, the other countries' — says nothing)
     if (!r && (A.sources || e.host)) return "";
@@ -622,11 +632,13 @@ export async function render(main, { query }) {
       <div class="card-head"><div><h2>${nameOf(e)}</h2>
         <div class="hint">${e.end ? t("agd.range", { a: longDate(e.date), b: longDate(e.end) }) : longDate(e.date)}${e.cancelled ? ` · ${t("agd.cancelled")}` : ""}</div></div></div>
       <div class="card-body stack" style="gap:14px">
-        <div class="row" style="gap:6px">${!sees("FR") || !fr ? "" : e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
+        <div class="row" style="gap:6px">${!sees("FR") || !fr || e.natcal ? "" : e.cn ? html`<span class="tag tag-in">${t("agd.inCn")}</span>` : html`<span class="tag">${t("agd.outCn")}</span>`}
           <span class="tag">${typeLabel(e)}</span>${groupOf(e) ? html`<span class="tag">${t("agd.groupTag", { g: groupOf(e) })}</span>` : ""}</div>
         ${actions(e)}
+        ${natNote(e)}
         ${registration(e)}
         <dl>
+          ${row(t("agd.nat.dates"), e.natcal?.alt ? [e.date, ...e.natcal.alt].map((d) => fmtDate(d)).join(` ${t("agd.nat.or")} `) : "")}
           ${row(t("agd.access"), accessText(e))}
           ${row(t("agd.d.manif"), fmtManif(e.manif))}
           ${row(t("agd.d.league"), e.league)}
