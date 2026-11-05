@@ -1317,7 +1317,10 @@ export function build(X) {
             trazador puede:</p>
           <ul class="mx-list">
             <li><b>publicar los recorridos en el análisis de mapa</b> (${W("publish")}): cada recorrido llega con su mapa y su calibración, y los corredores solo tienen que subir
-              su track GPS;</li>
+              su track GPS. La misma ventana ajusta todo el análisis: su nombre (que puede ser distinto del del evento), su fecha, quién lo abre (todas las cuentas, con o sin
+              visitantes, el club, una contraseña), lo que los corredores pueden hacer en él, y si se publica enseguida o queda como borrador; después se abre con un clic,
+              igual que su página de gestión (Orga › Análisis de mapa, donde todo sigue siendo modificable). Publicar de nuevo actualiza el análisis del evento, sus
+              recorridos y ajustes, sin crear otro;</li>
             <li><b>enviar los recorridos a «Resultados»</b> (${W("send-results")}): un complemento de los resultados, no resultados. El archivo de resultados que
               exporta el software de cronometraje (MeOS, OE…) en IOF XML ya da la longitud, el desnivel y los controles de cada recorrido: con él, este envío no aporta
               nada. Sirve cuando los resultados publicados vienen de otra parte — un PDF, liveresultat, WinSplits, O'Live, una página HTML sin cabecera de recorrido — y

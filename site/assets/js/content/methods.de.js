@@ -1317,7 +1317,10 @@ export function build(X) {
             Bahnleger:</p>
           <ul class="mx-list">
             <li><b>die Bahnen in die Kartenanalyse übertragen</b> (${W("publish")}): Jede Bahn kommt dort mit ihrer Karte und ihrer Kalibrierung an, die Läufer müssen nur noch
-              ihren GPS-Track hochladen;</li>
+              ihren GPS-Track hochladen. Dasselbe Fenster stellt die ganze Analyse ein: ihren Namen (der vom Namen der Veranstaltung abweichen kann), ihr Datum, wer sie
+              öffnet (alle Konten, mit oder ohne Besucher, der Verein, ein Passwort), was die Läufer dort tun dürfen und ob sie sofort veröffentlicht oder als Entwurf behalten
+              wird; danach öffnet sie sich mit einem Klick, ebenso ihre Verwaltungsseite (Orga › Kartenanalysen, wo alles änderbar bleibt). Erneutes Veröffentlichen
+              aktualisiert die Analyse der Veranstaltung, ihre Bahnen und Einstellungen, ohne eine weitere anzulegen;</li>
             <li><b>die Bahnen an „Ergebnisse“ senden</b> (${W("send-results")}): eine Ergänzung der Ergebnisse, keine Ergebnisse. Die Ergebnisdatei, die die
               Zeitnahme-Software (MeOS, OE…) als IOF XML exportiert, enthält bereits Länge, Steigung und Posten jeder Bahn: mit ihr bringt diese Übertragung nichts.
               Sie hilft, wenn die veröffentlichten Ergebnisse von anderswo stammen — ein PDF, liveresultat, WinSplits, O'Live, eine HTML-Seite ohne Bahnkopf — und diese

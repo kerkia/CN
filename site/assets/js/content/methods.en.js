@@ -1316,7 +1316,10 @@ export function build(X) {
             course setter can:</p>
           <ul class="mx-list">
             <li><b>publish the courses to the map analysis</b> (${W("publish")}): each course arrives there with its map and its calibration, and the runners only have to upload
-              their GPS track;</li>
+              their GPS track. The same dialog sets the whole analysis: its name (which may differ from the event's), its date, who opens it (every account, with or without
+              visitors, the club, a password), what the runners may do there, and whether it is published at once or kept as a draft; then it opens in one click, or its
+              management page does (Orga › Map analyses, where everything can still be changed). Publishing again updates the event's analysis, its courses and settings,
+              without creating another;</li>
             <li><b>send the courses to “Results”</b> (${W("send-results")}): a complement to the results, not results. The results file exported by the timing
               software (MeOS, OE…) as IOF XML already gives each course's length, climb and controls: with it, this sends nothing new. It helps when the published results
               come from elsewhere — a PDF, liveresultat, WinSplits, O'Live, an HTML page without course headers — and lack that information. The setter's courses (as

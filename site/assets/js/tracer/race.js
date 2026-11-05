@@ -511,9 +511,13 @@ export async function sendCourses(E) {
   }
 }
 
-// ---- publication to « Analyse multi » ---------------------------------------------------------------------------------------------
-/** Each course (each variation of a forked one, up to 12 in all) as a circuit of an « Analyse multi »: its map with the course
- *  printed on it, the controls' positions on that image, the georeference — after the race only. */
+// ---- publication to the map analysis ------------------------------------------------------------------------------------------------
+/** Each course (each variation of a forked one, up to 12 in all) as a circuit of the event's map analysis: its map with the course
+ *  printed on it, the controls' positions on that image, the georeference — after the race only for a competition. One dialog holds
+ *  every setting of the analysis (owner, 2026-11-05: the setter had to go to Orga to finish it): its title and date, who opens it,
+ *  what the runners may do, published at once or kept as a draft; then the analysis opens from here. Publishing again updates the
+ *  event's analysis (its circuits and settings), never a second one. */
+const OPT_KEYS = ["upload", "solo", "mymaps", "notes", "variants", "view3d", "video", "routes"];
 export async function publish(E) {
   const ev = E.ev;
   if (!G.hasGeo(ev)) { E.toast(t("trc.race.pubNeedsGeo", { where: where("georef") })); return; }
@@ -521,20 +525,6 @@ export async function publish(E) {
   if (isRace && E.meta.date && E.meta.date > today) { E.toast(t("trc.race.pubSecret", { date: E.meta.date }), 6000); return; }
   const info = isRace ? await raceInfo(E).catch(() => ({})) : {};
   if (isRace && !info.provKey) { E.toast(t("trc.race.pubNotInResults")); return; }
-  const { designs, circuitOf } = await import("./circuits.js");
-  const des = designs(ev);
-  const provRace = info.provKey ? await getData(`prov/${info.provKey}.json`) : null;
-  const circuitNames = [...new Set((provRace?.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))];
-  const v = await modal(E, { title: t("trc.race.pubTitle"), wide: true, ok: t("trc.race.publish"), body: `
-    <p>${t(isRace ? "trc.race.pubIntroRace" : "trc.race.pubIntroTraining")}</p>
-    <table class="tr-table"><thead><tr><th></th><th>${t("trc.race.thCourse")}</th>${circuitNames.length ? `<th>${t("trc.race.thResultsCourse")}</th>` : ""}</tr></thead><tbody>
-    ${des.map((d, i) => `<tr><td><input type="checkbox" name="p${i}" ${i < 12 ? "checked" : ""}></td><td>${esc(d.name)}</td>
-      ${circuitNames.length ? `<td><select name="k${i}"><option value="">—</option>${circuitNames.map((n) => `<option ${norm(n) === norm(d.name) || norm(n).split(" ")[0] === norm(d.name).split(" ")[0] ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td>` : ""}</tr>`).join("")}</tbody></table>
-    ${isRace ? "" : `${field(t("trc.race.pubWho"), `<select name="vis"><option value="club">${t("trc.race.visClub")}</option><option value="public">${t("trc.race.visPublic")}</option><option value="password">${t("trc.race.visPassword")}</option></select>`)}${field(t("trc.race.pubPw"), '<input name="pw" type="password" autocomplete="new-password">')}`}
-    ${field(t("trc.race.pubDpi"), '<input name="dpi" value="150" inputmode="numeric">', t("trc.race.pubDpiHint"))}`,
-  validate: (o) => { const n = des.filter((_, i) => o[`p${i}`]).length; return !n ? t("trc.race.pubNeedOne") : n > 12 ? t("trc.race.pubMax") : o.vis === "password" && (o.pw || "").length < 4 ? t("trc.race.pubPwShort") : null; } });
-  if (!v) return;
-  const pick = des.map((d, i) => ({ ...d, i })).filter((d) => v[`p${d.i}`]);
   const call = async (path, opts = {}) => {
     const h = { ...(opts.headers || {}) };
     let body = opts.body;
@@ -544,11 +534,63 @@ export async function publish(E) {
     if (!r.ok) { const e = new Error(j?.error || `http ${r.status}`); e.code = j?.error; throw e; }
     return j;
   };
+  // the event's analysis already published (this event's, else the competition's own), its settings shown as they are
+  let prev = null;
+  try {
+    let pid = E.meta.published?.analysis || null;
+    if (!pid && isRace) pid = ((await call("")).analyses || []).find((a) => a.kind === "race" && a.race === info.provKey && a.organiser)?.id || null;
+    if (pid) prev = (await call(`/${pid}`)).analysis || null;
+  } catch (e) { prev = null; }
+  const { designs, circuitOf } = await import("./circuits.js");
+  const des = designs(ev);
+  const provRace = info.provKey ? await getData(`prov/${info.provKey}.json`) : null;
+  const circuitNames = [...new Set((provRace?.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))];
+  const vis0 = prev?.vis || (isRace ? "public" : "club"), opts0 = prev?.opts || {};
+  const chk = (on) => (on ? "checked" : "");
+  const v = await modal(E, { title: t("trc.race.pubTitle"), wide: true, ok: t(prev ? "trc.race.pubUpdate" : "trc.race.publish"), body: `
+    <p>${t(isRace ? "trc.race.pubIntroRace" : "trc.race.pubIntroTraining")}${prev ? ` ${esc(t("trc.race.pubAgain"))}` : ""}</p>
+    <h3 class="tr-h3">${t("trc.race.pubCourses")}</h3>
+    <table class="tr-table"><thead><tr><th></th><th>${t("trc.race.thCourse")}</th>${circuitNames.length ? `<th>${t("trc.race.thResultsCourse")}</th>` : ""}</tr></thead><tbody>
+    ${des.map((d, i) => `<tr><td><input type="checkbox" name="p${i}" ${i < 12 ? "checked" : ""}></td><td>${esc(d.name)}</td>
+      ${circuitNames.length ? `<td><select name="k${i}"><option value="">—</option>${circuitNames.map((n) => `<option ${norm(n) === norm(d.name) || norm(n).split(" ")[0] === norm(d.name).split(" ")[0] ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></td>` : ""}</tr>`).join("")}</tbody></table>
+    ${field(t("trc.race.pubDpi"), '<input name="dpi" value="150" inputmode="numeric">', t("trc.race.pubDpiHint"))}
+    <h3 class="tr-h3">${t("sh.m.pub")}</h3>
+    ${field(t("trc.race.pubName"), `<input name="title" maxlength="120" value="${esc(prev?.title || E.meta.title || "")}">`, t("trc.race.pubNameHint"))}
+    ${field(t("f.date"), `<input name="date" type="date" value="${esc(prev?.date || E.meta.date || today)}">`)}
+    ${field(t("sh.col.access"), `<select name="vis">${["public", "club", "password"].map((x) => `<option value="${x}" ${x === vis0 ? "selected" : ""}>${esc(t(`sh.vis.${x}.long`))}</option>`).join("")}</select>`)}
+    <div data-pw ${vis0 === "password" ? "" : "hidden"}>${field(t(prev?.vis === "password" ? "sh.pw.new" : "trc.race.pubPw"), `<input name="pw" type="text" autocomplete="off" placeholder="${prev?.vis === "password" ? esc(t("sh.pw.keep")) : ""}">`)}</div>
+    <label class="tr-check" data-visitors ${vis0 === "public" ? "" : "hidden"} title="${esc(t("sh.visitors.hint"))}"><input type="checkbox" name="visitors" ${chk(prev?.visitors && vis0 === "public")}> ${esc(t("sh.visitors"))}</label>
+    <h3 class="tr-h3">${t("sh.m.opts")}</h3>
+    <ul class="tr-pub-opts">${OPT_KEYS.map((k) => `<li><label class="tr-check"><input type="checkbox" name="o_${k}" ${chk(opts0[k] !== false)}>
+      <span><b>${esc(t(`sh.opt.${k}`))}</b> <small>${esc(t(`sh.opt.${k}.hint`))}</small></span></label></li>`).join("")}</ul>
+    <label class="tr-check tr-pub-live"><input type="checkbox" name="live" ${chk(!prev || !prev.draft)}> <span><b>${esc(t("trc.race.pubLive"))}</b> <small>${esc(t("trc.race.pubLiveHint"))}</small></span></label>`,
+  onOpen: (form) => {
+    const vis = form.elements.vis;
+    vis.addEventListener("change", () => {
+      form.querySelector("[data-pw]").hidden = vis.value !== "password";
+      form.querySelector("[data-visitors]").hidden = vis.value !== "public";
+      if (vis.value !== "public") form.elements.visitors.checked = false;
+    });
+  },
+  validate: (o) => {
+    const n = des.filter((_, i) => o[`p${i}`]).length;
+    if (!n) return t("trc.race.pubNeedOne");
+    if (n > 12) return t("trc.race.pubMax");
+    if ((o.title || "").trim().length < 3) return t("trc.race.pubTitleShort");
+    // a password: needed when there is none yet, else kept when left empty
+    if (o.vis === "password" && (o.pw || "").length < (prev?.vis === "password" ? (o.pw ? 4 : 0) : 4)) return t("trc.race.pubPwShort");
+    return null;
+  } });
+  if (!v) return;
+  const pick = des.map((d, i) => ({ ...d, i })).filter((d) => v[`p${d.i}`]);
   try {
     E.status(t("trc.race.pubCreating"), "busy");
-    const created = await call("", { method: "POST", body: isRace ? { kind: "race", race: info.provKey, title: E.meta.title, date: E.meta.date || today, vis: "public", via: "tracer" }
-      : { kind: "club", title: E.meta.title, date: E.meta.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined, via: "tracer", country: siteCountry() } });
-    const aid = created.id;
+    let aid = prev?.id || null, kind = prev?.kind || (isRace ? "race" : "club");
+    if (!aid) {
+      const created = await call("", { method: "POST", body: isRace ? { kind: "race", race: info.provKey, title: v.title, date: v.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined, via: "tracer" }
+        : { kind: "club", title: v.title, date: v.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined, via: "tracer", country: siteCountry() } });
+      aid = created.id;
+    }
     const cur = await call(`/${aid}`);
     const courses = (cur.analysis?.courses || []).filter((c) => !pick.some((_, j) => c.n === j));
     const dpi = Math.max(72, Math.min(300, Math.round(num(v.dpi)) || 150));
@@ -559,15 +601,26 @@ export async function publish(E) {
       await call(`/${aid}/map/${j}`, { method: "PUT", body: c.blob, headers: { "Content-Type": "image/png" } });
       courses.push({ n: j, name: d.name.slice(0, 60), circuit: v[`k${d.i}`] || "", r: c.r, map: { w: c.w, h: c.h, type: "image/png", v: Date.now() }, geo: c.geo, controls: c.controls });
     }
+    // the circuits, then every setting of the dialog — published, or kept as a draft its organisers alone see
     await call(`/${aid}`, { method: "PUT", body: { courses: courses.sort((a, b) => a.n - b.n) } });
-    // the event's card remembers its analysis: « Bilan après la course » reads its shared traces
+    const set = { title: v.title, date: v.date || today, vis: v.vis, visitors: v.vis === "public" && !!v.visitors, draft: !v.live,
+      opts: Object.fromEntries(OPT_KEYS.map((k) => [k, !!v[`o_${k}`]])) };
+    if (v.vis === "password" && v.pw) set.password = v.pw;
+    await call(`/${aid}`, { method: "PUT", body: set });
+    // the event's card remembers its analysis: « Bilan après la course » reads its shared traces, a new publication updates it
     try { const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { published: { analysis: aid } } }); if (r?.event) E.meta = r.event; } catch (e) { /* the review will not find it */ }
     E.status(t("trc.race.ready"), "ok");
-    const link = `#/orga-analyses?id=${aid}`;
-    await modal(E, { title: t("trc.race.published"), ok: null, cancel: t("trc.race.close"), body: `<p>${tn(created.existing ? "trc.race.pubDoneExisting" : "trc.race.pubDone", pick.length)}</p><p><a href="${link}" target="_blank" rel="noopener">${t("trc.race.pubOpen")}</a></p>` });
+    // opened from here (the setter's intent), in a tab of its own: the runners' view, or its organisers' page
+    const view = `#/${kind === "race" ? "analyse-competition" : "analyse-club"}?id=${aid}`, manage = `#/orga-analyses?id=${aid}`;
+    await modal(E, { title: t("trc.race.published"), ok: null, cancel: t("trc.race.close"), body: `
+      <p>${esc(tn(prev ? "trc.race.pubDoneUpdated" : "trc.race.pubDone", pick.length))} ${esc(t(v.live ? "trc.race.pubDoneLive" : "trc.race.pubDoneDraft"))}</p>
+      <p class="tr-pub-go"><a class="btn btn-primary" href="${view}" target="_blank" rel="noopener">${esc(t("trc.race.pubOpen"))}</a>
+        <a class="btn" href="${manage}" target="_blank" rel="noopener">${esc(t("trc.race.pubManage"))}</a></p>` });
   } catch (err) {
     E.status(t("trc.race.failed"), "err");
-    const why = { "not organiser": t("trc.race.pubWhyNotOrg"), race: t("trc.race.pubWhyRace"), courses: t("trc.race.pubWhyCourses"), rate: t("trc.race.pubWhyRate") }[err.code] || err.message;
+    const why = { "not organiser": t("trc.race.pubWhyNotOrg"), race: t("trc.race.pubWhyRace"), courses: t("trc.race.pubWhyCourses"), rate: t("trc.race.pubWhyRate"), "too many": t("trc.race.pubWhyRate"),
+      noclub: t("trc.race.pubWhyNoClub"), password: t("trc.race.pubPwShort"), fields: t("trc.race.pubTitleShort") }[err.code] || err.message;
     E.toast(t("trc.race.pubFail", { why }), 7000);
   }
 }
+
