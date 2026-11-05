@@ -223,14 +223,21 @@ def events(cals: list[dict], agenda: list[dict], today: str, clubs: dict[str, st
     return out
 
 
-def calendars(get, get_bytes, prev: list[dict]) -> list[dict]:
+def calendars(get, get_bytes, prev: list[dict], errors: list[str] | None = None) -> list[dict]:
     """The national calendars as read: [{url, year, provisional, printed, rows, v}]; a PDF whose address was read before
-    is not fetched again. A page or PDF that fails keeps the previous reading of that year."""
+    is not fetched again. A page or PDF that fails keeps the previous reading of that year, and says why in `errors`
+    (agenda.json `natcal_err`: the CI's logs are not at hand, the file is)."""
+    errors = errors if errors is not None else []
     old = {c["url"]: c for c in prev or [] if c.get("v") == VERSION}
     by_year = {c["year"]: c for c in prev or []}
     try:
-        found = links(get(PAGE))
-    except RuntimeError:
+        page = get(PAGE)
+    except Exception as e:
+        errors.append(f"page: {type(e).__name__}: {e}"[:300])
+        return list(prev or [])
+    found = links(page)
+    if not found:
+        errors.append(f"page: no calendar link in {len(page)} characters")
         return list(prev or [])
     out = []
     for ln in found:
@@ -243,7 +250,8 @@ def calendars(get, get_bytes, prev: list[dict]) -> list[dict]:
                 raise RuntimeError("not a PDF")
             cal = read_pdf(data)
             out.append({**ln, "printed": cal["printed"], "rows": cal["rows"], "v": VERSION})
-        except Exception:                                   # unreadable: the year's previous reading, if any
+        except Exception as e:                              # unreadable: the year's previous reading, if any
+            errors.append(f"{ln['year']}: {type(e).__name__}: {e}"[:300])
             if ln["year"] in by_year:
                 out.append(by_year[ln["year"]])
     return out

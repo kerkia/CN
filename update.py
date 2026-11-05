@@ -312,13 +312,17 @@ def main() -> None:
             if args.deploy and code_changed(args.db):
                 print("code changed since the last deploy: to be published")
                 DEPLOY_PENDING.touch()
-        if args.deploy_only:
-            for m in countries.modules():                       # missing, or built by an older version of its scraper
+            # an agenda missing, or built by an older version of its scraper: rebuilt by any run (2026-11-05: a
+            # Python-only push starts no run, and the hourly ones did not look, so a bump waited for 06:00)
+            for m in countries.modules() if not args.agenda_only else []:
                 if hasattr(m, "refresh_agenda") and not m.agenda_current(args.out):
                     _agenda(m, args.out)
                     countries.write_index(args.out)
+                    DEPLOY_PENDING.touch()
                     print(f"agenda {m.COUNTRY.code}: rebuilt")
-                elif hasattr(m, "refresh_agenda"):
+        if args.deploy_only:
+            for m in countries.modules():
+                if hasattr(m, "refresh_agenda"):
                     _agenda_positions(m, args.out)              # (no-op once placed by the current POS_VERSION)
             ok = deploy(args.db)
             if ok:

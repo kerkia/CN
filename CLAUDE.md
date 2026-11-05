@@ -2667,7 +2667,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   organiser's pick), tagged « provisoire » (« calendrier national » for a season's final one), CN « — », the details saying what the
   calendar says (« sous réserve du retour d'expertise », « en attente de candidatures ») with the PDF; placed at their département's
   centre. On 2026-11-05: 31 rows of 2027-2028 added, 6 already on the agenda. Python code reading agenda events must keep requiring
-  `e.id` for anything tied to a competition (races.sync, notify, the organisers' pickers do).
+  `e.id` for anything tied to a competition (races.sync, notify, the organisers' pickers do). **A reading that fails is kept**
+  (owner, 2026-11-05: the 2027 calendar was missing on the site): the CI builds since they were added found none — `natcal: []`, no error
+  kept — while the PC read all three; `calendars` now writes why in agenda.json `natcal_err` and the build prints « national
+  calendars: … », and an agenda older than `AGENDA_VERSION` is rebuilt by any run (`update.main`), not only by a push's deploy run.
 - **Agendas of 29 more countries** (2026-10-23; the agenda only, the owner's request: « for every IOF country, its calendar
   where a clean way exists »). The study (six research agents, every IOF member, each source fetched with our user agent; samples
   kept in the session's scratch): a clean source is a public API, an export (CSV, iCal) or a stable server-rendered list, read

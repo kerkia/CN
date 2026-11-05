@@ -58,7 +58,8 @@ REGIONS = {
     "Provence-Alpes-Côte d'Azur": "04 05 06 13 83 84",
 }
 OUTRE_MER = "Outre-mer"
-AGENDA_VERSION = 5     # bump when the content of agenda.json changes shape: the next deploy rebuilds it at once
+AGENDA_VERSION = 6     # bump when the content of agenda.json changes shape: the next deploy rebuilds it at once
+#   6 (2026-11-05): the national calendars read again, their failures kept (natcal_err): CI's builds had found none
 #   4 (2026-10-10): registrants per circuit (reg.circuits)
 ANN_VERSION = 2        # what is read from an announcement; 2 (2026-10-11): its circuits' table too — each read again once
 REG_DAYS = 21          # races whose registrants are counted circuit by circuit (one page each, once a day)
@@ -449,7 +450,8 @@ def build(du: str | None = None, prev_events: list[dict] | None = None, prev_nat
     names = dept_names()
     # the national calendars' competitions not on the agenda yet (natcal.py)
     from . import natcal
-    cals = natcal.calendars(get, get_bytes, prev_natcal or [])
+    nat_err: list[str] = []
+    cals = natcal.calendars(get, get_bytes, prev_natcal or [], nat_err)
     clubs = {m.group(1): m.group(2) for e in events if (m := re.match(r"(\d{4}) - (.+)", e.get("org") or ""))}
     ligues = dict(LIGUES)
     for lg in (clubdir or {}).get("ligues", []):
@@ -457,7 +459,10 @@ def build(du: str | None = None, prev_events: list[dict] | None = None, prev_nat
         for d in lg.get("depts", []):
             for c in d.get("clubs", []):
                 clubs.setdefault(c["code"], c["name"])
-    events += natcal.events(cals, events, du, clubs, names, ligues)
+    nat = natcal.events(cals, events, du, clubs, names, ligues)
+    events += nat
+    read = ", ".join(f"{c['year']} {len(c.get('rows', []))} rows" for c in cals) or "none"
+    print(f"national calendars: {read}; {len(nat)} events added" + (f"; failed: {' | '.join(nat_err)}" if nat_err else ""))
     events.sort(key=lambda e: (e["date"], e["name"].lower()))
     depts, regions = locate(events, names)
     return {
@@ -470,6 +475,7 @@ def build(du: str | None = None, prev_events: list[dict] | None = None, prev_nat
         "events": events,
         "recent": recent,
         "natcal": cals,
+        **({"natcal_err": nat_err} if nat_err else {}),
     }
 
 
