@@ -1878,15 +1878,15 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const modeHint = t(`sh.mode.${leg ? "leg" : mode}.hint`);
     $("#sh-bar").innerHTML = html`
       <div class="an-bar-row">
+        <span class="sh-bar-opts">${leg ? html`<span class="sh-bar-leg" title="${modeHint}"><b>${legName(leg)}</b> <button type="button" class="btn btn-sm" id="sh-leg-all">← ${t("sh.leg.all")}</button></span>`
+          : html`<select id="sh-mode" title="${modeHint}" aria-label="${t("sh.mode")}">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select>
+          ${mode === "from" ? html`<select id="sh-from" aria-label="${t("sh.from")}">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select>` : ""}`}</span>
         <span class="an-transport">
           <button type="button" class="btn btn-sm" id="sh-prev" title="${t("sh.leg.prev")}">⏮</button>
           <button type="button" class="btn btn-sm btn-primary" id="sh-play">${playing ? "⏸" : "▶"}</button>
           <button type="button" class="btn btn-sm" id="sh-next" title="${t("sh.leg.next")}">⏭</button>
           <select id="sh-speed">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select>
           <button type="button" class="btn btn-sm sh-pan${pan ? " on" : ""}" id="sh-pan" aria-pressed="${pan}" title="${t("sh.pan.tip")}">⌖ ${t("sh.pan")}</button></span>
-        <span class="sh-bar-opts">${leg ? html`<span class="sh-bar-leg" title="${modeHint}"><b>${legName(leg)}</b> <button type="button" class="btn btn-sm" id="sh-leg-all">← ${t("sh.leg.all")}</button></span>`
-          : html`<select id="sh-mode" title="${modeHint}" aria-label="${t("sh.mode")}">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select>
-          ${mode === "from" ? html`<select id="sh-from" aria-label="${t("sh.from")}">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select>` : ""}`}</span>
         <input type="range" class="an-bar-time" id="sh-time" min="${Math.floor(T0)}" max="${Math.ceil(T1)}" step="1" value="${Math.round(T)}" aria-label="${t("an.time")}">
         <span class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></span>
         </div>`;
