@@ -123,6 +123,7 @@ export async function openEditor(ctx) {
     E.variation = null;
     if (E.sel?.kind === "leg" || E.sel?.kind === "control" && E.sel.cc) E.sel = null;
     renderTabs(); refresh();
+    E.syncMap?.();                                                  // the course's own training map (M.mapHideFor)
   };
   E.refresh = () => refresh();
   E.redraw = () => draw();
@@ -144,7 +145,7 @@ export async function openEditor(ctx) {
   function syncVector() {
     if (E.map?.kind !== "vector") return syncing;
     const map = E.map;
-    syncing = syncing.then(() => syncMap(E.ev, map)).then((changed) => { if (changed && E.map === map) { sharp = null; draw(); } }).catch((err) => console.error(err));
+    syncing = syncing.then(() => syncMap(E.ev, map, E.cd.course || 0)).then((changed) => { if (changed && E.map === map) { sharp = null; draw(); } }).catch((err) => console.error(err));
     return syncing;
   }
   E.syncMap = syncVector;

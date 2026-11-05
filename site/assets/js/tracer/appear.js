@@ -37,12 +37,14 @@ export function splitItems(items) {
 /** The blend the course's items are drawn with: « layer » draws them opaque (Purple Pen: no overprint in that mode). */
 export const itemBlend = (ev, map) => (layerOf(ev, map) != null ? "none" : ev.appearance.blend === "layer" ? "blend" : ev.appearance.blend);
 
-/** Bring a vector map's drawing in line with the event: the layer it is cut at, its overprint effect. */
-export async function syncMap(ev, map) {
+/** Bring a vector map's drawing in line with the event: the layer it is cut at, its overprint effect, and — when a course is
+ *  given (0: « Tous les postes ») — what of the map the screen leaves out for it (M.mapHideFor). Without one the screen's choice
+ *  stays: the PDFs and images pass their course's own (paintMap's hide, drawPdf's). */
+export async function syncMap(ev, map, course) {
   if (map?.kind !== "vector") return false;
   const layer = layerOf(ev, map), over = !!ev.appearance.ocadOverprint;
-  // colours hidden by the event (the advanced level)
-  const hid = map.setHidden ? await map.setHidden(ev.mapHidden || []) : false;
+  let hid = false;
+  if (course !== undefined && map.setHidden) { const h = M.mapHideFor(ev, course); hid = await map.setHidden(h.colors, h.symbols); }
   if (!hid && layer === map.layer && over === map.overprint && (layer == null || map.images)) return false;
   await map.setOverprint(over);
   await map.setLayer(layer);
@@ -53,9 +55,9 @@ export async function syncMap(ev, map) {
  * The map's part of the box [l, b, r, t] (map mm) drawn on a canvas g of W × H at pxPerMm: a PDF or vector map rendered for
  * the box, an image cut out of it. part: "all", "below" or "above" (vector maps only).
  */
-export async function paintMap(g, ev, map, box, pxPerMm, W, H, part = "all") {
+export async function paintMap(g, ev, map, box, pxPerMm, W, H, part = "all", hide = null) {
   if (!map) return;
-  if (map.kind === "vector") g.drawImage(await map.renderRegion(box, pxPerMm, null, part), 0, 0, W, H);
+  if (map.kind === "vector") g.drawImage(await map.renderRegion(box, pxPerMm, null, part, hide || M.mapHideFor(ev, 0)), 0, 0, W, H);
   else if (part === "above") return;
   else if (map.renderRegion) g.drawImage(await map.renderRegion(box, pxPerMm), 0, 0, W, H);
   else {
@@ -67,17 +69,17 @@ export async function paintMap(g, ev, map, box, pxPerMm, W, H, part = "all") {
  * The course over its map on a canvas (images, RouteGadget): the map, then the items, layered when the event says so.
  * draw(items, blend): draws a list of items on g.
  */
-export async function paintCourse(g, ev, map, box, pxPerMm, W, H, items, draw, { withMap = true } = {}) {
+export async function paintCourse(g, ev, map, box, pxPerMm, W, H, items, draw, { withMap = true, course = 0 } = {}) {
   await syncMap(ev, map);
-  const layer = withMap ? layerOf(ev, map) : null, blend = itemBlend(ev, map);
+  const layer = withMap ? layerOf(ev, map) : null, blend = itemBlend(ev, map), hide = M.mapHideFor(ev, course);
   if (layer == null) {
-    if (withMap) await paintMap(g, ev, map, box, pxPerMm, W, H);
+    if (withMap) await paintMap(g, ev, map, box, pxPerMm, W, H, "all", hide);
     draw(items, blend);
     return;
   }
   const [lower, rest] = splitItems(items);
-  await paintMap(g, ev, map, box, pxPerMm, W, H, "below");
+  await paintMap(g, ev, map, box, pxPerMm, W, H, "below", hide);
   draw(lower, "none");
-  await paintMap(g, ev, map, box, pxPerMm, W, H, "above");
+  await paintMap(g, ev, map, box, pxPerMm, W, H, "above", hide);
   draw(rest, "none");
 }

@@ -136,8 +136,9 @@ function makeLevels(image, pxW, pxH) {
 // ---- OCAD and OpenOrienteering Mapper maps (vmap/) -------------------------------------------------------------------------------
 /**
  * Open a vector map: { kind: "vector", format ("ocad"|"oom"), version, vmap, w, h, ox, oy, scale, pxW, pxH, image, levels,
- * renderRegion(box, pxPerMm, signal, part), setLayer(colourId | null), drawPdf(target, box, part) }. part: "all", "below" (the
- * colours up to the course's lower purple layer) or "above" (the rest, on a transparent ground).
+ * renderRegion(box, pxPerMm, signal, part, hide), setLayer(colourId | null), drawPdf(target, box, part, hide) }. part: "all",
+ * "below" (the colours up to the course's lower purple layer) or "above" (the rest, on a transparent ground); hide: what of the
+ * map a course leaves out ({ colors, symbols }, model.mapHideFor), else what the screen shows (setHidden).
  */
 async function openVector(u8, name, origin = null) {
   const oom = !(u8[0] === 0xad && u8[1] === 0x0c);
@@ -152,22 +153,25 @@ async function openVector(u8, name, origin = null) {
   const w = Math.max(10, Math.ceil(b[2] + M - ox)), h = Math.max(10, Math.ceil(b[3] + M - oy));
   const k = Math.min(12, 6000 / Math.max(w, h));                // the base image: at most 12 px per mm and 6000 px a side
   const src = { kind: "vector", format: oom ? "oom" : "ocad", version, vmap: map, w, h, ox, oy, scale: map.scale, dpi: k * 25.4,
-    pxW: Math.round(w * k), pxH: Math.round(h * k), layer: null, overprint: false, levels: [], hidden: new Set() };
-  const range = (part) => ({ ...(part === "below" ? { end: src.layer } : part === "above" ? { begin: src.layer } : {}), hide: src.hidden.size ? src.hidden : null });
+    pxW: Math.round(w * k), pxH: Math.round(h * k), layer: null, overprint: false, levels: [], hidden: new Set(), hiddenSyms: new Set() };
+  const range = (part, hide) => {
+    const cols = hide ? new Set(hide.colors || []) : src.hidden, syms = hide ? new Set(hide.symbols || []) : src.hiddenSyms;
+    return { ...(part === "below" ? { end: src.layer } : part === "above" ? { begin: src.layer } : {}), hide: cols.size ? cols : null, hideSyms: syms.size ? syms : null };
+  };
   /** Draw the box [l, b, r, t] (Tracer mm) of the map into a canvas at pxPerMm. */
-  src.renderRegion = async ([l, bb, r, t], pxPerMm, signal, part = "all") => {
+  src.renderRegion = async ([l, bb, r, t], pxPerMm, signal, part = "all", hide = null) => {
     const out = document.createElement("canvas");
     out.width = Math.max(1, Math.round((r - l) * pxPerMm)); out.height = Math.max(1, Math.round((t - bb) * pxPerMm));
     const g = out.getContext("2d");
     if (part !== "above") { g.fillStyle = "#fff"; g.fillRect(0, 0, out.width, out.height); }
     const base = new Matrix(pxPerMm, 0, 0, -pxPerMm, -(ox + l) * pxPerMm, (oy + t) * pxPerMm);
-    map.draw(new CanvasTarget(g, base), [ox + l, oy + bb, ox + r, oy + t], { minRes: 1 / pxPerMm, overprint: src.overprint, ...range(part) });
+    map.draw(new CanvasTarget(g, base), [ox + l, oy + bb, ox + r, oy + t], { minRes: 1 / pxPerMm, overprint: src.overprint, ...range(part, hide) });
     return out;
   };
   /** Draw the map on a PDF target (vmap/target.js) whose frame is Tracer mm. */
-  src.drawPdf = (target, [l, bb, r, t], part = "all") => {
+  src.drawPdf = (target, [l, bb, r, t], part = "all", hide = null) => {
     target.push(new Matrix(1, 0, 0, 1, -ox, -oy));
-    map.draw(target, [ox + l, oy + bb, ox + r, oy + t], { minRes: 0.01, overprint: src.overprint, ...range(part) });
+    map.draw(target, [ox + l, oy + bb, ox + r, oy + t], { minRes: 0.01, overprint: src.overprint, ...range(part, hide) });
     target.pop();
   };
   const baseImage = (part) => src.renderRegion([0, 0, w, h], k, null, part);
@@ -183,11 +187,12 @@ async function openVector(u8, name, origin = null) {
     src.layer = id;
     src.images = id == null ? null : await parts();
   };
-  /** Colours left out of the drawing (the advanced level: ev.mapHidden), its images made again. */
-  src.setHidden = async (ids) => {
-    const key = [...(ids || [])].sort((a, b) => a - b).join(",");
-    if (key === [...src.hidden].sort((a, b) => a - b).join(",")) return false;
+  /** Colours and symbols left out of the screen's drawing (the advanced level: model.mapHideFor), its images made again. */
+  src.setHidden = async (ids, syms = []) => {
+    const keyOf = (c, s) => `${[...c].sort((a, b) => a - b).join(",")}|${[...s].sort().join(",")}`;
+    if (keyOf(ids || [], syms || []) === keyOf(src.hidden, src.hiddenSyms)) return false;
     src.hidden = new Set(ids || []);
+    src.hiddenSyms = new Set(syms || []);
     src.image = await baseImage("all");
     src.levels = makeLevels(src.image, src.pxW, src.pxH);
     if (src.layer != null) src.images = await parts();

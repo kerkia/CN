@@ -2479,6 +2479,14 @@ body.full-win .tr-app { border: 0; }
 .tr-pub-go { display: flex; gap: 8px; flex-wrap: wrap; }
 .tr-dlg-btns .tr-pub-why { flex: 1 1 260px; color: var(--ink-3); align-self: center; margin-right: auto; }
 .tr-checks { display: flex; flex-direction: column; gap: 4px; }
+/* « Filtrer la carte » (training maps): the symbols by family, scrolling within the dialog */
+.tr-mf-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.tr-mf-syms { max-height: 40vh; overflow: auto; border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; }
+.tr-mf-fam + .tr-mf-fam { margin-top: 8px; }
+.tr-mf-fam .tr-checks { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 12px; padding-left: 22px; }
+.tr-mf-body.tr-off { opacity: 0.5; }
+.tr-mf-body .tr-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 2px 12px; max-height: 18vh; overflow: auto;
+  border: 1px solid var(--border); border-radius: 4px; padding: 6px 8px; }
 .tr-err { color: var(--bad); font-size: 13px; }
 .tr-dlg-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 .tr-table { border-collapse: collapse; width: 100%; font-size: 12.5px; }

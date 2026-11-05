@@ -1418,8 +1418,10 @@ export function build(X) {
             Livelox).</p>
           <h3>Karten</h3>
           <p>${W("maps")}: weitere Karten in der Veranstaltung, auf die erste ausgerichtet (über ihre Georeferenzierungen, denselben Rahmen oder zwei
-            Punkte auf jeder), und die Karte jedes Teils einer Bahn. ${W("map-colors")} blendet Farben einer OCAD- oder
-            Mapper-Karte aus; ${W("map-templates")} zeigt die Hintergrundkarten einer OCAD-Karte, die man ihr gibt. ${W("field-states")} benennt die Zustände der
+            Punkte auf jeder), und die Karte jedes Teils einer Bahn. ${W("map-colors")} blendet Farben und Symbole einer OCAD- oder
+            Mapper-Karte aus, für alle Bahnen oder für eine: eine Karte ohne Wege, ohne Vegetation, nur mit Gelände oder Höhenlinien, mit
+            einem Klick. ${W("exercise")} blendet die Karte einer Bahn aus, bis auf einen Korridor entlang ihrer Teilstrecken und Fenster
+            um ihre Posten, und folgt der Bahn, wenn sie sich ändert; die Logos der Karte bleiben sichtbar. ${W("map-templates")} zeigt die Hintergrundkarten einer OCAD-Karte, die man ihr gibt. ${W("field-states")} benennt die Zustände der
             Posten im Feldmodus.</p>
         </section>`,
       calculs: () => html`

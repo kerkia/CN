@@ -160,7 +160,7 @@ export const ACT_ICON = {
   "relay-teams": "team", "rep-controls": "units", "routes-alt-clear": "trash", "control-lock": "lock", "trail-answer": "trailo", "dual-symbol": "symbol", "my-symbols": "symbol",
   "view-angles": "angle", "view-nearest": "nearest", "routes-alt": "routes", "pdf-imposed": "pages", "pdf-back": "backside", "export-geopdf": "geopdf",
   "export-geotiff": "image", "export-svg": "image", "export-kmz": "globe", "export-maprun": "phone", "export-ocadcsv": "table", "export-livelox": "share", "export-iof2-sep": "stopwatch",
-  "maps": "multimap", "map-colors": "colors", "map-templates": "layers", "field-states": "flag", "pdf-cards": "punch", "pdf-overprint": "regmark",
+  "maps": "multimap", "map-colors": "colors", "exercise": "mask", "map-templates": "layers", "field-states": "flag", "pdf-cards": "punch", "pdf-overprint": "regmark",
   "mtbo-oneway": "route", "mtbo-forbidden-route": "forbidden", "mtbo-obstacle": "stretch", "mtbo-forbidden-pass": "close", "mtbo-danger": "danger",
   inset: "inset", mask: "mask", "event-discipline": "bike", "mask-hole": "mask", "mask-holes-clear": "trash",
 };

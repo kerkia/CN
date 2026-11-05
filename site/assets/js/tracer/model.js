@@ -24,6 +24,8 @@
 // - more maps (ev.maps, a course part's map: course.partMaps) and more special objects (MTB-O symbols, enlarged sections,
 //   masks); see the modules that draw them.
 
+import { syncExercises } from "./exercise.js";
+
 /** The event model's version: 2 since 2026-10-24 (the advanced level's fields; nothing to convert from 1). */
 export const VERSION = 2;
 
@@ -1164,6 +1166,16 @@ export function printAreaOf(ev, cd) {
   const c = ev.courses[cd.course];
   return (cd.part >= 0 && c.partAreas?.[cd.part]) || c.printArea;
 }
+/**
+ * What of an OCAD or Mapper map a course leaves out (the advanced level; owner, 2026-11-05: training maps — contours only, no
+ * paths): { colors: [colour ids], symbols: [symbol ids] }, the course's own choice (course.mapHide) else the event's
+ * (ev.mapHidden, ev.mapHiddenSyms), which « Tous les postes » shows. courseId 0: the event's.
+ */
+export function mapHideFor(ev, courseId) {
+  const own = courseId ? ev.courses[courseId]?.mapHide : null;
+  if (own) return { colors: own.colors || [], symbols: own.symbols || [] };
+  return { colors: ev.mapHidden || [], symbols: ev.mapHiddenSyms || [] };
+}
 /** The view's bounds in mm (controls ± 10 mm), or the map's when empty. */
 export function viewBounds(ev, v) {
   const xs = [], ys = [];
@@ -1203,6 +1215,8 @@ export function syncDerived(ev) {
   }
   // a finish drawn on its start: it stays there
   for (const c of Object.values(ev.controls)) if (c.kind === "finish" && c.atStart && ev.controls[c.atStart]) { c.x = ev.controls[c.atStart].x; c.y = ev.controls[c.atStart].y; }
+  // a training map's corridor and windows follow their course (exercise.js)
+  syncExercises(ev);
   return ev;
 }
 

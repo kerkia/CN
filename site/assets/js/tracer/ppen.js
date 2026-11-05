@@ -357,6 +357,7 @@ export function ppenLosses(ev) {
   add("specials", Object.values(ev.specials).filter((s) => !PP_SPECIALS.has(s.kind)).length);
   add("teams", cos.filter((c) => c.relay?.table?.length || c.relay?.couple?.length).length);
   add("locks", cs.filter((c) => c.locked).length);
+  add("mapfilter", cos.filter((c) => c.mapHide).length + (ev.mapHidden?.length || ev.mapHiddenSyms?.length ? 1 : 0));
   return out;
 }
 /** A copy of the event as Purple Pen can hold it: diamonds become forks, random-order sections ordinary controls, and what

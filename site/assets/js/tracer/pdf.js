@@ -241,13 +241,13 @@ async function mapEmbed(E, doc, L) {
 }
 
 /** An OCAD or Mapper map drawn as vectors on a page (vmap/target.js): the box (map mm) at s points per mm, all or a part. */
-async function vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, part) {
+async function vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, part, hide = null) {
   const [{ PdfTarget }, { Matrix }] = await Promise.all([import("./vmap/target.js"), import("./vmap/geom.js")]);
   let darken = null;
   if (E.map.overprint) darken = page.node.newExtGState("GSdark", doc.context.register(doc.context.obj({ Type: "ExtGState", BM: "Darken" })));
   const [x0, y0] = T(0, 0);
   const t = new PdfTarget(L, page, new Matrix(s, 0, 0, s, x0, y0), { rgb, fonts, darken, minRes: 0.01 });
-  E.map.drawPdf(t, box, part);
+  E.map.drawPdf(t, box, part, hide);
   await t.finish();
 }
 
@@ -310,8 +310,9 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
   const vector = withMap && !other && E.map?.kind === "vector";
   if (vector) await syncMap(ev, E.map);
   const layer = vector ? layerOf(ev, E.map) : null, purple = coursePurple(ev, E.map);
+  const hide = M.mapHideFor(ev, cd?.course || 0);                // the course's training map (contours only, no paths…)
   if (other) await extraMapPdf(E, doc, L, page, other, T, s, { fonts, rgb });
-  else if (vector) await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, layer == null ? "all" : "below");
+  else if (vector) await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, layer == null ? "all" : "below", hide);
   else if (withMap) {
     const me = await mapEmbed(E, doc, L);
     if (me?.kind === "pdf") page.drawPage(me.emb, { x: T(0, 0)[0], y: T(0, 0)[1], xScale: k, yScale: k });
@@ -329,7 +330,7 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
     const T2 = (x, y) => T(l + (x - src[0]) * f, b + (y - src[1]) * f);
     const [px0, py0] = T(l, b), [px1, py1] = T(r, tt);
     page.pushOperators(L.pushGraphicsState(), L.moveTo(px0, py0), L.lineTo(px1, py0), L.lineTo(px1, py1), L.lineTo(px0, py1), L.closePath(), L.clip(), L.endPath());
-    if (vector) await vectorMap(E, doc, L, page, src, T2, s * f, { fonts, rgb }, "all");
+    if (vector) await vectorMap(E, doc, L, page, src, T2, s * f, { fonts, rgb }, "all", hide);
     else if (withMap) {
       const me = await mapEmbed(E, doc, L);
       if (me?.kind === "pdf") page.drawPage(me.emb, { x: T2(0, 0)[0], y: T2(0, 0)[1], xScale: k * f, yScale: k * f });
@@ -342,7 +343,7 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
     // « layer » mode (Purple Pen): the lower purple between the map's colours, opaque; the rest over the whole map
     const [lower, rest] = splitItems(items);
     await drawItemsPdf(L, doc, page, ev, lower, T, s, { fonts, rgb, images, purple });
-    await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, "above");
+    await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, "above", hide);
     await drawItemsPdf(L, doc, page, ev, rest, T, s, { fonts, rgb, images, purple, onInset });
   } else await drawItemsPdf(L, doc, page, ev, items, T, s, { multiply, fonts, rgb, images, purple, onInset });
   page.pushOperators(L.popGraphicsState());

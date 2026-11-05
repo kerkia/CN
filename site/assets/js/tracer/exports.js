@@ -223,7 +223,7 @@ export async function courseImage(E, cd, dpi, { withMap = true, clip = null } = 
   g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
   const T = (xx, yy) => [(xx - box[0]) * pxPerMm, (box[3] - yy) * pxPerMm];
   const pc = purpleOverride(ev, E.map), purple = pc ? cmykToRgb(pc) : SCREEN.upper;
-  await paintCourse(g, ev, E.map, box, pxPerMm, W, H, items, (list, blend) => drawItems(g, list, T, pxPerMm, { blend, purple }), { withMap: withMap && !!E.map });
+  await paintCourse(g, ev, E.map, box, pxPerMm, W, H, items, (list, blend) => drawItems(g, list, T, pxPerMm, { blend, purple }), { withMap: withMap && !!E.map, course: cd.course || 0 });
   return { canvas: c, box, pxPerMm };
 }
 /** A world file for an image of box at pxPerMm: when georeferenced, in degrees (EPSG:4326, approximated by an affine). */

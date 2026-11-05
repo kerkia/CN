@@ -1417,8 +1417,10 @@ export function build(X) {
             Livelox).</p>
           <h3>Cartes</h3>
           <p>${W("maps")} : d'autres cartes dans l'événement, calées sur la première (par leurs géoréférencements, le même cadre, ou deux
-            points sur chacune), et la carte de chaque partie d'un circuit. ${W("map-colors")} cache des couleurs d'une carte OCAD ou
-            Mapper ; ${W("map-templates")} montre les modèles d'une carte OCAD qu'on lui donne. ${W("field-states")} nomme les états des
+            points sur chacune), et la carte de chaque partie d'un circuit. ${W("map-colors")} cache des couleurs et des symboles d'une carte OCAD
+            ou Mapper, pour tous les circuits ou pour un seul : une carte sans chemins, sans végétation, avec le relief ou les courbes
+            seules, en un clic. ${W("exercise")} cache la carte d'un circuit sauf un couloir le long de ses interpostes et des fenêtres
+            autour de ses postes, et suit le circuit quand il change ; les logos de la carte restent visibles. ${W("map-templates")} montre les modèles d'une carte OCAD qu'on lui donne. ${W("field-states")} nomme les états des
             postes en mode terrain.</p>
         </section>`,
       calculs: () => html`

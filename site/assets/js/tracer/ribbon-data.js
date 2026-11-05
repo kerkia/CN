@@ -79,8 +79,11 @@ export const TABS = [
         S("import-course", t("trc.rd.importCourse"), "scan", { need: "edit", tip: t("trc.rd.importCourseTip") }))] },
     { id: "maps", title: t("trc.rd.gMaps"), pro: true, items: [
       B("maps", t("trc.rd.maps"), "multimap", { need: "edit", tip: t("trc.rd.mapsTip") }),
-      stack(S("map-colors", t("trc.rd.mapColors"), "colors", { need: "vector", tip: t("trc.rd.mapColorsTip") }),
-        S("map-templates", t("trc.rd.mapTemplates"), "layers", { need: "vector", tip: t("trc.rd.mapTemplatesTip") }))] },
+      stack(S("map-templates", t("trc.rd.mapTemplates"), "layers", { need: "vector", tip: t("trc.rd.mapTemplatesTip") }))] },
+    // training maps (owner, 2026-11-05): a course's map filtered (contours only, no paths…), a corridor and windows
+    { id: "training", title: t("trc.rd.gTraining"), pro: true, items: [
+      B("map-colors", t("trc.rd.mapColors"), "colors", { need: "vector", tip: t("trc.rd.mapColorsTip") }),
+      B("exercise", t("trc.rd.exercise"), "mask", { need: "course", tip: t("trc.rd.exerciseTip") })] },
     { id: "position", title: t("trc.rd.gPosition"), items: [
       B("calage", t("trc.rd.calage"), "target", { need: "edit", tip: t("trc.rd.calageTip") }),
       stack(S("georef", t("trc.rd.georef"), "globe", { tip: t("trc.rd.georefTip") }),

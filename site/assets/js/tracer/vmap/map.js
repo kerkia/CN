@@ -110,10 +110,10 @@ export class VMap {
   /**
    * Draw the part of the map in `rect` on a graphics target, one colour at a time. opts: { begin (draw the colours above this id),
    * end (up to and including this id), overprint (blend the colours flagged « overprint » darker, as printed), minRes (mm per
-   * device pixel) }.
+   * device pixel), hide (a Set of colour ids left out), hideSyms (a Set of symbol ids left out) }.
    */
-  draw(g, rect, { begin = null, end = null, overprint = false, minRes = 0.05, hide = null } = {}) {
-    const ro = { minRes, metric: this.metric, view: rect };
+  draw(g, rect, { begin = null, end = null, overprint = false, minRes = 0.05, hide = null, hideSyms = null } = {}) {
+    const ro = { minRes, metric: this.metric, view: rect, skip: hideSyms?.size ? hideSyms : null };
     let on = begin == null;
     if (on) this.drawColor(g, this.imageColor, rect, ro, false);
     for (const c of this.colors) {
@@ -129,7 +129,8 @@ export class VMap {
   drawColor(g, c, rect, ro, blend) {
     let any = false;
     for (const d of this.symdefs) {
-      if (!d.visible || !d.hasColor(c)) continue;
+      // symbols hidden by a course's map filter (a training map: no paths, contours only) are left out; never the layout's
+      if (!d.visible || !d.hasColor(c) || (ro.skip && c !== this.layoutColor && ro.skip.has(d.id))) continue;
       let list = d.symbols;
       if (d.sortSymbols) list = list.slice().sort((a, b) => a.order - b.order);
       for (const s of list) {

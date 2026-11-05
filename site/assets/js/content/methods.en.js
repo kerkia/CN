@@ -1410,7 +1410,10 @@ export function build(X) {
             variation as a course, and a package for Livelox's import page (a direct upload to Livelox needs an agreement with Livelox).</p>
           <h3>Maps</h3>
           <p>${W("maps")}: other maps in the event, placed on the first (by their georeferencing, the same frame, or two points on each),
-            and the map of each part of a course. ${W("map-colors")} hides colours of an OCAD or Mapper map; ${W("map-templates")} shows the
+            and the map of each part of a course. ${W("map-colors")} hides colours and symbols of an OCAD or Mapper map, for every course or for one:
+            a map without paths, without vegetation, with the relief or the contours only, in one click. ${W("exercise")} hides a course's
+            map except a corridor along its legs and windows round its controls, and follows the course when it changes; the map's logos
+            stay visible. ${W("map-templates")} shows the
             templates of an OCAD map you give it. ${W("field-states")} names the controls' states in field mode.</p>
         </section>`,
       calculs: () => html`

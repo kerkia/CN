@@ -144,7 +144,7 @@ export async function svgDialog(E) {
     if (v.content === "map" && E.map) {
       const pxPerMm = 8, W = Math.round((box[2] - box[0]) * pxPerMm), H = Math.round((box[3] - box[1]) * pxPerMm), c = document.createElement("canvas");
       c.width = W; c.height = H; const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
-      await syncMap(ev, E.map); await paintMap(g, ev, E.map, box, pxPerMm, W, H);
+      await syncMap(ev, E.map); await paintMap(g, ev, E.map, box, pxPerMm, W, H, "all", M.mapHideFor(ev, d.cd.course || 0));
       map = c.toDataURL("image/png").split(",")[1];
     }
     files[`${fileName(d.name)}.svg`] = enc(courseSvg(ev, d.cd, box, { map, purple }));

@@ -2025,6 +2025,27 @@ Every multiple-choice game was played through to its score page at phone size, w
   the package stands in), more interface languages (with the site's), EPS and IOF XML 1.0. Local tests: launch configs
   `pages-dev-tracer` (8781, the test account an administrator) and `pages-dev-tracer-user` (8782, not); the guide's chapter « Le niveau
   avancé » (`?onglet=tracer&voir=avance`).
+- **Training maps in the Tracer** (owner, 2026-11-05, after the OCAD study, private artifact
+  https://claude.ai/artifact/GNEXysSHwavEj636KdgQDU; the advanced level, administrators for now): ribbon Carte › « Carte
+  d'entraînement ». **« Filtrer la carte… »** (act `map-colors`, `mapview.colorsDialog`, OCAD/Mapper maps only) hides colours **and
+  symbols**, for every course (`ev.mapHidden` colour ids, `ev.mapHiddenSyms` symbol ids) or for one (`course.mapHide { colors,
+  symbols }`; « Comme tous les circuits » drops it) — `model.mapHideFor(ev, course)`; ready-made choices (`presetSymbols`, by
+  ISOM/ISSprOM numbers, never 6xx-9xx nor unnumbered symbols: the map's margins): « Sans chemins » (line symbols 501-508, ISOM 2000
+  501-509), « Sans végétation » (4xx), « Relief seul » (hides 2xx-5xx), « Courbes seules » (keeps 101-103, ISOM 2000 101-105: its
+  104/105 are slope lines and values, ISOM 2017's earth bank and wall). `vmap/map.js draw({ hideSyms })` leaves those symdefs out
+  (never the layout's); `mapsrc` `renderRegion(…, hide)` / `drawPdf(…, hide)` take a course's choice, `setHidden(colours, symbols)`
+  the screen's (`appear.syncMap(ev, map, course)`, the editor passing `E.cd.course`, also on a change of course); PDFs (`pdf.js
+  onePage`), course images (`paintCourse`'s `course`) and the SVG export draw each course's own. **« Couloir et fenêtres… »** (act
+  `exercise`, needs a course): `tracer/exercise.js` makes the course's mask (`layoutx`'s « mask », shown on that course only, `gen
+  { course, width, window (metres), keep, sig }`): white over the map frame but the union of capsules along the legs (with their
+  bends) ± half the width, discs round the controls (a score course: windows only) and the map's layout images (`logosOf`: logos
+  never hidden), traced by marching squares on a grid of 3 M cells at most (≥ 0.1 mm) and simplified, filled even-odd (an island
+  inside a loop stays white); `model.syncDerived` → `syncExercises` traces it again when its signature changes (a control moved, a
+  bend) and drops it with its course. Masks are laid out before the other specials (`layout.js`), so texts and images stay over
+  them. Defaults 80 m forest, 30 m at 1:5000 or larger. A .ppen keeps none of it (`ppenLosses` « mapfilter »). Tested 2026-11-05 on
+  the local « ent opa 8 nov26 deski P » event (OCAD 2018): « Courbes seules » on one course, the whole map on the others, a 60 m
+  corridor on another, both on screen and in the PDF (vector); the geometry in Node (a 4-leg loop: corridor and island in 52 ms).
+  Not done: image, scan or PDF maps (masks only; filtering them would mean repainting pixels), opening it to every account.
 - **OCAD course files in the Tracer** (owner, 2026-11-04: « why can't an OCAD file be imported alone? »; every account, the essential
   level): an `.ocd` holding courses (OCAD's course-setting project) is an event file of its own on « Importer un événement », and on the
   start screen or « Nouvel événement » it goes to the import (`pages/tracer.js` `ocadCourses`); its map is the file itself when it holds

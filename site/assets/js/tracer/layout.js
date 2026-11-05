@@ -28,7 +28,9 @@ export function layoutCourse(ev, cd, opts = {}) {
   const add = (o) => { objs.push(o); return o; };
 
   // specials first (they influence the numbers' places)
-  for (const sid of v.specials) { const o = specialObj(ev, sid, ratio, std, cd, opts); if (o) add(o); }
+  // masks first: they hide the map, never the other special objects (texts, images, out-of-bounds areas)
+  const sids = [...v.specials].sort((a, b) => (ev.specials[a]?.kind === "mask" ? 0 : 1) - (ev.specials[b]?.kind === "mask" ? 0 : 1));
+  for (const sid of sids) { const o = specialObj(ev, sid, ratio, std, cd, opts); if (o) add(o); }
   for (const sid of v.descriptions) add({ t: "descriptions", special: sid, cd, ...descRect(ev.specials[sid]) });
 
   const startAngleOut = (() => {

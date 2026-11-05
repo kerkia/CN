@@ -169,6 +169,7 @@ export async function action(E, act, btn, at = {}) {
     case "map-change": if (!ro()) (await lazy.more()).changeMap(E); break;
     case "maps": if (!ro()) (await import("./maps.js")).mapsDialog(E); break;
     case "map-colors": (await import("./mapview.js")).colorsDialog(E); break;
+    case "exercise": if (!ro()) (await import("./mapview.js")).exerciseDialog(E); break;
     case "map-templates": (await import("./mapview.js")).templatesDialog(E); break;
     case "event-props": if (!ro()) eventProps(E); break;
     case "appearance": if (!ro()) appearance(E); break;
