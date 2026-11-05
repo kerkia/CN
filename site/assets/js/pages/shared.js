@@ -360,7 +360,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   let courseN = A.courses.some((c) => String(c.n) === query.c) ? Number(query.c) : A.courses[0]?.n ?? null, viewer = null, initial = query;
   main.innerHTML = html`
     <div class="sh-top">
-      <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
+      <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted">${fmtDate(A.date)} · ${t(A.kind === "race" ? "ma.kind.race" : "sh.kind.club")}</span>
       <span class="sh-tabs" id="sh-tabs"></span>
       ${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}</div>
     <div id="sh-viewer"></div>

@@ -1928,9 +1928,12 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
 .sh-runners { display: flex; flex-direction: column; gap: 1px; }
 .sh-course-pick { margin: 0 0 8px; }
 /* the analysis's two views: the map, Arena's split analysis in its place (owner, 2026-11-04) */
-.sh-viewtabs { display: inline-flex; gap: 2px; padding: 2px; margin-left: 6px; border-radius: 8px; background: var(--surface-2); }
-.sh-viewtabs button { appearance: none; border: 0; background: none; padding: 4px 12px; border-radius: 6px; font: inherit; font-size: 13px; color: var(--ink-2); cursor: pointer; }
-.sh-viewtabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--border); }
+/* (owner, 2026-11-05: in the flag's pale orange, so that it does not blend with the title's line) */
+.sh-viewtabs { display: inline-flex; gap: 3px; padding: 3px; margin-left: 12px; border-radius: 9px; background: color-mix(in srgb, var(--flag) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--flag) 45%, transparent); }
+.sh-viewtabs button { appearance: none; border: 0; background: none; padding: 5px 14px; border-radius: 6px; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink); cursor: pointer; }
+.sh-viewtabs button:hover { background: color-mix(in srgb, var(--flag) 22%, transparent); }
+.sh-viewtabs button[aria-selected="true"] { background: var(--flag); color: #fff; }
 /* the split times in the map's three panels (owner, 2026-11-05): circuit and runners left, the views between, their settings right */
 .sh-sp-layout { grid-template-rows: minmax(0, 1fr); grid-template-areas: "left spl map spr right"; }
 .sh-sp-layout > #sh-sp-split-l { grid-area: spl; } .sh-sp-layout > #sh-sp-split-r { grid-area: spr; }
