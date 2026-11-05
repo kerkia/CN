@@ -2301,7 +2301,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     // one leg: its routes, then the runners shown with the route they took
     const block = (j) => {
       const routes = rcm.routes[j], pace = RC.paceOf(rcm.s, rcm.auto[j]), mine = rcm.mine[j] || new Map();
-      return html`<div class="rc-lb${j === leg ? " cur" : ""}"><div class="rc-lb-head"><button type="button" class="rc-leg-go" data-rc-leg="${j}" title="${t("rc.leg.show")}"><b>${legName(j)}</b> ›</button></div>
+      return html`<div class="rc-lb${j === leg ? " cur" : ""}" data-rc-block="${j}"><div class="rc-lb-head"><button type="button" class="rc-leg-go" data-rc-leg="${j}" title="${t("rc.leg.show")}"><b>${legName(j)}</b> ›</button></div>
         ${routes.map((r, n) => html`<div class="rc-lb-row">${dot(n)}<b>${RC.LETTERS[n]}</b> <span class="num">${RC.routeFacts(r, pace, clock)}</span> <span class="muted">· ${RC.sideLabel(r)}</span></div>`)}
         ${mine.size ? html`<p class="muted" style="margin:6px 0 2px">${t("rc.runners")}</p>
           ${runners.filter((r) => r.visible && mine.has(r.uid)).map((r) => { const m = mine.get(r.uid); return html`<div class="rc-lb-run">
@@ -2315,7 +2315,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       ${legs.length < legsN ? html`<p class="muted">${t("rc.st.legsOf", { k: legs.length, n: legsN })}</p>` : ""}
       <button type="button" class="rc-leg-go rc-leg-all${leg ? "" : " cur"}" data-rc-leg="0">${t("sh.leg.all")}</button>
       ${legs.map(block)}`;
-    $$("[data-rc-leg]", el).forEach((b) => b.addEventListener("click", () => setLeg(Number(b.dataset.rcLeg))));
+    // a leg's whole block opens it, as its name does (owner, 2026-11-05: a click beside the name did nothing)
+    $$("[data-rc-leg]", el).forEach((b) => b.addEventListener("click", (e) => { e.stopPropagation(); setLeg(Number(b.dataset.rcLeg)); }));
+    $$("[data-rc-block]", el).forEach((b) => b.addEventListener("click", () => setLeg(Number(b.dataset.rcBlock))));
     el.querySelector(".rc-lb.cur")?.scrollIntoView({ block: "nearest" });
   }
 
@@ -2437,7 +2439,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     refChanged: () => { bottom.draw(); saveUrl(); }, changed: () => saveUrl(),
     // the course's distance at each control (km, the straight legs), for the gaps against the distance
     courseKm: () => { const f = runners[0]?.fit; let acc = 0; return ctrls.map((p, i) => { if (i && f) { const a = toM(f, ctrls[i - 1].x, ctrls[i - 1].y), b = toM(f, p.x, p.y); acc += Math.hypot(a[0] - b[0], a[1] - b[1]) / 1000; } return acc; }); },
-    // a point of the gaps: the replay at that runner's pass at control j (a mass start, or the clock), the runner followed
+    // a point of the gaps (a runner at a control): the leg into that control, framed whole, that runner followed (owner,
+    // 2026-11-05: it centred on the control itself)
     jump: (r, j) => {
       if (!j || r.passes[j] == null) return;
       r.visible = true; sel = r; follow = "sel";
@@ -2461,8 +2464,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     variants: () => (leg ? variantsOf(leg) : null),
     setTags: (j, tags) => { if (tags) localTags[j] = tags; else delete localTags[j]; saveLocalTags(); varCache.clear(); legend(); mv.draw(); left(); bottom.draw(); },
     shareTags: async (j) => { await shareVariants(j); legend(); mv.draw(); left(); bottom.draw(); },
-    // a point of the gaps (a runner at a control): the leg into that control, framed whole, that runner followed (owner,
-    // 2026-11-05: it centred on the control itself)
     colourBy: () => cmode(), setColourBy: (c) => { colourBy = c; savePrefs(); legend(); right(); mv.draw(); },
     extraQuery: () => ({ ...(state.gref ? { g: state.gref } : {}), ...(state.gx ? { gx: state.gx } : {}), ...(state.gm ? { gm: state.gm } : {}), ...(state.da != null ? { da: state.da } : {}) }) };
   // the views under « Analyses », and one runner's legs in a tab of its own (« Inter-postes »; none for a score course)
