@@ -2408,12 +2408,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     courseKm: () => { const f = runners[0]?.fit; let acc = 0; return ctrls.map((p, i) => { if (i && f) { const a = toM(f, ctrls[i - 1].x, ctrls[i - 1].y), b = toM(f, p.x, p.y); acc += Math.hypot(a[0] - b[0], a[1] - b[1]) / 1000; } return acc; }); },
     // a point of the gaps: the replay at that runner's pass at control j (a mass start, or the clock), the runner followed
     jump: (r, j) => {
-      if (r.passes[j] == null) return;
-      stop(); leg = 0; if (mode !== "clock") mode = "mass";
-      r.visible = true; sel = r; follow = "sel"; still = false;
-      [T0, T1] = range();
-      T = mode === "clock" ? r.abs0 + r.passes[j] : r.passes[j] - r.start;
-      left(); right(); frame(); saveUrl();
+      if (!j || r.passes[j] == null) return;
+      r.visible = true; sel = r; follow = "sel";
+      setLeg(j); saveUrl();
     },
     get leg() { return leg; }, organiser: !!you.organiser, VARIANT_COLOURS,
     tabOk: (k) => (score ? k === "splits" : k !== "legs" && (k !== "exercises" || A.kind === "club") && (k !== "variants" || variantsOn)), score, visitsOf, scoreN,
@@ -2421,7 +2418,14 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     setDraft: (d) => { draft = d; mv.draw(); bottom.draw(); },
     setExWidth: (e, w, save) => { if (save) { saveExercises(exercises.map((x) => (x.id === e.id ? { ...x, w } : x))).then(() => { delete exW[e.id]; bottom.draw(); }).catch((err) => alert(errText(err))); } exW[e.id] = w; mv.draw(); },
     saveExercises: async (list) => { await saveExercises(list); mv.draw(); bottom.draw(); },
-    pickExercise: (e) => { state.ex = e?.id || null; if (e?.leg && e.leg !== leg) setLeg(e.leg); else { mv.draw(); bottom.draw(); } saveUrl(); },
+    pickExercise: (e) => {
+      state.ex = e?.id || null;
+      if (e?.leg && e.leg !== leg) setLeg(e.leg); else { mv.draw(); bottom.draw(); }
+      // the exercise's line in full on the map, with room for its width (owner, 2026-11-05)
+      const line = e ? exLinePx(e) : [];
+      if (line.length > 1) { mv.fitPoints(line.map((p) => p[0]), line.map((p) => p[1]), 80, 4); still = true; mv.draw(); }
+      saveUrl();
+    },
     redrawMap: () => mv.draw(), errText,
     variants: () => (leg ? variantsOf(leg) : null),
     setTags: (j, tags) => { if (tags) localTags[j] = tags; else delete localTags[j]; saveLocalTags(); varCache.clear(); legend(); mv.draw(); left(); bottom.draw(); },
@@ -2430,6 +2434,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     extraQuery: () => ({ ...(state.gref ? { g: state.gref } : {}), ...(state.gx ? { gx: state.gx } : {}), ...(state.gm ? { gm: state.gm } : {}), ...(state.da != null ? { da: state.da } : {}) }) };
   // the views under « Analyses », and one runner's legs in a tab of its own (« Inter-postes »; none for a score course)
   const views = bottomViews($("#sh-views"), X), legsTab = legsPanel($("#sh-legs"), X);
+    // a point of the gaps (a runner at a control): the leg into that control, framed whole, that runner followed (owner,
+    // 2026-11-05: it centred on the control itself)
   const bottom = { draw: () => { views.draw(); legsTab.draw(); }, tab: () => views.tab() };
   leftP.setTab("legs", !score);
 

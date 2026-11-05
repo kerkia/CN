@@ -2432,7 +2432,7 @@ export default {
   "sh.gx": "Entlang",
   "sh.gx.ctrl": "der Posten",
   "sh.gx.dist": "der Distanz (km)",
-  "sh.gaps.hint": "Der Abstand jedes angezeigten Läufers zur Referenz, Posten für Posten; je tiefer, desto weiter zurück. Der Erste und der Superman werden {src} bestimmt. Klicke auf einen Punkt: Das Replay springt dorthin und folgt diesem Läufer.",
+  "sh.gaps.hint": "Der Abstand jedes angezeigten Läufers zur Referenz, Posten für Posten; je tiefer, desto weiter zurück. Der Erste und der Superman werden {src} bestimmt. Klicke auf einen Punkt: Die Teilstrecke zu diesem Posten wird gezeigt, diesem Läufer wird gefolgt.",
   "sh.duel.hint": "Teilstrecke für Teilstrecke die Zeit, die {a} gegenüber {b} gewinnt (oben, grün) oder verliert (unten, rot). Klicke auf einen Balken, um die Teilstrecke zu sehen.",
   "sh.duel.won": "{a} gewinnt {d}",
   "sh.duel.lost": "{a} verliert {d}",

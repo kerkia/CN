@@ -2432,7 +2432,7 @@ export default {
   "sh.gx": "A lo largo",
   "sh.gx.ctrl": "de los controles",
   "sh.gx.dist": "de la distancia (km)",
-  "sh.gaps.hint": "La diferencia de cada corredor mostrado con la referencia, control a control; cuanto más abajo, más retraso. El primero y el superman se toman {src}. Haz clic en un punto: la reproducción se sitúa ahí y sigue a ese corredor.",
+  "sh.gaps.hint": "La diferencia de cada corredor mostrado con la referencia, control a control; cuanto más abajo, más retraso. El primero y el superman se toman {src}. Haz clic en un punto: se muestra el tramo que lleva a ese control, siguiendo a ese corredor.",
   "sh.duel.hint": "Tramo a tramo, el tiempo que {a} gana (arriba, en verde) o pierde (abajo, en rojo) frente a {b}. Haz clic en una barra para ver el tramo.",
   "sh.duel.won": "{a} gana {d}",
   "sh.duel.lost": "{a} pierde {d}",

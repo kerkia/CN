@@ -1723,7 +1723,7 @@ export default {
   "sh.v.gaps": "Écarts", "sh.gm.gaps": "Écarts", "sh.gm.duel": "Face-à-face", "sh.duel.vs": "face à",
   "sh.gref": "Écart avec", "sh.gref.leader": "le premier à chaque poste", "sh.gref.superman": "le superman (meilleurs inter-postes)", "sh.gref.runner": "un coureur",
   "sh.gx": "Le long", "sh.gx.ctrl": "des postes", "sh.gx.dist": "de la distance (km)",
-  "sh.gaps.hint": "L'écart de chaque coureur affiché avec la référence, poste par poste ; plus bas, plus en retard. Le premier et le superman sont pris {src}. Cliquez un point : le replay s'y place et suit ce coureur.",
+  "sh.gaps.hint": "L'écart de chaque coureur affiché avec la référence, poste par poste ; plus bas, plus en retard. Le premier et le superman sont pris {src}. Cliquez un point : l'inter-poste qui mène à ce poste s'affiche, ce coureur suivi.",
   "sh.duel.hint": "Inter-poste par inter-poste, le temps gagné (en haut, en vert) ou perdu (en bas, en rouge) par {a} face à {b}. Cliquez une barre pour voir l'inter-poste.",
   "sh.duel.won": "{a} gagne {d}", "sh.duel.lost": "{a} perd {d}",
   "sh.strip.show": "Allure sous la carte",

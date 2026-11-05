@@ -2343,7 +2343,7 @@ export default {
   "sh.v.gaps": "Time gaps", "sh.gm.gaps": "Gaps", "sh.gm.duel": "Head to head", "sh.duel.vs": "against",
   "sh.gref": "Gap to", "sh.gref.leader": "the leader at each control", "sh.gref.superman": "the superman (best legs)", "sh.gref.runner": "a runner",
   "sh.gx": "Along", "sh.gx.ctrl": "the controls", "sh.gx.dist": "the distance (km)",
-  "sh.gaps.hint": "Each runner shown, their gap to the reference control by control; lower is further behind. The leader and the superman are taken {src}. Click a point: the replay goes there and follows that runner.",
+  "sh.gaps.hint": "Each runner shown, their gap to the reference control by control; lower is further behind. The leader and the superman are taken {src}. Click a point: the leg into that control is shown, that runner followed.",
   "sh.duel.hint": "Leg by leg, the time {a} gained (up, in green) or lost (down, in red) against {b}. Click a bar to see the leg.",
   "sh.duel.won": "{a} gains {d}", "sh.duel.lost": "{a} loses {d}",
   "sh.strip.show": "Pace under the map",
