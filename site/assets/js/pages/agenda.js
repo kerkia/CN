@@ -144,11 +144,16 @@ export async function render(main, { query }) {
     groups: new Set(), selected: query.id && byKey.has(String(query.id)) ? String(query.id) : null,
   };
   const returning = !query.periode && query.id == null && memo && memo.cc === cc && Date.now() - memo.at < 3600e3 ? memo : null;
+  // another country picked from this list: its periods and the filters that are not places go with it (owner, 2026-11-05: they
+  // were lost); the places are the other country's
+  const carried = !returning && !query.periode && query.id == null && memo?.carry && memo.cc !== cc && Date.now() - memo.at < 60e3 ? memo : null;
   memo = null;
   // the filters too (2026-11-05: a phone's reader came back from a race to the periods kept and every other filter reset)
   if (returning) Object.assign(st, { when: new Set(returning.when), ...(returning.f ? { kinds: new Set(returning.f.kinds), cnOnly: returning.f.cnOnly,
     from: returning.f.from, to: returning.f.to, spec: returning.f.spec, regions: new Set(returning.f.regions), depts: new Set(returning.f.depts),
     groups: new Set(returning.f.groups) } : {}) });
+  if (carried) Object.assign(st, { when: new Set(carried.when), kinds: new Set(carried.f.kinds), cnOnly: carried.f.cnOnly,
+    from: carried.f.from, to: carried.f.to, spec: carried.f.spec, groups: new Set(carried.f.groups) });
   const groupsPresent = [...new Set(events.map(groupOf).filter(Boolean))]
     .sort((a, b) => (GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
 
@@ -675,10 +680,12 @@ export async function render(main, { query }) {
     if (box.scrollHeight > box.clientHeight + 1) box.scrollTop = returning.box;
     else window.scrollTo({ top: returning.y, behavior: "instant" });
   }, 0);
-  page.addEventListener("click", (e) => {
-    if (e.target.closest("tr[data-key], a[href]")) memo = { cc, when: [...st.when], f: { kinds: [...st.kinds], cnOnly: st.cnOnly, from: st.from, to: st.to, spec: st.spec,
-      regions: [...st.regions], depts: [...st.depts], groups: [...st.groups] }, box: $("#table").scrollTop, y: window.scrollY, at: Date.now() };
-  }, true);
+  const keep = () => ({ cc, when: [...st.when], f: { kinds: [...st.kinds], cnOnly: st.cnOnly, from: st.from, to: st.to, spec: st.spec,
+    regions: [...st.regions], depts: [...st.depts], groups: [...st.groups] }, box: $("#table").scrollTop, y: window.scrollY, at: Date.now() });
+  page.addEventListener("click", (e) => { if (e.target.closest("tr[data-key], a[href]")) memo = keep(); }, true);
+  // a change of country builds the page again (app.pickCountry): what it keeps is noted before
+  const onCountry = () => { memo = { ...keep(), carry: true }; };
+  window.addEventListener("ocn:country", onCountry);
   findLive();
   findTracking();
   if (st.selected) {
@@ -688,5 +695,6 @@ export async function render(main, { query }) {
     showDetail(st.selected, true);
   } else drawDetail();
   return { title: t("nav.agenda"), onQuery, cleanup: () => { document.removeEventListener("click", closeMulti); phone.removeEventListener("change", syncFold);
+    window.removeEventListener("ocn:country", onCountry);
     phone.removeEventListener("change", mountMap); map?.destroy(); } };
 }

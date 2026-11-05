@@ -621,7 +621,7 @@ function renderHeader(r) {
     else setLang(l);
   }));
   // the site's country (country.js): the page drawn again for it
-  $$("[data-country-pick]").forEach((b) => b.addEventListener("click", () => { closeMenus(); pickCountry(b.dataset.countryPick); }));
+  $$("[data-country-pick]").forEach((b) => b.addEventListener("click", () => { closeMenus(); window.dispatchEvent(new CustomEvent("ocn:country", { detail: b.dataset.countryPick })); }));
   // the installable app (pwa.js): the item shows once the browser offers to install
   $("#install-btn")?.addEventListener("click", () => { closeMenus(); pwa.install(); });
   $("#logout-btn")?.addEventListener("click", async () => {

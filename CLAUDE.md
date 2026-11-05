@@ -304,7 +304,8 @@ says its period (owner, 2026-10-31): the past in the water's wash, today in the 
 own `--water-wash`, `--flag-wash`, `--forest-wash`; `tr[data-period]`), the three boxes carrying the same colours as a legend
 (`.when-sw`); hover and selection darken the row's tint and mark its first cell. Left for a race (a row, a
 link of the details), the list remembers where it was (`agenda.js` `memo`: periods, the other filters — since 2026-11-05 —
-and scroll, an hour, the same country): coming
+and scroll, an hour, the same country; another country picked keeps the periods and the filters that are not places — `carried`,
+noted on « ocn:country », which the header's menu now sends too, owner 2026-11-05): coming
 back — a race page's « ‹ Compétitions » (`arena.back`, on the results page and the analysis), the browser's Back, the module's
 name — finds it there; an address naming an event or `periode` opens as asked (owner, 2026-10-30). The map draws the coming
 competitions as dots, today's and the past ones only while the mouse is over their row or they are selected (`agendamap.show`'s
