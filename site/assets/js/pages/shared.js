@@ -1998,11 +1998,19 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   /** An exercise's line in metres (the map's px over its scale): a corridor's drawn line, a compass leg's two controls. */
   const exLinePx = (e) => (e.kind === "compass" ? (e.leg && ctrls[e.leg] ? [[ctrls[e.leg - 1].x, ctrls[e.leg - 1].y], [ctrls[e.leg].x, ctrls[e.leg].y]] : []) : e.pts || []);
   const exLine = (e) => exLinePx(e).map(([x, y]) => [x / pxPerM, y / pxPerM]);
-  /** Runner r's route for an exercise: its leg, else its whole race; metres and trace seconds. */
-  function exRoute(r, e) {
+  /** Runner r's route for an exercise: its leg; on the whole course, the stretch from where the runner passes closest to the
+   *  line's start to where they then pass closest to its end (owner, 2026-11-05: a corridor along one leg was scored against the
+   *  whole race, 8 % inside); metres and trace seconds. */
+  function exRoute(r, e, line) {
     const a = e.leg ? r.passes[e.leg - 1] : r.start, b = e.leg ? r.passes[e.leg] : r.finish ?? r.tr.dur;
     if (a == null || b == null || b <= a) return null;
-    const i0 = indexAt(r.tr, a), i1 = indexAt(r.tr, b), xs = [], ys = [], ts = [];
+    let i0 = indexAt(r.tr, a), i1 = indexAt(r.tr, b);
+    if (!e.leg && line?.length >= 2) {
+      const near = ([x, y], from) => { let bi = from, bd = Infinity; for (let i = from; i <= i1; i++) { const d = Math.hypot(r.pxs[i] / pxPerM - x, r.pys[i] / pxPerM - y); if (d < bd) { bd = d; bi = i; } } return bi; };
+      const s = near(line[0], i0), f = near(line[line.length - 1], s);
+      if (f > s) { i0 = s; i1 = f; }
+    }
+    const xs = [], ys = [], ts = [];
     for (let i = i0; i <= i1; i++) { xs.push(r.pxs[i] / pxPerM); ys.push(r.pys[i] / pxPerM); ts.push(r.tr.t[i]); }
     return xs.length >= 2 ? { xs, ys, ts } : null;
   }
@@ -2011,7 +2019,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     if (line.length < 2) return [];
     return runners.map((r) => {
       const ck = `${e.id}|${JSON.stringify(line)}|${e.leg}|${r.uid}`;
-      if (!devCache.has(ck)) { const rt = exRoute(r, e); devCache.set(ck, rt ? deviations(rt, line) : null); }
+      if (!devCache.has(ck)) { const rt = exRoute(r, e, line); devCache.set(ck, rt ? deviations(rt, line) : null); }
       const D = devCache.get(ck);
       if (!D) return null;
       return { r, ...corridorScore(D, w), bearing: e.kind === "compass" ? bearingError(D.route, line[0], line[1]) : null };
@@ -2430,12 +2438,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     variants: () => (leg ? variantsOf(leg) : null),
     setTags: (j, tags) => { if (tags) localTags[j] = tags; else delete localTags[j]; saveLocalTags(); varCache.clear(); legend(); mv.draw(); left(); bottom.draw(); },
     shareTags: async (j) => { await shareVariants(j); legend(); mv.draw(); left(); bottom.draw(); },
+    // a point of the gaps (a runner at a control): the leg into that control, framed whole, that runner followed (owner,
+    // 2026-11-05: it centred on the control itself)
     colourBy: () => cmode(), setColourBy: (c) => { colourBy = c; savePrefs(); legend(); right(); mv.draw(); },
     extraQuery: () => ({ ...(state.gref ? { g: state.gref } : {}), ...(state.gx ? { gx: state.gx } : {}), ...(state.gm ? { gm: state.gm } : {}), ...(state.da != null ? { da: state.da } : {}) }) };
   // the views under « Analyses », and one runner's legs in a tab of its own (« Inter-postes »; none for a score course)
   const views = bottomViews($("#sh-views"), X), legsTab = legsPanel($("#sh-legs"), X);
-    // a point of the gaps (a runner at a control): the leg into that control, framed whole, that runner followed (owner,
-    // 2026-11-05: it centred on the control itself)
   const bottom = { draw: () => { views.draw(); legsTab.draw(); }, tab: () => views.tab() };
   leftP.setTab("legs", !score);
 

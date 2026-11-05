@@ -270,7 +270,7 @@ function exercisesView(el, X) {
   if (!ex) return;
   const table = () => {
     const rows = X.exScores(ex).sort((a, b) => (b.inside ?? -1) - (a.inside ?? -1));
-    $("#sh-ex-table", el).innerHTML = rows.length ? html`<div class="table-wrap"><table class="data compact sh-var"><thead><tr><th>${t("prov.name")}</th><th class="r">${t("sh.ex.col.inside")}</th><th class="r">${t("sh.ex.col.out")}</th>
+    $("#sh-ex-table", el).innerHTML = rows.length ? html`<div class="table-wrap"><table class="data compact sh-var"><thead><tr><th>${t("prov.name")}</th><th class="r">${t(ex.kind === "compass" ? "sh.ex.col.insideCompass" : "sh.ex.col.inside")}</th><th class="r">${t("sh.ex.col.out")}</th>
         <th class="r">${t("sh.ex.col.max")}</th><th class="r">${t("sh.ex.col.mean")}</th>${ex.kind === "compass" ? html`<th class="r">${t("sh.ex.col.bearing")}</th>` : ""}</tr></thead>
       <tbody>${rows.map((x) => html`<tr><td><span class="sh-swatch" style="background:${x.r.colour}"></span> ${x.r.name}</td><td class="r num"><b>${x.inside != null ? pctN(Math.round(100 * x.inside)) : "—"}</b></td>
         <td class="r num">${clock(x.outS)}</td><td class="r num">${fmt(x.maxDev)} m</td><td class="r num">${x.meanDev != null ? `${fmt(x.meanDev)} m` : "—"}</td>
