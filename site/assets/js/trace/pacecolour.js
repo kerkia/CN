@@ -42,7 +42,7 @@ export function paceLegend(lo, hi) {
 /** What a trace can be coloured by, in the menu's order: the pace always, the slope with an altitude, the file's channels. */
 export function colourModes(tr) {
   if (!tr) return ["speed"];
-  return ["speed", ...(tr.ch.hr ? ["hr"] : []), ...(tr.ch.ele ? ["ele", "slope"] : []), ...["cad", "pw", "temp"].filter((c) => tr.ch[c])];
+  return ["speed", ...(tr.ch.hr ? ["hr"] : []), ...(tr.ch.ele ? ["ele", "slope", "gap"] : []), ...["cad", "pw", "temp"].filter((c) => tr.ch[c])];
 }
 const slopes = new WeakMap();
 /** The slope (%) at each point: the altitude's change over the distance run in ± 10 s (none below 8 m: a stop). */
@@ -58,10 +58,28 @@ function slopeOf(tr) {
   slopes.set(tr, s);
   return s;
 }
+/** The pace corrected for the slope (owner, 2026-11-05): the speed a stretch was worth on the flat — the computed routes' model
+ *  (trace/routechoice.js slopeFactor, 8 m on the flat a metre climbed): uphill × (1 + 8 g), a gentle descent × (1 − 0.6 g), a
+ *  steep one slower again. v in m/s, the slope in %. */
+export function gapSpeed(v, slopePct) {
+  const g = Number.isFinite(slopePct) ? slopePct / 100 : 0, a = -g;
+  return v * (g >= 0 ? 1 + 8 * g : a <= 0.15 ? 1 - 0.6 * a : 0.91 + 2.5 * (a - 0.15));
+}
+const gaps = new WeakMap();
+function gapOf(tr) {
+  let s = gaps.get(tr);
+  if (s) return s;
+  const sl = slopeOf(tr);
+  s = new Float32Array(tr.n);
+  for (let i = 0; i < tr.n; i++) s[i] = gapSpeed(tr.v[i], sl[i]);
+  gaps.set(tr, s);
+  return s;
+}
 /** The values a trace is coloured by, point by point (m/s for the pace), or null when the file has no such channel. */
 export function seriesOf(tr, by) {
   if (by === "speed") return tr.v;
   if (by === "slope") return tr.ch.ele ? slopeOf(tr) : null;
+  if (by === "gap") return tr.ch.ele ? gapOf(tr) : null;
   return tr.ch[by] || null;
 }
 /** The colours' range [lo, hi] over the points i0..i1: the pace's 10-90 % (paceRange), the others' 5-95 % — the
@@ -69,7 +87,7 @@ export function seriesOf(tr, by) {
 export function rangeOf(tr, by, i0 = 0, i1 = tr.n - 1) {
   const s = seriesOf(tr, by);
   if (!s) return [0, 1];
-  if (by === "speed") return paceRange(s.subarray(i0, i1 + 1));
+  if (by === "speed" || by === "gap") return paceRange(s.subarray(i0, i1 + 1));
   const vs = [];
   for (let i = i0; i <= i1; i++) { const v = s[i]; if (Number.isFinite(v) && (!(by === "cad" || by === "pw") || (v > 0 && tr.v[i] > 0.5))) vs.push(v); }
   if (!vs.length) return [0, 1];
@@ -79,10 +97,10 @@ export function rangeOf(tr, by, i0 = 0, i1 = tr.n - 1) {
   return hi > lo ? [lo, hi] : [lo - 1, hi + 1];
 }
 /** The colour of a value on [lo, hi]: the pace from fast (blue) to slow (red), the others from low (blue) to high (red). */
-export const colourOf = (by, v, lo, hi) => (by === "speed" ? paceColour(v, lo, hi) : Number.isFinite(v) ? rampColour((v - lo) / (hi - lo || 1)) : "#9a9a9a");
+export const colourOf = (by, v, lo, hi) => (by === "speed" || by === "gap" ? paceColour(v, lo, hi) : Number.isFinite(v) ? rampColour((v - lo) / (hi - lo || 1)) : "#9a9a9a");
 /** The words of a ramp's legend: { title, ticks, ends } — `units` gives a converted unit (the cadence's steps or turns). */
 export function legendOf(by, lo, hi, units = {}) {
-  if (by === "speed") { const at = (k) => hi - (k / N) * (hi - lo); return { title: t("an.legend.pace"), ticks: [pace(at(0)), pace(at(N / 2)), pace(at(N))], ends: [t("an.legend.fast"), t("an.legend.slow")] }; }
+  if (by === "speed" || by === "gap") { const at = (k) => hi - (k / N) * (hi - lo); return { title: t(by === "gap" ? "an.legend.gap" : "an.legend.pace"), ticks: [pace(at(0)), pace(at(N / 2)), pace(at(N))], ends: [t("an.legend.fast"), t("an.legend.slow")] }; }
   const unit = by === "slope" ? "%" : units[by] ?? CHANNEL_UNIT[by] ?? "";
   const digits = hi - lo < 10 ? 1 : 0, f = (v) => `${v > 0 && by === "slope" ? "+" : v < 0 ? "−" : ""}${fmt(Math.abs(v), digits)}`;
   return { title: `${t(by === "slope" ? "an.ch.slope" : CHANNEL_LABEL[by])}${unit ? ` (${unit})` : ""}`, ticks: [f(lo), f((lo + hi) / 2), f(hi)],

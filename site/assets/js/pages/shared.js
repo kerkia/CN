@@ -30,6 +30,7 @@ import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
 import { panelHtml, bindPanel, bindSplitter, PAN_ICON } from "../trace/sidepanel.js";
+import { drawCourse } from "../trace/coursedraw.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
 import { gridPlan, loadGrid, heightAt, CREDIT } from "../trace/terrain.js";
 import { detectCourse } from "../trace/course.js";
@@ -39,7 +40,7 @@ import { readMap, isImage, imageBlob } from "../trace/mapfile.js";
 import { encodeTrace, decodeTrace, cropToMap, geoFromFit, fitFromGeo, frameAt, validGeo, coursePasses, scorePasses } from "../trace/share.js";
 import { mapView } from "../trace/mapview.js";
 import { drawCurves, curveRows } from "../trace/curves.js";
-import { paceRange, paceColour, paceLegend, rampColour, rampLegend, colourOf, legendHtml } from "../trace/pacecolour.js";
+import { paceRange, paceColour, paceLegend, rampColour, rampLegend, colourOf, legendHtml, gapSpeed } from "../trace/pacecolour.js";
 import { legVariants, resample, VARIANT_COLOURS } from "../trace/routes.js";
 import { deviations, corridorScore, bearingError } from "../trace/corridor.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
@@ -73,8 +74,8 @@ const TAILS = [30, 60, 120, 300, 0];
 const COURSE = "#a626a4";
 // the altitude and the slope from the terrain model's heights under each route (owner, 2026-11-05: « Analyse solo »'s colourings
 // that apply here — the shared traces keep no altitude, heart rate or cadence)
-const COLOUR_BY = ["runner", "pace", "ele", "slope", "legtime", "variant"];        // the last two in a leg's view only
-const HEIGHT_BY = ["ele", "slope"];
+const COLOUR_BY = ["runner", "pace", "gap", "ele", "slope", "legtime", "variant"];        // the last two in a leg's view only
+const HEIGHT_BY = ["gap", "ele", "slope"];          // from the relief: the pace corrected for the slope, the altitude, the slope
 const LEG_ONLY = ["legtime", "variant"];
 const MODES = ["clock", "mass", "from", "wait", "waitpause"];
 // the start modes' icons (owner, 2026-11-05: the bar fits over the map, the mode a menu of icon and name), 16 px line drawings
@@ -1234,30 +1235,6 @@ async function editor(box, ctx) {
 }
 
 /** The course drawn over the map: the start triangle, the circles, the finish's double circle, the legs, the numbers. */
-function drawCourse(g, controls, r, lw, alpha = 0.85, first = 0, lines = true) {
-  if (!controls?.length) return;
-  g.save(); g.globalAlpha = alpha; g.strokeStyle = COURSE; g.fillStyle = COURSE; g.lineWidth = lw(2);
-  const R = (p) => (p.kind === "finish" ? r * 1.3 : r);
-  for (let i = 1; lines && i < controls.length; i++) {           // a score course: no legs drawn
-    const a = controls[i - 1], b = controls[i], d = Math.hypot(b.x - a.x, b.y - a.y);
-    if (d < R(a) + R(b) + 2) continue;
-    const ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
-    g.beginPath(); g.moveTo(a.x + ux * R(a), a.y + uy * R(a)); g.lineTo(b.x - ux * R(b), b.y - uy * R(b)); g.stroke();
-  }
-  let n = first;                                         // the controls before the part drawn (a leg)
-  g.font = `600 ${lw(14)}px system-ui, sans-serif`; g.textBaseline = "middle";
-  for (const p of controls) {
-    if (p.kind === "start") {
-      g.beginPath(); for (let m = 0; m < 3; m++) { const a = -Math.PI / 2 + (m * 2 * Math.PI) / 3; const x = p.x + r * 1.1 * Math.cos(a), y = p.y + r * 1.1 * Math.sin(a); if (m) g.lineTo(x, y); else g.moveTo(x, y); }
-      g.closePath(); g.stroke();
-    } else {
-      g.beginPath(); g.arc(p.x, p.y, r, 0, 2 * Math.PI); g.stroke();
-      if (p.kind === "finish") { g.beginPath(); g.arc(p.x, p.y, r * 1.3, 0, 2 * Math.PI); g.stroke(); }
-      else { n++; g.fillText(String(n), p.x + r + lw(3), p.y - r * 0.6); }
-    }
-  }
-  g.restore();
-}
 
 /** A circuit's thumbnail: its course and a margin cut out of the map, the course drawn over it, 480 px on its longer side, as
  *  WebP (else JPEG); null when nothing comes out under the server's 400 KB. */
@@ -1317,7 +1294,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   let showStrip = prefs.strip !== false;                   // the runners' paces under the map
   let ex3d = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].includes(prefs.ex3d) ? prefs.ex3d : 1.5;   // the 3D view's vertical exaggeration
   // the picture exported (« Export »): the part of the map in view or all of it, PNG or JPEG, with a title and the runners' colours
-  const shot = { zone: prefs.shotZone === "map" ? "map" : "view", type: prefs.shotType === "jpeg" ? "jpeg" : "png", legend: prefs.shotLegend !== false };
+  const shot = { zone: ["race", "map"].includes(prefs.shotZone) ? prefs.shotZone : "view", type: prefs.shotType === "jpeg" ? "jpeg" : "png", legend: prefs.shotLegend !== false };
   const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, tail, width, wv: 2, future, showCourse: courseOn, courseOver, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   const MODE0 = modes.includes("wait") ? "wait" : "mass";   // waiting at the controls by default (owner, 2026-11-05)
@@ -1340,7 +1317,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     <div class="sh-layout" id="sh-layout">
       ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.circuits"), tip: t("sh.tab.circuits.tip") }, { key: "legs", label: t("an.tab.legs"), tip: t("sh.tab.legs.tip") },
         { key: "views", label: t("sh.tab.views"), tip: t("sh.tab.views.tip") }, ...(routesOn ? [{ key: "routes", label: t("an.tab.routes"), tip: t("an.tab.routes.tip") }] : []),
-        ...(you.visitor ? [] : [{ key: "own", label: t("sh.own.title"), tip: t("sh.tab.own.tip") }])],
+        ...(you.visitor ? [] : [{ key: "own", label: t("an.tab.graphs"), tip: t("sh.tab.own.tip") }])],
         inner: { runners: html`<div id="sh-left"></div>`, legs: html`<div class="sh-views" id="sh-legs"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
       <div class="an-split" id="sh-split-l" title="${t("an.split")}"></div>
       <div class="sh-mapcol"><div class="an-bar sh-bar" id="sh-bar"></div><div class="sh-map"><div class="an-3d" id="sh-3d-host" hidden></div><canvas id="sh-canvas"></canvas>
@@ -1490,6 +1467,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       for (let i = 0; i < r.tr.n; i++) ele[i] = heightAt(hts, W, H, r.pxs[i], r.pys[i]);
       r.hTr = { ...r.tr, ch: { ...r.tr.ch, ele } };
     }
+    if (m === "gap") { const sl = hseries(r, "slope"); return (r.hGap ||= Float32Array.from(r.tr.v, (v, i) => gapSpeed(v, sl[i]))); }
     return m === "ele" ? r.hTr.ch.ele : (r.hSlope ||= (() => { const s = new Float32Array(r.tr.n); const tr = r.hTr;
       for (let i = 0; i < tr.n; i++) { const a = indexAt(tr, tr.t[i] - 10), b = indexAt(tr, tr.t[i] + 10), d = tr.cum[b] - tr.cum[a]; s[i] = d >= 8 ? (100 * (tr.ch.ele[b] - tr.ch.ele[a])) / d : NaN; }
       return s; })());
@@ -1503,6 +1481,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       if (s) for (let i = indexAt(r.tr, r.start); i <= i1; i++) if (Number.isFinite(s[i])) vs.push(s[i]);
     }
     if (!vs.length) return;
+    if (m === "gap") { [hLo, hHi] = paceRange(Float32Array.from(vs)); return; }
     vs.sort((a, b) => a - b);
     let lo = vs[Math.floor(vs.length * 0.05)], hi = vs[Math.floor(vs.length * 0.95)];
     if (m === "slope") { const k = Math.max(Math.abs(lo), Math.abs(hi), 2); lo = -k; hi = k; }
@@ -1977,9 +1956,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           ${leg ? "" : html`<label><span>${t("an.tail")}</span><select id="sh-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>`}
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="sh-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
-          <label><span>${t("sh.colourBy")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => (leg || !LEG_ONLY.includes(c)) && (c !== "variant" || variantsOn)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")}>${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
-          <label><input type="checkbox" id="sh-course-on" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label>
-          <label><input type="checkbox" id="sh-strip-on" ${raw(showStrip ? "checked" : "")}> ${t("sh.strip.show")}</label></div>
+          <label><span>${t("an.colour")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => (leg || !LEG_ONLY.includes(c)) && (c !== "variant" || variantsOn)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")} title="${c === "gap" ? t("an.colour.gap.tip") : ""}">${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
+          <label><input type="checkbox" id="sh-course-on" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label></div>
         <div id="sh-3d-opts" hidden></div>`;
     if (routesOn) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
     if (!rightP.pane("export").childElementCount) exportPane();
@@ -2013,7 +1991,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-course-on").addEventListener("change", (e) => { showCourse = e.target.checked; if (printed) courseOver = showCourse; else courseOn = showCourse; savePrefs(); mv.draw(); });
     $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
-    $("#sh-strip-on").addEventListener("change", (e) => setStrip(e.target.checked));
     rcmPanel(); opts3d();
   }
   /** « Export » (owner, 2026-11-05): an image of the map with what it shows, and one's own run with the map into « Mes cartes ». */
@@ -2021,7 +1998,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const pane = rightP.pane("export"), mine = myRun(), me = auth.session();
     pane.innerHTML = html`
       <div class="an-opts an-shot"><b>${t("an.shot.title")}</b>
-        <label><span>${t("an.shot.zone")}</span><select id="sh-shot-zone"><option value="view" ${raw(shot.zone === "view" ? "selected" : "")}>${t("sh.shot.zone.view")}</option><option value="map" ${raw(shot.zone === "map" ? "selected" : "")}>${t("an.shot.zone.map")}</option></select></label>
+        <label><span>${t("an.shot.zone")}</span><select id="sh-shot-zone"><option value="view" ${raw(shot.zone === "view" ? "selected" : "")}>${t("sh.shot.zone.view")}</option><option value="race" ${raw(shot.zone === "race" ? "selected" : "")}>${t("an.shot.zone.race")}</option><option value="map" ${raw(shot.zone === "map" ? "selected" : "")}>${t("an.shot.zone.map")}</option></select></label>
         <label><span>${t("an.shot.type")}</span><select id="sh-shot-type"><option value="png" ${raw(shot.type === "png" ? "selected" : "")}>PNG</option><option value="jpeg" ${raw(shot.type === "jpeg" ? "selected" : "")}>JPEG</option></select></label>
         <label><span>${t("an.shot.legend")}</span><input type="checkbox" id="sh-shot-legend" ${raw(shot.legend ? "checked" : "")}></label>
         <p class="hint" style="margin:0">${t("sh.shot.hint")}</p>
@@ -2050,6 +2027,14 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       const { w, h } = mv.box(), cs = [[0, 0], [w, 0], [w, h], [0, h]].map(([a, b]) => mv.toImg(a, b));
       const bx = [Math.max(0, Math.floor(Math.min(...cs.map((p) => p[0])))), Math.max(0, Math.floor(Math.min(...cs.map((p) => p[1])))),
         Math.min(W, Math.ceil(Math.max(...cs.map((p) => p[0])))), Math.min(H, Math.ceil(Math.max(...cs.map((p) => p[1]))))];
+      if (bx[2] - bx[0] > 20 && bx[3] - bx[1] > 20) [x0, y0, x1, y1] = bx;
+    } else if (shot.zone === "race") {                  // the routes of the runners shown and the course, with a margin
+      let a = Infinity, b = Infinity, c = -Infinity, d = -Infinity;
+      const add = (x, y) => { a = Math.min(a, x); b = Math.min(b, y); c = Math.max(c, x); d = Math.max(d, y); };
+      for (const r of runners.filter((x) => x.visible)) { const i1 = indexAt(r.tr, r.finish ?? r.tr.dur); for (let i = indexAt(r.tr, r.start); i <= i1; i++) add(r.pxs[i], r.pys[i]); }
+      for (const p of ctrls) add(p.x, p.y);
+      const m = Math.max(40, 0.06 * Math.max(c - a, d - b));
+      const bx = [Math.max(0, Math.floor(a - m)), Math.max(0, Math.floor(b - m)), Math.min(W, Math.ceil(c + m)), Math.min(H, Math.ceil(d + m))];
       if (bx[2] - bx[0] > 20 && bx[3] - bx[1] > 20) [x0, y0, x1, y1] = bx;
     }
     const k = Math.min(1, Math.sqrt(40e6 / ((x1 - x0) * (y1 - y0))));
