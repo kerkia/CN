@@ -1977,9 +1977,9 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
 .sp-views-side .field { flex-direction: column; align-items: stretch; gap: 4px; }
 .sp-views-side .field select { width: 100%; }
 label.sh-runner.sp-runner { margin: 0; font-weight: inherit; }
-/* one's track: one label, two buttons alike (owner, 2026-11-05) */
-.sh-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
-.sh-add-lbl { font-weight: 600; flex-basis: 100%; }
+/* « Ajouter ma trace »'s window: this computer or one's phone (owner, 2026-11-05) */
+.sh-add-ways { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 4px; }
+.sh-add-modal .tr-dialog { max-width: 460px; }
 .sh-course-pick select { width: 100%; }
 /* the list's columns, named (owner, 2026-11-04: in place of a sentence explaining the ticks and ⌖) */
 .sh-runner.sh-runner-head { cursor: default; padding-top: 0; padding-bottom: 2px; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .03em; border-bottom: 1px solid var(--border); border-radius: 0; }

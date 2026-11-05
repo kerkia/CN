@@ -1748,10 +1748,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           ${score ? html`<span class="sh-sub muted">${t("sh.score.n", { n: visitsOf(r).length, m: scoreN })}</span>` : leg && dist != null ? html`<span class="sh-sub muted">${fmt(dist)} m · ${pace(dist / lt)}</span>` : r.official?.place ? html`<span class="sh-sub muted">${t("sh.place", { p: r.official.place })}</span>` : ""}
           ${notesOn && r.note ? html`<span class="sh-note" title="${t("sh.note.of", { r: r.name })}">${r.note}</span>` : ""}</div>`; })}</div>`
         : html`<div class="empty">${t("sh.noTraces")}</div>`}
-      ${you.visitor ? html`<p class="hint sh-visitor">${t("sh.visitor.note")}</p>` : html`<div class="sh-mine">${canAdd ? addRow() : ""}
+      ${you.visitor ? html`<p class="hint sh-visitor">${t("sh.visitor.note")}</p>` : html`<div class="sh-mine">
         ${runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>` : ""}
-        ${canAdd ? html`<input type="file" id="sh-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
-        <p class="hint" style="margin:6px 0 0">${t("sh.fitTip")}</p>` : html`<p class="hint" style="margin:6px 0 0">${t("sh.closed")}</p>`}</div>
+        ${canAdd ? "" : html`<p class="hint" style="margin:6px 0 0">${t("sh.closed")}</p>`}</div>
       ${myRun() && (notesOn || A.visitors) ? html`<div class="sh-mine sh-note-box">${notesOn ? html`<label for="sh-note"><b>${t("sh.note.mine")}</b></label>
         <textarea id="sh-note" rows="3" maxlength="1000" placeholder="${t("sh.note.ph")}">${myRun().note || ""}</textarea>
         <div class="row" style="gap:6px;align-items:center"><button type="button" class="btn btn-sm" id="sh-note-save">${t("sh.note.save")}</button><span class="muted" id="sh-note-state"></span></div>
@@ -1801,13 +1800,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-invert").addEventListener("click", () => { runners.forEach((r) => { r.visible = !r.visible; }); if (sel && !sel.visible) sel = null; shownChanged(); });
     $("#sh-mine-only")?.addEventListener("click", () => { runners.forEach((r) => { r.visible = r.mine; }); shownChanged(); });
     if (you.visitor) return;
-    $("#sh-add")?.addEventListener("click", () => $("#sh-file").click());
     $("#sh-mine-vis")?.addEventListener("change", async (e) => {
       try { const r = await api(`/${id}/trace/${course.n}`, { method: "PATCH", body: { visitors: e.target.checked }, key: keyOf(id) }); myRun().visitors = !!r.visitors; }
       catch (err) { e.target.checked = !e.target.checked; alert(errText(err)); }
     });
     $("#sh-note-save")?.addEventListener("click", () => saveNote($("#sh-note").value));
-    $("#sh-file")?.addEventListener("change", (e) => { if (e.target.files[0]) upload(e.target.files[0]); e.target.value = ""; });
     // « Enregistrer dans Mes cartes » (owner, 2026-11-04: an organiser's switch): one's run on the organiser's map, as « Analyse
     // solo » saves it (trace/mymapsave.js) — the map as stored, one's route in its pixels with its times
     if ($("#sh-mymaps")) import("../trace/mymapsave.js").then((M) => M.mount($("#sh-mymaps"), () => {
@@ -1816,7 +1813,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         offset: r?.start ?? null, total: r && r.finish != null ? r.finish - r.start : null, geo: course.geo, title: [A.title, course.name].filter(Boolean).join(" · "),
         controls: r ? ctrls.map((p, j) => ({ k: p.kind, x: p.x, y: p.y, t: r.passes[j] != null ? r.passes[j] - r.start : null })) : [] };
     })).catch((e) => console.error(e));
-    phone.bind("sh-phone", { kind: "trace", multiple: false, onFiles: (f) => { upload(f[0]); } });
     $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); await ownDel(ownKey(id, course.n)); reload(); } catch (e) { alert(errText(e)); } });
     $("#sh-test-add")?.addEventListener("click", () => $("#sh-test-file").click());
     $("#sh-test-file")?.addEventListener("change", (e) => { const fs = [...e.target.files]; e.target.value = ""; if (fs.length) uploadTests(fs); });
@@ -1828,14 +1824,31 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   // an administrator's test traces: uid 1e9 + account × 1000 + k (api/analyses), each file a runner « <name> #k »
   function myRun() { return runners.find((r) => r.mine && !r.test) || null; }
   function myTests() { return runners.filter((r) => r.uid > 1e9 && Math.floor((r.uid - 1e9) / 1000) === you.uid); }
-  // adding (or replacing) one's track (owner, 2026-11-05: two buttons alike after one label): from this computer or, by a QR code,
-  // from one's phone; on a phone, one button
-  function addRow() {
-    const what = t(runners.some((r) => r.mine) ? "sh.trace.replace" : "sh.trace.add");
-    if (!phone.offered()) return html`<button type="button" class="btn btn-sm" id="sh-add">${what}</button>`;
-    return html`<div class="sh-add-row"><span class="sh-add-lbl">${t("ui.colon", { a: what })}</span>
-      <button type="button" class="btn btn-sm" id="sh-add">💻 ${t("sh.add.pc")}</button>
-      <button type="button" class="btn btn-sm" id="sh-phone" title="${t("ph.btn.tip")}">📱 ${t("sh.add.phone")}</button></div>`;
+  // adding (or replacing) one's track, from the top line only (owner, 2026-11-05: it was in « Circuits » too): a small window offers
+  // this computer or, by a QR code, one's phone (a phone: its own files only), the FIT tip, and « Annuler »; the consent that follows
+  // is in « Circuits », shown
+  function addDialog() {
+    const m = document.createElement("div");
+    m.className = "tr-modal sh-add-modal";
+    const close = () => { m.remove(); document.removeEventListener("keydown", onKey, true); };
+    const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
+    const take = (f) => { if (!f) return; leftP.fold(false); leftP.show("runners"); upload(f); };
+    m.innerHTML = html`<div class="tr-dialog" role="dialog" aria-modal="true" aria-labelledby="sh-add-t">
+      <h2 id="sh-add-t">${t(runners.some((r) => r.mine) ? "sh.trace.replace" : "sh.trace.add")}</h2>
+      <div class="tr-form"><div class="sh-add-ways"><button type="button" class="btn btn-primary" data-pc>💻 ${t("sh.add.pc")}</button>
+        ${phone.offered() ? html`<button type="button" class="btn" data-phone title="${t("ph.btn.tip")}">📱 ${t("sh.add.phone")}</button>` : ""}</div>
+        <input type="file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
+        <p class="hint">${t("sh.fitTip")}</p>
+        <div class="tr-dlg-btns"><button type="button" class="btn" data-close>${t("sh.cancel")}</button></div></div></div>`;
+    document.body.append(m);
+    document.addEventListener("keydown", onKey, true);
+    m.addEventListener("click", (e) => { if (e.target === m) close(); });
+    $("[data-close]", m).addEventListener("click", close);
+    const input = $("input[type=file]", m);
+    $("[data-pc]", m).addEventListener("click", () => input.click());
+    input.addEventListener("change", () => { const f = input.files[0]; close(); take(f); });
+    $("[data-phone]", m)?.addEventListener("click", () => { close(); phone.open({ kind: "trace", multiple: false, onFiles: (f) => take(f[0]) }); });
+    $("[data-pc]", m).focus();
   }
   async function uploadTests(files) {
     const boxU = $("#sh-upload"), errs = [], placed = new Map();
@@ -1908,7 +1921,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <span class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></span>
         </div>`;
     const topAdd = $("#sh-top-add");
-    if (topAdd) topAdd.innerHTML = you.visitor ? "" : html`${runners.some((r) => r.mine) || !canAdd ? "" : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
+    if (topAdd) topAdd.innerHTML = you.visitor ? "" : html`${!canAdd ? "" : runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-bar-add">${t("sh.trace.replace")}</button>`
+      : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
       ${admin ? html`<button type="button" class="btn btn-sm" id="sh-bar-test">${t("sh.test.add")}</button>` : ""}`;
     rightP.pane("display").innerHTML = html`
         <div class="an-opts">
@@ -1926,7 +1940,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     // adding one's track (and an administrator's test tracks) from the top line: the buttons live in the « Coureurs » tab, while
     // the page opens on « Inter-postes » (owner, 2026-11-04: the upload could not be found) — that tab shown, the file chooser opened
     const toRunners = (input) => { leftP.fold(false); leftP.show("runners"); $(input)?.click(); };
-    $("#sh-bar-add")?.addEventListener("click", () => toRunners("#sh-file"));
+    $("#sh-bar-add")?.addEventListener("click", addDialog);
     $("#sh-bar-test")?.addEventListener("click", () => toRunners("#sh-test-file"));
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-pan").addEventListener("click", () => { pan = !pan; if (pan) still = false; followMarks(); frame(); });

@@ -2060,8 +2060,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   runners, ticked = shown in every view, the table too: `renderEmbedded`'s `slots`, `side` in splits.js, whose charts then drop
   their runner chooser and the hint's « choose the runners under the chart » clause), the views in the middle, « Réglages » (the
   view's settings) on the right; the panels' widths shared with the map's prefs; a circuit chosen there is the map's on return
-  (`onClass`). The « Circuits » tab has no « Circuit » label and no « n tracks shown of m » line; adding one's track is one label
-  and two buttons alike, « depuis l'ordinateur » / « depuis le téléphone » (`addRow`; one button on a phone); no « ← Analyse de
+  (`onClass`). The « Circuits » tab has no « Circuit » label and no « n tracks shown of m » line; adding one's track is the top
+  line's « Ajouter ma trace » / « Remplacer ma trace » alone (owner, 2026-11-05, second rule: not in « Circuits » too), a small window
+  offering « depuis l'ordinateur » / « depuis le téléphone » (none on a phone), the FIT tip and « Annuler » (`addDialog`; the consent
+  then in « Circuits », shown); no « ← Analyse de
   carte » in the top line (the menu leads there).
 - **Logos on OCAD maps, everywhere** (owner, 2026-11-04): an OCAD map's layout images (`vmap/map.js` `LayerBitmap`) are sized from
   their file's header when read (`ocad.js` `imageSize`: the map's extent holds them from the start), `map.ready` settles once all are
