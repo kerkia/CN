@@ -303,7 +303,8 @@ its table: the circuit's selector says its name and runners. Each row's ground
 says its period (owner, 2026-10-31): the past in the water's wash, today in the flag's, the coming in the forest's (each theme's
 own `--water-wash`, `--flag-wash`, `--forest-wash`; `tr[data-period]`), the three boxes carrying the same colours as a legend
 (`.when-sw`); hover and selection darken the row's tint and mark its first cell. Left for a race (a row, a
-link of the details), the list remembers where it was (`agenda.js` `memo`: periods and scroll, an hour, the same country): coming
+link of the details), the list remembers where it was (`agenda.js` `memo`: periods, the other filters — since 2026-11-05 —
+and scroll, an hour, the same country): coming
 back — a race page's « ‹ Compétitions » (`arena.back`, on the results page and the analysis), the browser's Back, the module's
 name — finds it there; an address naming an event or `periode` opens as asked (owner, 2026-10-30). The map draws the coming
 competitions as dots, today's and the past ones only while the mouse is over their row or they are selected (`agendamap.show`'s
@@ -341,7 +342,9 @@ visitors): filters Période (3 mois | 12 mois, the default | Tout; `?per=`), the
 competition's race's country, a training's creator's site country sent at creation, `country`; none = every country's list), Type
 (`?type=race|club`), « Club organisateur » (`?club=`, the analysis's `orgName`: a competition's race's `org`, a training's creator's
 club as the results write it, `_lib/club.js clubLabel`), a search (`?q=`); columns date, event, type, club, circuits, runners (traces
-shared, test traces apart); the country's map beside it (`agendamap.js`, a computer only); **a thumbnail** of the first circuit's map
+shared, test traces apart; an event open to its club's members only tagged « Membres du club »,
+`clubTag`; a training's club is its creator's, named from `meta.json`'s `names.clubs` — `_lib/club.js clubLabel`, whose runner rows
+give « 7707IF »; a training stored without it named again at the first list, 2026-11-05); the country's map beside it (`agendamap.js`, a computer only); **a thumbnail** of the first circuit's map
 under the mouse (`.ma-pop`) and in the chosen event's card: `analyses/<id>/thumb-<n>` (~480 px, the course drawn, WebP ≤ 400 KB;
 `GET|PUT /api/analyses/<id>/thumb/<n>`, the visitors' `/v/<id>/thumb/<n>`), made by the organisers' browser — `shared.js
 courseThumb`, the organisers' page making those missing (`thumbsDue`, from the analysis's `thumbs`) — and dropped by the server when a

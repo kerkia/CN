@@ -145,7 +145,10 @@ export async function render(main, { query }) {
   };
   const returning = !query.periode && query.id == null && memo && memo.cc === cc && Date.now() - memo.at < 3600e3 ? memo : null;
   memo = null;
-  if (returning) st.when = new Set(returning.when);
+  // the filters too (2026-11-05: a phone's reader came back from a race to the periods kept and every other filter reset)
+  if (returning) Object.assign(st, { when: new Set(returning.when), ...(returning.f ? { kinds: new Set(returning.f.kinds), cnOnly: returning.f.cnOnly,
+    from: returning.f.from, to: returning.f.to, spec: returning.f.spec, regions: new Set(returning.f.regions), depts: new Set(returning.f.depts),
+    groups: new Set(returning.f.groups) } : {}) });
   const groupsPresent = [...new Set(events.map(groupOf).filter(Boolean))]
     .sort((a, b) => (GROUP_ORDER.indexOf(a) + 1 || 99) - (GROUP_ORDER.indexOf(b) + 1 || 99) || a.localeCompare(b));
 
@@ -661,7 +664,8 @@ export async function render(main, { query }) {
     else window.scrollTo({ top: returning.y, behavior: "instant" });
   }, 0);
   page.addEventListener("click", (e) => {
-    if (e.target.closest("tr[data-key], a[href]")) memo = { cc, when: [...st.when], box: $("#table").scrollTop, y: window.scrollY, at: Date.now() };
+    if (e.target.closest("tr[data-key], a[href]")) memo = { cc, when: [...st.when], f: { kinds: [...st.kinds], cnOnly: st.cnOnly, from: st.from, to: st.to, spec: st.spec,
+      regions: [...st.regions], depts: [...st.depts], groups: [...st.groups] }, box: $("#table").scrollTop, y: window.scrollY, at: Date.now() };
   }, true);
   findLive();
   findTracking();

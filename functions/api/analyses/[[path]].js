@@ -83,6 +83,9 @@ async function unlockKey(env, meta, uid) {
 }
 
 const VIA = ["list", "form", "tracer"];
+// the trainings whose club's name was looked for in this isolate (the list, below); a club stored as its number alone
+// (« 7707IF », before 2026-11-05)
+const named = new Set(), BARE = /^\d{4}[A-Z]{0,2}$/;
 // `cc` the event's country (a competition's, else its creator's site country), `orgName` its organising club as written
 // (« 0109 - O'BUGEY »), `up` whether the runners may add their trace: « Analyse de carte »'s filters and actions (2026-11-04)
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", club: m.club || "", orgClub: m.orgClub || "", vis: m.vis,
@@ -327,12 +330,21 @@ const forUsers = withUser(async (ctx, user) => {
         if (race && m.race !== race) continue;
         // an analysis saved before its summary had a position, or its creation's date: its summary written again once (its date of
         // change kept)
-        if ((m.pos === undefined && Number(m.courses) > 0) || m.created === undefined || m.cc === undefined) {
+        // a training opened before its summary named its club (2026-11-05: Desquinemarre's, of the 4th): once an isolate
+        const noName = m.kind === "club" && (!m.orgName || BARE.test(m.orgName)) && m.club && !named.has(m.id);
+        if ((m.pos === undefined && Number(m.courses) > 0) || m.created === undefined || m.cc === undefined || noName) {
+          if (noName) named.add(m.id);
           const full = await loadMeta(env, m.id);
           // its country and organising club (2026-11-04): a competition's from its race; a training of before has neither
           if (full && full.cc === undefined) {
             const r = full.kind === "race" && full.race ? await findRace(env, request, full.race) : null;
             full.cc = r ? r.country || "FR" : ""; full.orgName = r ? clean(r.org, 80) : full.orgName || "";
+          }
+          // a training's club: its creator's as the results write it (the club it was opened for is a French club number)
+          if (full && full.kind === "club" && (!full.orgName || BARE.test(full.orgName)) && full.club) {
+            const u = full.owner ? await env.DB.prepare("SELECT licence FROM users WHERE id = ?").bind(full.owner).first().catch(() => null) : null;
+            const label = u?.licence ? await clubLabel(env, request, u.licence) : null;
+            if (label && label.startsWith(full.club)) { full.orgName = clean(label, 80); if (!full.cc) full.cc = "FR"; }
           }
           if (full) { await env.BUCKET.put(o.key, JSON.stringify(full), { httpMetadata: { contentType: "application/json" }, customMetadata: custom(full) }); Object.assign(m, custom(full)); }
         }

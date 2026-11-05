@@ -19,17 +19,16 @@ export async function clubOf(env, request, licence) {
   } catch (e) { return null; }
 }
 
-/** The account's club as the results write it (« 0109 - O'BUGEY »): that of its latest race in the site's data, or null. */
+/** The account's club as the results write it (« 0109 - O'BUGEY »): that of its latest race in the site's data, named from
+ *  France's meta.json (a runner's row gives its number only, « 0109AR »: 2026-11-05, the list showed « 7707IF »), or null. */
 export async function clubLabel(env, request, licence) {
-  const lic = String(licence || "");
-  if (!/^\d+$/.test(lic)) return null;
+  const code = await clubOf(env, request, licence);
+  if (!code) return null;
   try {
-    const res = await env.ASSETS.fetch(new URL(`/data/fr/r/${Math.floor(Number(lic) / 10)}.json`, request.url));
-    const rows = res.ok ? (await res.json())[lic] || [] : [];
-    let best = null;
-    for (const r of rows) if (r && typeof r[4] === "string" && (!best || r[4] > best[4])) best = r;
-    return typeof best?.[9] === "string" && best[9].trim() ? best[9].trim() : null;
-  } catch (e) { return null; }
+    const res = await env.ASSETS.fetch(new URL("/data/fr/meta.json", request.url));
+    const name = res.ok ? (await res.json())?.names?.clubs?.[code] : null;
+    return name ? `${code} - ${String(name).trim()}` : code;
+  } catch (e) { return code; }
 }
 
 /** The club number (4 digits) of a race's organiser ("0109 - O'BUGEY"), or null. */

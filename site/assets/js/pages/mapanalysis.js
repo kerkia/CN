@@ -65,7 +65,7 @@ export async function render(main, r) {
     const rc = raceOf(a.race);
     return { key: a.id, a, name: a.title, date: a.date, kind: a.kind, place: rc?.place || "", pos: a.pos || rc?.pos || null,
       cc: a.cc || (rc ? country.of(rc) : ""), org: a.orgName || rc?.org || "", courses: a.courses, runners: a.runners || 0,
-      locked: a.access === "locked", draft: !!a.draft, organiser: !!a.organiser, thumb: a.thumb ?? null };
+      locked: a.access === "locked", clubOnly: a.vis === "club", draft: !!a.draft, organiser: !!a.organiser, thumb: a.thumb ?? null };
   });
   const cc = country.current();
   // an event without a country (a training of before): in every country's list
@@ -81,6 +81,8 @@ export async function render(main, r) {
     q: q0.q || "",
   };
   let selected = byKey.has(q0.id) ? q0.id : null;
+  // an event its organisers opened to their club's members only (owner, 2026-11-05: said in the list)
+  const clubTag = (e) => (e.clubOnly ? html` <span class="tag ma-club-only" title="${clubName(e.org) ? t("ma.clubOnly.tip", { club: clubName(e.org) }) : t("ma.clubOnly.tip0")}">${t("ma.clubOnly")}</span>` : "");
   const seg = (name, list, cur) => html`<div class="seg" role="group" aria-label="${t(`ma.${name}`)}">${list.map(([k, l]) =>
     html`<button type="button" class="seg-btn${k === cur ? " on" : ""}" data-${name}="${k}" aria-pressed="${k === cur}">${l}</button>`)}</div>`;
   $("#ma-filters").innerHTML = html`<div class="filters ma-filters">
@@ -115,7 +117,7 @@ export async function render(main, r) {
         <th class="r">${t("sh.col.courses")}</th><th class="r" title="${t("ma.col.runners.tip")}">${t("ma.col.runners")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === selected ? "sel" : ""}">
         <td class="num">${fmtDate(e.date, "short")}</td>
-        <td class="ma-name"><a href="${multiHref(e.a)}" data-open>${e.name}</a>${e.locked ? html` <span title="${t("ma.locked")}">🔒</span>` : ""}${e.draft ? html` <span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}${e.place ? html`<div class="muted ma-sub">${e.place}</div>` : ""}</td>
+        <td class="ma-name"><a href="${multiHref(e.a)}" data-open>${e.name}</a>${e.locked ? html` <span title="${t("ma.locked")}">🔒</span>` : ""}${clubTag(e)}${e.draft ? html` <span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}${e.place ? html`<div class="muted ma-sub">${e.place}</div>` : ""}</td>
         <td><span class="tag">${t(`ma.kind.${e.kind}`)}</span></td><td class="muted ma-club" title="${clubName(e.org)}">${clubName(e.org) || "—"}</td>
         <td class="r num">${e.courses}</td><td class="r num">${e.runners}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(items.length ? "ra.emptyFilter" : "ma.events.none")}</div>`;
@@ -143,7 +145,7 @@ export async function render(main, r) {
     const way = (href, label, hint, primary = false) => html`<a class="btn ${primary ? "btn-primary" : ""} ma-go" href="${href}"><b>${label}</b><span>${hint}</span></a>`;
     box.innerHTML = html`<div class="card-body">
       <h2 class="ma-d-title">${e.name}</h2><p class="muted">${facts.join(" · ")}</p>
-      <p><span class="tag">${t(`ma.kind.${e.kind}`)}</span> ${tn("ma.courses", e.courses)} · ${tn("ma.runners", e.runners)}</p>
+      <p><span class="tag">${t(`ma.kind.${e.kind}`)}</span>${clubTag(e)} ${tn("ma.courses", e.courses)} · ${tn("ma.runners", e.runners)}</p>
       <div class="ma-d-thumb" id="ma-d-thumb" hidden><img alt="${t("ma.thumb.alt", { name: e.name })}"></div>
       ${locked ? html`<p class="muted">${t("ma.locked.ask")}</p>
         <div class="row" style="gap:8px"><input type="password" id="ma-pw" placeholder="${t("sh.pw")}" autocomplete="off" style="width:180px">
