@@ -5003,6 +5003,8 @@ export default {
   "sh.mode.waitpause.hint": "Wie das Warten an den Posten, und das Replay hält an jedem Posten an, wenn alle von dort starten: ▶ zum Weiterspielen.",
   "sh.pan": "Folgen",
   "sh.pan.tip": "Die Karte folgt dem, was die Spalte „Folgen“ im Reiter Bahnen angibt: allen angezeigten Läufern oder einem Läufer. Die Karte von Hand zu verschieben beendet das; ein Klick hier setzt es fort.",
+  "sh.strip.title": "Tempo",
+  "sh.strip.fold": "Das Tempo der Läufer unter der Karte ein- oder ausklappen",
   "sh.followAll": "Alle angezeigten Läufer",
   "sh.followAll.tip": "Alle angehakten Läufer im Bild halten; ⌖ bei einem Läufer, um nur ihm zu folgen. Die Schaltfläche „Folgen“ in der Leiste schaltet das Folgen ein oder aus.",
   "sh.tab.circuits.tip": "Die Bahn und ihre Läufer: Hake die anzuzeigenden an, ⌖, um einem Läufer oder allen zu folgen; füge deinen Track hinzu.",

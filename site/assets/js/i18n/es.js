@@ -5003,6 +5003,8 @@ export default {
   "sh.mode.waitpause.hint": "Como la espera en los controles, y la reproducción se detiene en cada control, cuando todos salen de él: ▶ para seguir.",
   "sh.pan": "Seguir",
   "sh.pan.tip": "El mapa sigue lo que indica la columna «Seguir» de la pestaña Recorridos: todos los corredores mostrados o un corredor. Mover el mapa a mano lo detiene; un clic aquí lo reanuda.",
+  "sh.strip.title": "Ritmo",
+  "sh.strip.fold": "Plegar o desplegar el ritmo de los corredores bajo el mapa",
   "sh.followAll": "Todos los corredores mostrados",
   "sh.followAll.tip": "Mantener en pantalla a todos los corredores marcados; ⌖ en un corredor para seguir solo a él. El botón «Seguir» de la barra activa o detiene el seguimiento.",
   "sh.tab.circuits.tip": "El recorrido y sus corredores: marca los que mostrar, ⌖ para seguir a un corredor o a todos; añade tu track.",

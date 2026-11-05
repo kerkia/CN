@@ -4784,6 +4784,8 @@ export default {
   "sh.mode.waitpause.hint": "As waiting at controls, and the replay stops at each control, as everyone sets off from it: ▶ to go on.",
   "sh.pan": "Follow",
   "sh.pan.tip": "The map follows what the Circuits tab's “Follow” column names: every runner shown, or one runner. Moving the map by hand stops it; a click here resumes it.",
+  "sh.strip.title": "Pace",
+  "sh.strip.fold": "Fold or unfold the runners' pace under the map",
   "sh.followAll": "All the runners shown",
   "sh.followAll.tip": "Keep every ticked runner on screen; ⌖ on a runner to follow only them. The bar's “Follow” button turns the following on or off.",
   "sh.tab.circuits.tip": "The course and its runners: tick those to show, ⌖ to follow one runner or all; add your track.",

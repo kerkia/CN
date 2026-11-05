@@ -74,6 +74,14 @@ const COURSE = "#a626a4";
 const COLOUR_BY = ["runner", "pace", "legtime", "variant"];        // the last two in a leg's view only
 const LEG_ONLY = ["legtime", "variant"];
 const MODES = ["clock", "mass", "from", "wait", "waitpause"];
+// the start modes' icons (owner, 2026-11-05: the bar fits over the map, the mode a menu of icon and name), 16 px line drawings
+const MODE_ICON = {
+  clock: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.2V8l2.6 1.6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  mass: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 3.5v9" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 4.5h7m-2-2 2 2-2 2M4.5 11.5h7m-2-2 2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  from: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="4.5" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8.5 5h5m-2-2 2 2-2 2M8.5 11h5m-2-2 2 2-2 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  wait: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M4 2h8M4 14h8M5 2c0 3.5 6 4 6 6s-6 2.5-6 6M11 2c0 3.5-6 4-6 6s6 2.5 6 6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>',
+  waitpause: '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path d="M2 2h6M2 14h6M3 2c0 3.5 4 4 4 6s-4 2.5-4 6M7 2c0 3.5-4 4-4 6s4 2.5 4 6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M10.5 4.5v7M13.5 4.5v7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+};
 const TOL = 25;                                           // metres: a control reached
 const MAX_MAP = 80 * 1024 * 1024;                         // bytes: a map file at most (the server's limit)
 const WIDTHS = [[1, "an.width.thin"], [1.6, "an.width.normal"], [2.4, "an.width.thick"], [3.5, "an.width.thicker"]];   // × 2 px
@@ -355,13 +363,13 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   // the circuit, and the replay's state, from the address (a link reopens the same view)
   let courseN = A.courses.some((c) => String(c.n) === query.c) ? Number(query.c) : A.courses[0]?.n ?? null, viewer = null, initial = query;
   main.innerHTML = html`
-    <div class="sh-top">
+    <div class="sh-top sh-top3"><span class="sh-top-l">
       <b class="sh-title">${A.title}</b><span class="muted">${fmtDate(A.date)} · ${t(A.kind === "race" ? "ma.kind.race" : "sh.kind.club")}</span>
-      <span class="sh-tabs" id="sh-tabs"></span>
+      </span><span class="sh-tabs" id="sh-tabs"></span><span class="sh-top-r">
       ${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}
       <span class="sh-top-add" id="sh-top-add"></span>
       <span class="muted sh-access">${t(`sh.access.${A.vis === "public" && A.visitors ? "all" : A.vis}`)}</span>
-      <span class="fw-btns">${raw(fwButtons())}</span></div>
+      <span class="fw-btns">${raw(fwButtons())}</span></span></div>
     <div id="sh-viewer"></div>
     <div id="sh-splits" class="sh-splits" hidden></div>`;
   // two views of the analysis (owner, 2026-11-04): the map (the replay, its panels) and Arena's split analysis of the times the
@@ -1316,17 +1324,17 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   if (!variantsOn && colourBy === "variant") colourBy = "runner";
   box.innerHTML = html`
     <div class="sh-layout" id="sh-layout">
-      <div class="an-bar sh-bar" id="sh-bar"></div>
       ${raw(panelHtml({ id: "sh-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.circuits"), tip: t("sh.tab.circuits.tip") }, { key: "legs", label: t("an.tab.legs"), tip: t("sh.tab.legs.tip") },
         { key: "views", label: t("sh.tab.views"), tip: t("sh.tab.views.tip") }, ...(routesOn ? [{ key: "routes", label: t("an.tab.routes"), tip: t("an.tab.routes.tip") }] : []),
         ...(you.visitor ? [] : [{ key: "own", label: t("sh.own.title"), tip: t("sh.tab.own.tip") }])],
         inner: { runners: html`<div id="sh-left"></div>`, legs: html`<div class="sh-views" id="sh-legs"></div>`, views: html`<div class="sh-views" id="sh-views"></div>`, routes: html`<div class="rc-leg" id="rc-leg"></div>`, own: html`<div class="sh-curves" id="sh-curves"></div>` } }))}
       <div class="an-split" id="sh-split-l" title="${t("an.split")}"></div>
-      <div class="sh-mapcol"><div class="sh-map"><div class="an-3d" id="sh-3d-host" hidden></div><canvas id="sh-canvas"></canvas>
+      <div class="sh-mapcol"><div class="an-bar sh-bar" id="sh-bar"></div><div class="sh-map"><div class="an-3d" id="sh-3d-host" hidden></div><canvas id="sh-canvas"></canvas>
         <div class="an-tools">${view3dOn ? html`<button type="button" class="btn btn-sm an-3d-btn" id="sh-3d" aria-pressed="false" title="${t("an.v3.hint")}">3D</button>` : ""}<button type="button" class="btn btn-sm" id="sh-zin">+</button><button type="button" class="btn btn-sm" id="sh-zout">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
           <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button>${videoOn ? html`<button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden>` : ""}</div>
         <div class="an-hud" id="sh-hud"></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
+        <button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${showStrip ? "▾" : "▸"} ${t("sh.strip.title")}</button>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
       ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOn ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : [])] }))}</div>`;
@@ -1549,6 +1557,14 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     if (a) { a.classList.toggle("on", follow === "all"); a.setAttribute("aria-pressed", String(follow === "all")); }
     const p = $("#sh-pan");
     if (p) { p.classList.toggle("on", pan); p.setAttribute("aria-pressed", String(pan)); }
+  }
+  /** The pace strip shown or folded: the bar over it and « Affichage »'s box say the same (owner, 2026-11-05). */
+  function setStrip(on) {
+    showStrip = on; savePrefs();
+    $("#sh-strip").hidden = !on;
+    const b = $("#sh-strip-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${on ? "▾" : "▸"} ${t("sh.strip.title")}`; }
+    const c = $("#sh-strip-on"); if (c) c.checked = on;
+    drawStrip(); window.dispatchEvent(new Event("resize"));
   }
   function followView() {
     if (!pan || still) return;
@@ -1874,12 +1890,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     });
   }
   function right() {
-    const fromOpts = ctrls.map((p, i) => [i, ctrlLabel(i)]).slice(0, legsN);
+    const fromOpts = ctrls.map((p, i) => [i, i ? ctrlLabel(i) : "▷"]).slice(0, legsN);
     const modeHint = t(`sh.mode.${leg ? "leg" : mode}.hint`);
     $("#sh-bar").innerHTML = html`
       <div class="an-bar-row">
         <span class="sh-bar-opts">${leg ? html`<span class="sh-bar-leg" title="${modeHint}"><b>${legName(leg)}</b> <button type="button" class="btn btn-sm" id="sh-leg-all">← ${t("sh.leg.all")}</button></span>`
-          : html`<select id="sh-mode" title="${modeHint}" aria-label="${t("sh.mode")}">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select>
+          : html`<span class="sh-mode-pick"><button type="button" class="btn btn-sm sh-mode-btn" id="sh-mode-btn" aria-haspopup="menu" aria-expanded="false" aria-label="${t("sh.mode")}" title="${t(`sh.mode.${mode}`)} — ${modeHint}">${raw(MODE_ICON[mode])}<span class="sh-caret">▾</span></button>
+            <span class="sh-mode-menu" id="sh-mode-menu" role="menu" hidden>${modes.map((m) => html`<button type="button" role="menuitemradio" aria-checked="${m === mode}" data-mode="${m}" title="${t(`sh.mode.${m}.hint`)}">${raw(MODE_ICON[m])}<span>${t(`sh.mode.${m}`)}</span></button>`)}</span></span>
           ${mode === "from" ? html`<select id="sh-from" aria-label="${t("sh.from")}">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select>` : ""}`}</span>
         <span class="an-transport">
           <button type="button" class="btn btn-sm" id="sh-prev" title="${t("sh.leg.prev")}">⏮</button>
@@ -1918,7 +1935,18 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-speed").addEventListener("change", (e) => { speed = Number(e.target.value); });
     $("#sh-time").addEventListener("input", (e) => { T = Number(e.target.value); still = false; frame(); });
     $("#sh-leg-all")?.addEventListener("click", () => setLeg(0));
-    $("#sh-mode")?.addEventListener("change", (e) => { mode = e.target.value; reset(); });
+    const mb = $("#sh-mode-btn"), menu = $("#sh-mode-menu");
+    if (mb && menu) {
+      const off = (e) => { if (!menu.contains(e.target) && !mb.contains(e.target)) close(); };
+      const close = () => { menu.hidden = true; mb.setAttribute("aria-expanded", "false"); document.removeEventListener("pointerdown", off, true); };
+      mb.addEventListener("click", () => {
+        if (!menu.hidden) { close(); return; }
+        menu.hidden = false; mb.setAttribute("aria-expanded", "true"); document.addEventListener("pointerdown", off, true);
+        (menu.querySelector('[aria-checked="true"]') || menu.querySelector("button"))?.focus();
+      });
+      menu.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); mb.focus(); } });
+      menu.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => { close(); mode = b.dataset.mode; reset(); }));
+    }
     $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); reset(); });
     $("#sh-tail")?.addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); mv.draw(); });
@@ -1928,7 +1956,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-course").addEventListener("change", (e) => { showCourse = e.target.checked; savePrefs(); mv.draw(); });
     $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
-    $("#sh-strip-on").addEventListener("change", (e) => { showStrip = e.target.checked; savePrefs(); $("#sh-strip").hidden = !showStrip; drawStrip(); });
+    $("#sh-strip-on").addEventListener("change", (e) => setStrip(e.target.checked));
     rcmPanel(); opts3d();
   }
   function hud() {
@@ -2504,6 +2532,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   const stripRo = new ResizeObserver(() => drawStrip());
   stripRo.observe(strip);
   $("#sh-fit").addEventListener("click", () => { pan = false; followMarks(); right(); if (v3) { v3.setFollow(false); v3.fitTrace(); } else { fitRoutes(); mv.draw(); } });
+  $("#sh-strip-tog").addEventListener("click", () => setStrip(!showStrip));
   $("#sh-fitmap").addEventListener("click", () => { pan = false; followMarks(); right(); if (v3) { v3.setFollow(false); v3.fitMap(); } else { mv.fitAll(); mv.draw(); } });
   $("#sh-zin").addEventListener("click", () => v3?.zoom(1.4));
   $("#sh-zout").addEventListener("click", () => v3?.zoom(1 / 1.4));

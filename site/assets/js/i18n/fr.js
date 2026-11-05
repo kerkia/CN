@@ -3953,6 +3953,8 @@ export default {
   "sh.mode.waitpause.hint": "Comme l'attente aux postes, et le replay s'arrête à chaque poste, quand tous en repartent : ▶ pour continuer.",
   "sh.pan": "Suivre",
   "sh.pan.tip": "La carte suit ce que désigne la colonne « Suivre » de l'onglet Circuits : tous les coureurs affichés ou un coureur. Déplacer la carte à la main arrête le suivi ; un clic ici le relance.",
+  "sh.strip.title": "Allure",
+  "sh.strip.fold": "Replier ou déplier l'allure des coureurs sous la carte",
   "sh.followAll": "Tous les coureurs affichés",
   "sh.followAll.tip": "Garder tous les coureurs cochés à l'écran ; ⌖ sur un coureur pour ne suivre que lui. Le bouton « Suivre » de la barre met le suivi en marche ou l'arrête.",
   "sh.tab.circuits.tip": "Le circuit et ses coureurs : cochez ceux à afficher, ⌖ pour suivre un coureur ou tous ; ajoutez votre trace.",
