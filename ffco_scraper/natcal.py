@@ -249,6 +249,8 @@ def calendars(get, get_bytes, prev: list[dict], errors: list[str] | None = None)
             if not data.startswith(b"%PDF") or len(data) > MAX_PDF:
                 raise RuntimeError("not a PDF")
             cal = read_pdf(data)
+            if not cal["rows"]:                             # a layout no longer read: never an empty year
+                raise RuntimeError("no row read")
             out.append({**ln, "printed": cal["printed"], "rows": cal["rows"], "v": VERSION})
         except Exception as e:                              # unreadable: the year's previous reading, if any
             errors.append(f"{ln['year']}: {type(e).__name__}: {e}"[:300])
