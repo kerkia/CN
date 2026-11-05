@@ -1280,7 +1280,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   const ctrlLabel = (i) => { const p = ctrls[i]; if (p.kind === "start") return t("an.start"); if (p.kind === "finish") return t("an.finish"); return String(ctrls.slice(0, i + 1).filter((q) => q.kind === "control").length); };
   // the display as on « Analyse solo » (owner, 2026-10-14: no curves per runner here — the map is what is compared)
   const prefs = loadPrefs(), pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
-  let tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, width = WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 1.6;
+  let tail = TAILS.includes(prefs.tail) ? prefs.tail : 60, width = prefs.wv === 2 && WIDTHS.some(([w]) => w === prefs.width) ? prefs.width : 2.4;   // thick by default (owner, 2026-11-05)
   // the layout (owner, 2026-11-01, as « Analyse solo »'s): the controls above the map, a panel of tabs on each side of it (the
   // runners, the analyses, the computed routes, one's own curves; the display and the computing), resized and folded
   const px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
@@ -1295,9 +1295,10 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
   let showStrip = prefs.strip !== false;                   // the runners' paces under the map
   let ex3d = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].includes(prefs.ex3d) ? prefs.ex3d : 1.5;   // the 3D view's vertical exaggeration
-  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, future, showCourse, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ tail, width, wv: 2, future, showCourse, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
-  let mode = modes.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
+  const MODE0 = modes.includes("wait") ? "wait" : "mass";   // waiting at the controls by default (owner, 2026-11-05)
+  let mode = modes.includes(init.m) ? init.m : MODE0, fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
   let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
   // the analysis opens on the whole map, filling its area (owner, 2026-11-05: it opened on the runners gathered at the start);
   // following starts with the replay — played, or its time moved —, and an address naming a time or a leg keeps its view
@@ -1617,7 +1618,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       if (!box.isConnected) return;
       const q = { id };
       if (A.courses.length > 1 || course.n !== A.courses[0]?.n) q.c = course.n;
-      if (mode !== "mass") q.m = mode;
+      if (mode !== MODE0) q.m = mode;
       if (mode === "from") q.from = fromK;
       if (leg) q.leg = leg;
       if (Math.round(T) !== Math.round(T0)) q.t = Math.round(T);
@@ -1874,13 +1875,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           <button type="button" class="btn btn-sm btn-primary" id="sh-play">${playing ? "⏸" : "▶"}</button>
           <button type="button" class="btn btn-sm" id="sh-next" title="${t("sh.leg.next")}">⏭</button>
           <select id="sh-speed">${SPEEDS.map((s) => html`<option value="${s}" ${raw(s === speed ? "selected" : "")}>× ${s}</option>`)}</select></span>
+        <span class="sh-bar-opts">${leg ? html`<span class="sh-bar-leg" title="${modeHint}"><b>${legName(leg)}</b> <button type="button" class="btn btn-sm" id="sh-leg-all">← ${t("sh.leg.all")}</button></span>`
+          : html`<select id="sh-mode" title="${modeHint}" aria-label="${t("sh.mode")}">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select>
+          ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}</span>
         <input type="range" class="an-bar-time" id="sh-time" min="${Math.floor(T0)}" max="${Math.ceil(T1)}" step="1" value="${Math.round(T)}" aria-label="${t("an.time")}">
         <span class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></span>
-        <span class="fw-btns">${raw(fwButtons())}</span></div>
-      <div class="an-bar-row sh-bar-opts">
-        ${leg ? html`<span class="sh-bar-leg" title="${modeHint}"><b>${legName(leg)}</b> <button type="button" class="btn btn-sm" id="sh-leg-all">← ${t("sh.leg.all")}</button></span>` : html`<label title="${modeHint}"><span>${t("sh.mode")}</span><select id="sh-mode">${modes.map((m) => html`<option value="${m}" ${raw(m === mode ? "selected" : "")}>${t(`sh.mode.${m}`)}</option>`)}</select></label>
-        ${mode === "from" ? html`<label><span>${t("sh.from")}</span><select id="sh-from">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select></label>` : ""}`}
-        </div>`;
+        <span class="fw-btns">${raw(fwButtons())}</span></div>`;
     const topAdd = $("#sh-top-add");
     if (topAdd) topAdd.innerHTML = you.visitor ? "" : html`${runners.some((r) => r.mine) || !canAdd ? "" : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}
       ${admin ? html`<button type="button" class="btn btn-sm" id="sh-bar-test">${t("sh.test.add")}</button>` : ""}`;

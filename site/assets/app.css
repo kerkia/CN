@@ -1919,7 +1919,7 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
 .sh-layout > .sh-mapcol { grid-area: map; } .sh-layout > #sh-split-r { grid-area: spr; } .sh-layout > .sh-rp { grid-area: right; }
 .sh-layout[data-lcol="1"] #sh-split-l, .sh-layout[data-rcol="1"] #sh-split-r { pointer-events: none; }
 .sh-layout[data-lcol="1"] #sh-split-l::after, .sh-layout[data-rcol="1"] #sh-split-r::after { display: none; }
-.sh-bar-opts { gap: 4px 14px; font-size: 13px; }
+.sh-bar-opts { display: inline-flex; align-items: center; gap: 4px 10px; font-size: 13px; flex: 0 0 auto; }
 .sh-bar-opts label { display: inline-flex; align-items: center; gap: 6px; }
 .sh-bar-leg { display: inline-flex; align-items: center; gap: 8px; }
 .sh-top .sh-top-add { display: inline-flex; gap: 6px; margin-left: auto; } .sh-top .sh-top-add + .sh-access { margin-left: 0; }
