@@ -320,7 +320,11 @@ export function build(X) {
           ])}
           <p>Dans l'Analyse solo, un fichier OCAD ou Mapper déposé seul <b>est</b> la carte : dessinée ici, la trace calée par son
             géoréférencement. Déposé avec une image de la carte — ou choisi dans la boîte « Itinéraires calculés », dans les deux analyses —, il
-            sert aux itinéraires, placé sur l'image par son géoréférencement : il doit en avoir un, et recouvrir la carte affichée.</p>`)}
+            sert aux itinéraires, placé sur l'image par son géoréférencement : il doit en avoir un, et recouvrir la carte affichée.</p>
+          <p>Une analyse de carte publiée depuis le tracé de circuits, ou dont les circuits viennent d'un projet OCAD (Orga › Analyses de carte),
+            garde ce que la carte OCAD de l'organisateur dit du terrain : ses itinéraires lisent ses symboles sans fichier à déposer, et les
+            zones interdites et les limites à ne pas franchir que le traceur a dessinées sur le circuit en font partie. Seul ce dessin du terrain est
+            envoyé avec le circuit, jamais le fichier OCAD.</p>`)}
         ${slide("Coach · essai", "2. Le temps d'un pas", html`
           <p>Le temps pour aller d'une case à sa voisine est la distance, multipliée par la lenteur du terrain et par celle de la pente :</p>
           ${list([

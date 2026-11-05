@@ -669,6 +669,7 @@ export default {
   "trc.race.pubButtons": "“Publish”: runners can open it at once. “Save as draft”: only its organisers see it.",
   "trc.race.pubSaved": "Draft saved",
   "trc.race.pubCourseSend": "Course {i}/{n}: {name}, sending the map…",
+  "trc.race.pubCourseLayers": "Course {i}/{n}: {name}, preparing the map for the computed routes…",
   "trc.race.pubSaving": "Saving the settings…",
   "trc.race.pubWait": "Each course is printed on its map, then sent: a few seconds per course.",
   "trc.race.pubTarget": "Map analysis",

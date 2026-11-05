@@ -309,7 +309,11 @@ export function build(X) {
           ])}
           <p>In Solo analysis, an OCAD or Mapper file dropped alone <b>is</b> the map: drawn here, the track placed by its georeferencing. Dropped
             with an image of the map — or chosen in the "Computed routes" box, in both analyses — it serves the routes, placed on the image by its
-            georeferencing: it must have one, and cover the map shown.</p>`)}
+            georeferencing: it must have one, and cover the map shown.</p>
+          <p>A map analysis published from the course setting, or whose courses come from an OCAD project (Orga › Map analyses), keeps what
+            the organiser's OCAD map says of the terrain: its routes read its symbols with no file to drop, and the out-of-bounds areas and the
+            boundaries not to be crossed that the setter drew on the course are part of it. Only that drawing of the terrain is sent with the
+            course, never the OCAD file.</p>`)}
         ${slide("Coach · trial", "2. The time of a step", html`
           <p>The time from one cell to the next is the distance, multiplied by the terrain's slowness and the slope's:</p>
           ${list([

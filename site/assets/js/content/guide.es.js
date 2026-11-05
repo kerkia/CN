@@ -318,7 +318,11 @@ export function build(X) {
           ])}
           <p>En el Análisis individual, un archivo OCAD o Mapper soltado solo <b>es</b> el mapa: se dibuja aquí y el track se calibra por su
             georreferenciación. Soltado con una imagen del mapa —o elegido en el recuadro «Rutas calculadas», en los dos análisis—, sirve para
-            las rutas, colocado sobre la imagen por su georreferenciación: debe tenerla y cubrir el mapa mostrado.</p>`)}
+            las rutas, colocado sobre la imagen por su georreferenciación: debe tenerla y cubrir el mapa mostrado.</p>
+          <p>Un análisis de mapa publicado desde el trazado de recorridos, o cuyos recorridos vienen de un proyecto OCAD (Orga › Análisis de
+            mapa), conserva lo que el mapa OCAD del organizador dice del terreno: sus itinerarios leen sus símbolos sin ningún archivo que
+            soltar, y las zonas prohibidas y los límites que no se deben cruzar que el trazador dibujó en el recorrido forman parte de ello.
+            Solo ese dibujo del terreno se envía con el recorrido, nunca el archivo OCAD.</p>`)}
         ${slide("Coach · prueba", "2. El tiempo de un paso", html`
           <p>El tiempo para ir de una celda a su vecina es la distancia, multiplicada por la lentitud del terreno y por la de la pendiente:</p>
           ${list([

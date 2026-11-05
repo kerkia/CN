@@ -6,7 +6,7 @@
 import { html, raw, $, fmt, pct, pctN } from "../util.js";
 import { t } from "../i18n.js";
 import { DEFAULTS, LEGEND, A } from "./routechoice.js";
-import { layers, VECTOR_ACCEPT } from "./vectorroutes.js";
+import { layers, resampleLayers, VECTOR_ACCEPT } from "./vectorroutes.js";
 
 const PREFS = "ocn.rc.prefs";                        // the settings, kept on the device (the map's kind apart: the race's)
 const MAX_PX = 9e6;                                  // a larger map is read at a reduced size (memory, time)
@@ -29,8 +29,9 @@ export const isSprint = (race) => /sprint/i.test(`${race?.terrain || ""} ${race?
 
 /**
  * The planner of one map: image (an ImageBitmap or canvas), toM(px, py) the metres of a map pixel (any affine frame); vector:
- * an OCAD or Mapper map of it ({ v: trace/vectorroutes.js readVector's, T: the affine from its mm to the image's pixels }),
- * whose symbols are read instead of the image's colours; opts: { map (the map's kind), onProgress(f) (the reading's) }.
+ * an OCAD or Mapper map of it ({ v: trace/vectorroutes.js readVector's, T: the affine from its mm to the image's pixels }, or the
+ * layers already drawn from one on the image's pixels: { layers: unpackLayers's, name }), whose symbols are read instead of the
+ * image's colours; opts: { map (the map's kind), onProgress(f) (the reading's) }.
  * Returns { ready (Promise of the reading's facts), dem(grid), settings(s, onProgress) (the new facts when the map was read
  * again, else null), controls(pts) (the course's controls), leg(a, b), decision(a, b), line(pts), picture(), destroy() }; points in
  * the map's own pixels.
@@ -55,10 +56,12 @@ export function planner(image, toM, vector = null, opts = {}) {
   const ask = (op, body = {}, transfer = [], progress = null) => new Promise((ok, ko) => { const id = ++seq; waiting.set(id, { ok, ko, progress }); worker.postMessage({ id, op, ...body }, transfer); });
   let ready;
   if (vector) {
-    const T = vector.T, L = layers(vector.v, { a: T.a * sc, b: T.b * sc, c: T.c * sc, d: T.d * sc, e: T.e * sc, f: T.f * sc }, W, H);
-    const bufs = ["area", "path", "blue", "block", "hand"].map((k) => L[k].buffer);
+    const T = vector.T, L = vector.layers ? resampleLayers(vector.layers, W, H)
+      : layers(vector.v, { a: T.a * sc, b: T.b * sc, c: T.c * sc, d: T.d * sc, e: T.e * sc, f: T.f * sc }, W, H);
+    // sent to the worker, not copied: a copy of layers kept by the page (they serve the planner made after a change)
+    const bufs = ["area", "path", "blue", "block", "hand"].map((k) => (L === vector.layers ? L[k].slice() : L[k]).buffer);
     ready = ask("layers", { area: bufs[0], path: bufs[1], blue: bufs[2], block: bufs[3], hand: bufs[4], w: W, h: H, J }, bufs)
-      .then((r) => ({ ...r, vector: { counts: L.counts, ms: L.ms, name: vector.v.name } }));
+      .then((r) => ({ ...r, vector: { counts: L.counts, ms: L.ms, name: vector.name || vector.v.name } }));
   } else {
     const c = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(W, H) : Object.assign(document.createElement("canvas"), { width: W, height: H });
     const g = c.getContext("2d", { willReadFrequently: true });

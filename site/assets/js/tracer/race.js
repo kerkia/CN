@@ -551,7 +551,7 @@ export async function publish(E) {
   } catch (e) { /* none known */ }
   if (isRace) known.splice(1);
   const targetOf = (o) => (isRace ? known[0] || null : known.find((a) => a.id === o?.target) || null);
-  const { designs, circuitOf } = await import("./circuits.js");
+  const { designs, circuitOf, circuitLayers, vectorMap } = await import("./circuits.js");
   const des = designs(ev);
   const provRace = info.provKey ? await getData(`prov/${info.provKey}.json`) : null;
   const circuitNames = [...new Set((provRace?.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))];
@@ -618,7 +618,8 @@ export async function publish(E) {
   const pick = des.map((d, i) => ({ ...d, i })).filter((d) => v[`p${d.i}`]), live = v._submit !== "draft";
   // the window opens at once (owner, 2026-11-05: the wait came before any sign): each circuit is printed with its course, then sent
   const box = progressBox(E, t(live ? "trc.race.pubTitle" : "trc.race.saveDraft"));
-  const total = 2 + 2 * pick.length + 2;
+  // an OCAD or Mapper map: each circuit also gets the route choices' layers, read from its symbols (circuits.circuitLayers)
+  const vec = vectorMap(E), total = 2 + (vec ? 3 : 2) * pick.length + 2;
   let done = 0;
   const step = (msg) => { box.say(msg, done / total); E.status(msg, "busy", done / total); done++; };
   try {
@@ -639,7 +640,16 @@ export async function publish(E) {
       const c = await circuitOf(E, d, dpi);
       step(t("trc.race.pubCourseSend", { i: j + 1, n: pick.length, name: d.name }));
       await call(`/${aid}/map/${j}`, { method: "PUT", body: c.blob, headers: { "Content-Type": "image/png" } });
-      courses.push({ n: j, name: d.name.slice(0, 60), circuit: v[`k${d.i}`] || "", r: c.r, map: { w: c.w, h: c.h, type: "image/png", v: Date.now() }, geo: c.geo, controls: c.controls });
+      const mv = Date.now();
+      let layers = null;
+      if (vec) {
+        step(t("trc.race.pubCourseLayers", { i: j + 1, n: pick.length, name: d.name }));
+        try {
+          const blob = await circuitLayers(E, d, c);
+          if (blob) { await call(`/${aid}/layers/${j}`, { method: "PUT", body: blob, headers: { "Content-Type": "application/octet-stream" } }); layers = { map: mv, src: E.map.format }; }
+        } catch (e) { console.warn(e); }                   // the routes then read the image's colours
+      }
+      courses.push({ n: j, name: d.name.slice(0, 60), circuit: v[`k${d.i}`] || "", r: c.r, map: { w: c.w, h: c.h, type: "image/png", v: mv }, geo: c.geo, controls: c.controls, ...(layers ? { layers } : {}) });
     }
     // the circuits, then every setting of the dialog — published, or kept as a draft its organisers alone see
     step(t("trc.race.pubSaving"));

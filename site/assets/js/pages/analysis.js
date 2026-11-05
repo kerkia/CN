@@ -399,6 +399,14 @@ export async function render(main, { query = {}, route } = {}) {
     map = await createImageBitmap(await r.blob());
     files.map = { name: c.name, detail: `${t("an.orga.map")} · ${map.width} × ${map.height}` };
     files.orga = { n: c.n, geo: c.geo, r: c.r || 20, controls: c.controls || [] };
+    // the route choices' layers drawn from the organiser's OCAD map at its publication (owner, 2026-11-05)
+    if (c.layers?.map && c.layers.map === c.map?.v) {
+      try {
+        const lr = await fetch(`api/analyses/${orga.id}/layers/${c.n}?v=${c.map.v}`, { credentials: "same-origin", headers: orga.key ? { "X-Analysis-Key": orga.key } : {} });
+        const L = lr.ok ? await (await import("../trace/vectorroutes.js")).unpackLayers(await lr.arrayBuffer()) : null;
+        if (L && L.w === map.width && L.h === map.height) files.orga.layers = L;
+      } catch (e) { console.warn(e); }
+    }
     courseCache = null;
     key = `orga.${orga.id}.${c.n}`;
   }
@@ -2309,10 +2317,10 @@ export async function render(main, { query = {}, route } = {}) {
   function rcPanel() {
     const host = $("#rc-host");
     if (!host) return;
-    const vr = rcVector(), vrec = files.map?.vec ? files.map : files.vector;
+    const vr = rcVector(), vrec = files.map?.vec ? files.map : files.vector || (vr?.layers ? { name: t("rc.vec.stored"), detail: t("rc.vec.storedDetail"), stored: true } : null);
     host.innerHTML = RC.panelHtml(rcs.s, { on: rcs.on, picture: rcs.picOn, decision: rcs.decOn, status: rcs.status, progress: rcs.prog, warn: rcs.warn, auto: rcs.auto,
       calib: RC.calibNote(rcs.s, rcs.calib, false),
-      vector: vrec ? { name: vrec.name, detail: vrec.detail, used: !!vr, fixed: !!files.map?.vec, note: vr ? "" : t(vrec.vec?.v?.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null });
+      vector: vrec ? { name: vrec.name, detail: vrec.detail, used: !!vr, fixed: !!files.map?.vec || !!vrec.stored, note: vr ? "" : t(vrec.vec?.v?.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null });
     RC.bindPanel(host, rcs.s, async (s, what, file) => {
       if (what === "vector" || what === "vector-clear") {
         if (what === "vector") {
@@ -2343,6 +2351,7 @@ export async function render(main, { query = {}, route } = {}) {
    *  georeferencing and the calibration; null without either. */
   function rcVector() {
     if (files.map?.vec) { const { v, k } = files.map.vec; return { v, T: ownImage(v, k) }; }
+    if (files.orga?.layers && !files.vector) return { layers: files.orga.layers, name: t("rc.vec.storedIn") };
     const v = files.vector?.vec?.v;
     if (!v?.geo || !fit || !track) return null;
     const T = throughGeo(v, (lat, lon) => toPx(fit, ...toLocal(track, lat, lon)));
@@ -2353,7 +2362,7 @@ export async function render(main, { query = {}, route } = {}) {
     if (!rcs.mapSet) { rcs.s.map = !perso && RC.isSprint(race) ? "sprint" : "forest"; const sel = $("#rc-map"); if (sel) sel.value = rcs.s.map; }
     const my = ++rcs.token;
     const vr = rcVector();
-    const sig = [map.width, map.height, fit.m11, fit.m12, fit.m21, fit.m22, fit.tx, fit.ty].map((v) => Number(v).toFixed(5)).join(",") + (vr ? `|${vr.v.name}` : "");
+    const sig = [map.width, map.height, fit.m11, fit.m12, fit.m21, fit.m22, fit.tx, fit.ty].map((v) => Number(v).toFixed(5)).join(",") + (vr ? `|${vr.name || vr.v.name}` : "");
     if (!rcs.plan || rcs.planFor !== sig || rcs.planMap !== map) {
       rcs.plan?.destroy();
       rcs.plan = RC.planner(map, (x, y) => toM(fit, x, y), vr, { map: rcs.s.map, onProgress: (f) => { if (my === rcs.token) rcReading(f); } });

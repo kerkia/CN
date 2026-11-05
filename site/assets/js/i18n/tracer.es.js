@@ -671,6 +671,7 @@ export default {
   "trc.race.pubButtons": "«Publicar»: los corredores pueden abrirlo enseguida. «Guardar como borrador»: solo lo ven sus organizadores.",
   "trc.race.pubSaved": "Borrador guardado",
   "trc.race.pubCourseSend": "Recorrido {i}/{n}: {name}, enviando el mapa…",
+  "trc.race.pubCourseLayers": "Recorrido {i}/{n}: {name}, preparando el mapa para los itinerarios calculados…",
   "trc.race.pubSaving": "Guardando los ajustes…",
   "trc.race.pubWait": "Cada recorrido se imprime en su mapa y luego se envía: unos segundos por recorrido.",
   "trc.race.pubTarget": "Análisis de mapa",

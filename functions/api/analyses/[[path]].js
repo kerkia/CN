@@ -4,6 +4,9 @@
 //   analyses/<id>/map-<n>                  — a circuit's map image
 //   analyses/<id>/thumb-<n>                — its thumbnail (~480 px, the course drawn; made by the organiser's browser), for
 //                                            « Analyse de carte »'s list (owner, 2026-11-04)
+//   analyses/<id>/layers-<n>               — the route choices' layers of a circuit printed from an OCAD or Mapper map (its
+//                                            symbols drawn on the circuit image's pixels by the organiser's browser, the map file
+//                                            itself never sent; trace/vectorroutes.js packLayers; owner, 2026-11-05)
 //   analyses/<id>/trace-<n>-<uid>.json     — one account's trace on circuit n: positions and times only, cropped to
 //                                            the map by the browser; the name and licence are the account's
 //   analyses/<id>/view-<uid>.json          — an account opened the analysis (not its organisers): its first and last day and
@@ -33,6 +36,8 @@
 //   POST   /api/analyses/<id>/unlock                   { password } -> { key }
 //   GET|PUT /api/analyses/<id>/map/<n>                 a circuit's map (PUT: the organiser, an image body)
 //   GET|PUT /api/analyses/<id>/thumb/<n>               its thumbnail (PUT: the organiser, an image of 400 KB at most)
+//   GET|PUT /api/analyses/<id>/layers/<n>              its route choices' layers (PUT: the organiser, 30 MB at most); the circuit
+//                                                      says `layers: { map }`, the map's version they were drawn on
 //   GET    /api/analyses/<id>/traces/<n>               every trace of circuit n, one JSON array
 //   PATCH  /api/analyses/<id>/trace/<n>                one's own trace's comment and visitors' consent: { note?, visitors? }
 //   GET    /api/analyses/v[/<id>[/map/<n> | /traces/<n>]]   visitors without an account (owner, 2026-11-02, after RouteGadget):
@@ -54,7 +59,7 @@ const META = "analyses-meta/";
 const DATA = "analyses/";
 const KINDS = ["club", "race"];
 const VIS = ["public", "club", "password"];
-const MAX_THUMB = 400 * 1024;
+const MAX_THUMB = 400 * 1024, MAX_LAYERS = 30 * 1024 * 1024;
 const MAX_MAP = 80 * 1024 * 1024, MAX_TRACE = 3 * 1024 * 1024, MAX_POINTS = 40000;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
@@ -156,6 +161,11 @@ async function access(ctx, user, meta, lazyClub) {
 const isOrganiser = async (env, user, meta, lazyClub) => meta.owner === user.id || isAdmin(env, user)
   || (meta.kind === "race" && !!meta.orgClub && (await lazyClub()) === meta.orgClub);
 
+/** A circuit's layers' record: the map version they were drawn on (the layers of another map are not this map's). */
+function cleanLayers(c) {
+  const v = Math.round(num(c.layers?.map) || 0);
+  return v && v === Math.round(num(c.map?.v) || 0) ? { layers: { map: v, src: clean(c.layers.src, 10) } } : {};
+}
 function cleanCourses(list) {
   if (!Array.isArray(list) || list.length > 12) return null;
   const out = [];
@@ -171,7 +181,7 @@ function cleanCourses(list) {
     const m = c.map || {};
     out.push({ n, name: clean(c.name, 60) || `Circuit ${n + 1}`, circuit: clean(c.circuit, 80), r: num(c.r) || 20,
       map: { w: Math.round(num(m.w) || 0), h: Math.round(num(m.h) || 0), type: /^image\/(png|jpeg|webp)$/.test(m.type) ? m.type : "image/jpeg", v: Math.round(num(m.v) || 0) },
-      geo, controls: ctrls, ...(c.score === true ? { score: true } : {}), ...cleanExtras(c) });
+      geo, controls: ctrls, ...(c.score === true ? { score: true } : {}), ...cleanLayers(c), ...cleanExtras(c) });
   }
   return out;
 }
@@ -262,7 +272,7 @@ async function visitors(ctx, parts) {
     return json({ analysis: { ...rest, opts: optsOf(meta) }, traces, you: { uid: 0, organiser: false, visitor: true } });
   }
   if (parts.length !== 3 || !Number.isInteger(n) || !(meta.courses || []).some((c) => c.n === n)) return json({ error: "not found" }, 404);
-  if (parts[1] === "map" || parts[1] === "thumb") {
+  if (parts[1] === "map" || parts[1] === "thumb" || parts[1] === "layers") {
     const o = await env.BUCKET.get(`${DATA}${id}/${parts[1]}-${n}`);
     if (!o) return json({ error: "not found" }, 404);
     return new Response(o.body, { headers: { "Content-Type": o.httpMetadata?.contentType || "image/jpeg", "Cache-Control": "private, max-age=3600" } });
@@ -475,11 +485,13 @@ const forUsers = withUser(async (ctx, user) => {
         const gone = (meta.courses || []).filter((c) => !cs.some((x) => x.n === c.n)).map((c) => c.n);
         if (gone.length) {
           const keys = (await listAll(env, `${DATA}${id}/`, false)).map((o) => o.key)
-            .filter((k) => gone.some((n) => k === `${DATA}${id}/map-${n}` || k === `${DATA}${id}/thumb-${n}` || k.startsWith(`${DATA}${id}/trace-${n}-`) || k.startsWith(`${DATA}${id}/solo-${n}-`)));
+            .filter((k) => gone.some((n) => k === `${DATA}${id}/map-${n}` || k === `${DATA}${id}/thumb-${n}` || k === `${DATA}${id}/layers-${n}` || k.startsWith(`${DATA}${id}/trace-${n}-`) || k.startsWith(`${DATA}${id}/solo-${n}-`)));
           for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
         }
         const sig = (c) => JSON.stringify([c.map?.v, c.map?.w, c.map?.h, c.r, c.score, (c.controls || []).map((q) => [q.kind, Math.round(q.x), Math.round(q.y)])]);
         const stale = cs.filter((c) => { const o = (meta.courses || []).find((x) => x.n === c.n); return o && sig(o) !== sig(c); }).map((c) => `${DATA}${id}/thumb-${c.n}`);
+        // the layers of a circuit whose record no longer names them (its map replaced): gone
+        for (const c of cs) { const o = (meta.courses || []).find((x) => x.n === c.n); if (o?.layers && !c.layers) stale.push(`${DATA}${id}/layers-${c.n}`); }
         if (stale.length) await env.BUCKET.delete(stale);
         meta.courses = cs;
       }
@@ -546,6 +558,25 @@ const forUsers = withUser(async (ctx, user) => {
       if (!body.byteLength) return json({ error: "empty" }, 400);
       if (body.byteLength > MAX_THUMB) return json({ error: "too big" }, 413);
       await env.BUCKET.put(key, body, { httpMetadata: { contentType: type } });
+      return json({ ok: true });
+    }
+    return json({ error: "method" }, 405);
+  }
+
+  if (sub === "layers") {
+    const key = `${DATA}${id}/layers-${n}`;
+    if (method === "GET") {
+      const o = await env.BUCKET.get(key);
+      if (!o) return json({ error: "not found" }, 404);
+      return new Response(o.body, { headers: { "Content-Type": "application/octet-stream", "Cache-Control": "private, max-age=3600" } });
+    }
+    if (method === "PUT") {
+      if (!organiser) return json({ error: "forbidden" }, 403);          // sent before the circuit's record, as its map is
+      const size = Number(request.headers.get("Content-Length") || 0);
+      if (!size) return json({ error: "empty" }, 400);
+      if (size > MAX_LAYERS) return json({ error: "too big" }, 413);
+      if (!(await allow(env, `anmap:${user.id}`, 60, 86400))) return json({ error: "too many" }, 429);
+      await env.BUCKET.put(key, request.body, { httpMetadata: { contentType: "application/octet-stream" } });
       return json({ ok: true });
     }
     return json({ error: "method" }, 405);

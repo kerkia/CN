@@ -145,10 +145,12 @@ function path2d(cmds) {
 }
 
 /**
- * The layers of trace/routechoice.js on a W × H grid: T the affine from the file's mm to the grid's pixels. Returns { area,
- * path, blue, block, hand } (Uint8Array, one per pixel), and counts of what was drawn.
+ * The layers of trace/routechoice.js on a W × H grid: T the affine from the file's mm to the grid's pixels; extra: the course
+ * setter's own objects, in the file's mm — { areas: [[x, y]…] out of bounds (ISCD 709, dangerous areas), lines: [[x, y]…]
+ * not to be crossed (708) }, which the Tracer keeps apart from the map. Returns { area, path, blue, block, hand } (Uint8Array,
+ * one per pixel), and counts of what was drawn.
  */
-export function layers(v, T, W, H) {
+export function layers(v, T, W, H, extra = null) {
   const t0 = Date.now(), N = W * H, map = v.map;
   const cv = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(W, H) : Object.assign(document.createElement("canvas"), { width: W, height: H });
   const g = cv.getContext("2d", { willReadFrequently: true });
@@ -198,5 +200,65 @@ export function layers(v, T, W, H) {
     for (const l of grp.list) { g.lineWidth = Math.max(l.width, minMm); g.stroke(path2d(l.path.commands())); }
     read(into, value);
   }
+  // the setter's out-of-bounds areas over everything, their boundaries as walls (a path stays closed across them)
+  const poly = (pts, close) => { const p = new Path2D(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); if (close) p.closePath(); return p; };
+  if (extra?.areas?.length) {
+    begin();
+    for (const pts of extra.areas) if (pts.length >= 3) g.fill(poly(pts, true), "evenodd");
+    counts.oob = read(area, A.OOB);
+    for (let i = 0; i < N; i++) if (area[i] === A.OOB) path[i] = 0;
+  }
+  if (extra?.lines?.length) {
+    begin(); g.lineCap = "round"; g.lineJoin = "round"; g.lineWidth = Math.max(0.5, minMm);
+    for (const pts of extra.lines) if (pts.length >= 2) g.stroke(poly(pts, false));
+    const mark = new Uint8Array(N);
+    counts.bounds = read(mark, 1);
+    for (let i = 0; i < N; i++) if (mark[i]) { block[i] = 1; path[i] = 0; }
+  }
   return { area, path, blue, block, hand, counts, ms: Date.now() - t0 };
+}
+
+// ---- the layers kept with a map analysis's circuit (owner, 2026-11-05) ---------------------------------------------------------
+// Drawn once by the organiser's browser at publication, from the OCAD or Mapper map the course was set on, on the pixels of the
+// circuit's image; the runners' pages read them instead of the image's colours (exact, and the map need not be read). The map
+// file itself is not sent: only what the routes need. « OZL1 », the width and height (u32, little-endian), then two planes deflated:
+// area | path << 4 | blue << 6 | block << 7, and hand.
+const MAGIC = [0x4f, 0x5a, 0x4c, 0x31];
+async function stream(bytes, how, compress) {
+  const s = new Blob([bytes]).stream().pipeThrough(compress ? new CompressionStream(how) : new DecompressionStream(how));
+  return new Uint8Array(await new Response(s).arrayBuffer());
+}
+/** The layers as a Blob to store. */
+export async function packLayers(L, W, H) {
+  const N = W * H, planes = new Uint8Array(2 * N);
+  for (let i = 0; i < N; i++) {
+    planes[i] = (L.area[i] & 15) | ((L.path[i] & 3) << 4) | ((L.blue[i] ? 1 : 0) << 6) | ((L.block[i] ? 1 : 0) << 7);
+    planes[N + i] = L.hand[i] ? 1 : 0;
+  }
+  const head = new Uint8Array(12);
+  head.set(MAGIC); new DataView(head.buffer).setUint32(4, W, true); new DataView(head.buffer).setUint32(8, H, true);
+  return new Blob([head, await stream(planes, "deflate", true)], { type: "application/octet-stream" });
+}
+/** The stored layers read back: { w, h, area, path, blue, block, hand }, or null (not this format). */
+export async function unpackLayers(buf) {
+  const u8 = new Uint8Array(buf);
+  if (u8.length < 12 || MAGIC.some((b, i) => u8[i] !== b)) return null;
+  const dv = new DataView(u8.buffer, u8.byteOffset), w = dv.getUint32(4, true), h = dv.getUint32(8, true), N = w * h;
+  const planes = await stream(u8.subarray(12), "deflate", false);
+  if (planes.length !== 2 * N) return null;
+  const area = new Uint8Array(N), path = new Uint8Array(N), blue = new Uint8Array(N), block = new Uint8Array(N), hand = planes.slice(N);
+  for (let i = 0; i < N; i++) { const v = planes[i]; area[i] = v & 15; path[i] = (v >> 4) & 3; blue[i] = (v >> 6) & 1; block[i] = v >> 7; }
+  return { w, h, area, path, blue, block, hand };
+}
+/** Layers of W0 × H0 taken to W × H, nearest pixel (a map too large for the routes' grid is read smaller). */
+export function resampleLayers(L, W, H) {
+  if (L.w === W && L.h === H) return L;
+  const out = { w: W, h: H };
+  const xs = Int32Array.from({ length: W }, (_, x) => Math.min(L.w - 1, Math.floor(((x + 0.5) * L.w) / W)));
+  for (const k of ["area", "path", "blue", "block", "hand"]) {
+    const src = L[k], dst = new Uint8Array(W * H);
+    for (let y = 0; y < H; y++) { const r = Math.min(L.h - 1, Math.floor(((y + 0.5) * L.h) / H)) * L.w, o = y * W; for (let x = 0; x < W; x++) dst[o + x] = src[r + xs[x]]; }
+    out[k] = dst;
+  }
+  return out;
 }

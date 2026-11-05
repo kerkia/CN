@@ -29,7 +29,33 @@ export async function circuitOf(E, d, dpi) {
   const r = M.controlRadius(ev) * M.objRatio(ev, ev.courses[d.id].printScale) * k;
   const controls = M.ccIds(ev, d.cd).map((cc) => ev.controls[ev.courseControls[cc].control]).filter((c) => ["start", "normal", "finish"].includes(c.kind))
     .map((c) => ({ kind: c.kind === "normal" ? "control" : c.kind, code: c.code || "", x: Math.round((c.x - box[0]) * k * 10) / 10, y: Math.round((box[3] - c.y) * k * 10) / 10 }));
-  return { blob, w: canvas.width, h: canvas.height, geo, r: Math.round(r * 10) / 10, controls };
+  return { blob, w: canvas.width, h: canvas.height, geo, r: Math.round(r * 10) / 10, controls, box, k };
+}
+
+const OOB_AREAS = ["out-of-bounds", "dangerous-area"], NO_CROSS = ["boundary", "mtbo-forbidden-route"];
+/** Whether the event's map is an OCAD or Mapper map, whose symbols can say the terrain to the route choices. */
+export const vectorMap = (E) => E.map?.kind === "vector" && !!E.map.vmap;
+/**
+ * The route choices' layers of a circuit made by circuitOf (owner, 2026-11-05: the map analysis read the colours of an image
+ * printed from the OCAD map it came from): the map's symbols, and the setter's out-of-bounds areas and boundaries shown on that
+ * course, drawn on the circuit image's pixels (trace/vectorroutes.js layers) and packed to be kept with the circuit. Null for a
+ * map that is not OCAD or Mapper.
+ */
+export async function circuitLayers(E, d, c) {
+  if (!vectorMap(E)) return null;
+  const { layers, packLayers } = await import("../trace/vectorroutes.js");
+  const ev = E.ev, src = E.map, k = c.k, [x0, , , y1] = c.box;
+  // the file's mm (the Tracer's mm + the frame's corner) to the image's pixels
+  const T = { a: k, b: 0, c: -(src.ox + x0) * k, d: 0, e: -k, f: (y1 + src.oy) * k };
+  const file = (pts) => pts.map(([x, y]) => [x + src.ox, y + src.oy]);
+  const extra = { areas: [], lines: [] };
+  for (const [sid, sp] of Object.entries(ev.specials || {})) {
+    if (!M.containsSpecial(ev, d.cd, sid) || !Array.isArray(sp.pts)) continue;
+    if (OOB_AREAS.includes(sp.kind)) extra.areas.push(file(sp.pts));
+    else if (NO_CROSS.includes(sp.kind)) extra.lines.push(file(sp.pts));
+  }
+  const L = layers({ map: src.vmap }, T, c.w, c.h, extra);
+  return packLayers(L, c.w, c.h);
 }
 
 const fail = (code) => Object.assign(new Error(code), { code });

@@ -323,7 +323,11 @@ export function build(X) {
           ])}
           <p>In der Einzelanalyse <b>ist</b> eine allein abgelegte OCAD- oder Mapper-Datei die Karte: hier gezeichnet, der Track über ihre
             Georeferenzierung kalibriert. Zusammen mit einem Bild der Karte abgelegt – oder im Feld „Berechnete Routen“ gewählt, in beiden Analysen –
-            dient sie den Routen und wird über ihre Georeferenzierung auf das Bild gelegt: Sie muss eine haben und die angezeigte Karte abdecken.</p>`)}
+            dient sie den Routen und wird über ihre Georeferenzierung auf das Bild gelegt: Sie muss eine haben und die angezeigte Karte abdecken.</p>
+          <p>Eine Kartenanalyse, die aus der Bahnlegung veröffentlicht wurde oder deren Bahnen aus einem OCAD-Projekt stammen (Orga ›
+            Kartenanalysen), behält, was die OCAD-Karte des Veranstalters über das Gelände sagt: Ihre Routen lesen deren Symbole, ohne dass du
+            eine Datei ablegen musst, und die Sperrgebiete und nicht zu überquerenden Grenzen, die der Bahnleger auf der Bahn gezeichnet hat,
+            gehören dazu. Nur diese Zeichnung des Geländes wird mit der Bahn gesendet, nie die OCAD-Datei.</p>`)}
         ${slide("Coach · Test", "2. Die Zeit eines Schritts", html`
           <p>Die Zeit von einer Zelle zur benachbarten ist die Distanz, multipliziert mit der Langsamkeit des Geländes und der der Hangneigung:</p>
           ${list([

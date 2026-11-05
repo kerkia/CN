@@ -669,6 +669,7 @@ export default {
   "trc.race.pubButtons": "« Publier » : les coureurs peuvent l'ouvrir aussitôt. « Enregistrer en brouillon » : seuls ses organisateurs la voient.",
   "trc.race.pubSaved": "Brouillon enregistré",
   "trc.race.pubCourseSend": "Circuit {i}/{n} : {name}, envoi de la carte…",
+  "trc.race.pubCourseLayers": "Circuit {i}/{n} : {name}, préparation de la carte pour les itinéraires calculés…",
   "trc.race.pubSaving": "Enregistrement des réglages…",
   "trc.race.pubWait": "Chaque circuit est imprimé sur sa carte puis envoyé : quelques secondes par circuit.",
   "trc.race.pubTarget": "Analyse de carte",

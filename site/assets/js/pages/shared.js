@@ -954,8 +954,16 @@ async function ocadImport(box, ctx, preset = null) {
         const c = await read.C.circuitOf(read.E, d, 150);
         if (c.blob.size > MAX_MAP) { $("#sh-o-go").disabled = false; note.textContent = t("sh.e.tooBig", { mb: Math.round(MAX_MAP / 1048576) }); return; }
         await api(`/${id}/map/${n}`, { method: "PUT", body: c.blob, type: "image/png", key: keyOf(id) });
+        // the route choices' layers from the OCAD map's symbols (owner, 2026-11-05: exact, where the image's colours only suggest)
+        const mv = Date.now();
+        let layers = null;
+        try {
+          note.textContent = t("sh.ocad.layers", { i: j + 1, n: pick.length, name: d.name });
+          const lb = await read.C.circuitLayers(read.E, d, c);
+          if (lb) { await api(`/${id}/layers/${n}`, { method: "PUT", body: lb, key: keyOf(id) }); layers = { map: mv, src: read.E.map.format }; }
+        } catch (e) { console.warn(e); }                    // the routes then read the image's colours
         out.push({ n, name: d.name.slice(0, 60), circuit: $(`[data-k="${i}"]`)?.value || old?.circuit || "", r: c.r,
-          map: { w: c.w, h: c.h, type: "image/png", v: Date.now() }, geo: c.geo, controls: c.controls,
+          map: { w: c.w, h: c.h, type: "image/png", v: mv }, geo: c.geo, controls: c.controls, ...(layers ? { layers } : {}),
           ...(old?.variants ? { variants: old.variants } : {}), ...(old?.exercises ? { exercises: old.exercises } : {}),
           ...(read.E.ev.courses[d.id]?.kind === "score" ? { score: true } : {}) });
       }
@@ -2048,7 +2056,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   const rcm = { s: RC.loadSettings(RC.isSprint(race) ? "sprint" : "forest"), on: routesOn && (() => { try { return localStorage.getItem("ocn.rc.on") !== "0"; } catch (e) { return true; } })(),
     plan: null, ready: null, pic: null, picOn: false, routes: [], mine: [], auto: [], token: 0, status: "", prog: null, warn: "", dem: null, info: null,
     decOn: RC.decisionOn(), dec: null, decAsk: "", calib: null, calibKey: "", calibP: null,
-    vec: null };                                        // an OCAD or Mapper map of the analysis's map, this visit only
+    vec: null,                                          // an OCAD or Mapper map of the analysis's map, this visit only
+    stored: course.layers?.map && course.layers.map === course.map?.v ? undefined : null };   // the circuit's own layers (loaded once)
   // the map's pixels to metres and to longitude and latitude, from its georeference
   const geoInv = (() => { const g = course.geo, det = g.a * g.e - g.b * g.d; return (x, y) => { const u = x - g.c, v = y - g.f; return [(g.e * u - g.b * v) / det, (g.a * v - g.d * u) / det]; }; })();
   const rcmFrame = runners[0]?.fit || (() => { const [lon, lat] = geoInv(image.width / 2, image.height / 2); return fitFromGeo(course.geo, frameAt(lat, lon)); })();
@@ -2077,7 +2086,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     if (!host) return;
     const vt = rcmVector();
     host.innerHTML = html`${raw(RC.panelHtml(rcm.s, { on: rcm.on, picture: rcm.picOn, decision: rcm.decOn, status: rcm.status, progress: rcm.prog, warn: rcm.warn, auto: rcm.auto[leg],
-      vector: rcm.vec ? { name: rcm.vec.v.name, detail: rcm.vec.detail, used: !!vt, note: vt ? "" : t(rcm.vec.v.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") } : null,
+      vector: rcm.vec ? { name: rcm.vec.v.name, detail: rcm.vec.detail, used: !!vt, note: vt ? "" : t(rcm.vec.v.geo ? "rc.vec.elsewhere" : "an.vec.noGeoRoutes") }
+        : rcm.stored ? { name: t("rc.vec.stored"), detail: t("rc.vec.storedDetail"), used: true, fixed: true } : null,
       calib: RC.calibNote(rcm.s, rcm.calib, true) }))}`;
     RC.bindPanel(host, rcm.s, async (s, what, file) => {
       if (what === "vector" || what === "vector-clear") {
@@ -2112,12 +2122,25 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const g = course.geo, T = throughGeo(rcm.vec.v, (lat, lon) => [g.a * lon + g.b * lat + g.c, g.d * lon + g.e * lat + g.f]);
     return T && cover(rcm.vec.v, T, image.width, image.height) >= 0.2 ? { v: rcm.vec.v, T } : null;
   }
-  /** The map read, once. */
+  /** The layers the organiser's publication drew from the OCAD map of this circuit (owner, 2026-11-05), once; null without. */
+  async function rcmStored() {
+    if (rcm.stored !== undefined) return rcm.stored;
+    rcmStatus(t("rc.st.layers"), 0);
+    try {
+      const { unpackLayers } = await import("../trace/vectorroutes.js");
+      const L = await unpackLayers(await (await api(`/${id}/layers/${course.n}?v=${course.map.v}`, { key: keyOf(id) })).arrayBuffer());
+      rcm.stored = L && L.w === image.width && L.h === image.height ? L : null;
+    } catch (e) { console.warn(e); rcm.stored = null; }
+    rcmPanel();
+    return rcm.stored;
+  }
+  /** The map read, once: a file dropped in « Calcul », else the circuit's stored layers, else the image's colours. */
   function rcmPlan() {
     if (rcm.ready) return rcm.ready;
-    rcm.plan = RC.planner(image, (x, y) => toM(rcmFrame, x, y), rcmVector(), { map: rcm.s.map, onProgress: rcmReading });
     rcm.demKey = null;
     rcm.ready = (async () => {
+      const vt = rcmVector() || (await rcmStored().then((L) => (L ? { layers: L, name: t("rc.vec.storedIn") } : null)));
+      rcm.plan = RC.planner(image, (x, y) => toM(rcmFrame, x, y), vt, { map: rcm.s.map, onProgress: rcmReading });
       rcmStatus(t("rc.st.reading"), 0);
       rcm.info = null;
       rcmFacts(await rcm.plan.ready);

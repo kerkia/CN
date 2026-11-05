@@ -2210,7 +2210,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   not followed). Within 75 m of the course's controls (the pages send them: the worker's `controls` op, `releaseAround`) it is
   the course's own circles and numbers: released. On an image map a line read as a path no longer opens a building, water or an
   out-of-bounds area (it did: a château's black edge read as a track). Found: Fougères' château and « Maison Neuve » hatching, its
-  rides' crosses; the Gif scan's three pink hatched areas. **Impassable walls and fences are not read** from an image: on the
+  rides' crosses; the Gif scan's three pink hatched areas. **The map's own brown is never overprint** (owner, 2026-11-05: on the
+  Desquinemarre map, exported from OCAD at 150 dpi, the brown rgb(209, 66, 0) passed the red test and its contours, closed into one
+  114 ha piece, put 17 % of the map out of bounds — no route at all on two legs; Purple Pen's SampleEvent 4 %, Lincoln Park 17 %):
+  `mapBrown` takes the most frequent red colour as the map's brown when it lies in a quarter of the ~50 m blocks holding ink (contours
+  are everywhere, hatching and crosses local), and leaves out of the red the pixels of its hue (± 10°) and their 1-pixel edge — now
+  0.06 %, 0.02 %, 0 %; the Fougères photo and the Gif scan find no such brown (a photo's brown is pale) and read as before. A map
+  whose brown is both red and everywhere and whose overprint over yellow has the brown's hue would lose its hatching. **Impassable walls and fences are not read** from an image: on the
   Fougères photo their tick marks (0.4 mm, two blurred pixels) do not separate them from paths by width or spurs (measured). Cost of a step = metres × terrain (speeds in % of white forest, `DEFAULTS.speeds`) × slope (up: 1 + climb × grade, 8 flat
   metres per metre by default; down: 1 − 0.6 × grade to 15 %, then + 2.5 per unit) × the **navigation caution** (1 + caution ×
   visibility × min(1, distance to a handrail / 50 m): handrails = paths, streams, edges between visibility groups, blocked areas'
@@ -2279,6 +2285,17 @@ Every multiple-choice game was played through to its score page at phone size, w
   Purple Pen's samples (Clouds, Penistone Hill, Ft Casey, Lake Sammamish, SampleMap georeferenced in UTM 10 with a synthetic GPX;
   Mapper's HG_Mar28 sprint): the layers in 0.1-1.5 s, the companion's placing equal to the map's own to the pixel. Not done: learning
   the speeds from the shared traces, purple out-of-bounds hatching on an image map (erased with the course).
+  **Kept with a map analysis's circuit** (owner, 2026-11-05: « you have the OCAD map information, why read colours? »): a circuit made
+  from an OCAD or Mapper map — the Tracer's « Publier vers l'analyse de carte » and Orga's « Importer un fichier OCAD » — gets its
+  layers drawn at that moment on the circuit image's pixels (`tracer/circuits.js circuitLayers`: the map's symbols with the frame's
+  exact mm → px, plus the setter's specials shown on that course — « out-of-bounds » and « dangerous-area » as out of bounds,
+  « boundary » and « mtbo-forbidden-route » as walls no path opens), packed (`vectorroutes.packLayers`: « OZL1 », the size, two
+  planes deflated, ~65-75 KB for 1754 × 1241 against 1.2 MB of PNG) and stored as `analyses/<id>/layers-<n>` (`GET|PUT …/layers/<n>`,
+  the visitors' `/v/…/layers/<n>`; the circuit's `layers: { map }` names the map version they were drawn on — a new map drops them);
+  the OCAD file itself is never sent. « Analyse de carte » (`shared.js rcmStored`) and Solo on the organiser's map (`loadOrgaMap`) read
+  them (the panel: « Carte OCAD de l'organisateur »), a file dropped in « Calcul » still winning; the publication's progress window
+  has a step per circuit for them. Measured on the Desquinemarre « très court »: drawn in 0.4 s, the planner ready in 0.9 s against
+  3.2 s for the image, leg 39 → 31 A 6:19 / 389 m nearly straight (no route at all from the colours before the brown fix).
 - **Languages: French, English, German and Spanish** (owner, 2026-10-17 French and English, open to everyone since 2026-10-18,
   `i18n.OPEN` true; **German and Spanish since 2026-11-01**: `i18n.LANGS`, catalogues `i18n/de.js`, `es.js`, `tracer.de.js`,
   `tracer.es.js`, long texts `content/<name>.de.js` / `.es.js`, e-mails in `_lib/templates.js`, `manifest.de|es.webmanifest`;

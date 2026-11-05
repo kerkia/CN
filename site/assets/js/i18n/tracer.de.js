@@ -671,6 +671,7 @@ export default {
   "trc.race.pubButtons": "„Veröffentlichen“: Die Läufer können sie sofort öffnen. „Als Entwurf speichern“: Nur ihre Veranstalter sehen sie.",
   "trc.race.pubSaved": "Entwurf gespeichert",
   "trc.race.pubCourseSend": "Bahn {i}/{n}: {name}, die Karte wird gesendet…",
+  "trc.race.pubCourseLayers": "Bahn {i}/{n}: {name}, die Karte wird für die berechneten Routen vorbereitet…",
   "trc.race.pubSaving": "Die Einstellungen werden gespeichert…",
   "trc.race.pubWait": "Jede Bahn wird auf ihre Karte gedruckt und dann gesendet: einige Sekunden pro Bahn.",
   "trc.race.pubTarget": "Kartenanalyse",

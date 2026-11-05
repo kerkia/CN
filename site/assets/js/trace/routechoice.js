@@ -332,11 +332,20 @@ function northLines(kind, rgba, w, h, mpp, nmask) {
  */
 function overprint(rgba, kind, w, h, mpp) {
   const N = w * h, O = new Uint8Array(N), R = new Uint8Array(N);
+  const red = (r, g, b) => r > 60 && g < 0.55 * r && b < 0.45 * r;
+  // the map's own brown when it is red enough to pass (mapBrown), its anti-aliased edges with it: never the overprint
+  const brown = mapBrown(rgba, w, h, mpp, red);
+  let notRed = null;
+  if (brown) {
+    const m = new Uint8Array(N);
+    for (let i = 0, p = 0; i < N; i++, p += 4) if (red(rgba[p], rgba[p + 1], rgba[p + 2]) && brown(rgba[p], rgba[p + 1], rgba[p + 2])) m[i] = 1;
+    notRed = morph(m, w, h, 1, false);
+  }
   let any = 0;
   for (let i = 0, p = 0; i < N; i++, p += 4) {
     const r = rgba[p], g = rgba[p + 1], b = rgba[p + 2];
     if (kind[i] === I_PURPLE) O[i] = 1;
-    else if (r > 60 && g < 0.55 * r && b < 0.45 * r) { O[i] = R[i] = 1; any++; }
+    else if (red(r, g, b) && !notRed?.[i]) { O[i] = R[i] = 1; any++; }
   }
   const out = new Uint8Array(N);
   const kc = Math.max(2, Math.round(12 / mpp)), ko = Math.max(2, Math.round(10 / mpp));
@@ -360,6 +369,48 @@ function overprint(rgba, kind, w, h, mpp) {
   const long = bl.comps.map((c) => (c ? Math.hypot(c.x1 - c.x0 + 1, c.y1 - c.y0 + 1) * mpp >= 60 : false));
   for (let i = 0; i < N; i++) if (bl.lab[i] && long[bl.lab[i]]) out[i] = 2;
   return out;
+}
+
+/**
+ * The map's own brown, when it passes for the overprint's red (owner, 2026-11-05: the brown of a map exported from OCAD,
+ * rgb(209, 66, 0), and of Purple Pen's sample maps is red enough, and their contours, closed into one piece, put a whole forest
+ * out of bounds — 17 % of the Desquinemarre map, no route left on its legs): the most frequent colour among the red pixels (g/r,
+ * b/r by 0.04, r by 16, the bins around it counted), taken as the brown when it lies all over the map — in a quarter of the ~50 m
+ * blocks holding ink — as contours do; a hatched area or a band of crosses is local. Returns a test (r, g, b) → of the brown's
+ * hue (within 10°: a map's browns, their tints and their edges over white or yellow share it), or null. On a photo the brown is
+ * pale and seldom red: nothing changes there (the Fougères photo, the Gif scan: no brown found). Left: a map whose brown is both
+ * red and everywhere, and whose overprint over yellow has the brown's hue, would lose its hatching.
+ */
+function mapBrown(rgba, w, h, mpp, red) {
+  const B = Math.max(8, Math.round(50 / mpp)), bx = Math.ceil(w / B), NB = bx * Math.ceil(h / B);
+  const bins = new Map(), key = (r, g, b) => (Math.round(g / r / 0.04) * 64 + Math.round(b / r / 0.04)) * 32 + Math.round(r / 16);
+  const inked = new Uint8Array(NB);
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+    const p = 4 * (y * w + x), r = rgba[p], g = rgba[p + 1], b = rgba[p + 2];
+    if (Math.min(r, g, b) < 200) inked[Math.floor(y / B) * bx + Math.floor(x / B)] = 1;
+    if (red(r, g, b)) { const k = key(r, g, b); bins.set(k, (bins.get(k) || 0) + 1); }
+  }
+  if (!bins.size) return null;
+  let best = null, bestN = 0;
+  for (const k of bins.keys()) {
+    const r = k % 32, gb = (k - r) / 32, bb = gb % 64, gg = (gb - bb) / 64;
+    let n = 0;
+    for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) for (let d = -1; d <= 1; d++) n += bins.get(((gg + a) * 64 + bb + c) * 32 + r + d) || 0;
+    if (n > bestN) { bestN = n; best = [gg * 0.04, bb * 0.04, r * 16]; }
+  }
+  const [g0, b0, r0] = best;
+  const near = (r, g, b) => Math.abs(g / r - g0) <= 0.07 && Math.abs(b / r - b0) <= 0.07 && Math.abs(r - r0) <= 36;
+  const seen = new Uint8Array(NB);
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) {
+    const p = 4 * (y * w + x), r = rgba[p], g = rgba[p + 1], b = rgba[p + 2];
+    if (red(r, g, b) && near(r, g, b)) seen[Math.floor(y / B) * bx + Math.floor(x / B)] = 1;
+  }
+  let s = 0, t = 0;
+  for (let i = 0; i < NB; i++) if (inked[i]) { t++; s += seen[i]; }
+  if (!(t && s / t >= 0.25)) return null;
+  const hueOf = (r, g, b) => { const sp = r - Math.min(r, g, b); return sp > 0 ? (60 * (g - b)) / sp : 0; };   // red's side, green above blue
+  const h0 = hueOf(r0, g0 * r0, b0 * r0);
+  return (r, g, b) => g >= b && Math.abs(hueOf(r, g, b) - h0) <= 10;
 }
 
 /** Zhang-Suen thinning of the mask's pixels `list` (the mask is changed): the skeleton's pixels. */
