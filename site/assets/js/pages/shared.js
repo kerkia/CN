@@ -338,7 +338,7 @@ function createForm(box, club) {
 
 // ---- one analysis -------------------------------------------------------------------------------------------------
 async function eventPage(main, kind, id, org = false, query = {}) {
-  const home = org ? ORG_ROUTE : "#/analyse-carte", homeTitle = t(org ? "nav.orgAnalyses" : "ma.title");
+  const homeTitle = t(org ? "nav.orgAnalyses" : "ma.title");
   main.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
   let data;
   try { data = await api(`/${id}`, { key: keyOf(id) }); }
@@ -360,7 +360,6 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   let courseN = A.courses.some((c) => String(c.n) === query.c) ? Number(query.c) : A.courses[0]?.n ?? null, viewer = null, initial = query;
   main.innerHTML = html`
     <div class="sh-top">
-      <a class="btn btn-sm" href="${home}">← ${homeTitle}</a>
       <b class="sh-title">${A.title}</b>${raw(betaTag(t("beta.multi.tip")))}<span class="muted">${fmtDate(A.date)} · ${A.ownerName || "—"} · ${t(`sh.vis.${A.vis}`)}</span>
       <span class="sh-tabs" id="sh-tabs"></span>
       ${organiser ? html`<span class="tag" title="${t("sh.mine.tip")}">${t("sh.mine")}</span>` : ""}${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}</div>
@@ -368,8 +367,35 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     <div id="sh-splits" class="sh-splits" hidden></div>`;
   // two views of the analysis (owner, 2026-11-04): the map (the replay, its panels) and Arena's split analysis of the times the
   // tracks give at the controls, in the map's place. The circuit is chosen in the left panel's « Circuits » tab (chips by the
-  // title would not scale)
-  let pane = query.vue === "temps" ? "splits" : "map", splitsKey = "", splitsView = null;
+  // title would not scale). The split times keep the map's layout (owner, 2026-11-05: the page seemed to change): the circuit
+  // and runners in the left panel, the views in the middle, their settings in the right panel
+  let pane = query.vue === "temps" ? "splits" : "map", splitsKey = "", splitsView = null, splitsCourse = null;
+  const sp = { lp: { tab: "runners", collapsed: false }, rp: { tab: "settings", collapsed: false }, lw: 320, rw: 270 };
+  const spFit = () => { const el = $("#sh-sp-layout"); if (!el || pane !== "splits") return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(380, Math.floor(innerHeight - top - 16))}px`; };
+  window.addEventListener("resize", spFit);
+  function splitsLayout() {
+    if ($("#sh-sp-layout")) return;
+    const P = loadPrefs(), px = (v, lo, hi, d) => (Number.isFinite(v) && v >= lo && v <= hi ? Math.round(v) : d);
+    sp.lw = px(P.lw, 200, 1400, 320); sp.rw = px(P.rw, 200, 700, 270);
+    $("#sh-splits").innerHTML = html`<div class="sh-layout sh-sp-layout" id="sh-sp-layout">
+      ${raw(panelHtml({ id: "sh-sp-lp", side: "left", cls: "sh-lp", tabs: [{ key: "runners", label: t("sh.tab.circuits") }], inner: { runners: html`<div id="sh-sp-left"></div>` } }))}
+      <div class="an-split" id="sh-sp-split-l" title="${t("an.split")}"></div>
+      <div class="sh-sp-center" id="sh-sp-center"></div>
+      <div class="an-split" id="sh-sp-split-r" title="${t("an.split")}"></div>
+      ${raw(panelHtml({ id: "sh-sp-rp", side: "right", cls: "sh-rp", tabs: [{ key: "settings", label: t("sh.tab.settings") }], inner: { settings: html`<div id="sh-sp-right"></div>` } }))}</div>`;
+    const el = $("#sh-sp-layout");
+    const apply = () => {
+      el.dataset.lcol = sp.lp.collapsed ? "1" : "0"; el.dataset.rcol = sp.rp.collapsed ? "1" : "0";
+      el.style.setProperty("--sh-lw", `${sp.lp.collapsed ? 34 : sp.lw}px`); el.style.setProperty("--sh-rw", `${sp.rp.collapsed ? 34 : sp.rw}px`);
+      spFit(); window.dispatchEvent(new Event("resize"));              // (the charts take their new width)
+    };
+    // the widths shared with the map's panels (its preferences)
+    const save = () => { try { localStorage.setItem(PREFS_KEY, JSON.stringify({ ...loadPrefs(), lw: sp.lw, rw: sp.rw })); } catch (e) { /* not kept */ } };
+    const L = bindPanel($("#sh-sp-lp"), sp.lp, { onChange: apply }), Rp = bindPanel($("#sh-sp-rp"), sp.rp, { onChange: apply });
+    bindSplitter($("#sh-sp-split-l"), el, "left", (w, rect) => { sp.lw = Math.round(Math.min(rect.width - (sp.rp.collapsed ? 34 : sp.rw) - 300, Math.max(180, w))); if (sp.lp.collapsed) L.fold(false, true); apply(); }, save);
+    bindSplitter($("#sh-sp-split-r"), el, "right", (w, rect) => { sp.rw = Math.round(Math.min(rect.width - (sp.lp.collapsed ? 34 : sp.lw) - 300, Math.max(200, w))); if (sp.rp.collapsed) Rp.fold(false, true); apply(); }, save);
+    apply();
+  }
   const drawTabs = () => {
     $("#sh-tabs").innerHTML = A.courses.length ? html`<nav class="sh-viewtabs" role="tablist">${[["map", t("sh.pane.map")], ["splits", t("sh.pane.splits")]].map(([k, l]) =>
       html`<button type="button" role="tab" data-pane="${k}" aria-selected="${k === pane}">${l}</button>`)}</nav>` : "";
@@ -380,25 +406,33 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     drawTabs();
     const onMap = p === "map";
     $("#sh-viewer").hidden = !onMap; $("#sh-splits").hidden = onMap;
-    document.body.classList.toggle("an-theatre", onMap && !!viewer);
+    document.body.classList.toggle("an-theatre", !!viewer);     // (both views fill the window, the site's menus kept)
     if (!onMap) viewer?.pause?.();                        // (pausing writes the replay's state into the address: before ours)
     const q = Object.fromEntries(new URLSearchParams(location.hash.split("?")[1] || ""));
     if (onMap) delete q.vue; else q.vue = "temps";
     replaceQuery(q);
-    if (onMap) { window.dispatchEvent(new Event("resize")); return; }
-    // the times at the controls of every circuit's tracks (once per set of tracks)
+    if (onMap) {
+      // the circuit chosen among the split times, on the map too
+      if (splitsCourse != null && splitsCourse !== courseN) { courseN = splitsCourse; openViewer(); }
+      window.dispatchEvent(new Event("resize")); return;
+    }
+    splitsLayout();
+    spFit();
+    // the times at the controls of every circuit's tracks (once per set of tracks), on the circuit the map shows
     const key = data.traces.map((x) => `${x.course}:${x.uid}:${x.updated}`).join("|");
-    if (key === splitsKey && splitsView) return;
-    splitsKey = key;
-    const box = $("#sh-splits");
-    box.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
+    if (key === splitsKey && splitsView && splitsCourse === courseN) return;
+    splitsKey = key; splitsCourse = courseN;
+    const box = $("#sh-sp-center"), side = { left: $("#sh-sp-left"), right: $("#sh-sp-right") };
+    const say = (h) => { box.innerHTML = h; side.left.innerHTML = ""; side.right.innerHTML = ""; };
+    say(html`<div class="boot"><div class="spinner"></div></div>`);
     try {
       const doc = await splitsDoc({ A, id, traces: data.traces });
       if (pane !== "splits") { splitsKey = ""; return; }
-      if (!doc.classes.length) { box.innerHTML = html`<div class="card"><div class="empty">${t("sh.pane.none")}</div></div>`; return; }
+      if (!doc.classes.length) { say(html`<div class="card"><div class="empty">${t("sh.pane.none")}</div></div>`); return; }
       const shownName = A.courses.find((x) => x.n === courseN)?.name;             // the circuit the map shows, first
-      splitsView = await (await import("./splits.js")).renderEmbedded(box, { key: `multi:${id}`, c: Math.max(0, doc.classes.findIndex((k) => k.name === shownName)), race: { name: A.title, docs: [doc] } });
-    } catch (e) { console.error(e); splitsKey = ""; box.innerHTML = html`<div class="card"><div class="empty">${errText(e)}</div></div>`; }
+      splitsView = await (await import("./splits.js")).renderEmbedded(box, { key: `multi:${id}`, c: Math.max(0, doc.classes.findIndex((k) => k.name === shownName)),
+        race: { name: A.title, docs: [doc] }, slots: side, onClass: (name) => { const c = A.courses.find((x) => x.name === name); if (c) splitsCourse = c.n; } });
+    } catch (e) { console.error(e); splitsKey = ""; say(html`<div class="card"><div class="empty">${errText(e)}</div></div>`); }
   }
   const pickCourse = (n) => { if (n !== courseN && A.courses.some((x) => x.n === n)) { courseN = n; openViewer(); } };
   const openViewer = async () => {
@@ -432,7 +466,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       data = await api(`/${id}`, { key: keyOf(id) }); courseN = n; drawTabs(); openViewer();
     } }); });
   }
-  return { title: A.title, cleanup: () => { viewer?.destroy(); document.body.classList.remove("an-theatre"); leaveFull(); document.querySelector(".sh-offer")?.remove(); } };
+  return { title: A.title, cleanup: () => { viewer?.destroy(); window.removeEventListener("resize", spFit); document.body.classList.remove("an-theatre"); leaveFull(); document.querySelector(".sh-offer")?.remove(); } };
 }
 
 // ---- « Temps intermédiaires »: the tracks' times at the controls as a results document (owner, 2026-11-04) ---------------
@@ -1259,9 +1293,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   let mode = modes.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
   let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
-  // the analysis opens on the whole map, filling its area (owner, 2026-11-05: it opened on the runners gathered at the start);
-  // following starts with the replay — played, or its time moved —, and an address naming a time or a leg keeps its view
-  let still = init.t == null && !leg;
   let v3 = null, v3on = false, v3token = 0, v3sig = "", v3list = [], v3leg = null;      // the 3D view (below)
   const admin = !!auth.session()?.admin;
   // the features the organisers switched (owner, 2026-11-04; api/analyses OPTS): the computed routes (every account's since the same
@@ -1491,7 +1522,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   }
   const initials = (r) => (r.test ? `#${(r.uid - 1e9) % 1000}` : r.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 3));   // a test runner: its number
   function followView() {
-    if (follow === "none" || still) return;
+    if (follow === "none") return;
     const pts = (follow === "sel" && sel ? [sel] : runners.filter((r) => r.visible)).map((r) => { const s = sAt(r, T); if (s == null) return null; return toPx(r.fit, ...posAt(r.tr, s)); }).filter(Boolean);
     if (!pts.length) return;
     if (pts.length === 1 || follow === "sel") { mv.centerOn(pts[0][0], pts[0][1]); return; }
@@ -1640,12 +1671,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   function left() {
     const rowsL = leg ? [...runners].sort((a, b) => (legTime(a, leg) ?? 1e9) - (legTime(b, leg) ?? 1e9)) : runners;
     const bestLeg = leg ? Math.min(...runners.map((r) => legTime(r, leg) ?? 1e9)) : null;
-    const nShown = runners.filter((r) => r.visible).length;
     // the circuit, chosen here (owner, 2026-11-04: a row of chips by the title would not scale; as « En direct »'s course picker),
     // each with its number of tracks; the list's columns named by a header row rather than a sentence
     const nOn = (n) => (allTraces || []).filter((x) => x.course === n).length;
-    $("#sh-left").innerHTML = html`${A.courses.length > 1 ? html`<label class="field sh-course-pick"><span>${t("prov.circuit")}</span><select id="sh-course">${A.courses.map((c) => html`<option value="${c.n}" ${raw(c.n === course.n ? "selected" : "")}>${tn("sh.course.opt", nOn(c.n), { c: c.name })}</option>`)}</select></label>` : ""}
-      <div class="an-side-title">${leg ? legName(leg) : t("sh.runners.shown", { k: nShown, n: runners.length })}</div>
+    // (owner, 2026-11-05: no « Circuit » label under the tab of that name, no « n tracks shown of m » — the circuit's name gives
+    // the count, the ticks show the rest)
+    $("#sh-left").innerHTML = html`${A.courses.length > 1 ? html`<label class="field sh-course-pick"><select id="sh-course" aria-label="${t("prov.circuit")}">${A.courses.map((c) => html`<option value="${c.n}" ${raw(c.n === course.n ? "selected" : "")}>${tn("sh.course.opt", nOn(c.n), { c: c.name })}</option>`)}</select></label>` : ""}
+      ${leg ? html`<div class="an-side-title">${legName(leg)}</div>` : ""}
       <div class="row" style="gap:4px;margin-bottom:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-all">${t("sh.all")}</button><button type="button" class="btn btn-sm" id="sh-none">${t("sh.none")}</button>
         <button type="button" class="btn btn-sm" id="sh-invert">${t("sh.invert")}</button>${runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-mine-only">${t("sh.meOnly")}</button>` : ""}</div>
       ${rowsL.length ? html`<div class="sh-runner sh-runner-head" aria-hidden="true"><span class="sh-h-show">${t("sh.col.show")}</span><span>${t("prov.runner")}</span><span class="sh-h-follow">${t("sh.col.follow")}</span><span>${t("prov.time")}</span></div>` : ""}
@@ -1660,11 +1692,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           ${score ? html`<span class="sh-sub muted">${t("sh.score.n", { n: visitsOf(r).length, m: scoreN })}</span>` : leg && dist != null ? html`<span class="sh-sub muted">${fmt(dist)} m · ${pace(dist / lt)}</span>` : r.official?.place ? html`<span class="sh-sub muted">${t("sh.place", { p: r.official.place })}</span>` : ""}
           ${notesOn && r.note ? html`<span class="sh-note" title="${t("sh.note.of", { r: r.name })}">${r.note}</span>` : ""}</div>`; })}</div>`
         : html`<div class="empty">${t("sh.noTraces")}</div>`}
-      ${you.visitor ? html`<p class="hint sh-visitor">${t("sh.visitor.note")}</p>` : html`<div class="sh-mine">${runners.some((r) => r.mine)
-        ? html`${canAdd ? html`<button type="button" class="btn btn-sm" id="sh-add">${t("sh.trace.replace")}</button> ` : ""}<button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>`
-        : canAdd ? html`<button type="button" class="btn btn-sm btn-primary" id="sh-add">${t("sh.trace.add")}</button>` : ""}
-        ${canAdd ? html`${phone.button("sh-phone")}
-        <input type="file" id="sh-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
+      ${you.visitor ? html`<p class="hint sh-visitor">${t("sh.visitor.note")}</p>` : html`<div class="sh-mine">${canAdd ? addRow() : ""}
+        ${runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-rm">${t("sh.trace.remove")}</button>` : ""}
+        ${canAdd ? html`<input type="file" id="sh-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
         <p class="hint" style="margin:6px 0 0">${t("sh.fitTip")}</p>` : html`<p class="hint" style="margin:6px 0 0">${t("sh.closed")}</p>`}</div>
       ${myRun() && (notesOn || A.visitors) ? html`<div class="sh-mine sh-note-box">${notesOn ? html`<label for="sh-note"><b>${t("sh.note.mine")}</b></label>
         <textarea id="sh-note" rows="3" maxlength="1000" placeholder="${t("sh.note.ph")}">${myRun().note || ""}</textarea>
@@ -1736,6 +1766,15 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   async function uploadTests(files) {
     const boxU = $("#sh-upload"), errs = [], placed = new Map();
     // each file goes to the circuit it runs (owner, 2026-11-04: test tracks all sent to the circuit shown left the others' analyses
+  // adding (or replacing) one's track (owner, 2026-11-05: two buttons alike after one label): from this computer or, by a QR code,
+  // from one's phone; on a phone, one button
+  function addRow() {
+    const what = t(runners.some((r) => r.mine) ? "sh.trace.replace" : "sh.trace.add");
+    if (!phone.offered()) return html`<button type="button" class="btn btn-sm" id="sh-add">${what}</button>`;
+    return html`<div class="sh-add-row"><span class="sh-add-lbl">${t("ui.colon", { a: what })}</span>
+      <button type="button" class="btn btn-sm" id="sh-add">💻 ${t("sh.add.pc")}</button>
+      <button type="button" class="btn btn-sm" id="sh-phone" title="${t("ph.btn.tip")}">📱 ${t("sh.add.phone")}</button></div>`;
+  }
     // empty), else to the circuit shown; its number after the account's test tracks already there
     const testsOn = (n) => (allTraces || []).filter((x) => x.course === n && x.uid > 1e9 && Math.floor((x.uid - 1e9) / 1000) === you.uid).map((x) => (x.uid - 1e9) % 1000);
     const next = new Map();
@@ -1828,7 +1867,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
     $("#sh-speed").addEventListener("change", (e) => { speed = Number(e.target.value); });
-    $("#sh-time").addEventListener("input", (e) => { T = Number(e.target.value); still = false; frame(); });
+    $("#sh-time").addEventListener("input", (e) => { T = Number(e.target.value); frame(); });
     $("#sh-leg").addEventListener("change", (e) => setLeg(Number(e.target.value)));
     $("#sh-mode")?.addEventListener("change", (e) => { mode = e.target.value; reset(); });
     $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); reset(); });
@@ -1870,7 +1909,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     mv.fitBox(Math.min(...xs) - 40, Math.min(...ys) - 40, Math.max(...xs) + 40, Math.max(...ys) + 40, 20, 4);
   }
   function play() {
-    still = false;
     if (T >= T1 - 0.5) T = T0;
     playing = true; last = performance.now();
     clearInterval(timer);
@@ -2381,15 +2419,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   mv.setImage(image);
   paceScale(); legend();
   left(); right(); bottom.draw(); rcmList();
-  if (leg) { const t0 = T; setLeg(leg); T = Math.min(T1, Math.max(T0, t0)); } else if (still) mv.fitAll(); else fitRoutes();
+  if (leg) { const t0 = T; setLeg(leg); T = Math.min(T1, Math.max(T0, t0)); } else fitRoutes();
   frame();
-  // the panels and the window settle after the first draw: the whole map fitted again until the reader moves it
-  let moved = false;
-  $("#sh-canvas").addEventListener("pointerdown", () => { moved = true; });
-  $("#sh-canvas").addEventListener("wheel", () => { moved = true; }, { passive: true });
-  const wholeRo = new ResizeObserver(() => { if (still && !moved && !leg) { mv.fitAll(); mv.draw(); } });
-  wholeRo.observe($("#sh-canvas"));
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

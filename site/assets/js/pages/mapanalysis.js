@@ -112,14 +112,14 @@ export async function render(main, r) {
   function draw() {
     shown = items.filter(keep);
     if (selected && !shown.some((e) => e.key === selected)) selected = null;
-    // each event on two lines (owner, 2026-11-05: no sideways scrollbar): date over type, name over place and club, circuits over runners
-    $("#ma-table").innerHTML = shown.length ? html`<table class="data compact ma-table ma-two"><thead><tr>
-        <th>${t("f.date")}<div class="ma-l2">${t("ma.col.kind")}</div></th><th>${t("ma.col.event")}<div class="ma-l2">${t("agd.col.place")} · ${t("ma.club")}</div></th>
-        <th class="r">${t("sh.col.courses")}<div class="ma-l2" title="${t("ma.col.runners.tip")}">${t("ma.col.runners")}</div></th></tr></thead>
+    $("#ma-table").innerHTML = shown.length ? html`<table class="data compact ma-table" data-freeze="2" data-freeze-phone="1"><thead><tr>
+        <th>${t("f.date")}</th><th>${t("ma.col.event")}</th><th>${t("ma.col.kind")}</th><th>${t("ma.club")}</th>
+        <th class="r">${t("sh.col.courses")}</th><th class="r" title="${t("ma.col.runners.tip")}">${t("ma.col.runners")}</th></tr></thead>
       <tbody>${shown.map((e) => html`<tr data-key="${e.key}" tabindex="0" class="${e.key === selected ? "sel" : ""}">
-        <td class="num ma-when">${fmtDate(e.date, "short")}<div class="ma-l2"><span class="tag">${t(`ma.kind.${e.kind}`)}</span></div></td>
-        <td class="ma-name"><b class="ma-ev">${e.name}</b>${e.locked ? html` <span title="${t("ma.locked")}">🔒</span>` : ""}${clubTag(e)}${e.draft ? html` <span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}<div class="muted ma-sub ma-l2">${[e.place, clubName(e.org)].filter(Boolean).join(" · ") || "—"}</div></td>
-        <td class="r num">${e.courses}<div class="ma-l2 muted">${e.runners}</div></td></tr>`)}</tbody></table>`
+        <td class="num">${fmtDate(e.date, "short")}</td>
+        <td class="ma-name"><b class="ma-ev">${e.name}</b>${e.locked ? html` <span title="${t("ma.locked")}">🔒</span>` : ""}${clubTag(e)}${e.draft ? html` <span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}${e.place ? html`<div class="muted ma-sub">${e.place}</div>` : ""}</td>
+        <td><span class="tag">${t(`ma.kind.${e.kind}`)}</span></td><td class="muted ma-club" title="${clubName(e.org)}">${clubName(e.org) || "—"}</td>
+        <td class="r num">${e.courses}</td><td class="r num">${e.runners}</td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(items.length ? "ra.emptyFilter" : "ma.events.none")}</div>`;
     // where an event comes from (named, not linked: no page leads into another module)
     $("#ma-table").insertAdjacentHTML("beforeend", html`<p class="hint ma-how">${t("ma.events.how", { path: `${t("mod.orga")} › ${t("nav.orgAnalyses")}` })}</p>`);

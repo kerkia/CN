@@ -1848,14 +1848,8 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
   border: 1px solid var(--border-strong); box-shadow: 0 8px 26px rgba(0, 0, 0, .3); }
 .ma-pop img { display: block; width: 100%; max-height: 240px; object-fit: contain; border-radius: 5px; }
 .ma-how { margin: 10px 4px 2px; font-size: 12.5px; }
-.ma-two { width: 100%; table-layout: fixed; }
-.ma-two th:nth-child(1), .ma-two td:nth-child(1) { width: 108px; }
-.ma-two th:nth-child(3), .ma-two td:nth-child(3) { width: 74px; }
-table.data.ma-two td, table.data.ma-two th { white-space: normal; vertical-align: top; }
-table.data.ma-two .ma-name { overflow-wrap: anywhere; }
-table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ma-two .ma-l2 { margin-top: 3px; font-weight: 400; }
-.ma-two th .ma-l2 { opacity: .75; }
+.ma-table td.ma-club { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ma-table .ma-name { min-width: 180px; }
 /* « Analyse solo »: the race or the map analysis a track seems to be of (pages/analysis.js likelyBlock) */
 .an-likely { display: block; margin: 10px 0; }
 .an-likely-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 6px; }
@@ -1931,7 +1925,22 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
 .sh-viewtabs { display: inline-flex; gap: 2px; padding: 2px; margin-left: 6px; border-radius: 8px; background: var(--surface-2); }
 .sh-viewtabs button { appearance: none; border: 0; background: none; padding: 4px 12px; border-radius: 6px; font: inherit; font-size: 13px; color: var(--ink-2); cursor: pointer; }
 .sh-viewtabs button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--border); }
-.sh-splits { margin-top: 10px; }
+/* the split times in the map's three panels (owner, 2026-11-05): circuit and runners left, the views between, their settings right */
+.sh-sp-layout { grid-template-rows: minmax(0, 1fr); grid-template-areas: "left spl map spr right"; }
+.sh-sp-layout > #sh-sp-split-l { grid-area: spl; } .sh-sp-layout > #sh-sp-split-r { grid-area: spr; }
+.sh-sp-layout[data-lcol="1"] #sh-sp-split-l, .sh-sp-layout[data-rcol="1"] #sh-sp-split-r { pointer-events: none; }
+.sh-sp-layout[data-lcol="1"] #sh-sp-split-l::after, .sh-sp-layout[data-rcol="1"] #sh-sp-split-r::after { display: none; }
+.sh-sp-center { grid-area: map; min-width: 0; min-height: 0; overflow: auto; padding: 0 2px; }
+.sh-sp-center .page-tabs { margin-top: 0; }
+.sp-pick.sp-pick-side { flex-direction: column; align-items: stretch; gap: 6px; margin: 0 0 8px; }
+.sp-pick.sp-pick-side select { max-width: none; width: 100%; }
+.filters.sp-views.sp-views-side { flex-direction: column; align-items: stretch; gap: 12px; margin: 0; }
+.sp-views-side .field { flex-direction: column; align-items: stretch; gap: 4px; }
+.sp-views-side .field select { width: 100%; }
+label.sh-runner.sp-runner { margin: 0; font-weight: inherit; }
+/* one's track: one label, two buttons alike (owner, 2026-11-05) */
+.sh-add-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
+.sh-add-lbl { font-weight: 600; flex-basis: 100%; }
 .sh-course-pick select { width: 100%; }
 /* the list's columns, named (owner, 2026-11-04: in place of a sentence explaining the ticks and ⌖) */
 .sh-runner.sh-runner-head { cursor: default; padding-top: 0; padding-bottom: 2px; font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: .03em; border-bottom: 1px solid var(--border); border-radius: 0; }
@@ -1981,6 +1990,7 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
    no scrollbar of the table's own (the page's only: a course holds a few dozen runners); every runner on two lines */
 .lv-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; margin-bottom: 10px; }
 .lv-hl { min-width: 0; }
+  .sh-layout > .sh-sp-center { order: 1; overflow: visible; }
 /* the race's name and the way to its analysis on one line, as « Analyse de course »'s title and its way back */
 .lv-tl { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; }
 .lv-tl h1 { min-width: 0; }

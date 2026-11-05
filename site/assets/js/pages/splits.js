@@ -79,8 +79,11 @@ const BAD = "background:color-mix(in srgb, var(--bad) 12%, transparent)";
 
 /**
  * Arena's split analysis inside another page (owner, 2026-11-04: « Analyse multi »'s « Temps intermédiaires » tab, its times
- * the controls' passes read on the GPS tracks): embed = { race: { name, docs }, key }. No head of its own, nothing written into
- * the address, its views' tabs kept in the page (not moved to the site's bar). Returns { cleanup }.
+ * the controls' passes read on the GPS tracks): embed = { race: { name, docs }, key, slots?, onClass? }. No head of its own,
+ * nothing written into the address, its views' tabs kept in the page (not moved to the site's bar). With slots = { left, right }
+ * (owner, 2026-11-05: the analysis's three panels kept, as on its map), the circuit and the runners go to the left one — the
+ * runners ticked there are those every view shows — and the view's settings to the right one; onClass(name) after a change of
+ * circuit. Returns { cleanup }.
  */
 export async function renderEmbedded(main, embed) {
   return render(main, { query: { course: embed.key, c: embed.c || 0 }, embed });
@@ -97,14 +100,20 @@ export async function render(main, { query = {}, embed = null } = {}) {
   const idx = embed || mine || query.course === local.LOCAL || live ? null : await getProv("index.json");
   const withSplits = embed ? [{ key: query.course, name: embed.race.name || "", date_iso: "", splits: true }]
     : live ? [{ key: query.course, name: "", date_iso: "" }] : mine ? (mine.splits ? [mine] : []) : [...(idx?.races || []), ...(idx?.relays || []).map((r) => ({ ...r, relay: true }))].filter((r) => r.splits);
+  // an embedding page's side panels: the circuit and runners on the left, the view's settings on the right
+  const side = embed?.slots || null;
+  if (side) {
+    side.left.innerHTML = html`<div class="sp-pick sp-pick-side" id="sp-pick"></div><div id="sp-runners"></div>`;
+    side.right.innerHTML = html`<div class="filters sp-views sp-views-side" id="sp-views"></div>`;
+  }
   main.innerHTML = html`
     <div id="sp-back">${embed || live || mine || query.course === local.LOCAL ? "" : html`<a class="back-link arena-back" href="#/agenda">‹ ${t("arena.back")}</a>`}</div>
     <div class="page-head sp-head race-head" ${raw(embed ? "hidden" : "")}><div><div class="sp-title"><h1 id="sp-title">${t("spl.title")}</h1><span id="sp-acts"></span></div>
       <p class="lede" id="sp-lede">${live ? "" : t("spl.lede")}</p></div></div>
     <div id="sp-tabs" ${raw(embed ? "" : "data-bar-tabs")}></div>
     <div id="sp-live"></div>
-    <div class="sp-pick" id="sp-pick"></div>
-    <div class="filters sp-views" id="sp-views"></div>
+    ${side ? "" : html`<div class="sp-pick" id="sp-pick"></div>
+    <div class="filters sp-views" id="sp-views"></div>`}
     <div id="sp-check"></div>
     <div id="sp-body"></div>`;
   if (!withSplits.some((r) => r.key === query.course)) {
@@ -113,7 +122,7 @@ export async function render(main, { query = {}, embed = null } = {}) {
     return { title: t("spl.title") };
   }
   let key = query.course;
-  let race = null, docs = [], di = Number(query.doc) || 0, ci = Number(query.c) || 0, picked = null, ideal = query.v === "ideal";
+  let race = null, docs = [], di = Number(query.doc) || 0, ci = Number(query.c) || 0, picked = null, ideal = query.v === "ideal", lastPick = null;
   let view = VIEWS.includes(query.vw) ? query.vw : "table", club = query.cl || "";
   let graph = GRAPHS.includes(query.g) ? query.g : "gap", ref = REFS.includes(query.ref) ? query.ref : "cum", refName = query.rr || "";
   let tol = TOLS.includes(Number(query.tol)) ? Number(query.tol) : 10;
@@ -149,8 +158,8 @@ export async function render(main, { query = {}, embed = null } = {}) {
       ${key === local.LOCAL ? html`<span class="pill" title="${t("dep.file")}">${r?.name || ""}</span>` : ""}
       ${docs.length > 1 && auth.session()?.admin ? html`<select id="sp-doc" aria-label="${t("prov.doc")}" title="${t("prov.doc")}">${docs.map((d, i) => html`<option value="${i}" ${raw(i === di ? "selected" : "")}>${d.source} · ${d.title || decodeURIComponent(d.url.split("/").pop())}</option>`)}</select>` : ""}
       <select id="sp-c" aria-label="${t("prov.circuit")}" title="${t("prov.circuit")}">${docs[di].classes.map((k, i) => html`<option value="${i}" ${raw(i === ci ? "selected" : "")} ${raw(k.runners.some((r) => r.splits) ? "" : "disabled")}>${kName(k.name)} (${k.runners.length})</option>`)}</select>
-      <select id="sp-club" aria-label="${t("spl.club")}" title="${t("spl.club")}"><option value="">${t("ag.allClubs")}</option>
-        ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${c}</option>`)}</select>`;
+      ${side && !clubs.length ? "" : html`<select id="sp-club" aria-label="${t("spl.club")}" title="${t("spl.club")}"><option value="">${t("ag.allClubs")}</option>
+        ${clubs.map((c) => html`<option value="${c}" ${raw(c === club ? "selected" : "")}>${c}</option>`)}</select>`}`;
     // a race's page in Arena (owner, 2026-10-30): its results as the first tab, then the analysis's views (not for a live race,
     // a file under deposit or a relay, which have no results page)
     const resultsToo = !embed && !live && key !== local.LOCAL && !withSplits.find((x) => x.key === key)?.relay;
@@ -170,10 +179,12 @@ export async function render(main, { query = {}, embed = null } = {}) {
         <input type="number" id="sp-f1" min="0" max="120" step="1" value="${ft1}" style="width:64px" aria-label="${t("spl.fol.t1")}"><span class="muted">${t("spl.fol.t1u")}</span>
         <input type="number" id="sp-f2" min="1" max="300" step="1" value="${ft2}" style="width:64px" aria-label="${t("spl.fol.t2")}"><span class="muted">${t("spl.fol.t2u")}</span></div></div>` : ""}
       ${view === "clock" ? html`<div class="field"><span>${t("spl.view")}</span>${seg("spa", [["all", t("spl.clk.all")], ["sel", t("spl.clk.sel")]], passAll ? "all" : "sel")}</div>` : ""}`;
-    $("#sp-views").style.display = $("#sp-views").children.length ? "" : "none";     // no empty bar for the views without settings
+    // no empty bar for the views without settings; in a side panel, a word
+    if (side && !$("#sp-views").children.length) $("#sp-views").innerHTML = html`<p class="muted" style="margin:0">${t("spl.noSettings")}</p>`;
+    else $("#sp-views").style.display = $("#sp-views").children.length ? "" : "none";
     $("#sp-doc")?.addEventListener("change", (e) => { di = Number(e.target.value); ci = 0; picked = null; fixIndexes(); pickers(); draw(); });
-    $("#sp-c").addEventListener("change", (e) => { ci = Number(e.target.value); picked = null; pickers(); draw(); });
-    $("#sp-club").addEventListener("change", (e) => { club = e.target.value; picked = null; draw(); });
+    $("#sp-c").addEventListener("change", (e) => { ci = Number(e.target.value); picked = null; pickers(); draw(); embed?.onClass?.(docs[di].classes[ci]?.name); });
+    $("#sp-club")?.addEventListener("change", (e) => { club = e.target.value; picked = null; draw(); });
     $$("#sp-tabs [data-ptab]").forEach((b) => b.addEventListener("click", () => { view = b.dataset.ptab; pickers(); draw(); }));
     $$('[data-seg="spv"]').forEach((b) => b.addEventListener("click", () => keepPlace(() => { ideal = b.dataset.value === "ideal"; pickers(); draw(); })));
     $("#sp-graph")?.addEventListener("change", (e) => { graph = e.target.value; pickers(); draw(); });
@@ -317,9 +328,12 @@ export async function render(main, { query = {}, embed = null } = {}) {
       for (const x of R) { x.v = visits(x); x.pts = x.v.reduce((a, o) => a + (ctl[o.i].pts || 0), 0); x.place = rank.get(x.r)?.place ?? null; }
     }
     const byPlace = (xs) => [...xs].sort((a, b) => (a.place ?? 9999) - (b.place ?? 9999) || (a.r.place ?? 9999) - (b.r.place ?? 9999));
-    const shown = club ? R.filter((x) => x.r.club === club) : R;
-    // the first five compared: the fastest, or a score race's best placed (by its points)
-    if (!picked) picked = new Set((sc ? byPlace(shown) : shown.filter((x) => x.r.status === "ok").sort((a, b) => a.r.time_s - b.r.time_s)).slice(0, 5).map((x) => x.r.name));
+    const ofClub = club ? R.filter((x) => x.r.club === club) : R;
+    // the first five compared: the fastest, or a score race's best placed (by its points); in a side panel every runner, and
+    // those ticked there are the ones every view shows (the table too, as the map's list)
+    if (!picked) picked = new Set(side ? ofClub.map((x) => x.r.name)
+      : (sc ? byPlace(ofClub) : ofClub.filter((x) => x.r.status === "ok").sort((a, b) => a.r.time_s - b.r.time_s)).slice(0, 5).map((x) => x.r.name));
+    const shown = side ? ofClub.filter((x) => picked.has(x.r.name)) : ofClub;
     const sel = () => byPlace(shown.filter((x) => picked.has(x.r.name)));
     const label = (i) => (i === n ? t("spl.finish") : `${i + 1} (${codes[i]})`);
     const legLabels = Array.from({ length: L }, (_, i) => label(i));
@@ -336,18 +350,37 @@ export async function render(main, { query = {}, embed = null } = {}) {
       return [w, l];
     };
     // the runners the charts and the face-à-face compare: ticked here or in the table
-    const chooser = () => html`<section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.choose")}</h2>
+    const chooser = () => (side ? "" : html`<section class="card" style="margin-top:16px"><div class="card-head"><div><h2>${t("spl.choose")}</h2>
         ${sc ? "" : html`<div class="hint">${t("spl.choose.hint")}</div>`}</div></div>
       <div class="card-body" style="padding-bottom:0;display:flex;flex-wrap:wrap;gap:6px">
         ${["all", "none", "5", "10", "club"].filter((a) => a !== "club" || club).map((a) => html`<button type="button" class="chip" data-pickall="${a}">${t(`spl.pick.${a}`)}</button>`)}
         <span class="muted" style="font-size:12px;align-self:center">${t("spl.pick.shift")}</span></div>
       <div class="card-body" style="max-height:200px;overflow:auto;display:flex;flex-wrap:wrap;gap:4px 16px">${byPlace(shown).map((x) => html`<label style="white-space:nowrap;font-size:13px">
-        <input type="checkbox" data-pick="${x.r.name}" ${raw(picked.has(x.r.name) ? "checked" : "")}> ${x.r.place ? `${x.r.place}. ` : ""}${x.r.name}</label>`)}</div></section>`;
+        <input type="checkbox" data-pick="${x.r.name}" ${raw(picked.has(x.r.name) ? "checked" : "")}> ${x.r.place ? `${x.r.place}. ` : ""}${x.r.name}</label>`)}</div></section>`);
+    // a side panel's list (as the map's): every runner of the circuit, ticked = shown, their colour in the charts, their time
+    if (side) {
+      const order = byPlace(ofClub), colour = new Map(sel().map((x, i) => [x, slotColor(i)]));
+      $("#sp-runners").innerHTML = html`<div class="row" style="gap:4px;margin:0 0 4px;flex-wrap:wrap">${["all", "none", "invert"].map((a) =>
+        html`<button type="button" class="btn btn-sm" data-pickall="${a}">${t(a === "invert" ? "sh.invert" : `spl.pick.${a}`)}</button>`)}</div>
+        ${order.length ? html`<div class="sh-runner sh-runner-head" aria-hidden="true"><span class="sh-h-show">${t("sh.col.show")}</span><span>${t("prov.runner")}</span><span></span><span>${t("prov.time")}</span></div>
+        <div class="sh-runners">${order.map((x) => html`<label class="sh-runner sp-runner${picked.has(x.r.name) ? "" : " off"}">
+          <input type="checkbox" data-pick="${x.r.name}" ${raw(picked.has(x.r.name) ? "checked" : "")}><span class="sh-swatch" style="background:${colour.get(x) || "transparent"}"></span>
+          <span class="sh-name">${x.place ? `${x.place}. ` : ""}${x.r.name}</span><span></span>
+          <span class="num muted">${x.r.status === "ok" ? clock(x.r.time_s) : stLabel(x.r.status)}</span></label>`)}</div>` : ""}`;
+    }
     // a view's explanations, one paragraph under it (owner, 2026-10-23: they stood above the tables, a phone's screen full of text)
     const dot = (x) => (typeof x !== "string" || /[.!?…]$/.test(x) ? x : `${x}.`);
+    // a chart's hint ends by saying where its runners are chosen (« ; choose the runners under the chart »): in a side panel they are
+    // the list's on the left, which says so itself, and that last clause goes
+    const chartHint = (k) => (side ? t(k).replace(/\s*;[^;]*$/, "") : t(k));
     const foot = (...xs) => html`<p class="muted" style="font-size:12.5px;margin:10px 2px 0">${xs.filter(Boolean).map((x) => html`${dot(x)} `)}</p>`;
     const body = $("#sp-body");
-    pending = false; shownAt = loadedAt;  // (a live race: what is drawn is the latest received)
+    pending = false; shownAt = loadedAt;
+    if (side && !shown.length) {
+      body.innerHTML = html`<div class="card"><div class="empty">${t("spl.pick.noneShown")}</div></div>`;
+      bindPicks();
+      return;
+    }  // (a live race: what is drawn is the latest received)
     liveBar();
     let redraw = () => {};
 
@@ -443,7 +476,7 @@ export async function render(main, { query = {}, embed = null } = {}) {
         refTitle = who ? (ref === "winner" ? `${t("spl.ref.t.winner")} (${who.r.name})` : `${t("spl.ref.t.runner")} ${who.r.name}`) : "—";
       }
       const title = graph === "gap" ? `${t("spl.gapTo")} ${refTitle}` : t(`spl.graph.t.${graph}`);
-      body.innerHTML = html`${chartCard({ id: "sp-gap", title: asIdeal ? `${title}, ${t("spl.noLoss")}` : title })}${chooser()}${foot(t(`spl.graph.hint.${graph}`))}`;
+      body.innerHTML = html`${chartCard({ id: "sp-gap", title: asIdeal ? `${title}, ${t("spl.noLoss")}` : title })}${chooser()}${foot(chartHint(`spl.graph.hint.${graph}`))}`;
       bindChartCard(main, "sp-gap");
       const fromSel = () => {
         const xs = sel();
@@ -642,7 +675,7 @@ export async function render(main, { query = {}, embed = null } = {}) {
         : [t("spl.startAbbr"), ...Array.from({ length: n }, (_, i) => String(i + 1)), t("spl.finishAbbr")];
       body.innerHTML = !timed.length ? empty(t("spl.clk.none"))
         : html`${chartCard({ id: "sp-clk", title: t("spl.clk.title"), tall: true })}${chooser()}
-          ${foot(t(sc ? "spl.clk.hint.score" : "spl.clk.hint"), t("spl.clk.def", { n: fmt(timed.length), of: fmt(R.length) }))}`;
+          ${foot(chartHint(sc ? "spl.clk.hint.score" : "spl.clk.hint"), t("spl.clk.def", { n: fmt(timed.length), of: fmt(R.length) }))}`;
       if (timed.length) {
         bindChartCard(main, "sp-clk");
         // (a score race's points carry the control's code, null at the finish)
@@ -789,24 +822,29 @@ export async function render(main, { query = {}, embed = null } = {}) {
       });
     }
 
-    // a click ticks one runner; shift + click ticks (or unticks) every runner from the last one clicked
-    const boxes = $$("[data-pick]", body);
-    let lastBox = null;
-    boxes.forEach((b) => b.addEventListener("click", (e) => {
-      const i = boxes.indexOf(b), j = lastBox == null ? -1 : boxes.indexOf(lastBox);
-      const range = e.shiftKey && j >= 0 ? boxes.slice(Math.min(i, j), Math.max(i, j) + 1) : [b];
-      for (const o of range) { o.checked = b.checked; o.checked ? picked.add(o.dataset.pick) : picked.delete(o.dataset.pick); }
-      lastBox = b;
-      redraw();
-    }));
-    $$("[data-pickall]", body).forEach((btn) => btn.addEventListener("click", () => {
-      const a = btn.dataset.pickall, order = byPlace(shown);
-      const keep = a === "all" || a === "club" ? order : a === "none" ? [] : order.slice(0, Number(a));
-      picked = new Set(keep.map((x) => x.r.name));
-      boxes.forEach((o) => { o.checked = picked.has(o.dataset.pick); });
-      redraw();
-    }));
+    bindPicks();
     redraw();
+
+    // a click ticks one runner; shift + click ticks (or unticks) every runner from the last one clicked. In a side panel the
+    // runners ticked are those every view shows: the whole view drawn again
+    function bindPicks() {
+      const host = side ? $("#sp-runners") : body, again = () => (side ? draw() : redraw());
+      const boxes = $$("[data-pick]", host);
+      boxes.forEach((b) => b.addEventListener("click", (e) => {
+        const i = boxes.indexOf(b), j = lastPick == null ? -1 : boxes.findIndex((o) => o.dataset.pick === lastPick);
+        const range = e.shiftKey && j >= 0 ? boxes.slice(Math.min(i, j), Math.max(i, j) + 1) : [b];
+        for (const o of range) { o.checked = b.checked; o.checked ? picked.add(o.dataset.pick) : picked.delete(o.dataset.pick); }
+        lastPick = b.dataset.pick;
+        again();
+      }));
+      $$("[data-pickall]", host).forEach((btn) => btn.addEventListener("click", () => {
+        const a = btn.dataset.pickall, order = byPlace(side ? ofClub : shown);
+        const keep = a === "all" || a === "club" ? order : a === "none" ? [] : a === "invert" ? order.filter((x) => !picked.has(x.r.name)) : order.slice(0, Number(a));
+        picked = new Set(keep.map((x) => x.r.name));
+        boxes.forEach((o) => { o.checked = picked.has(o.dataset.pick); });
+        again();
+      }));
+    }
   }
 
   if (live) return liveStart();

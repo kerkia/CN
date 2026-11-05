@@ -1270,7 +1270,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   map), « Itinéraires » (administrators), « Mes courbes » (with one's own trace); right « Affichage », « Calcul ». **Every analysis
   opens with both panels unfolded, on « Inter-postes » and « Affichage »** (owner, 2026-11-04; Solo's curves while its sequence is
   not known — `sequenceKnown` also counts the course's order read on the map, `mapOrdered`, since that day —, `sidepanel.bindPanel`
-  showing the tab asked for as soon as it is offered); **a map analysis opens on its whole map, filling the map's area** (owner, 2026-11-05: it opened on the runners gathered at the start), fitted again as the panels settle until the reader moves it, the runners followed once the replay is played or its time moved (`still`; an address naming a time or a leg keeps its view); the widths are kept in the pages' prefs (`gw`, `sw`; Multi `lw`, `rw`), the
+  showing the tab asked for as soon as it is offered); the widths are kept in the pages' prefs (`gw`, `sw`; Multi `lw`, `rw`), the
   folds and tabs only for the visit; the layout fills the window below its top (`fitHeight` / `fit`), the panels scroll on their own. Solo's
   « courbes sous la carte » choice is gone. Under 900 px everything stacks: the bar, the map, then each panel 60 vh high (folded: a row
   of its tabs). Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
@@ -2051,7 +2051,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`?vue=temps`): the second is Arena's split analysis (`splits.js` `renderEmbedded`: no head, nothing written into the address, its
   views' tabs kept in the page) fed with a document built from the tracks (`splitsDoc`: one class per circuit, each track's passes,
   its place among those who passed every control and finished, its start's Paris clock time); the map tab keeps « Analyses »' own
-  split table and gaps, linked to the map.
+  split table and gaps, linked to the map. **The split times keep the map's three panels** (owner, 2026-11-05: switching to them felt
+  like another page, the menu moving): `an-theatre` stays on, `#sh-sp-layout` lays out « Circuits » on the left (the circuit and the
+  runners, ticked = shown in every view, the table too: `renderEmbedded`'s `slots`, `side` in splits.js, whose charts then drop
+  their runner chooser and the hint's « choose the runners under the chart » clause), the views in the middle, « Réglages » (the
+  view's settings) on the right; the panels' widths shared with the map's prefs; a circuit chosen there is the map's on return
+  (`onClass`). The « Circuits » tab has no « Circuit » label and no « n tracks shown of m » line; adding one's track is one label
+  and two buttons alike, « depuis l'ordinateur » / « depuis le téléphone » (`addRow`; one button on a phone); no « ← Analyse de
+  carte » in the top line (the menu leads there).
 - **Logos on OCAD maps, everywhere** (owner, 2026-11-04): an OCAD map's layout images (`vmap/map.js` `LayerBitmap`) are sized from
   their file's header when read (`ocad.js` `imageSize`: the map's extent holds them from the start), `map.ready` settles once all are
   decoded and `mapsrc.openVector` waits for it before drawing (they could miss the base image before); the layout is drawn whatever
