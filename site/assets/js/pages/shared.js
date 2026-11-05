@@ -1504,7 +1504,10 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     for (const r of shown) {
       const s = sAt(r, T);
       if (s == null) continue;
-      const lo = leg ? r.passes[leg - 1] : Math.max(r.start, tail && !leg ? s - tail : r.start), from = indexAt(r.tr, lo), to = indexAt(r.tr, s);
+      // coloured by variant or by leg time, a leg's routes are compared whole: drawn to the leg's end whatever the replay's time
+      // (owner, 2026-11-05: at the leg's start nothing was drawn but the legend)
+      const whole = leg && LEG_ONLY.includes(cmode()) && r.passes[leg] != null;
+      const lo = leg ? r.passes[leg - 1] : Math.max(r.start, tail && !leg ? s - tail : r.start), from = indexAt(r.tr, lo), to = indexAt(r.tr, whole ? Math.max(s, r.passes[leg]) : s);
       // the route still to run, faint, to its finish (or the leg's end) — hidden by default
       if (future === "faint") {
         const a = indexAt(r.tr, leg ? r.passes[leg - 1] : r.start), b = indexAt(r.tr, leg ? r.passes[leg] ?? r.tr.dur : r.finish ?? r.tr.dur);

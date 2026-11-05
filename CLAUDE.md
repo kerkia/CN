@@ -2164,7 +2164,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   the replay is still 0.4 s, 1.5 s while playing): `c`, `m`, `from`, `t`, `leg`, `show` (uids shown), `sel`, `f`, `ref`, `v` (the
   tab), `lo`, `g`/`gx`/`gm`/`da` (gaps), `ex`; `?fen=1` kept. **The pace strip** under the map (`trace/pacestrip.js`, « Allure sous
   la carte », on by default): every runner shown as a line over the replay's own time axis, smoothed, the cursor; a click or drag
-  seeks. **Route choices** (`trace/routes.js`): on a leg, each route resampled to 32 points by length, the discrete Fréchet distance,
+  seeks. **Route choices** (`trace/routes.js`; the « Variantes » view chooses its leg in a selector, « Colorer les traces par variante » ticked by default until unticked in the visit, and a leg coloured by variant or leg time draws every route whole whatever the replay's time — owner, 2026-11-05: nothing showed at the leg's start): on a leg, each route resampled to 32 points by length, the discrete Fréchet distance,
   complete linkage under a threshold (a fifth of the straight leg, 30-120 m, a slider); variants lettered from the fastest, each with
   runners, best and median time, mean length; a hand edit (runner moved, merge, name) freezes the leg, a later trace joins the
   nearest variant within the threshold. Tags: the organiser's on the server with the circuit (shared with every runner,

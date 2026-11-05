@@ -177,6 +177,8 @@ function variantsView(el, X) {
     $("#sh-var-leg", el).addEventListener("change", (e) => { if (Number(e.target.value)) X.setLeg(Number(e.target.value)); });
     return;
   }
+  // the routes coloured by variant from the start (owner, 2026-11-05), until unticked in this visit
+  if (X.state.varColour !== false && X.colourBy() !== "variant") X.setColourBy("variant");
   const j = X.leg, V = X.variants();
   if (!V.items.length) { el.innerHTML = html`<div class="empty">${t("sh.noTraces")}</div>`; return; }
   const col = (i) => X.VARIANT_COLOURS[i % X.VARIANT_COLOURS.length];
@@ -189,7 +191,7 @@ function variantsView(el, X) {
   };
   const freeKey = () => { const used = new Set(V.list.map((v) => v.key)); let i = 0; while (used.has(variantKey(i))) i++; return variantKey(i); };
   el.innerHTML = html`<div class="filters sh-gap-tools">
-      <b>${legName(j)}</b>
+      <label class="field"><span>${t("sh.leg")}</span><select id="sh-var-leg"><option value="0">${t("sh.leg.all")}</option>${Array.from({ length: legsN }, (_, i) => html`<option value="${i + 1}" ${raw(i + 1 === j ? "selected" : "")}>${legName(i + 1)}</option>`)}</select></label>
       <label class="field"><span>${t("sh.var.th")}</span><span class="row" style="gap:6px"><input type="range" id="sh-var-th" min="10" max="300" step="5" value="${V.th}"><b class="num" id="sh-var-thv">${V.th} m</b></span></label>
       <label class="an-opt"><input type="checkbox" id="sh-var-colour" ${raw(X.colourBy() === "variant" ? "checked" : "")}> ${t("sh.var.colour")}</label>
       ${V.manual || V.local ? html`<button type="button" class="btn btn-sm" id="sh-var-reset">${t(V.shared && V.local ? "sh.var.toShared" : "sh.var.auto")}</button>` : ""}
@@ -210,7 +212,8 @@ function variantsView(el, X) {
     if (V.manual) edit((tags) => { tags.th = v; });                         // a frozen grouping: the threshold for new traces only
     else X.setTags(j, { th: v, names: Object.fromEntries(V.list.filter((x) => x.name).map((x) => [x.key, x.name])) });
   });
-  $("#sh-var-colour", el).addEventListener("change", (e) => X.setColourBy(e.target.checked ? "variant" : "runner"));
+  $("#sh-var-colour", el).addEventListener("change", (e) => { X.state.varColour = e.target.checked; X.setColourBy(e.target.checked ? "variant" : "runner"); });
+  $("#sh-var-leg", el).addEventListener("change", (e) => X.setLeg(Number(e.target.value)));
   $("#sh-var-reset", el)?.addEventListener("click", () => X.setTags(j, null));
   $("#sh-var-share", el)?.addEventListener("click", async (e) => { e.target.disabled = true; try { await X.shareTags(j); } catch (err) { e.target.disabled = false; alert(X.errText(err)); } });
   $$("[data-vname]", el).forEach((inp) => inp.addEventListener("change", () => edit((tags) => { if (inp.value.trim()) tags.names[inp.dataset.vname] = inp.value.trim(); else delete tags.names[inp.dataset.vname]; })));
