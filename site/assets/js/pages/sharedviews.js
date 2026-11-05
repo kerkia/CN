@@ -234,7 +234,7 @@ function exercisesView(el, X) {
         <b>${t(`sh.ex.new.${d.kind}`)}</b>
         <label class="field"><span>${t("sh.ex.name")}</span><input id="sh-ex-name" value="${d.name}" maxlength="60" style="width:200px"></label>
         <label class="field"><span>${t("sh.leg")}</span><select id="sh-ex-leg">${legOpts(d.leg, d.kind === "corridor")}</select></label>
-        <label class="field"><span>${t("sh.ex.width")}</span><input type="number" id="sh-ex-w" min="2" max="1000" step="1" value="${d.w}" style="width:80px"></label></div>
+        <label class="field"><span>${t("sh.ex.width")}</span><span class="row" style="gap:4px;align-items:center"><input type="number" id="sh-ex-w" min="2" max="1000" step="1" value="${d.w}" style="width:80px"> m</span></label></div>
       ${d.kind === "corridor" ? html`<p class="hint" style="margin:0 2px 8px">${t("sh.ex.draw", { n: d.pts.length })}</p>` : html`<p class="hint" style="margin:0 2px 8px">${t("sh.ex.compass.hint")}</p>`}
       <div class="row" style="gap:6px">${d.kind === "corridor" ? html`<button type="button" class="btn btn-sm" id="sh-ex-undo" ${raw(d.pts.length ? "" : "disabled")}>${t("an.cal.undo")}</button>` : ""}
         <button type="button" class="btn btn-sm btn-primary" id="sh-ex-save" ${raw(d.kind === "corridor" && d.pts.length < 2 || d.kind === "compass" && !d.leg ? "disabled" : "")}>${t("sh.save")}</button>

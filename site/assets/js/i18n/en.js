@@ -2614,7 +2614,7 @@ export default {
   "rc.sp.marsh": "Marsh", "rc.sp.paved": "Paved area", "rc.sp.grey": "Bare rock (grey, in forest)",
   "rc.sp.shallow": "Shallow water", "rc.picture": "Show the terrain as read", "rc.hint": "Routes follow the map as read from its colours, and the terrain's heights (IGN in France). Caution slows the runner down away from handrails (paths, streams, vegetation edges), fully at {d} m. A prototype, to be checked.",
   "rc.reset": "Defaults",
-  "rc.calib": "Calibrate the speeds on the legs run",
+  "rc.calib": "Fit the pace, the climb and the speeds to the runners' times",
   "rc.calib.hint": "The speed on paths and the climb's cost taken from the legs run (the runner in Solo analysis, the group in “Compare with the other runners”), the legs far from the model set aside; the routes are computed again with them.",
   "rc.cal.done": "Calibrated on {n} legs: pace {p} min/km · paths {s} · 1 m of climb is worth {c} on the flat",
   "rc.cal.doneMulti": "Calibrated on {r} runners, {n} legs: paths {s} · 1 m of climb is worth {c} on the flat; a pace for each runner",

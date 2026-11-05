@@ -1896,7 +1896,7 @@ export default {
   "rc.sp.marsh": "Marais", "rc.sp.paved": "Zone revêtue", "rc.sp.grey": "Rocher nu (gris, en forêt)",
   "rc.sp.shallow": "Eau peu profonde", "rc.picture": "Voir le terrain tel que lu", "rc.hint": "Les itinéraires suivent la carte lue d’après ses couleurs, et le relief (l’IGN en France). La prudence ralentit la course loin des lignes directrices (chemins, ruisseaux, lisières), pleinement à {d} m. Un prototype, à vérifier.",
   "rc.reset": "Valeurs par défaut",
-  "rc.calib": "Calibrer les vitesses sur les postes courus",
+  "rc.calib": "Ajuster l'allure, la montée et les vitesses sur les temps des coureurs",
   "rc.calib.hint": "La vitesse sur les chemins et le coût de la montée tirés des postes courus (le coureur en Analyse solo, le groupe dans « Comparer avec les autres coureurs »), les postes très éloignés du modèle mis de côté ; les itinéraires sont recalculés avec.",
   "rc.cal.done": "Calibré sur {n} postes : allure {p} min/km · chemins {s} · 1 m de montée vaut {c} à plat",
   "rc.cal.doneMulti": "Calibré sur {r} coureurs, {n} postes : chemins {s} · 1 m de montée vaut {c} à plat ; une allure par coureur",

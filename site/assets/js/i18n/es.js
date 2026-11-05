@@ -2754,7 +2754,7 @@ export default {
   "rc.picture": "Ver el terreno tal como se ha leído",
   "rc.hint": "Las rutas siguen el mapa leído según sus colores, y el relieve (el del IGN en Francia). La prudencia frena la carrera lejos de las líneas guía (caminos, arroyos, lindes), del todo a {d} m. Un prototipo, por verificar.",
   "rc.reset": "Valores por defecto",
-  "rc.calib": "Calibrar las velocidades con los tramos corridos",
+  "rc.calib": "Ajustar el ritmo, la subida y las velocidades a los tiempos de los corredores",
   "rc.calib.hint": "La velocidad en los caminos y el coste de la subida sacados de los tramos corridos (el corredor en el Análisis individual, el grupo en «Comparar con los demás corredores»), dejando de lado los tramos muy alejados del modelo; las rutas se vuelven a calcular con ellos.",
   "rc.cal.done": "Calibrado con {n} tramos: ritmo {p} min/km · caminos {s} · 1 m de subida equivale a {c} en llano",
   "rc.cal.doneMulti": "Calibrado con {r} corredores, {n} tramos: caminos {s} · 1 m de subida equivale a {c} en llano; un ritmo por corredor",

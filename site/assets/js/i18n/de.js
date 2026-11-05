@@ -2754,7 +2754,7 @@ export default {
   "rc.picture": "Gelände wie gelesen anzeigen",
   "rc.hint": "Die Routen folgen der nach ihren Farben gelesenen Karte und dem Relief (in Frankreich das des IGN). Die Vorsicht bremst den Läufer abseits von Leitlinien (Wege, Bäche, Vegetationsgrenzen), voll ab {d} m. Ein Prototyp, zu überprüfen.",
   "rc.reset": "Standardwerte",
-  "rc.calib": "Geschwindigkeiten an den gelaufenen Teilstrecken kalibrieren",
+  "rc.calib": "Tempo, Steigung und Geschwindigkeiten an die Zeiten der Läufer anpassen",
   "rc.calib.hint": "Die Geschwindigkeit auf Wegen und die Kosten der Steigung aus den gelaufenen Teilstrecken (der Läufer in der Einzelanalyse, die Gruppe in „Mit den anderen vergleichen“), die vom Modell weit entfernten Teilstrecken beiseitegelassen; die Routen werden damit neu berechnet.",
   "rc.cal.done": "Kalibriert auf {n} Teilstrecken: Tempo {p} min/km · Wege {s} · 1 m Steigung entspricht {c} in der Ebene",
   "rc.cal.doneMulti": "Kalibriert auf {r} Läufern, {n} Teilstrecken: Wege {s} · 1 m Steigung entspricht {c} in der Ebene; ein Tempo pro Läufer",

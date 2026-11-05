@@ -18,7 +18,9 @@ const SPEED_KEYS = ["track", "path", "small", "open", "rough", "g1", "g2", "g3",
 export function loadSettings(map = "forest") {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(PREFS) || "{}") || {}; } catch (e) { /* defaults */ }
-  return { ...DEFAULTS, ...saved, map, speeds: { ...DEFAULTS.speeds, ...(saved.speeds || {}) } };
+  // what Ozimut decides itself, never the user (owner, 2026-11-05): the black lines read automatically, the relief from the map's
+  // own contour lines (the model where too few are read), their interval the standard's — 2.5 m in sprint, 5 m in forest
+  return { ...DEFAULTS, ...saved, map, black: "auto", relief: "contours", speeds: { ...DEFAULTS.speeds, ...(saved.speeds || {}) } };
 }
 function saveSettings(s) {
   const { map, ...rest } = s;
@@ -227,29 +229,23 @@ export function panelHtml(s, { on, picture, decision = false, status = "", progr
   const range = (id, v, lo, hi, step, label, unit = "") => html`<label><span>${label}</span><span class="rc-range"><input type="range" id="${id}" min="${lo}" max="${hi}" step="${step}" value="${v}"><b id="${id}-v">${v}${unit}</b></span></label>`;
   return html`<details class="an-settings rc-box" id="rc-box" open><summary>${t("rc.title")} <span class="pill rc-pill">${t("rc.admin")}</span></summary>
     <label class="rc-on"><input type="checkbox" id="rc-on" ${raw(on ? "checked" : "")}> ${t("rc.on")}</label>
-    <div class="muted rc-status" id="rc-status">${status}</div>
+    <div class="muted rc-status" id="rc-status" ${raw(progress == null ? "hidden" : "")}>${status}</div>
     <progress class="rc-prog" id="rc-prog" max="1" value="${progress ?? 0}" ${raw(progress == null ? "hidden" : "")}></progress>
     <div class="notice rc-warn" id="rc-warn" ${raw(warn ? "" : "hidden")}>${warn}</div>
     <div ${raw(on ? "" : "hidden")} id="rc-opts">
-      <div class="rc-vec"><label class="btn btn-sm" title="${t("rc.vec.hint")}">${t("rc.vec.pick")}<input type="file" id="rc-vec" accept="${VECTOR_ACCEPT}" hidden></label>
-        <span class="muted">${vector?.name ? html`<b>${vector.name}</b>${vector.detail ? ` · ${vector.detail}` : ""}` : t("rc.vec.none")}</span>
-        ${vector?.name && !vector.fixed ? html`<button type="button" class="btn btn-sm" id="rc-vec-clear" title="${t("rc.vec.clear")}">✕</button>` : ""}
-        ${vector?.note ? html`<div class="notice rc-vec-note">${vector.note}</div>` : ""}</div>
       <div class="an-opts">
         <label><span>${t("rc.map")}</span><select id="rc-map"><option value="forest" ${raw(s.map === "forest" ? "selected" : "")}>${t("rc.map.forest")}</option><option value="sprint" ${raw(s.map === "sprint" ? "selected" : "")}>${t("rc.map.sprint")}</option></select></label>
-        <label ${raw(vector?.used ? "hidden" : "")}><span>${t("rc.black")}</span><select id="rc-black">${["auto", "paths", "neutral", "obstacles"].map((v) => html`<option value="${v}" ${raw(s.black === v ? "selected" : "")}>${t(`rc.black.${v}`)}</option>`)}</select></label>
-        ${range("rc-risk", s.risk, 0, 100, 5, t("rc.risk"), " %")}
-        ${range("rc-climb", s.climb, 0, 20, 1, t("rc.climb"), " m")}
-        <label><span>${t("rc.relief")}</span><select id="rc-relief">${["contours", "dem"].map((v) => html`<option value="${v}" ${raw(s.relief === v ? "selected" : "")}>${t(`rc.relief.${v}`)}</option>`)}</select></label>
-        <label ${raw(s.relief === "dem" ? "hidden" : "")} id="rc-interval-row"><span>${t("rc.interval")}</span><select id="rc-interval">${[2.5, 5, 10].map((v) => html`<option value="${v}" ${raw(Number(s.interval) === v ? "selected" : "")}>${fmt(v, v % 1 ? 1 : 0)} m</option>`)}</select></label>
-        <label><span>${t("rc.pace")}</span><span class="rc-range"><input id="rc-pace" inputmode="numeric" placeholder="${auto ? minKm(auto) : "6:00"}" value="${s.pace > 0 ? minKm(s.pace / 1000) : ""}" style="width:70px"> <span class="muted">${t("rc.pace.unit")}</span></span></label>
         <label class="rc-on" title="${t("rc.calib.hint")}"><input type="checkbox" id="rc-calib" ${raw(s.calib ? "checked" : "")}> ${t("rc.calib")}</label>
         <div class="muted rc-cal" id="rc-cal" ${raw(calib ? "" : "hidden")}>${calib || ""}</div>
+        <fieldset class="rc-calgroup" id="rc-calgroup" ${raw(s.calib ? "disabled" : "")}>
+          <label><span>${t("rc.pace")}</span><span class="rc-range"><input id="rc-pace" inputmode="numeric" placeholder="${auto ? minKm(auto) : "6:00"}" value="${s.pace > 0 ? minKm(s.pace / 1000) : ""}" style="width:70px"> <span class="muted">${t("rc.pace.unit")}</span></span></label>
+          ${range("rc-climb", s.climb, 0, 20, 1, t("rc.climb"), " m")}
+          <details class="rc-speeds"><summary>${t("rc.speeds")}</summary><div class="an-opts">
+            ${SPEED_KEYS.map((k) => range(`rc-sp-${k}`, s.speeds[k], 5, 200, 5, t(`rc.sp.${k}`), " %"))}</div></details></fieldset>
+        ${range("rc-risk", s.risk, 0, 100, 5, t("rc.risk"), " %")}
         <label><span>${t("rc.variants")}</span><select id="rc-variants">${[1, 2, 3, 4].map((n) => html`<option value="${n}" ${raw(n === s.variants ? "selected" : "")}>${n}</option>`)}</select></label>
         ${range("rc-extra", s.extra, 5, 60, 5, t("rc.extra"), " %")}
       </div>
-      <details class="rc-speeds"><summary>${t("rc.speeds")}</summary><div class="an-opts">
-        ${SPEED_KEYS.map((k) => range(`rc-sp-${k}`, s.speeds[k], 5, 200, 5, t(`rc.sp.${k}`), " %"))}</div></details>
       <label class="rc-on" title="${t("rc.decision.hint")}"><input type="checkbox" id="rc-dec" ${raw(decision ? "checked" : "")}> ${t("rc.decision")}</label>
       <div class="rc-dec-key" id="rc-dec-key" ${raw(decision ? "" : "hidden")}><span class="rc-dec-ramp"></span><span class="muted">${t("rc.decision.key", { p: s.extra })}</span></div>
       <label class="rc-on"><input type="checkbox" id="rc-pic" ${raw(picture ? "checked" : "")}> ${t("rc.picture")}</label>
@@ -268,14 +264,14 @@ export function bindPanel(root, s, onChange) {
     try { localStorage.setItem("ocn.rc.dec", e.target.checked ? "1" : "0"); } catch (err) { /* this visit */ }
     onChange(s, e.target.checked ? "decision-on" : "decision-off");
   });
-  $("#rc-vec", box).addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) onChange(s, "vector", f); });
-  $("#rc-vec-clear", box)?.addEventListener("click", () => onChange(s, "vector-clear"));
   $("#rc-map", box).addEventListener("change", (e) => { s.map = e.target.value; set("map"); });
-  $("#rc-black", box).addEventListener("change", (e) => { s.black = e.target.value; set("search"); });
   $("#rc-variants", box).addEventListener("change", (e) => { s.variants = Number(e.target.value); set("search"); });
-  $("#rc-calib", box).addEventListener("change", (e) => { s.calib = e.target.checked; set("search"); });
-  $("#rc-relief", box).addEventListener("change", (e) => { s.relief = e.target.value; $("#rc-interval-row", box).hidden = s.relief === "dem"; set("relief"); });
-  $("#rc-interval", box).addEventListener("change", (e) => { s.interval = Number(e.target.value); set("relief"); });
+  // calibrated: the pace, the climb and the terrain speeds come from the times run, their own controls greyed (a typed pace dropped)
+  $("#rc-calib", box).addEventListener("change", (e) => {
+    s.calib = e.target.checked; $("#rc-calgroup", box).disabled = s.calib;
+    if (s.calib && s.pace) { s.pace = 0; $("#rc-pace", box).value = ""; }
+    set("search");
+  });
   const slide = (id, apply) => {
     const el = $(`#${id}`, box);
     el.addEventListener("input", () => { const v = $(`#${id}-v`, box); if (v) v.textContent = v.textContent.replace(/^[\d.]+/, el.value); });
@@ -296,7 +292,7 @@ export function bindPanel(root, s, onChange) {
 }
 /** The status line, and the progress bar under it (frac 0-1; null hides it). */
 export const setStatus = (text, frac = null) => {
-  const el = $("#rc-status"); if (el) el.textContent = text;
+  const el = $("#rc-status"); if (el) { el.textContent = text; el.hidden = frac == null; }      // while computing only (owner, 2026-11-05)
   const bar = $("#rc-prog"); if (bar) { bar.hidden = frac == null; if (frac != null) bar.value = Math.max(0, Math.min(1, frac)); }
 };
 /**
@@ -313,7 +309,7 @@ export async function reliefGrid(image, grid, toM, s) {
   let step = 2, nx, ny;
   do { nx = Math.ceil((W * mPerPx) / step) + 1; ny = Math.ceil((H * mPerPx) / step) + 1; step *= 1.2; } while (nx * ny > 4e6);
   let r = null;
-  try { r = refineGrid(image, grid, W, H, mPerPx, { interval: Number(s.interval) || 5, size: { nx, ny } }); } catch (err) { console.error(err); }
+  try { r = refineGrid(image, grid, W, H, mPerPx, { interval: s.map === "sprint" ? 2.5 : 5, size: { nx, ny } }); } catch (err) { console.error(err); }
   return r ? { grid: r, pieces: r.contours.pieces } : { grid, pieces: 0 };
 }
 /** The relief's words for the status: the model's credit, and what the map's contours added. */
