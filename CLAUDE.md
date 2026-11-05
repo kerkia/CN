@@ -1909,7 +1909,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   control far from the map's spot. Offline (`offline.js`, `/sw.js` network-first, opt-in per event; the event and map
   re-encrypted with the event's key; saves wait in IndexedDB « pending » and go when online, a conflict asks; the worker
   and cache go when nothing is kept; logout drops copies without pending changes). « Envoyer les circuits à Résultats »
-  (from the race day; upload kind « courses », see Uploads). Review after the race: routes taken from the published
+  (from the race day; upload kind « courses », see Uploads); owner, 2026-11-05: kept, but documented for what it is — a complement for results published without the courses' length,
+  climb and controls (a PDF, liveresultat, WinSplits, O'Live…), useless beside the timing software's IOF XML, never times or places: the
+  guide's « Après la course » and the ribbon's tooltip say so). Review after the race: routes taken from the published
   analysis's shared traces (`routes.js`; `meta.published.analysis` set by the publication). Documentation tab « Le tracé ».
   **Beta** (owner, 2026-10-16): see « Beta notices » below; the Tracer's notice says it is not yet advised for real competitions,
   fine for training maps.

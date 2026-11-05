@@ -1318,8 +1318,14 @@ export function build(X) {
           <ul class="mx-list">
             <li><b>die Bahnen in die Kartenanalyse übertragen</b> (${W("publish")}): Jede Bahn kommt dort mit ihrer Karte und ihrer Kalibrierung an, die Läufer müssen nur noch
               ihren GPS-Track hochladen;</li>
-            <li><b>die Bahnen an „Ergebnisse“ senden</b> (${W("send-results")}): Die Ergebnislisten erhalten so die Länge, die Steigung und die Posten jeder Bahn,
-              wenn die Dateien der Veranstalter sie nicht angeben;</li>
+            <li><b>die Bahnen an „Ergebnisse“ senden</b> (${W("send-results")}): eine Ergänzung der Ergebnisse, keine Ergebnisse. Die Ergebnisdatei, die die
+              Zeitnahme-Software (MeOS, OE…) als IOF XML exportiert, enthält bereits Länge, Steigung und Posten jeder Bahn: mit ihr bringt diese Übertragung nichts.
+              Sie hilft, wenn die veröffentlichten Ergebnisse von anderswo stammen — ein PDF, liveresultat, WinSplits, O'Live, eine HTML-Seite ohne Bahnkopf — und diese
+              Angaben fehlen. Die Bahnen der Bahnlegung (als IOF XML) werden dann den Bahnen der Ergebnisse über ihren Namen („Bahn A“ = „A“) oder ihre Posten zugeordnet,
+              und nur fehlende Werte werden ergänzt, nie Zeiten oder Plätze: Die Ergebnisseite des Laufs zeigt Länge und Steigung, die „Laufanalyse“ benennt die Posten
+              mit ihren Codes, und die Steigung vergangener Läufe fließt in die Schätzung der Siegerzeiten künftiger Bahnen ein. Nötig sind eine mit einem Wettkampf
+              verknüpfte Veranstaltung, die Mitgliedschaft im ausrichtenden Verein und die Zustimmung zur Veröffentlichung; vor dem Tag nach dem Lauf erscheint nichts,
+              und eine neue Übertragung ersetzt die vorige;</li>
             <li>die <b>Bilanz</b> lesen (${W("rep-after")}): für jede Teilstrecke die Bestzeit und die Medianzeit, der Anteil der Läufer, die sich dort
               verlaufen haben, die Fehlstempel (eine Station zu prüfen?) und die gewählten <b>Routen</b>, nach den in der Kartenanalyse geteilten Tracks.</li>
           </ul>

@@ -1318,8 +1318,14 @@ export function build(X) {
           <ul class="mx-list">
             <li><b>publier les circuits vers l'analyse de carte</b> (${W("publish")}) : chaque circuit y arrive avec sa carte et son calage, les coureurs n'ont plus qu'à déposer
               leur trace GPS ;</li>
-            <li><b>envoyer les circuits à « Résultats »</b> (${W("send-results")}) : les listes de résultats y gagnent la longueur, la dénivelée et les postes de chaque circuit
-              quand les fichiers des organisateurs ne les donnent pas ;</li>
+            <li><b>envoyer les circuits à « Résultats »</b> (${W("send-results")}) : un complément aux résultats, pas des résultats. Le fichier de résultats exporté
+              par le logiciel de chronométrage (MeOS, OE…) en IOF XML donne déjà la longueur, la dénivelée et les postes de chaque circuit : avec lui, cet envoi n'apporte
+              rien. Il sert quand les résultats publiés viennent d'ailleurs — un PDF, liveresultat, WinSplits, O'Live, une page HTML sans en-tête de circuit — et n'ont
+              pas ces informations. Les circuits du tracé (en IOF XML) sont alors rapprochés de ceux des résultats par leur nom (« Circuit A » = « A ») ou par leurs postes,
+              et seules les valeurs manquantes sont complétées, jamais les temps ni les places : la page de résultats de la course affiche la longueur et la dénivelée,
+              « Analyse de course » numérote les postes par leurs codes, et la dénivelée des courses passées sert aux estimations de temps du vainqueur des tracés à venir.
+              Il faut un événement lié à une compétition, être membre du club organisateur et accepter la publication ; rien n'apparaît avant le lendemain de la course,
+              et un nouvel envoi remplace le précédent ;</li>
             <li>lire le <b>bilan</b> (${W("rep-after")}) : pour chaque interposte, le meilleur temps et le temps médian, la part des coureurs qui s'y sont
               trompés, les postes manquants (un boîtier à vérifier ?), et les <b>itinéraires</b> pris, d'après les traces partagées sur l'analyse de carte.</li>
           </ul>

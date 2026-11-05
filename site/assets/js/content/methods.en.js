@@ -1317,8 +1317,13 @@ export function build(X) {
           <ul class="mx-list">
             <li><b>publish the courses to the map analysis</b> (${W("publish")}): each course arrives there with its map and its calibration, and the runners only have to upload
               their GPS track;</li>
-            <li><b>send the courses to “Results”</b> (${W("send-results")}): the results lists gain each course's length, climb and controls
-              when the organisers' files do not give them;</li>
+            <li><b>send the courses to “Results”</b> (${W("send-results")}): a complement to the results, not results. The results file exported by the timing
+              software (MeOS, OE…) as IOF XML already gives each course's length, climb and controls: with it, this sends nothing new. It helps when the published results
+              come from elsewhere — a PDF, liveresultat, WinSplits, O'Live, an HTML page without course headers — and lack that information. The setter's courses (as
+              IOF XML) are then matched to the results' courses by their name (“Course A” = “A”) or by their controls, and only the missing values are filled in, never
+              times or places: the race's results page shows the length and climb, “Race analysis” names the controls by their codes, and the climb of past races
+              feeds the winning-time estimates of courses still to be set. It needs an event linked to a competition, membership of the organising club and consent to
+              publication; nothing shows before the day after the race, and a new send replaces the previous one;</li>
             <li>read the <b>review</b> (${W("rep-after")}): for each leg, the best time and the median time, the share of runners who made
               a mistake on it, the missing punches (a control unit to check?), and the <b>routes</b> taken, from the tracks shared on the map analysis.</li>
           </ul>

@@ -1318,8 +1318,14 @@ export function build(X) {
           <ul class="mx-list">
             <li><b>publicar los recorridos en el análisis de mapa</b> (${W("publish")}): cada recorrido llega con su mapa y su calibración, y los corredores solo tienen que subir
               su track GPS;</li>
-            <li><b>enviar los recorridos a «Resultados»</b> (${W("send-results")}): las listas de resultados ganan así la longitud, el desnivel y los controles de cada recorrido
-              cuando los archivos de los organizadores no los dan;</li>
+            <li><b>enviar los recorridos a «Resultados»</b> (${W("send-results")}): un complemento de los resultados, no resultados. El archivo de resultados que
+              exporta el software de cronometraje (MeOS, OE…) en IOF XML ya da la longitud, el desnivel y los controles de cada recorrido: con él, este envío no aporta
+              nada. Sirve cuando los resultados publicados vienen de otra parte — un PDF, liveresultat, WinSplits, O'Live, una página HTML sin cabecera de recorrido — y
+              no tienen esos datos. Los recorridos del trazado (en IOF XML) se asocian entonces a los de los resultados por su nombre («Recorrido A» = «A») o por sus
+              controles, y solo se completan los valores que faltan, nunca los tiempos ni los puestos: la página de resultados de la carrera muestra la longitud y el
+              desnivel, el «Análisis de carrera» nombra los controles por sus códigos, y el desnivel de las carreras pasadas alimenta las estimaciones del tiempo del
+              ganador de los recorridos por trazar. Hace falta un evento vinculado a una competición, ser miembro del club organizador y aceptar la publicación; nada
+              aparece antes del día siguiente a la carrera, y un nuevo envío sustituye al anterior;</li>
             <li>leer el <b>balance</b> (${W("rep-after")}): para cada tramo, el mejor tiempo y el tiempo mediano, la proporción de corredores que se
               equivocaron en él, los errores de tarjeta (¿una estación que revisar?), y las <b>rutas</b> elegidas, según los tracks compartidos en el análisis de mapa.</li>
           </ul>
