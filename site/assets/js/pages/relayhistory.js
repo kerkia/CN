@@ -71,7 +71,9 @@ function index(file) {
 
 export async function render(main, { query }) {
   main.innerHTML = html`<div class="loading">${t("misc.loading")}</div>`;
-  const [rel, champs] = await Promise.all([data.relays().catch(() => null), data.champs().catch(() => null)]);
+  const [rel, champs0] = await Promise.all([data.relays().catch(() => null), data.champs().catch(() => null)]);
+  // a file of the first version (foot only, keyed cfmd…; a browser keeps a data file 5 minutes) is not read
+  const champs = champs0?.v >= 2 ? champs0 : null;
   if (!rel?.rows && !champs?.editions) {
     main.innerHTML = html`<div class="notice">${t("rh.none")}</div>`;
     return;
@@ -564,11 +566,11 @@ export async function render(main, { query }) {
     $$('[data-seg="chrf"]', el).forEach((b) => b.addEventListener("click", () => { f.rc = f.rc[0] + b.dataset.value; draw.crank(); }));
     $("#ch-year", el).addEventListener("change", (e) => { f.ry = Number(e.target.value); draw.crank(); });
     $("#ch-cat", el).addEventListener("change", (e) => { f.rk = e.target.value; draw.crank(); });
-    const body = await edition(f.rc, f.ry);
+    const body = ed ? await edition(f.rc, f.ry) : null;
     const box = $("#ch-rank", el);
     if (!box) return;
     const list = body?.cats?.[f.rk] || [];
-    if (!list.length) { box.innerHTML = html`<div class="empty">${t("rh.none")}</div>`; return; }
+    if (!list.length) { box.innerHTML = html`<div class="empty">${t("ch.none")}</div>`; return; }
     const w = secs(list.find((r) => r[0] === 1)?.[4]);
     const rows = list.map(([place, lic, name, club, time, st], i) => ({ i, place, lic, name, club, time, st,
       gap: place && w != null && secs(time) != null ? secs(time) - w : null }));

@@ -2816,6 +2816,7 @@ export default {
   "ch.f.fmt": "Format",
   "ch.allDisc": "Toutes les disciplines",
   "ch.allFmt": "Tous les formats",
+  "ch.none": "Aucun résultat pour ce choix.",
   "ch.f.sex": "Sexe",
   "ch.f.who": "Classer",
   "ch.grp.all": "Toutes les catégories",

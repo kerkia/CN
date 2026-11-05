@@ -3648,6 +3648,7 @@ export default {
   "ch.f.fmt": "Format",
   "ch.allDisc": "Every discipline",
   "ch.allFmt": "Every format",
+  "ch.none": "No result for this choice.",
   "ch.f.sex": "Sex",
   "ch.f.who": "Rank",
   "ch.grp.all": "Every class",

@@ -3795,6 +3795,7 @@ export default {
   "ch.f.fmt": "Format",
   "ch.allDisc": "Alle Disziplinen",
   "ch.allFmt": "Alle Formate",
+  "ch.none": "Kein Ergebnis für diese Auswahl.",
   "ch.f.sex": "Geschlecht",
   "ch.f.who": "Rangliste der",
   "ch.grp.all": "Alle Kategorien",
