@@ -1715,7 +1715,7 @@ export default {
   "an.noSplitsShort": "sans temps intermédiaires",
   "an.drop": "Déposez vos fichiers ici, ou cliquez pour les choisir",
   "an.fitTip": "Conseil : déposez de préférence le fichier FIT de votre montre plutôt qu'un GPX ou un TCX : il garde tous ses indicateurs de course — fréquence cardiaque, cadence, puissance… — pour les courbes, quand un GPX ou un TCX en perd souvent.",
-  "sh.v.splits": "Temps intermédiaires", "sh.v.legs": "Inter-postes",
+  "sh.v.splits": "Temps", "sh.v.legs": "Inter-postes",
   "sh.legs.hint": "Inter-poste par inter-poste : le temps, le meilleur temps et le rang {src}, le temps perdu, la longueur de la trace contre la ligne droite (le détour) et l'allure. Cliquez une ligne pour voir l'inter-poste sur la carte.",
   "sh.legs.src.traces": "parmi les coureurs qui ont déposé leur trace", "sh.legs.src.published": "parmi tous les coureurs du circuit, d'après les temps intermédiaires publiés",
   "sh.legs.rule": "Temps perdu : le temps de l'inter-poste moins ce qu'il aurait été à l'allure habituelle du coureur (le meilleur temps × la médiane de ses rapports à ce meilleur temps). Une erreur, en rouge : au moins 20 % du temps de l'inter-poste et au moins 10 s.",

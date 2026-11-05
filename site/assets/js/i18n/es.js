@@ -2411,7 +2411,7 @@ export default {
   "an.noSplitsShort": "sin tiempos parciales",
   "an.drop": "Suelta tus archivos aquí o haz clic para elegirlos",
   "an.fitTip": "Consejo: si puedes, suelta el archivo FIT de tu reloj en lugar de un GPX o un TCX: conserva todos sus datos de carrera — frecuencia cardíaca, cadencia, potencia… — para las gráficas, mientras que un GPX o un TCX a menudo pierde algunos.",
-  "sh.v.splits": "Tiempos parciales",
+  "sh.v.splits": "Tiempos",
   "sh.v.legs": "Tramos",
   "sh.legs.hint": "Tramo a tramo: el tiempo, el mejor tiempo y el puesto {src}, el tiempo perdido, la longitud del track frente a la línea recta (el rodeo) y el ritmo. Haz clic en una fila para ver el tramo en el mapa.",
   "sh.legs.src.traces": "entre los corredores que han subido su track",

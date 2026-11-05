@@ -2152,7 +2152,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   **After 2DRerun** (study of 2026-10-23 against World of O's 2DRerun/3DRerun, from public write-ups; built 2026-10-24,
   one commit each, live GPS tracking and QuickRoute import out of scope): the routes can be **coloured by pace** (one scale for
   every runner shown, Solo's legend; `trace/pacecolour.js`, moved out of `analysis.js`), and in a leg's view by **leg time**
-  (fastest to slowest) or by **variant**. Under the replay, `pages/sharedviews.js` draws five tabs: « Temps intermédiaires » (the
+  (fastest to slowest) or by **variant**. Under the replay, `pages/sharedviews.js` draws five tabs: « Temps » (« Temps intermédiaires » until 2026-11-05, owner: short labels; the
   splits against « Comparer à »), « Inter-postes » (one runner's legs as Solo: time, best and rank, time lost by the split-times
   page's rule — `trace/legs.js`, moved out of `analysis.js` —, route against the straight line, pace; never heart rate: only
   positions and times are shared), « Écarts » (each runner's gap to the leader at each control, the « superman » of best legs or a

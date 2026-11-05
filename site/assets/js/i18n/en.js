@@ -2335,7 +2335,7 @@ export default {
   "an.noSplitsShort": "no split times",
   "an.drop": "Drop your files here, or click to choose them",
   "an.fitTip": "Tip: if you can, drop your watch's FIT file rather than a GPX or TCX: it keeps all its race data — heart rate, cadence, power… — for the graphs, whereas a GPX or TCX often loses some.",
-  "sh.v.splits": "Split times", "sh.v.legs": "Legs",
+  "sh.v.splits": "Times", "sh.v.legs": "Legs",
   "sh.legs.hint": "Leg by leg: the time, the best time and the rank {src}, the time lost, the route's length against the straight line (the detour) and the pace. Click a row to see the leg on the map.",
   "sh.legs.src.traces": "among the runners who shared their trace", "sh.legs.src.published": "among every runner of the course, from the published split times",
   "sh.legs.rule": "Time lost: the leg's time less what it would have been at the runner's usual pace (the best time × the median of their ratios to it). A mistake, in red: at least 20% of the leg's time and at least 10 s.",

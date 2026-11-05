@@ -2411,7 +2411,7 @@ export default {
   "an.noSplitsShort": "ohne Zwischenzeiten",
   "an.drop": "Lege deine Dateien hier ab oder klicke, um sie auszuwählen",
   "an.fitTip": "Tipp: Lege möglichst die FIT-Datei deiner Uhr ab statt einer GPX- oder TCX-Datei: Sie behält alle Laufdaten — Herzfrequenz, Kadenz, Leistung… — für die Kurven, während GPX oder TCX oft einige verlieren.",
-  "sh.v.splits": "Zwischenzeiten",
+  "sh.v.splits": "Zeiten",
   "sh.v.legs": "Teilstrecken",
   "sh.legs.hint": "Teilstrecke für Teilstrecke: die Zeit, die Bestzeit und der Rang {src}, der Zeitverlust, die Länge des Tracks gegenüber der Luftlinie (der Umweg) und das Tempo. Klicke auf eine Zeile, um die Teilstrecke auf der Karte zu sehen.",
   "sh.legs.src.traces": "unter den Läufern, die ihren Track hochgeladen haben",
