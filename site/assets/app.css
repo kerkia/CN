@@ -1848,8 +1848,14 @@ body.full-win .ma-crumb, body.an-theatre .ma-crumb { display: none; }
   border: 1px solid var(--border-strong); box-shadow: 0 8px 26px rgba(0, 0, 0, .3); }
 .ma-pop img { display: block; width: 100%; max-height: 240px; object-fit: contain; border-radius: 5px; }
 .ma-how { margin: 10px 4px 2px; font-size: 12.5px; }
-.ma-table td.ma-club { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ma-table .ma-name { min-width: 180px; }
+.ma-two { width: 100%; table-layout: fixed; }
+.ma-two th:nth-child(1), .ma-two td:nth-child(1) { width: 108px; }
+.ma-two th:nth-child(3), .ma-two td:nth-child(3) { width: 74px; }
+table.data.ma-two td, table.data.ma-two th { white-space: normal; vertical-align: top; }
+table.data.ma-two .ma-name { overflow-wrap: anywhere; }
+table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ma-two .ma-l2 { margin-top: 3px; font-weight: 400; }
+.ma-two th .ma-l2 { opacity: .75; }
 /* « Analyse solo »: the race or the map analysis a track seems to be of (pages/analysis.js likelyBlock) */
 .an-likely { display: block; margin: 10px 0; }
 .an-likely-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 6px; }
@@ -1984,13 +1990,13 @@ label.sh-runner.sp-runner { margin: 0; font-weight: inherit; }
 @media (max-width: 900px) { .sh-e-work { grid-template-columns: 1fr; height: auto !important; } .sh-map { height: 60vh; }
   .sh-layout { display: flex; flex-direction: column; gap: 10px; height: auto !important; }
   .sh-layout > .an-split { display: none; } .sh-layout > .sh-mapcol { order: 1; } .sh-layout > .sh-lp { order: 2; } .sh-layout > .sh-rp { order: 3; }
+  .sh-layout > .sh-sp-center { order: 1; overflow: visible; }
   .sh-own-cv { flex: none; height: 360px; } }
 /* « En direct » */
 /* the race (owner, 2026-10-21): name and day | status and ranking, two lines; the punches on one line scrolling sideways;
    no scrollbar of the table's own (the page's only: a course holds a few dozen runners); every runner on two lines */
 .lv-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; margin-bottom: 10px; }
 .lv-hl { min-width: 0; }
-  .sh-layout > .sh-sp-center { order: 1; overflow: visible; }
 /* the race's name and the way to its analysis on one line, as « Analyse de course »'s title and its way back */
 .lv-tl { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; }
 .lv-tl h1 { min-width: 0; }

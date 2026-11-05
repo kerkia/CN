@@ -1293,6 +1293,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   let mode = modes.includes(init.m) ? init.m : "mass", fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
   let follow = FOLLOWS.includes(init.f) ? init.f : "all", playing = false, timer = 0, last = 0, sel = null;
+  // the analysis opens on the whole map, filling its area (owner, 2026-11-05: it opened on the runners gathered at the start);
+  // following starts with the replay — played, or its time moved —, and an address naming a time or a leg keeps its view
+  let still = init.t == null && !leg;
   let v3 = null, v3on = false, v3token = 0, v3sig = "", v3list = [], v3leg = null;      // the 3D view (below)
   const admin = !!auth.session()?.admin;
   // the features the organisers switched (owner, 2026-11-04; api/analyses OPTS): the computed routes (every account's since the same
@@ -1522,7 +1525,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   }
   const initials = (r) => (r.test ? `#${(r.uid - 1e9) % 1000}` : r.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 3));   // a test runner: its number
   function followView() {
-    if (follow === "none") return;
+    if (follow === "none" || still) return;
     const pts = (follow === "sel" && sel ? [sel] : runners.filter((r) => r.visible)).map((r) => { const s = sAt(r, T); if (s == null) return null; return toPx(r.fit, ...posAt(r.tr, s)); }).filter(Boolean);
     if (!pts.length) return;
     if (pts.length === 1 || follow === "sel") { mv.centerOn(pts[0][0], pts[0][1]); return; }
@@ -1763,9 +1766,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   // an administrator's test traces: uid 1e9 + account × 1000 + k (api/analyses), each file a runner « <name> #k »
   function myRun() { return runners.find((r) => r.mine && !r.test) || null; }
   function myTests() { return runners.filter((r) => r.uid > 1e9 && Math.floor((r.uid - 1e9) / 1000) === you.uid); }
-  async function uploadTests(files) {
-    const boxU = $("#sh-upload"), errs = [], placed = new Map();
-    // each file goes to the circuit it runs (owner, 2026-11-04: test tracks all sent to the circuit shown left the others' analyses
   // adding (or replacing) one's track (owner, 2026-11-05: two buttons alike after one label): from this computer or, by a QR code,
   // from one's phone; on a phone, one button
   function addRow() {
@@ -1775,6 +1775,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       <button type="button" class="btn btn-sm" id="sh-add">💻 ${t("sh.add.pc")}</button>
       <button type="button" class="btn btn-sm" id="sh-phone" title="${t("ph.btn.tip")}">📱 ${t("sh.add.phone")}</button></div>`;
   }
+  async function uploadTests(files) {
+    const boxU = $("#sh-upload"), errs = [], placed = new Map();
+    // each file goes to the circuit it runs (owner, 2026-11-04: test tracks all sent to the circuit shown left the others' analyses
     // empty), else to the circuit shown; its number after the account's test tracks already there
     const testsOn = (n) => (allTraces || []).filter((x) => x.course === n && x.uid > 1e9 && Math.floor((x.uid - 1e9) / 1000) === you.uid).map((x) => (x.uid - 1e9) % 1000);
     const next = new Map();
@@ -1867,7 +1870,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
     $("#sh-speed").addEventListener("change", (e) => { speed = Number(e.target.value); });
-    $("#sh-time").addEventListener("input", (e) => { T = Number(e.target.value); frame(); });
+    $("#sh-time").addEventListener("input", (e) => { T = Number(e.target.value); still = false; frame(); });
     $("#sh-leg").addEventListener("change", (e) => setLeg(Number(e.target.value)));
     $("#sh-mode")?.addEventListener("change", (e) => { mode = e.target.value; reset(); });
     $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); reset(); });
@@ -1909,6 +1912,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     mv.fitBox(Math.min(...xs) - 40, Math.min(...ys) - 40, Math.max(...xs) + 40, Math.max(...ys) + 40, 20, 4);
   }
   function play() {
+    still = false;
     if (T >= T1 - 0.5) T = T0;
     playing = true; last = performance.now();
     clearInterval(timer);
@@ -2419,9 +2423,15 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   mv.setImage(image);
   paceScale(); legend();
   left(); right(); bottom.draw(); rcmList();
-  if (leg) { const t0 = T; setLeg(leg); T = Math.min(T1, Math.max(T0, t0)); } else fitRoutes();
+  if (leg) { const t0 = T; setLeg(leg); T = Math.min(T1, Math.max(T0, t0)); } else if (still) mv.fitAll(); else fitRoutes();
   frame();
+  // the panels and the window settle after the first draw: the whole map fitted again until the reader moves it
+  let moved = false;
+  $("#sh-canvas").addEventListener("pointerdown", () => { moved = true; });
+  $("#sh-canvas").addEventListener("wheel", () => { moved = true; }, { passive: true });
+  const wholeRo = new ResizeObserver(() => { if (still && !moved && !leg) { mv.fitAll(); mv.draw(); } });
+  wholeRo.observe($("#sh-canvas"));
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }
