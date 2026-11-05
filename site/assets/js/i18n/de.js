@@ -2770,7 +2770,7 @@ export default {
   "an.tab.legs": "Teilstrecken",
   "an.tab.routes": "Routen",
   "an.tab.display": "Anzeige",
-  "an.tab.compute": "Berechnung",
+  "an.tab.compute": "Routenberechnung",
   "sh.tab.runners": "Läufer",
   "sh.tab.views": "Analysen",
   "rc.tab.off": "Aktiviere „Routen für jede Teilstrecke vorschlagen“ im Reiter „Berechnung“.",

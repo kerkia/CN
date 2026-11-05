@@ -2630,7 +2630,7 @@ export default {
   "an.tab.legs": "Legs",
   "an.tab.routes": "Routes",
   "an.tab.display": "Display",
-  "an.tab.compute": "Compute",
+  "an.tab.compute": "Route computing",
   "sh.tab.runners": "Runners",
   "sh.tab.views": "Analyses",
   "rc.tab.off": "Tick “Suggest routes for each leg” in the “Compute” tab.",

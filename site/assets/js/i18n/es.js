@@ -2770,7 +2770,7 @@ export default {
   "an.tab.legs": "Tramos",
   "an.tab.routes": "Rutas",
   "an.tab.display": "Visualización",
-  "an.tab.compute": "Cálculo",
+  "an.tab.compute": "Cálculo de ruta",
   "sh.tab.runners": "Corredores",
   "sh.tab.views": "Análisis",
   "rc.tab.off": "Marca «Proponer rutas para cada tramo» en la pestaña «Cálculo».",

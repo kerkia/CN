@@ -272,7 +272,7 @@ export function build(X) {
         ${slide("Coach · essai", "Les itinéraires calculés", html`
           <p>Dans les deux analyses GPS, Ozimut propose, pour chaque inter-poste, les itinéraires les plus rapides
             sur la carte, avec leur longueur, leur dénivelé et un temps estimé — et mesure sur le même modèle l'itinéraire que chaque coureur a pris.
-            Dans l'${P("#/analyse-solo", "Analyse solo")}, tous les inter-postes sont calculés et l'onglet « Itinéraires », à gauche de la carte, les reprend poste par poste (les réglages sont dans l'onglet « Calcul », à droite) ; dans
+            Dans l'${P("#/analyse-solo", "Analyse solo")}, tous les inter-postes sont calculés et l'onglet « Itinéraires », à gauche de la carte, les reprend poste par poste (les réglages sont dans l'onglet « Calcul de route », à droite) ; dans
             « ${P("#/analyse-club", "Comparer avec les autres coureurs")} », l'inter-poste affiché, avec la liste des coureurs. C'est un prototype : les itinéraires suivent
             la carte telle qu'Ozimut la lit, et cette lecture peut se tromper. Le calcul se lance de lui-même ; on l'arrête dans l'onglet « Calcul », et l'organisateur
             d'une analyse de carte peut le fermer pour son événement.</p>`)}

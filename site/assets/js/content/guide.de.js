@@ -274,9 +274,9 @@ export function build(X) {
         ${slide("Coach · Test", "Die berechneten Routen", html`
           <p>In beiden GPS-Analysen schlägt Ozimut für jede Teilstrecke die schnellsten Routen auf der Karte vor,
             mit Länge, Steigung und geschätzter Zeit – und misst mit demselben Modell die Route, die jeder Läufer genommen hat.
-            In der ${P("#/analyse-solo", "Einzelanalyse")} werden alle Teilstrecken berechnet und der Reiter „Routen“ links der Karte führt sie Teilstrecke für Teilstrecke auf (die Einstellungen stehen im Reiter „Berechnung“ rechts); in
+            In der ${P("#/analyse-solo", "Einzelanalyse")} werden alle Teilstrecken berechnet und der Reiter „Routen“ links der Karte führt sie Teilstrecke für Teilstrecke auf (die Einstellungen stehen im Reiter „Routenberechnung“ rechts); in
             „${P("#/analyse-club", "Mit den anderen vergleichen")}“ die angezeigte Teilstrecke, mit der Liste der Läufer. Es ist ein Prototyp: Die Routen folgen
-            der Karte so, wie Ozimut sie liest, und dieses Lesen kann sich irren. Die Berechnung startet von selbst; man stoppt sie im Reiter „Berechnung“,
+            der Karte so, wie Ozimut sie liest, und dieses Lesen kann sich irren. Die Berechnung startet von selbst; man stoppt sie im Reiter „Routenberechnung“,
             und der Veranstalter einer Kartenanalyse kann sie für seine Veranstaltung abschalten.</p>`)}
         ${slide("Coach · Test", "1. Die Karte anhand ihrer Farben lesen", html`
           <p>Die Karte ist ein Bild: Ozimut kennt nur ihre Farben. Jeder Punkt wird eingeordnet: Weiß (gut belaufbarer Wald), Gelb

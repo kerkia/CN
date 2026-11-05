@@ -1912,7 +1912,7 @@ export default {
   "an.tab.legs": "Inter-postes",
   "an.tab.routes": "Itinéraires",
   "an.tab.display": "Affichage",
-  "an.tab.compute": "Calcul",
+  "an.tab.compute": "Calcul de route",
   "sh.tab.runners": "Coureurs",
   "sh.tab.views": "Analyses",
   "rc.tab.off": "Cochez « Proposer des itinéraires pour chaque poste » dans l’onglet « Calcul ».",

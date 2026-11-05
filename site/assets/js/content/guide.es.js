@@ -271,9 +271,9 @@ export function build(X) {
         ${slide("Coach · prueba", "Las rutas calculadas", html`
           <p>En los dos análisis GPS, Ozimut propone, para cada tramo, las rutas más rápidas sobre el mapa,
             con su longitud, su desnivel y un tiempo estimado, y mide con el mismo modelo la ruta que tomó cada corredor.
-            En el ${P("#/analyse-solo", "Análisis individual")} se calculan todos los tramos y la pestaña «Rutas», a la izquierda del mapa, los recoge tramo a tramo (los ajustes están en la pestaña «Cálculo», a la derecha); en
+            En el ${P("#/analyse-solo", "Análisis individual")} se calculan todos los tramos y la pestaña «Rutas», a la izquierda del mapa, los recoge tramo a tramo (los ajustes están en la pestaña «Cálculo de ruta», a la derecha); en
             «${P("#/analyse-club", "Comparar con los demás corredores")}», el tramo mostrado, con la lista de corredores. Es un prototipo: las rutas siguen
-            el mapa tal como Ozimut lo lee, y esa lectura puede equivocarse. El cálculo arranca solo; se detiene en la pestaña «Cálculo», y el organizador
+            el mapa tal como Ozimut lo lee, y esa lectura puede equivocarse. El cálculo arranca solo; se detiene en la pestaña «Cálculo de ruta», y el organizador
             de un análisis de mapa puede cerrarlo para su evento.</p>`)}
         ${slide("Coach · prueba", "1. Leer el mapa por sus colores", html`
           <p>El mapa es una imagen: Ozimut solo conoce sus colores. Cada punto se clasifica: el blanco (bosque por el que se corre bien), el amarillo
