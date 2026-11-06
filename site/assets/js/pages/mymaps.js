@@ -764,8 +764,8 @@ export async function render(main, { query = {} } = {}) {
     return d;
   }
   /** « Carte privée » (owner, 2026-11-06): nobody else sees the map, the administrators included; off by default. */
-  const privBox = (on, id = "", label = "mm.f.private") => html`<label class="mm-check" title="${t("mm.f.privateTip")}"><input type="checkbox" name="private" ${raw(id ? `id="${id}"` : "")} ${raw(on ? "checked" : "")}>
-    <span>${t(label)} <span class="muted">— ${t("mm.f.privateTip")}</span></span></label>`;
+  const privBox = (on, id = "", label = "mm.f.private") => (st.privateReady === false ? "" : html`<label class="mm-check" title="${t("mm.f.privateTip")}"><input type="checkbox" name="private" ${raw(id ? `id="${id}"` : "")} ${raw(on ? "checked" : "")}>
+    <span>${t(label)} <span class="muted">— ${t("mm.f.privateTip")}</span></span></label>`);
   const dlgHead = (title) => html`<div class="mm-dlg-h"><b>${title}</b><button type="button" class="btn btn-ghost btn-sm" data-close aria-label="${t("mm.close")}">✕</button></div>`;
 
   /**

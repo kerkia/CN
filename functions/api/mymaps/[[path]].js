@@ -193,7 +193,9 @@ export async function onRequest(ctx) {
         else if (l.map_id.startsWith(SET)) out.sets.push({ ...v, maps: scopeOf(l.map_id) });
         else out.maps[l.map_id] = v;
       }
-      return json({ maps: listed(maps, runs), links: out, name: nameOf(user), quota: { used: await used(env, uid), limit } });
+      // « Carte privée » is offered only once its column exists (migration 0025): a box ticked in vain would mislead
+      const privateReady = !!(await env.DB.prepare("SELECT 1 AS ok FROM pragma_table_info('mymaps') WHERE name = 'private'").first().catch(() => null));
+      return json({ maps: listed(maps, runs), links: out, name: nameOf(user), quota: { used: await used(env, uid), limit }, privateReady });
     }
 
     if (parts[0] === "link" && parts.length === 1 && method === "POST") {
