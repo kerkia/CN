@@ -2013,8 +2013,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   map's world file in its grid (Switzerland's in UTM 32, georef.js having no oblique Mercator: 1 cm over 4 × 3 km). Analyse solo's
   generated maps and their 3D view, and Cartographier's « LiDAR » (each tile placed by its own grid, `data/lidar.js` `toMm`;
   `t_lidarabroad.mjs`), take them. Measured on the PC (one tile each, karttapullautin 4-35 s): Switzerland 1.75 M points, download
-  8 s; the USA 27.7 M, 85-95 s; Canada 47 M, 125-134 s; New Zealand 20.8 M, 330 s the first time (338 MB at 1 MB/s). Not yet run in
-  CI, nor with OpenStreetMap drawn over (Overpass did not answer the PC); vector files up to 56 MB (New Zealand sprint).
+  8 s; the USA 27.7 M, 85-95 s; Canada 47 M, 125-134 s; New Zealand 20.8 M, 330 s the first time (338 MB at 1 MB/s). First CI run
+  2026-11-06 (one forest tile each, the same four): all made in 13 min with OpenStreetMap drawn over (Lake Biel, Boulder's houses
+  and streets in the LiDAR's gaps, Gatineau's lakes); vector files up to 56 MB (New Zealand sprint); a 12-tile US or Canadian
+  request may take 30-40 min.
   **Where a place has no specific support** (owner, 2026-11-06: « mappers work across countries », so this follows the place
   mapped, never the account's countries or Ozimut's rankings): `mapper/support.js` (`at(lat, lon)`: national terrain model,
   national data, LiDAR, national backgrounds) says what is missing and invites to ask Ozimut for that country (« Demander la prise
