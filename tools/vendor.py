@@ -6,7 +6,7 @@ CDN such as cdn.jsdelivr.net, which Safari reports as a tracker; they also keep 
     python tools/vendor.py build flag-icons    # one package only, the others left as they are
 
 To update a library: change its version in PACKAGES, run `build`, then the version in site/assets/js/vendor.js (the paths the
-code loads) and in site/index.html (ECharts' two <script> tags); check the pages that use it (vendor.js says which), commit.
+code loads, ECharts' included since 2026-11-06); check the pages that use it (vendor.js says which), commit.
 Each package keeps its own file layout under <name>@<version>/, with its LICENSE. Files over 25 MiB (Cloudflare Pages' limit
 per file) are split in two parts the browser joins (DuckDB's engine). Nothing here runs a package's install scripts.
 """

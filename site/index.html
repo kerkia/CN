@@ -12,7 +12,19 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Ozimut">
-  <link rel="stylesheet" href="assets/app.css">
+  <!-- the loading screen paints as soon as this page arrives (owner, 2026-11-06: a phone showed nothing at launch while the
+       stylesheet, 300 KB, was checked with the server): its few rules here, in the theme's colours (the script below);
+       app.css loads beside it without holding the first paint, and app.js waits for it before drawing a page -->
+  <style id="boot-css">
+    html { background: var(--boot-bg, #f9f9f7); color-scheme: var(--boot-scheme, light); }
+    body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .boot { display: grid; place-items: center; gap: 12px; padding: 120px 0; color: var(--boot-ink, #898781); }
+    .spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--boot-grid, #e1e0d9); border-top-color: #2a72c8; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .skip-link { position: absolute; left: -9999px; }
+  </style>
+  <link rel="preload" href="assets/app.css" as="style">
+  <link rel="stylesheet" href="assets/app.css" id="app-css" media="print" onload="this.media='all'">
   <script>
     // Apply the theme before first paint so there is no flash: the one chosen under the moon button (five, from
     // Clair to Nuit: app.js THEMES), else (owner, 2026-10-31) Sous-bois on a computer, Clairière on a phone — whatever the
@@ -24,11 +36,14 @@
     if (t === "paper") t = "clearing"; else if (t === "dusk") t = "forest";
     if (!["light", "clearing", "forest", "undergrowth", "dark"].includes(t)) t = matchMedia("(pointer: coarse) and (max-width: 900px)").matches ? "clearing" : "undergrowth";
     document.documentElement.dataset.theme = t;
+    // the loading screen's colours, each theme's ground, ink and grid (app.css --plane, --ink-3, --grid)
+    const B = { light: ["#f9f9f7", "#898781", "#e1e0d9"], clearing: ["#f6efd4", "#8b8371", "#e0d7c0"], forest: ["#dcefcd", "#6a8a6a", "#c6e0b3"],
+      undergrowth: ["#0b1d10", "#86a585", "#1b3a23", 1], dark: ["#0d0d0d", "#898781", "#2c2c2a", 1] }[t];
+    const st = document.documentElement.style;
+    st.setProperty("--boot-bg", B[0]); st.setProperty("--boot-ink", B[1]); st.setProperty("--boot-grid", B[2]);
+    if (B[3]) st.setProperty("--boot-scheme", "dark");
   </script>
-  <script src="/assets/vendor/echarts@5.5.1/dist/echarts.min.js" defer></script>
-  <script src="/assets/vendor/echarts@5.5.1/i18n/langFR.js" defer></script>
-  <script src="/assets/vendor/echarts@5.5.1/i18n/langDE.js" defer></script>
-  <script src="/assets/vendor/echarts@5.5.1/i18n/langES.js" defer></script>
+  <!-- ECharts is loaded on demand (charts.js loadECharts), not here: its megabyte was compiled before the app started -->
   <script type="module" src="assets/js/app.js"></script>
 </head>
 <body>

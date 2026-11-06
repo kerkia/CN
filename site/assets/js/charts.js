@@ -4,6 +4,7 @@
 
 import { esc, fmt, fmtDate, pctN } from "./util.js";
 import { lang, t } from "./i18n.js";
+import { ECHARTS } from "./vendor.js";
 
 const registry = new Set();
 
@@ -32,11 +33,34 @@ export function disposeAll() {
   registry.clear();
 }
 
+/**
+ * ECharts (1 MB), loaded on demand (owner, 2026-11-06: a phone showed nothing at launch while index.html had it load and
+ * compile before the app started): the library and the reader's language's locale (English is ECharts' own), in that order;
+ * once. The router waits for it before a page that may draw charts (app.js NO_CHARTS lists the landing pages that never do),
+ * and starts it once the first page shows.
+ */
+let echartsP = null;
+export function loadECharts() {
+  if (window.echarts) return Promise.resolve();
+  if (!echartsP) {
+    const loc = { fr: "FR", de: "DE", es: "ES" }[lang()];
+    const srcs = [`${ECHARTS}/dist/echarts.min.js`, ...(loc ? [`${ECHARTS}/i18n/lang${loc}.js`] : [])];
+    echartsP = new Promise((res, rej) => srcs.forEach((src, i) => {
+      const s = document.createElement("script");
+      s.src = src; s.async = false;                         // fetched together, run in order
+      s.onerror = () => { echartsP = null; rej(new Error(`${src}: not loaded`)); };
+      if (i === srcs.length - 1) s.onload = () => res();
+      document.head.append(s);
+    }));
+  }
+  return echartsP;
+}
+
 function init(el) {
   const existing = window.echarts.getInstanceByDom(el);
   if (existing) existing.dispose();
-  // month names on time axes, the toolbox: the interface's language (the French, German and Spanish locales loaded by
-  // index.html; English is ECharts' own)
+  // month names on time axes, the toolbox: the interface's language (its locale loaded with the library, loadECharts;
+  // English is ECharts' own)
   const c = window.echarts.init(el, null, { renderer: "canvas", locale: { fr: "FR", de: "DE", es: "ES" }[lang()] || "EN" });
   registry.add(c);
   const ro = new ResizeObserver(() => c.resize());

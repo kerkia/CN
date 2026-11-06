@@ -33,10 +33,15 @@ function chosen() {
 }
 
 const UI = chosen();
-const FR = (await import("./i18n/fr.js")).default;
+// the catalogues fetched together (owner, 2026-11-06: one after the other, a German or Spanish reader's launch waited for three
+// files of ~350 KB in turn)
+const [FR, OWN, ENX] = await Promise.all([
+  import("./i18n/fr.js").then((m) => m.default),
+  LANGS.includes(UI) && UI !== "fr" ? import(`./i18n/${UI}.js`).then((m) => m.default) : null,
+  LANGS.includes(UI) && UI !== "fr" && UI !== "en" ? import("./i18n/en.js").then((m) => m.default) : null,
+]);
 // the language's own catalogue, and English beneath German and Spanish
-const OWN = LANGS.includes(UI) && UI !== "fr" ? (await import(`./i18n/${UI}.js`)).default : null;
-const EN = UI === "en" ? OWN : OWN ? (await import("./i18n/en.js")).default : null;
+const EN = UI === "en" ? OWN : OWN ? ENX : null;
 const LOC = UI === "en" ? null : OWN;
 
 /** The language the texts are in: "fr", "en", "de" or "es" (the pseudo-language formats as French). */

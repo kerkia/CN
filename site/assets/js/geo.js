@@ -4,6 +4,8 @@
 // département belongs to one region; ligues are shown as today's regions, the
 // pre-2016 ligues folding into the one that succeeded them.
 
+import { loadECharts } from "./charts.js";
+
 // today's ligue of each département (the 2016 regions, plus the overseas ligues)
 const REGION_DEPTS = {
   AR: "01 03 07 15 26 38 42 43 63 69 73 74",
@@ -52,8 +54,9 @@ export function loadMap(kind) {
   if (!loaded.has(kind)) {
     loaded.set(kind, fetch(`assets/geo/${kind}.json`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((gj) => {
+      .then(async (gj) => {
         if (!gj) return null;
+        await loadECharts();                              // (loaded on demand: charts.js)
         window.echarts.registerMap(`fr-${kind}`, gj);
         return `fr-${kind}`;
       })

@@ -2926,11 +2926,21 @@ Every multiple-choice game was played through to its score page at phone size, w
   files the Tracer reads) live in `site/assets/vendor/<name>@<version>/` with their licences, built from npm by `tools/vendor.py`
   (`build`; nothing of a package's install scripts runs); files over Cloudflare Pages' 25 MiB are split in two parts that
   `vendor.joined` puts back together (DuckDB's engine, 34 MB). The code takes every path from `site/assets/js/vendor.js`
-  (ECharts from `index.html`). **Check for updates regularly** — at least monthly, and whenever a library's security advisory
+  (ECharts' too since 2026-11-06, see « The launch »). **Check for updates regularly** — at least monthly, and whenever a library's security advisory
   comes out: `python tools/vendor.py check` lists newer releases; to update one, change its version in `tools/vendor.py`,
-  `build`, change it in `vendor.js` (and `index.html` for ECharts), test the pages `vendor.js` names for it, commit. Major
+  `build`, change it in `vendor.js`, test the pages `vendor.js` names for it, commit. Major
   versions need reading their changelog first (pdf.js and DuckDB change their APIs). Never add a `<script>` or `import()` from
   another host: vendor it.
+- **The launch** (owner, 2026-11-06: a phone showed nothing for a while before « Chargement… »): `index.html` paints its loading
+  screen as soon as it arrives — its few rules inline (`#boot-css`), in the theme's colours (`--boot-bg`, `--boot-ink`,
+  `--boot-grid`, set by the theme script) —, `app.css` loading beside it without holding the first paint (`media="print"` switched
+  on load, a `preload` for its priority); `app.styled()` waits for it before anything is drawn, then drops the inline rules.
+  **ECharts is no longer in `index.html`** (its megabyte was compiled before the app started): `charts.loadECharts()` loads it and
+  the reader's locale once; the router waits for it beside a page's module (`app.route_`), except for the first page of a visit
+  when it is one of `NO_CHARTS` (the landing pages, checked to draw no chart: the modules page, the home page, the Agenda,
+  « Analyse », « Analyse solo »… — add a page there only after checking it), and starts it once that page shows; `geo.js` waits for
+  it before registering a map. The catalogues load together (`i18n.js`: French, the reader's, English beneath German and Spanish —
+  they came one after the other).
 - **The move to ozimut.com** (owner, 2026-10-19; plan: private artifact https://claude.ai/artifact/HQuwgQwKg9nexvGioSK77M).
   The name « Ozimut » is written with a capital O, the rest lower case, and **its O in the control-flag orange** wherever it
   is drawn (`.brand-o`, the e-mails' header, the reel's `.rv-logo-o`); tagline « La course d'orientation, en cartes et en

@@ -1,7 +1,8 @@
 // The third-party code and fonts the site loads, all served by the site itself from /assets/vendor/ (owner, 2026-10-18: no
 // request to a public CDN — Safari reported cdn.jsdelivr.net as a tracker). Built by tools/vendor.py from the versions pinned
-// there; `python tools/vendor.py check` says which have newer releases. On an update, change the version here too (and in
-// index.html for ECharts), then check the pages that use it:
+// there; `python tools/vendor.py check` says which have newer releases. On an update, change the version here too, then check
+// the pages that use it:
+//   ECHARTS    — every chart (charts.js loadECharts: loaded once the first page shows, a page with charts waits for it)
 //   PDFJS      — maps given as PDF (Analyse solo / multi, Tracer), start lists in PDF (Horaires)
 //   PDFLIB, FONTKIT, FFLATE — the Tracer's PDFs and fonts, the .ocnt file (zip)
 //   PROJ4      — the Tracer's georeferencing from OCAD / Mapper files
@@ -11,6 +12,7 @@
 //   THREE      — « Analyse solo »'s 3D view (trace/view3d.js), loaded when the view opens
 //   QRCODE     — « Depuis mon téléphone »'s QR code (phonelink.js)
 const V = "/assets/vendor";
+export const ECHARTS = `${V}/echarts@5.5.1`;
 export const PDFJS = `${V}/pdfjs-dist@4.10.38/build/pdf.min.mjs`;
 export const PDFJS_WORKER = `${V}/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs`;
 export const PDFLIB = `${V}/pdf-lib@1.17.1/dist/pdf-lib.min.js`;

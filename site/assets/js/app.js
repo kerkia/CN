@@ -5,7 +5,7 @@ import { html, raw, $, $$, esc, fmt, fmtDate, normalise, displayName, nameParts,
 import { t, lang, setLang, OPEN, LANGS, LANG_NAMES, setDefaults } from "./i18n.js";
 import * as store from "./store.js";
 import * as data from "./data.js";
-import { disposeAll } from "./charts.js";
+import { disposeAll, loadECharts } from "./charts.js";
 import { methodSwitch, cnWords } from "./ui.js";
 import * as auth from "./auth.js";
 import * as bridge from "./bridge.js";
@@ -959,9 +959,14 @@ async function route_() {
   inPlace = false;
   if (!quiet) main.innerHTML = html`<div class="boot"><div class="spinner"></div><p>${t("misc.loading")}</p></div>`;
   try {
-    const mod = await PAGES[r.route]();
+    // ECharts, loaded on demand (charts.js): a page that may draw charts waits for it, its download beside the page's own;
+    // the landing pages that never do show without it the first time, and it loads once they are drawn
+    const first = !routed;
+    routed = true;
+    const [mod] = await Promise.all([PAGES[r.route](), first && NO_CHARTS.has(r.route) ? null : loadECharts().catch(() => {})]);
     if (my !== token) return;
     current = (await mod.render(main, r)) || null;
+    if (first) setTimeout(() => loadECharts().catch(() => {}), 0);
     if (SEARCH_IN_TABS.has(r.route)) placeSearch(main);
     if (isLean(r)) leanHead(main);
     placeMethod(main, r);
@@ -976,6 +981,11 @@ async function route_() {
   if (!quiet && !location.hash.includes("?")) window.scrollTo(0, 0);
 }
 
+// the pages a visit may open on that draw no chart (none of their modules calls charts.js's builders, checked 2026-11-06):
+// the first of them shown needs no ECharts (app.route_); keep it to pages checked so
+const NO_CHARTS = new Set(["hub", "orgaOff", "overview", "modtiles", "agenda", "mapAnalysis", "account", "phoneSend", "booking",
+  "analysis", "analysisPerso", "analysisOrga", "games", "vma"]);
+let routed = false;
 /** Redraws the page for another method without moving anything (owner, 2026-10-12): no loading screen, the page keeps
  *  its height while it redraws, and the window's and the inner panes' scroll positions (the races' list, the tables)
  *  are put back, again once the parts drawn later have settled. */
@@ -1082,15 +1092,23 @@ setDefaults(() => cnWords(store.pageMethod()));
 // a selection made in another tab shows up here too
 window.addEventListener("storage", (e) => { if (e.key === "cnx.state") store.reload(); });
 
+/** The stylesheet (index.html loads it without holding the first paint): drawn pages wait for it; once there, the loading
+ *  screen's own rules go (their ground colour would stay under a theme chosen later). */
+function styled() {
+  const done = () => { document.getElementById("boot-css")?.remove(); for (const p of ["--boot-bg", "--boot-ink", "--boot-grid", "--boot-scheme"]) document.documentElement.style.removeProperty(p); };
+  const l = document.getElementById("app-css");
+  if (!l || l.media === "all") { done(); return Promise.resolve(); }
+  return new Promise((res) => { const go = () => { l.media = "all"; done(); res(); }; l.addEventListener("load", go, { once: true }); l.addEventListener("error", go, { once: true }); });
+}
+
 async function start() {
+  await styled();
   // the move to ozimut.com (bridge.js): the old address sends each visitor on, the new one takes in those arriving
   if ((await bridge.arrive()) || (await bridge.leave())) return;
   watchTables();                                   // tables that scroll fit in the window
   // the page's description in the reader's language (index.html carries the French one, for robots)
   document.querySelector('meta[name="description"]')?.setAttribute("content", t("home.metaDesc"));
   pwa.boot();                                     // the service worker, the manifest's language, files opened with the app
-  // ECharts is loaded with `defer`; module scripts run after it, but guard anyway.
-  if (!window.echarts) await new Promise((res) => window.addEventListener("load", res, { once: true }));
   // a visitor without an account, or an account that has not joined a country, reads its public copy (data.js)
   data.setPublicRule((cc) => (!!auth.session() || auth.guest()) && data.site()?.countries?.[cc]?.access === "members" && !auth.sees(cc));
   // a visit without an account reads the public data with its guest pass (guestpass.js); none to be had: the home page
