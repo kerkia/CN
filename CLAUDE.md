@@ -953,6 +953,30 @@ Every multiple-choice game was played through to its score page at phone size, w
   kept skipped by SHA-256, and a report (added, already there, failed with why, tracks not placed). Tested on paths shaped like
   the owner's example folder (`P:\Alec\CO\O Maps`: Country / « NN - Département » or region / [place] / name.png, ~530 PNG and
   145 PDF) and end to end with generated maps, a world file and GPX tracks. Rate limit 2 000 maps an hour an account (400 before).
+  **Storage, quota, the administrators' collection** (owner, 2026-11-06, after the R2 cost question: 476 MB of the free 10 GB used
+  that day; R2 Standard ~$0.015/GB-month beyond, Infrequent Access ~$0.01 + $0.01/GB read and no free tier, so not before ~10 GB):
+  `functions/_lib/mymaps.js` — the originals under their own prefix `mymaps-o/<user>/<map>` (before, `mymaps/<user>/<map>/map`,
+  still read: `getOrig`), so that an R2 lifecycle rule « Transition to Infrequent Access after 30 days » on `mymaps-o/` can be
+  added when the bucket nears 10 GB (not set up); the map's page draws a **viewing copy** (`…/view`, 2 560 px at most, WebP 0.9 /
+  JPEG, `MM.viewCopy`, made at saving, else by the page at the first opening) and fetches the original only once zoomed in beyond
+  it (1.3 device px a view px), to print, export or replay. **Quota**: 1 GB a library (originals + runs; `MYMAPS_QUOTA_MB`, the
+  administrators none), 413 `{ error: "quota" }`, `GET /api/mymaps` `quota { used, limit }`, a figure with its bar, the folder
+  import warned and stopped. **Lossless WebP** for every map stored (`mapfile.imageBlob`, so Mes cartes, Solo, the map analyses):
+  a PNG, a PDF's page, GIF, BMP, TIFF, OCAD renders kept as WebP when the browser's `toBlob("image/webp", 1)` decodes back
+  pixel for pixel identical and is smaller (`losslessWebp`; −36 % on a test PNG; Safari makes none: PNG), JPEG and WebP as they
+  came. **The administrators' collection** (`functions/_lib/maplib.js`, `api/admin/maplib`): every map of Solo
+  (`solo/<uid>/m/<sha>`), the map analyses (`analyses/<id>/map-<n>`) and the Tracer (`tracer/<id>/map`, never an encrypted
+  event's, never its courses) copied to `admin-maps/m/<etag>` (the R2 etag, MD5: one copy whatever the sources), described in
+  custom metadata (src, title, day, account, club, position and extent from the georeference — the Tracer's from its controls'
+  centroid —, size), thumbnails copied or made by the administrator's browser (`admin-maps/t/`, views `admin-maps/v/`); one place,
+  one map (centres within a quarter of the smaller extent, extents within 1.5×, 200 m without extents): the latest kept, the most
+  pixels among those within 60 days of it; the others deleted and recorded (`admin-maps/x/`). Synced a few maps a step from
+  `/api/track` (every 30 min an isolate) and by the collection's page until done; the account's deletion removes its Solo maps.
+  Shown in « Mes cartes » `?vue=toutes` (administrators: « Ma bibliothèque | Toutes les cartes »), with every account's library
+  (read in place, not copied), each card tagged by origin and account, filters origin / account / club, folders by account or club;
+  read only, « Fichier d'origine » to download. Admin page tab « Mes cartes » (`?onglet=cartes`): accounts, maps, runs, size against
+  the quota, the collection. The privacy page says the administrators see and keep the maps (6 November 2026). Local test of the
+  quota: launch config `pages-dev-user-quota` (8783, a regular account, 12 MB).
 - **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs (Méthodes first and
   opened by default, then Calculateur; owner, 2026-10-30) —
   Calculateur (demi-Cooper 6 min / Cooper 12 min: laps of a 400 m track in a chosen lane — lane 1 400 m measured 0.30 m from

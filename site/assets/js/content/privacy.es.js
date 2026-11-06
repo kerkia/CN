@@ -109,6 +109,7 @@ export const body = (SITE, { world = false } = {}) => `
         eliminar una carrera o un mapa en cualquier momento; todo se borra con tu cuenta. Una solicitud de importación desde DOMA es un
         mensaje enviado al equipo de Ozimut, como los de «Contacto».</p>
       <p>Si marcas «Guardar el análisis» junto a «Ver la carrera» en «Análisis individual» (marcado por defecto), el mapa y tu carrera — solo posiciones y horas, nada más del reloj — se guardan en tu cuenta, aparte de «Mis mapas»: solo tú los ves, en «Análisis», donde vuelves a reproducir o borras el análisis. Un mapa se guarda allí una sola vez y se va con el último análisis que lo muestra.</p>
+      <p>Una biblioteca de «Mis mapas» guarda 1 GB como máximo (los mapas originales y las carreras). Los administradores del sitio ven los mapas enviados a Ozimut — en «Mis mapas», «Análisis individual», los análisis de los organizadores y el trazado (solo el mapa, nunca los recorridos ni un evento cifrado) — con el nombre de la cuenta que los envió y su club, y guardan una copia (una por lugar), para seguir el uso del sitio y hacerlo funcionar; tus carreras y comentarios no están ahí. Los mapas de «Análisis individual» de una cuenta borrada se retiran de ella.</p>
       <h2 style="font-size:16px">Reserva de horas de salida</h2>
       <p>Cuando los organizadores de una competición abren la reserva de sus horas de salida, una cuenta reserva una salida para sí
         misma y para los corredores que añade a «Mis corredores» (su familia, amigos, federados o no): su nombre y apellidos, el club
@@ -251,5 +252,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Créditos:</b> los símbolos y los textos de las descripciones de control (Coach › Descripciones de control, el trazado de recorridos)
         proceden de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         bajo <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licencia BSD</a>.</p>
-      <p class="muted">Última actualización: 5 de noviembre de 2026.</p>
+      <p class="muted">Última actualización: 6 de noviembre de 2026.</p>
 `;

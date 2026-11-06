@@ -44,7 +44,7 @@ export async function render(main, { query = {} } = {}) {
     return { title: t("ad.title") };
   }
   let { users, duplicates, queued, me } = await r.json();
-  let tab = { inscrits: "members", utilisation: "usage", consommation: "conso", depots: "uploads", sites: "sites", anonymises: "anon", demo: "demo" }[query.onglet] || "accounts";
+  let tab = { inscrits: "members", utilisation: "usage", consommation: "conso", depots: "uploads", sites: "sites", anonymises: "anon", demo: "demo", cartes: "mymaps" }[query.onglet] || "accounts";
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede" id="page-lede"></p></div>
@@ -112,6 +112,11 @@ export async function render(main, { query = {} } = {}) {
         </div></section>
       <section class="card"><div class="card-head"><h2>${t("ad.dm.list")}</h2></div><div class="table-wrap" id="dm-list"></div></section>
     </div>
+    <div data-panel="mymaps" hidden>
+      <p class="muted" style="margin:0 2px 12px">${t("ad.mm.lede")} <a href="#/mes-cartes?vue=toutes">${t("ad.mm.open")}</a></p>
+      <div class="tiles" id="mm-tiles"></div>
+      <section class="card"><div class="table-wrap" id="mm-users"><div class="empty">${t("misc.loading")}</div></div></section>
+    </div>
     <div data-panel="uploads" hidden>
       <p class="muted" style="margin:0 2px 12px">${t("ad.up.lede")}</p>
       <section class="card"><div class="table-wrap" id="up-list"></div></section>
@@ -145,11 +150,11 @@ export async function render(main, { query = {} } = {}) {
 
   function showTab() {
     $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["members", t("ad.tab.members")], ["usage", t("ad.tab.usage")], ["conso", t("ad.tab.conso")], ["uploads", t("ad.tab.uploads")],
-      ["sites", t("ad.tab.sites")], ["anon", t("ad.tab.anon")], ["demo", t("ad.tab.demo")]], tab);
+      ["sites", t("ad.tab.sites")], ["anon", t("ad.tab.anon")], ["demo", t("ad.tab.demo")], ["mymaps", t("ad.tab.mymaps")]], tab);
     $$('[data-seg="adtab"]').forEach((b) => b.addEventListener("click", () => { tab = b.dataset.value; showTab(); }));
     $$("[data-panel]", main).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
     setLede(t(`ad.lede.${tab}`));       // the head says what the tab shows (one line: the tabs' own paragraphs say more)
-    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, conso: { onglet: "consommation" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" }, demo: { onglet: "demo" } }[tab] || {});   // the address keeps the usage filters
+    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, conso: { onglet: "consommation" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" }, demo: { onglet: "demo" }, mymaps: { onglet: "cartes" } }[tab] || {});   // the address keeps the usage filters
     if (tab === "usage" && !usageStarted) { usageStarted = true; startUsage(); }
     if (tab === "members") drawMembers();
     if (tab === "uploads") drawUploads();
@@ -157,6 +162,7 @@ export async function render(main, { query = {} } = {}) {
     if (tab === "anon") drawAnon();
     if (tab === "demo") drawDemo();
     if (tab === "conso") drawConso();
+    if (tab === "mymaps") drawMymaps();
   }
 
   // « Consommation » (owner, 2026-10-20): the site's use of its free plans, each measure against its limit, the last 30 days
@@ -398,6 +404,26 @@ export async function render(main, { query = {} } = {}) {
     }));
   }
   let usageStarted = false;
+
+  // « Mes cartes » (owner, 2026-11-06): what each account's library holds against its quota, and the administrators' collection
+  // of every map sent to Ozimut (api/admin/maplib, _lib/maplib.js)
+  async function drawMymaps() {
+    const box = $("#mm-users");
+    const r = await fetch("api/admin/maplib?usage=1", { credentials: "same-origin", cache: "no-store" });
+    if (!r.ok) { box.innerHTML = html`<div class="empty">${t(r.status === 503 ? "ad.mm.notReady" : "ad.mm.error")}</div>`; return; }
+    const d = await r.json();
+    const mb = (b) => (b >= 1073741824 ? t("ad.mm.gb", { n: fmt(b / 1073741824, 1) }) : t("ad.mm.mb", { n: fmt(b / 1048576, b < 10 * 1048576 ? 1 : 0) }));
+    const sum = (k) => d.users.reduce((s, u) => s + u[k], 0);
+    $("#mm-tiles").innerHTML = [tile(t("ad.mm.accounts"), fmt(d.users.length)), tile(t("ad.mm.maps"), fmt(sum("maps"))), tile(t("ad.mm.runs"), fmt(sum("runs"))),
+      tile(t("ad.mm.size"), mb(sum("bytes")), t("ad.mm.limit", { n: mb(d.limit) })),
+      tile(t("ad.mm.collection"), fmt(d.collection.count), t("ad.mm.collSub", { size: mb(d.collection.bytes), n: fmt(d.collection.gone) }))].join("");
+    box.innerHTML = d.users.length ? html`<table class="data compact"><thead><tr><th>${t("ad.mm.who")}</th><th class="num">${t("ad.mm.maps")}</th>
+      <th class="num">${t("ad.mm.runs")}</th><th class="num">${t("ad.mm.size")}</th><th class="num">${t("ad.mm.quota")}</th><th>${t("ad.mm.updated")}</th></tr></thead>
+      <tbody>${d.users.map((u) => html`<tr><td style="white-space:normal">${u.name || `#${u.uid}`}<div class="muted" style="font-size:12px">${u.email}</div></td>
+        <td class="num">${fmt(u.maps)}</td><td class="num">${fmt(u.runs)}</td><td class="num">${mb(u.bytes)}</td>
+        <td class="num">${pctN((100 * u.bytes) / d.limit)}</td><td class="num">${u.updated ? fmtDate(u.updated.slice(0, 10), "short") : "—"}</td></tr>`)}</tbody></table>`
+      : html`<div class="empty">${t("ad.mm.none")}</div>`;
+  }
 
   // « Anonymisés »: the licensees whose name and licence the published site replaces by a pseudonym (on request: not to be
   // shown, a minor's representative, erasure of results data), from api/admin/anonymized (R2, privacy/anonymized.json);

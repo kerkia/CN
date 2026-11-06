@@ -1,12 +1,15 @@
 // /api/mymaps — « Mes cartes » (Coach; owner, 2026-11-01): each account's archive of its maps and the routes it ran on them.
-// D1 (migration 0019): mymaps, mymap_runs, mymap_links. R2 (cn-state, binding BUCKET): mymaps/<user>/<map>/map (the image
-// as it came), …/thumb (a small WebP or JPEG the browser made), …/runs/<run>.json (a run as drawn on the map: positions in
-// the map's pixels and times, the personal channels only when the runner kept them). Everything is read and written in the
+// D1 (migration 0019): mymaps, mymap_runs, mymap_links. R2 (cn-state, binding BUCKET; the keys in _lib/mymaps.js):
+// mymaps-o/<user>/<map> (the image as it came; mymaps/<user>/<map>/map before 2026-11-06), mymaps/<user>/<map>/view (its
+// viewing copy, 2 560 px at most) and …/thumb (both small WebP or JPEG the browser made), …/runs/<run>.json (a run as drawn
+// on the map: positions in the map's pixels and times, the personal channels only when the runner kept them). A library
+// holds 1 GB at most (originals and runs; env MYMAPS_QUOTA_MB; the administrators have none): 413 { error: "quota" }. Everything is read and written in the
 // browser; the server keeps, lists and serves. Private: only the account, unless it made a link (the whole archive, or one
 // map), which anyone holding it reads — a visitor without an account too (with the guest pass: _middleware.js GUEST); the
 // personal channels are never served through a link.
 //
-//   GET    /api/mymaps                          { maps: [map + runs], links: { archive, maps: { id: link }, sets: [link + maps] }, name }
+//   GET    /api/mymaps                          { maps: [map + runs], links: { archive, maps: { id: link }, sets: [link + maps] }, name,
+//                                               quota: { used, limit (null: none) } }
 //                                               (a link: { token, traces })
 //   POST   /api/mymaps/maps                     the image as the body, X-Meta (URI-encoded JSON: sha, title, day, place,
 //                                               notes, w, h, geo, country, region, dept, pos) -> { map, existed } (the same
@@ -16,8 +19,8 @@
 //                                               (country, region, dept: migration 0024, left out before it; pos: [lat, lon]
 //                                               of a map without a georeference — a GPS track's first point)
 //   DELETE /api/mymaps/maps/<id>                the map, its runs, its link
-//   PUT    /api/mymaps/maps/<id>/thumb          the thumbnail as the body
-//   GET    /api/mymaps/maps/<id>/map | /thumb
+//   PUT    /api/mymaps/maps/<id>/thumb | /view  the thumbnail, the viewing copy, as the body
+//   GET    /api/mymaps/maps/<id>/map | /thumb | /view
 //   POST   /api/mymaps/maps/<id>/runs           { title, day, start, dur, dist, source, note, rec } -> { run }
 //   GET    /api/mymaps/runs/<id>                the run's record
 //   PUT    /api/mymaps/runs/<id>                { title?, note? } -> { run };  DELETE /api/mymaps/runs/<id>
@@ -28,13 +31,16 @@
 //   GET    /api/mymaps/s/<token>                { name, archive, traces, maps } of a link (the archive's: every map; a map's: that one; a
 //                                               selection's: those still kept;
 //                                               a link of the maps alone lists no runs and serves none)
-//   GET    /api/mymaps/s/<token>/maps/<id>/map | /thumb,  GET /api/mymaps/s/<token>/runs/<id>
+//   GET    /api/mymaps/s/<token>/maps/<id>/map | /thumb | /view,  GET /api/mymaps/s/<token>/runs/<id>
 
-import { allow, currentUser, json, nowIso, readBody } from "../../_lib/api.js";
+import { allow, currentUser, isAdmin, json, nowIso, readBody } from "../../_lib/api.js";
 import { randomBytes } from "../../_lib/crypto.js";
+import { key, origKey, getOrig, quota, used } from "../../_lib/mymaps.js";
 
 const MAX_MAP = 80 * 1024 * 1024;                     // as the shared analyses' maps (Cloudflare takes 100 MB a request)
 const MAX_THUMB = 600 * 1024;
+const MAX_VIEW = 6 * 1024 * 1024;
+const PARTS = ["map", "thumb", "view"];
 const MAX_RUN = 8 * 1024 * 1024;
 const TYPES = ["image/jpeg", "image/png", "image/webp"];
 const ALPHA = "abcdefghijkmnpqrstuvwxyz23456789";
@@ -62,7 +68,6 @@ function centre(geo, w, h) {
   const det = geo.a * geo.e - geo.b * geo.d, x = w / 2 - geo.c, y = h / 2 - geo.f;
   return [(geo.a * y - geo.d * x) / det, (geo.e * x - geo.b * y) / det];       // [lat, lon]
 }
-const key = (uid, map, rest) => `mymaps/${uid}/${map}/${rest}`;
 const cleanCc = (s) => (/^[A-Za-z]{2}$/.test(String(s || "")) ? String(s).toUpperCase() : "");
 /** [lat, lon] of a map without a georeference, when the browser gives one (a track's first point). */
 const cleanPos = (p) => (Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]) && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180 ? [Number(p[0]), Number(p[1])] : null);
@@ -94,9 +99,11 @@ async function mapsOf(env, uid, only = null) {
 const listed = (maps, runs, shared = false) => maps.map((m) => ({ ...mapOut(m), runs: runs.filter((r) => r.map_id === m.id).map((r) => runOut(r, shared)) }));
 const nameOf = (u) => `${String(u.first_name || "").trim()} ${String(u.last_name || "").trim()}`.trim() || u.display_name || "";
 
+/** A map's part as the response: its original (map), viewing copy (view) or thumbnail. */
+const servePart = (env, uid, id, part) => (part === "map" ? serve(env, null, { obj: getOrig(env, uid, id) }) : serve(env, key(uid, id, part)));
 /** An R2 object as the response (an image cached a year: a map never changes under its id). */
-async function serve(env, k, { cache = "private, max-age=31536000, immutable", strip = false } = {}) {
-  const obj = await env.BUCKET.get(k);
+async function serve(env, k, { cache = "private, max-age=31536000, immutable", strip = false, obj: given = null } = {}) {
+  const obj = given ? await given : await env.BUCKET.get(k);
   if (!obj) return json({ error: "not found" }, 404);
   if (strip) {                                         // a run through a link: its personal channels left out
     const rec = await obj.json().catch(() => null);
@@ -143,10 +150,10 @@ export async function onRequest(ctx) {
         return json({ name: u ? nameOf(u) : "", archive: !link.map_id || link.map_id.startsWith(SET), traces, maps: listed(maps, traces ? runs : [], true) },
           200, { "Cache-Control": "private, max-age=60" });
       }
-      if (parts[2] === "maps" && ID.test(parts[3] || "") && ["map", "thumb"].includes(parts[4]) && parts.length === 5) {
+      if (parts[2] === "maps" && ID.test(parts[3] || "") && PARTS.includes(parts[4]) && parts.length === 5) {
         if (!inScope(link.map_id, parts[3])) return json({ error: "not found" }, 404);
         const m = await env.DB.prepare("SELECT id FROM mymaps WHERE id = ? AND user_id = ?").bind(parts[3], uid).first();
-        return m ? serve(env, key(uid, m.id, parts[4])) : json({ error: "not found" }, 404);
+        return m ? servePart(env, uid, m.id, parts[4]) : json({ error: "not found" }, 404);
       }
       if (parts[2] === "runs" && ID.test(parts[3] || "") && parts.length === 4) {
         const r = await env.DB.prepare("SELECT * FROM mymap_runs WHERE id = ? AND user_id = ?").bind(parts[3], uid).first();
@@ -160,6 +167,13 @@ export async function onRequest(ctx) {
     const user = await currentUser(request, env);
     if (!user) return json({ error: "login required" }, 401);
     const uid = user.id;
+    const limit = isAdmin(env, user) ? null : quota(env);
+    /** Would `more` bytes go beyond the account's quota? -> the 413 to answer, or null. */
+    const over = async (more) => {
+      if (limit == null) return null;
+      const u = await used(env, uid);
+      return u + more > limit ? json({ error: "quota", used: u, limit }, 413) : null;
+    };
 
     if (!parts.length) {
       if (method !== "GET") return json({ error: "method" }, 405);
@@ -172,7 +186,7 @@ export async function onRequest(ctx) {
         else if (l.map_id.startsWith(SET)) out.sets.push({ ...v, maps: scopeOf(l.map_id) });
         else out.maps[l.map_id] = v;
       }
-      return json({ maps: listed(maps, runs), links: out, name: nameOf(user) });
+      return json({ maps: listed(maps, runs), links: out, name: nameOf(user), quota: { used: await used(env, uid), limit } });
     }
 
     if (parts[0] === "link" && parts.length === 1 && method === "POST") {
@@ -221,6 +235,8 @@ export async function onRequest(ctx) {
           if (placed && !old.country && cleanCc(meta.country)) { placed = await setPlace(env, old.id, meta); Object.assign(old, { country: cleanCc(meta.country), region: clean(meta.region, 120), dept: clean(meta.dept, 120) }); }
           return json({ map: mapOut(old), existed: true, placed });
         }
+        const full = await over(Number(request.headers.get("Content-Length") || 0));
+        if (full) return full;
         const buf = await bodyBytes(request, MAX_MAP);
         if (!buf) return json({ error: "size" }, 413);
         const d = new Uint8Array(await crypto.subtle.digest("SHA-256", buf));
@@ -229,7 +245,7 @@ export async function onRequest(ctx) {
         if (!(w > 0 && h > 0 && w <= 40000 && h <= 40000)) return json({ error: "size" }, 400);
         const geo = cleanGeo(meta.geo), id = newId(), now = nowIso();
         const [lat, lon] = geo ? centre(geo, w, h) : cleanPos(meta.pos) || [null, null];
-        await env.BUCKET.put(key(uid, id, "map"), buf, { httpMetadata: { contentType: type } });
+        await env.BUCKET.put(origKey(uid, id), buf, { httpMetadata: { contentType: type } });
         await env.DB.prepare(`INSERT INTO mymaps (id, user_id, sha, title, day, place, notes, type, bytes, w, h, geo, lat, lon, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, uid, sha, clean(meta.title, 200), cleanDay(meta.day), clean(meta.place, 200),
           clean(meta.notes, 4000), type, buf.byteLength, w, h, geo ? JSON.stringify(geo) : null, lat, lon, now, now).run();
@@ -254,24 +270,27 @@ export async function onRequest(ctx) {
       }
       if (parts.length === 2 && method === "DELETE") {
         await dropPrefix(env, `mymaps/${uid}/${id}/`);
+        await env.BUCKET.delete(origKey(uid, id));
         await env.DB.batch([env.DB.prepare("DELETE FROM mymap_runs WHERE map_id = ?").bind(id),
           env.DB.prepare("DELETE FROM mymap_links WHERE map_id = ?").bind(id), env.DB.prepare("DELETE FROM mymaps WHERE id = ?").bind(id)]);
         return json({ ok: true });
       }
-      if (parts.length === 3 && parts[2] === "thumb" && method === "PUT") {
+      if (parts.length === 3 && (parts[2] === "thumb" || parts[2] === "view") && method === "PUT") {
         const type = String(request.headers.get("Content-Type") || "").split(";")[0].trim();
         if (!TYPES.includes(type)) return json({ error: "type" }, 415);
-        const buf = await bodyBytes(request, MAX_THUMB);
+        const buf = await bodyBytes(request, parts[2] === "view" ? MAX_VIEW : MAX_THUMB);
         if (!buf) return json({ error: "size" }, 413);
-        await env.BUCKET.put(key(uid, id, "thumb"), buf, { httpMetadata: { contentType: type } });
-        await env.DB.prepare("UPDATE mymaps SET thumb = 1 WHERE id = ?").bind(id).run();
+        await env.BUCKET.put(key(uid, id, parts[2]), buf, { httpMetadata: { contentType: type } });
+        if (parts[2] === "thumb") await env.DB.prepare("UPDATE mymaps SET thumb = 1 WHERE id = ?").bind(id).run();
         return json({ ok: true });
       }
-      if (parts.length === 3 && ["map", "thumb"].includes(parts[2]) && method === "GET") return serve(env, key(uid, id, parts[2]));
+      if (parts.length === 3 && PARTS.includes(parts[2]) && method === "GET") return servePart(env, uid, id, parts[2]);
       if (parts.length === 3 && parts[2] === "runs" && method === "POST") {
         if (!(await allow(env, `mymaps:${uid}`, 2000, 3600))) return json({ error: "rate" }, 429);
         const text = await request.text();
         if (text.length > MAX_RUN) return json({ error: "size" }, 413);
+        const full = await over(text.length);
+        if (full) return full;
         let b;
         try { b = JSON.parse(text); } catch (e) { return json({ error: "fields" }, 400); }
         const rec = b?.rec;

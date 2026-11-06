@@ -33,16 +33,46 @@ const typeOf = (f) => f.type || ({ png: "image/png", jpg: "image/jpeg", jpeg: "i
 
 /**
  * The map as a file to keep, at its full resolution and quality (owner, 2026-10-14: a stored map is never degraded):
- * a PNG, JPEG or WebP image exactly as it came; anything else — a PDF's page as rendered, a GIF, a BMP — as a PNG
- * (lossless) of what was drawn. Returns a Blob with its type.
+ * a JPEG or WebP image exactly as it came; a PNG, and anything else — a PDF's page as rendered, a GIF, a BMP — as a lossless
+ * WebP when the browser makes one whose every pixel is the same and which is smaller (owner, 2026-11-06: « WebP to store all
+ * images, if the impact on quality is non-existent »), else as a PNG (the PNG as it came). Returns a Blob with its type.
  */
 export async function imageBlob(file, image) {
   const type = file ? typeOf(file) : "";
-  if (/^image\/(png|jpeg|webp)$/.test(type)) return file.type === type ? file : new Blob([file], { type });
+  if (/^image\/(jpeg|webp)$/.test(type)) return file.type === type ? file : new Blob([file], { type });
+  const png = type === "image/png" ? (file.type === type ? file : new Blob([file], { type })) : null;
   const c = document.createElement("canvas");
   c.width = image.width; c.height = image.height;
   c.getContext("2d").drawImage(image, 0, 0);
+  const webp = await losslessWebp(c).catch(() => null);
+  if (webp && (!png || webp.size < png.size)) return webp;
+  if (png) return png;
   const b = await new Promise((res) => c.toBlob((x) => res(x), "image/png"));
   if (!b) throw new Error("map");
   return b;
+}
+
+const WEBP_MAX = 64e6;                                 // pixels: beyond, two canvases of it would strain a browser
+/**
+ * A canvas as a lossless WebP, checked: decoded again and compared with the canvas pixel for pixel, in bands of rows — null
+ * when the browser makes no WebP (Safari makes a PNG), makes a lossy one, or any pixel differs.
+ */
+export async function losslessWebp(c) {
+  if (c.width * c.height > WEBP_MAX) return null;
+  const b = await new Promise((res) => c.toBlob((x) => res(x), "image/webp", 1));
+  if (!b || b.type !== "image/webp") return null;
+  const back = await createImageBitmap(b);
+  try {
+    if (back.width !== c.width || back.height !== c.height) return null;
+    const d = document.createElement("canvas");
+    d.width = c.width; d.height = c.height;
+    const g2 = d.getContext("2d", { willReadFrequently: true }), g1 = c.getContext("2d", { willReadFrequently: true });
+    g2.drawImage(back, 0, 0);
+    const band = Math.max(1, Math.floor(4e6 / c.width));
+    for (let y = 0; y < c.height; y += band) {
+      const h = Math.min(band, c.height - y), a = g1.getImageData(0, y, c.width, h).data, z = g2.getImageData(0, y, c.width, h).data;
+      for (let i = 0; i < a.length; i++) if (a[i] !== z[i]) return null;
+    }
+    return b;
+  } finally { back.close?.(); }
 }

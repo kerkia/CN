@@ -1,6 +1,7 @@
 // POST /api/account/delete { password } — erases the account and everything tied to it (GDPR).
 import { allow, clearCookie, json, readBody, withUser } from "../../_lib/api.js";
 import { checkPassword } from "../../_lib/crypto.js";
+import { dropUser as dropFromCollection } from "../../_lib/maplib.js";
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
@@ -84,11 +85,15 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   try {
     if (env.BUCKET) {
       let cursor;
-      do {
-        const r = await env.BUCKET.list({ prefix: `mymaps/${user.id}/`, cursor, limit: 1000 });
-        if (r.objects.length) await env.BUCKET.delete(r.objects.map((o) => o.key));
-        cursor = r.truncated ? r.cursor : undefined;
-      } while (cursor);
+      for (const prefix of [`mymaps/${user.id}/`, `mymaps-o/${user.id}/`]) {        // (the originals apart since 2026-11-06)
+        do {
+          const r = await env.BUCKET.list({ prefix, cursor, limit: 1000 });
+          if (r.objects.length) await env.BUCKET.delete(r.objects.map((o) => o.key));
+          cursor = r.truncated ? r.cursor : undefined;
+        } while (cursor);
+      }
+      // its « Analyse solo » maps copied into the administrators' collection (_lib/maplib.js)
+      await dropFromCollection(env, user.id).catch(() => null);
     }
     await env.DB.batch([env.DB.prepare("DELETE FROM mymap_runs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("DELETE FROM mymap_links WHERE user_id = ?").bind(user.id), env.DB.prepare("DELETE FROM mymaps WHERE user_id = ?").bind(user.id)]);

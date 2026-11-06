@@ -94,7 +94,7 @@ async function readVectorMap(file) {
   const { imageBlob } = await import("./mapfile.js");
   const image = r.image, blob = await imageBlob(null, image), ll = V.latLonOf(v);
   const geo = ll ? affineFit([[0, 0], [image.width, 0], [image.width, image.height], [0, image.height]].map(([x, y]) => { const [lat, lon] = ll(x / r.k, v.h - y / r.k); return [lon, lat, x, y]; })) : null;
-  return { blob, name: `${stem(file.name)}.png`, image, title: stem(file.name), day: null, place: "", notes: "", geo, runs: [], from: "vector" };
+  return { blob, name: `${stem(file.name)}.${blob.type === "image/webp" ? "webp" : "png"}`, image, title: stem(file.name), day: null, place: "", notes: "", geo, runs: [], from: "vector" };
 }
 async function readTiff(file) {
   const { decodeTiff } = await import("../tracer/tiff.js");
@@ -107,7 +107,7 @@ async function readTiff(file) {
     for (const [px, py] of [[0, 0], [r.width, 0], [r.width, r.height], [0, r.height]]) { const [lat, lon] = inv(a * px + b * py + c, d * px + e * py + f); pairs.push([lon, lat, px, py]); }
     if (pairs.every((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]))) geo = affineFit(pairs);
   }
-  return { blob, name: `${stem(file.name)}.png`, image: r.canvas, title: stem(file.name), day: null, place: "", notes: "", geo, runs: [], from: geo ? "world" : "image" };
+  return { blob, name: `${stem(file.name)}.${blob.type === "image/webp" ? "webp" : "png"}`, image: r.canvas, title: stem(file.name), day: null, place: "", notes: "", geo, runs: [], from: geo ? "world" : "image" };
 }
 
 // ---- a GPS track on a map -------------------------------------------------------------------------------------------------

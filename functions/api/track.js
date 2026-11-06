@@ -5,6 +5,7 @@ import { json, readBody, withUser } from "../_lib/api.js";
 import { announceSoon, translateSoon } from "../_lib/nutrition.js";
 import { robotsSoon } from "../_lib/robots.js";
 import { bookingSoon } from "../_lib/booking.js";
+import { maplibSoon } from "../_lib/maplib.js";
 
 // the site's pages (app.js routes; the Réseau views apart) — anything else is refused
 const PAGES = new Set(["overview", "ranking", "runner", "compare", "clubs", "club", "clubcompare", "courses", "agenda",
@@ -25,6 +26,7 @@ export const onRequestPost = withUser(async (ctx, user) => {
   translateSoon(ctx);            // and the Santé translations still to make, one at a time
   robotsSoon(ctx);               // the copy of Cloudflare's figures on the AI bots, when due (admin › « Robots »)
   bookingSoon(ctx);              // the start-time bookings closing, their start lists published, the day before's reminders
+  maplibSoon(ctx);               // the maps sent to Ozimut copied into the administrators' collection, a few at a time
   const b = await readBody(request);
   const page = String(b?.page || "");
   if (!PAGES.has(page)) return json({ error: "bad request" }, 400);

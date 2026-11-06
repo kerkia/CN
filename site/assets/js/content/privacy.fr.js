@@ -111,6 +111,7 @@ export const body = (SITE, { world = false } = {}) => `
         moment  tout est effacé avec votre compte. Une demande d'import depuis DOMA est un message envoyé à l'équipe Ozimut, comme
         ceux de « Nous écrire ».</p>
       <p>Si vous cochez « Enregistrer l'analyse » à côté de « Voir la course » dans « Analyse solo » (coché par défaut), la carte et votre course — positions et heures seulement, rien d'autre de la montre — sont gardées dans votre compte, à part de « Mes cartes » : vous seul les voyez, dans « Analyse », où vous rejouez ou supprimez l'analyse. Une carte n'y est gardée qu'une fois et part avec la dernière analyse qui la montre.</p>
+      <p>Une bibliothèque « Mes cartes » garde 1 Go au plus (les cartes d'origine et les courses). Les administrateurs du site voient les cartes envoyées à Ozimut — dans « Mes cartes », « Analyse solo », les analyses des organisateurs et le tracé (la carte seule, jamais les circuits ni un événement chiffré) — avec le nom du compte qui les a envoyées et son club, et en gardent une copie (une seule par lieu), pour suivre l'usage du site et le faire fonctionner ; vos courses et vos commentaires n'y sont pas. Les cartes d'« Analyse solo » d'un compte supprimé en sont retirées.</p>
       <h2 style="font-size:16px">Réservation des horaires de départ</h2>
       <p>Quand les organisateurs d'une compétition ouvrent la réservation de ses horaires de départ, un compte réserve un départ pour
         lui-même et pour les coureurs qu'il ajoute à « Mes coureurs » (sa famille, des amis, licenciés ou non) : leur prénom, leur nom,
@@ -254,5 +255,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Crédits :</b> les symboles et les textes des définitions de postes (Coach › Définitions de postes, le tracé des circuits)
         viennent de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         sous <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licence BSD</a>.</p>
-      <p class="muted">Dernière mise à jour : 5 novembre 2026.</p>
+      <p class="muted">Dernière mise à jour : 6 novembre 2026.</p>
 `;

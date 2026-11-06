@@ -84,6 +84,24 @@ export async function thumbnail(image) {
   const w = await toBlob(c, "image/webp", 0.8).catch(() => null);
   return w && w.type === "image/webp" ? w : toBlob(c, "image/jpeg", 0.82);
 }
+/**
+ * The map's viewing copy (owner, 2026-11-06): 2 560 px on its longer side at most, WebP (else JPEG) — what the map's page draws,
+ * the original read only to zoom in closely, print, export or replay. Null for a map already that small (its original serves).
+ */
+export const VIEW_MAX = 2560;
+export async function viewCopy(image) {
+  const k = VIEW_MAX / Math.max(image.width, image.height);
+  if (!(k < 1)) return null;
+  const c = document.createElement("canvas");
+  c.width = Math.round(image.width * k); c.height = Math.round(image.height * k);
+  const g = c.getContext("2d");
+  g.imageSmoothingQuality = "high";
+  g.drawImage(image, 0, 0, c.width, c.height);
+  const w = await toBlob(c, "image/webp", 0.9).catch(() => null);
+  return w && w.type === "image/webp" ? w : toBlob(c, "image/jpeg", 0.9);
+}
+/** A part of a map kept elsewhere put back (thumb, view): one's own map, or an administrator's (`url`: its address). */
+export const putPart = (url, blob) => fetch(url, { method: "PUT", credentials: "same-origin", headers: { "Content-Type": blob.type }, body: blob });
 export const typeOf = (blob, name = "") => (/^image\/(jpeg|png|webp)$/.test(blob.type) ? blob.type
   : ({ jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" })[(name.split(".").pop() || "").toLowerCase()] || "");
 
@@ -224,6 +242,7 @@ export async function save(entry, { personal = false } = {}) {
     pos: entry.pos || null };
   const { map, existed, placed } = await call("/maps", { method: "POST", body: blob, headers: { "Content-Type": type, "X-Meta": encodeURIComponent(JSON.stringify(meta)) } });
   if (!existed || !map.thumb) await call(`/maps/${map.id}/thumb`, { method: "PUT", body: await thumbnail(entry.image) }).catch(() => {});
+  if (!existed) { const v = await viewCopy(entry.image).catch(() => null); if (v) await call(`/maps/${map.id}/view`, { method: "PUT", body: v }).catch(() => {}); }
   const runs = [];
   for (const r of entry.runs || []) {
     const rec = personal ? r.rec : { ...r.rec, ch: undefined };
@@ -276,7 +295,7 @@ async function readPlain(file, bytes) {
   const { readMap, imageBlob } = await import("./mapfile.js");
   const image = await readMap(isPdf ? new File([bytes], file.name, { type: "application/pdf" }) : file).catch(() => { throw new Error("unknown"); });
   const blob = await imageBlob(file, image);
-  return blank(blob, /^image\/(jpeg|png|webp)$/.test(blob.type) && !isPdf ? file.name : `${stem(file.name)}.png`, image);
+  return blank(blob, blob === file ? file.name : `${stem(file.name)}.${blob.type === "image/webp" ? "webp" : blob.type === "image/jpeg" ? "jpg" : "png"}`, image);
 }
 /** A KMZ's map: its overlay's image, georeferenced by the overlay's corners. */
 async function readKmz(bytes, name) {

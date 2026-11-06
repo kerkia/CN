@@ -112,6 +112,7 @@ export const body = (SITE, { world = false } = {}) => `
         alles wird mit deinem Konto gelöscht. Eine Anfrage zum Import aus DOMA ist eine Nachricht an das Ozimut-Team, wie die über
         „Kontakt“.</p>
       <p>Wenn du in der „Einzelanalyse“ neben „Lauf ansehen“ das Häkchen bei „Analyse speichern“ setzt (standardmäßig gesetzt), werden die Karte und dein Lauf — nur Positionen und Zeiten, sonst nichts von der Uhr — in deinem Konto behalten, getrennt von „Meine Karten“: nur du siehst sie, in der „Analyse“, wo du die Analyse erneut abspielst oder löschst. Eine Karte wird dort nur einmal behalten und geht mit der letzten Analyse, die sie zeigt.</p>
+      <p>Eine Bibliothek in „Meine Karten“ fasst höchstens 1 GB (die Originalkarten und die Läufe). Die Administratoren der Website sehen die an Ozimut gesendeten Karten — in „Meine Karten“, der „Einzelanalyse“, den Analysen der Veranstalter und der Bahnlegung (nur die Karte, nie die Bahnen oder eine verschlüsselte Veranstaltung) — mit dem Namen des sendenden Kontos und seinem Verein, und behalten eine Kopie davon (eine pro Ort), um die Nutzung der Website zu verfolgen und sie zu betreiben; deine Läufe und Kommentare sind nicht dabei. Die Karten der „Einzelanalyse“ eines gelöschten Kontos werden daraus entfernt.</p>
       <h2 style="font-size:16px">Reservierung der Startzeiten</h2>
       <p>Wenn die Veranstalter eines Wettkampfs die Reservierung der Startzeiten öffnen, reserviert ein Konto einen Start für sich
         und für die Läufer, die es unter „Meine Läufer“ hinzufügt (seine Familie, Freunde, mit oder ohne Verein): ihr Vor- und
@@ -256,5 +257,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
         stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
-      <p class="muted">Letzte Aktualisierung: 5. November 2026.</p>
+      <p class="muted">Letzte Aktualisierung: 6. November 2026.</p>
 `;
