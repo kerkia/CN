@@ -5465,4 +5465,6 @@ export default {
   "ad.mm.quota": "De la cuota",
   "ad.mm.updated": "Último cambio",
   "ad.mm.none": "Ninguna cuenta tiene mapas todavía.",
+  "an.keep.priv": "Mapa privado",
+  "an.keep.privTip": "Marcada, nadie más que tú ve este mapa, ni siquiera los administradores del sitio. Sin marcar, los administradores pueden verlo y guardar una copia (nunca tus carreras).",
 };

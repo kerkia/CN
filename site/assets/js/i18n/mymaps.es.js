@@ -1,7 +1,7 @@
 // « Mes cartes »'s catalogue in Spanish (pages/mymaps.js, trace/mymapsave.js); the keys of mymaps.fr.js.
 export default {
   "mm.title": "Mis mapas",
-  "mm.lede": "Tu propia biblioteca privada de mapas de orientación digitales, con tus tracks si quieres: cada mapa clasificado por país, región y provincia, localizado de un vistazo en el mapa del mundo. Privada: nadie más que tú la ve, salvo que la compartas con un enlace.",
+  "mm.lede": "Tu propia biblioteca privada de mapas de orientación digitales, con tus tracks si quieres: cada mapa clasificado por país, región y provincia, localizado de un vistazo en el mapa del mundo. Privada: ningún otro usuario la ve, salvo que la compartas con un enlace.",
   "mm.loading": "Cargando tus mapas…",
   "mm.needAccount": "Mis mapas guarda los mapas y recorridos de cada cuenta. Crea una cuenta o inicia sesión para guardar los tuyos.",
   "mm.err.load": "No se pudieron cargar los mapas.",

@@ -2357,4 +2357,6 @@ export default {
   "trc.mv.tplNotListed": "{name} ist keine Vorlage dieser Karte.",
   "trc.mv.tplUnreadable": "{name} konnte nicht gelesen werden.",
   "trc.mv.tplUndo": "Kartenvorlagen",
+  "trc.priv.label": "Private Karte",
+  "trc.priv.tip": "Angehakt sieht niemand außerhalb des Teams die Karte, auch nicht die Administratoren der Website. Nicht angehakt können die Administratoren die Karte sehen (nie die Bahnen) und eine Kopie behalten.",
 };

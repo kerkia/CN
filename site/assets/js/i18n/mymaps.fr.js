@@ -1,7 +1,7 @@
 // « Mes cartes »'s catalogue in French (pages/mymaps.js, trace/mymapsave.js), loaded by loadArea("mymaps"); mymaps.en.js, .de.js, .es.js in step.
 export default {
   "mm.title": "Mes cartes",
-  "mm.lede": "Votre bibliothèque de cartes de course d'orientation, numérique et rien qu'à vous, avec vos traces si vous le souhaitez : chaque carte classée par pays, région et département, retrouvée sur la carte du monde en un coup d'œil. Privée : personne d'autre que vous ne la voit, sauf si vous la partagez par un lien.",
+  "mm.lede": "Votre bibliothèque de cartes de course d'orientation, numérique et rien qu'à vous, avec vos traces si vous le souhaitez : chaque carte classée par pays, région et département, retrouvée sur la carte du monde en un coup d'œil. Privée : aucun autre utilisateur ne la voit, sauf si vous la partagez par un lien.",
   "mm.loading": "Chargement de vos cartes…",
   "mm.needAccount": "Mes cartes garde les cartes et les itinéraires de chaque compte. Créez un compte ou connectez-vous pour garder les vôtres.",
   "mm.err.load": "Impossible de charger les cartes.",

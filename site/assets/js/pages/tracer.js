@@ -231,9 +231,11 @@ function bindKind(f, races) {
   f.elements.race?.addEventListener("change", () => { const r = races.find((x) => x.key === f.elements.race.value); if (r && /sprint/i.test(r.epr) && f.elements.std) { f.elements.std.value = "Spr2019"; f.elements.scale.value = "4000"; } });
 }
 const kindProblem = (o) => (o.kind === "race" && !o.race ? t("trc.page.needRace") : o.kind === "training" && (o.title || "").trim().length < 3 ? t("trc.page.needTitle") : null);
+/** « Carte privée » (owner, 2026-11-06): the map left out of the administrators' collection; off by default. */
+const privField = (on = false) => `<label class="tr-check" title="${escA(t("trc.priv.tip"))}"><input type="checkbox" name="priv"${on ? " checked" : ""}> ${escA(t("trc.priv.label"))}</label>`;
 async function createEvent(v, races) {
   const race = v.kind === "race" ? races.find((x) => x.key === v.race) : null;
-  const body = race ? { kind: "race", race: race.key, title: race.name, date: race.date } : { kind: "training", title: v.title.trim(), date: v.date || today() };
+  const body = { ...(race ? { kind: "race", race: race.key, title: race.name, date: race.date } : { kind: "training", title: v.title.trim(), date: v.date || today() }), mapPrivate: !!v.priv };
   try { return { id: (await S.api("", { method: "POST", body })).id, title: body.title }; }
   catch (e) { alertBox(e.code === "not organiser" ? t("trc.page.notOrganiser") : t("trc.page.createErr", { err: e.code || e.message })); return null; }
 }
@@ -377,6 +379,7 @@ async function newEvent(main, files = null) {
     ${kindFields(races)}
     ${dropHtml("tr-new-drop", t("trc.page.newDrop"), MAP_ACCEPT, false)}
     <p class="tr-hint" id="tr-new-map">${escA(t("trc.page.newMapHint"))}</p>
+    ${privField()}
     ${auth.session()?.admin ? genHtml() : ""}
     <div class="tr-grid2">${field(escA(t("trc.page.scaleLabel")), '<input name="scale" value="10000" inputmode="numeric">')}
     ${field(escA(t("trc.page.dpiLabel")), `<input name="dpi" inputmode="numeric" placeholder="${escA(t("trc.page.dpiPh"))}">`, escA(t("trc.page.dpiHint")))}
@@ -452,6 +455,7 @@ async function importEvent(main, files = []) {
     <p>${t("trc.page.importBody")}</p>
     ${dropHtml("tr-imp-drop", t("trc.page.importDrop"), `${OCN_ACCEPT},.ppen,.xml,${MAP_ACCEPT}`)}
     <ul class="tr-files" id="tr-imp-files"></ul>
+    ${privField()}
     <h3>${escA(t("trc.page.theEvent"))}</h3>
     ${kindFields(races)}`,
   onOpen: (f) => {

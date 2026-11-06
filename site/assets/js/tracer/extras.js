@@ -43,6 +43,7 @@ export async function changeMap(E, preset = null) {
     <div class="tr-grid2">${field(t("trc.ext.scale"), `<input name="scale" value="${ev.map.scale}" inputmode="numeric">`)}
     ${field(t("trc.ext.dpi"), `<input name="dpi" value="${ev.map.dpi || ""}" inputmode="numeric">`, t("trc.ext.dpiHint"))}</div>
     ${field(t("trc.ext.cmGeo"), '<input type="file" name="geo" multiple accept=".jgw,.pgw,.tfw,.gfw,.wld,.prj,.kml,.kmz,.jpgw,.pngw">')}
+    <label class="tr-check" title="${t("trc.priv.tip").replace(/"/g, "&quot;")}"><input type="checkbox" name="priv"${E.meta?.mapPrivate ? " checked" : ""}> ${t("trc.priv.label")}</label>
     <h3>${t("trc.ext.cmControls")}</h3>
     <label class="tr-check" id="tr-cm-file" ${ev.map.kind === "ocad" ? "" : "hidden"}><input type="radio" name="fit" value="file"> ${t("trc.ext.cmFitFile")}</label>
     <label class="tr-check"><input type="radio" name="fit" value="keep" checked> ${t("trc.ext.cmFitKeep")}</label>
@@ -96,7 +97,7 @@ export async function changeMap(E, preset = null) {
   E.status(t("trc.ext.sendingMap"), "busy");
   try {
     await S.saveMap(E.meta.id, bytes, type, E.key);
-    const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { map: { name, type, size: bytes.length } } });
+    const r = await S.api(`/${E.meta.id}`, { method: "PUT", body: { map: { name, type, size: bytes.length }, mapPrivate: !!v.priv } });
     E.meta = r.event;
   } catch (err) { E.status(t("trc.ext.sendFailed"), "err"); E.toast(t("trc.ext.mapNotSent")); return; }
   if (src.kind === "bitmap") src.dpi = dpi;

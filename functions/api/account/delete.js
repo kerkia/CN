@@ -1,7 +1,7 @@
 // POST /api/account/delete { password } — erases the account and everything tied to it (GDPR).
 import { allow, clearCookie, json, readBody, withUser } from "../../_lib/api.js";
 import { checkPassword } from "../../_lib/crypto.js";
-import { dropUser as dropFromCollection } from "../../_lib/maplib.js";
+import { handOver, soloHandOver, forgetUser, tracerInfo } from "../../_lib/maplib.js";
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
@@ -67,11 +67,19 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
               customMetadata: { ...(o.customMetadata || {}), owner: String(meta.owner), ownerName: meta.ownerName,
                 team: meta.team.filter((x) => x.lic).map((x) => x.lic).join(","), uids: meta.team.filter((x) => x.uid).map((x) => x.uid).join(",") } });
           } else {
+            // its map stays, handed over to the administrators' collection (_lib/maplib.js) — not an encrypted event's, nor one
+            // marked private; the courses, versions, comments and field states go
+            const mapKey = `tracer/${meta.id}/map`, give = !meta.encrypted && !meta.mapPrivate && (await env.BUCKET.head(mapKey));
+            if (give) {
+              const info = await tracerInfo(env, { id: meta.id, title: meta.title, date: meta.date, orgClub: meta.orgClub });
+              delete info.uid; delete info.user;
+              await handOver(env, user.id, [{ keys: [mapKey], meta: info }]);
+            }
             const keys = [o.key];
             let c2;
             do {
               const l = await env.BUCKET.list({ prefix: `tracer/${meta.id}/`, cursor: c2, limit: 1000 });
-              keys.push(...l.objects.map((x) => x.key));
+              keys.push(...l.objects.map((x) => x.key).filter((k) => !(give && k === mapKey)));
               c2 = l.truncated ? l.cursor : undefined;
             } while (c2);
             for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
@@ -81,32 +89,49 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
       } while (cursor);
     } catch (e) { /* the account goes all the same */ }
   }
-  // « Mes cartes » (migration 0019): the account's maps, runs and links go, their files in R2 too
+  // « Mes cartes » (migration 0019): the account's runs and links go; its maps are handed over to the administrators' collection
+  // (owner, 2026-11-06: kept, without the account's name; _lib/maplib.js), their files left in place until copied
   try {
     if (env.BUCKET) {
+      const keep = new Set(), list = [];
+      try {
+        const { results } = await env.DB.prepare("SELECT * FROM mymaps WHERE user_id = ?").bind(user.id).all();
+        for (const m of results) {
+          const ks = [`mymaps-o/${user.id}/${m.id}`, `mymaps/${user.id}/${m.id}/map`], th = `mymaps/${user.id}/${m.id}/thumb`, vw = `mymaps/${user.id}/${m.id}/view`;
+          const pos = Number.isFinite(m.lat) && Number.isFinite(m.lon) && Math.abs(m.lat) + Math.abs(m.lon) > 0.1 ? `${m.lat.toFixed(5)},${m.lon.toFixed(5)}` : "";
+          list.push({ keys: ks, thumb: m.thumb ? th : null, view: vw,
+            meta: Object.fromEntries(Object.entries({ src: "mymaps", title: String(m.title || "").slice(0, 300), day: m.day || "", w: String(m.w), h: String(m.h), pos }).filter(([, v]) => v)) });
+          for (const k of [...ks, th, vw]) keep.add(k);
+        }
+      } catch (e) { /* no tables yet */ }
       let cursor;
       for (const prefix of [`mymaps/${user.id}/`, `mymaps-o/${user.id}/`]) {        // (the originals apart since 2026-11-06)
         do {
           const r = await env.BUCKET.list({ prefix, cursor, limit: 1000 });
-          if (r.objects.length) await env.BUCKET.delete(r.objects.map((o) => o.key));
+          const gone = r.objects.map((o) => o.key).filter((k) => !keep.has(k));
+          if (gone.length) await env.BUCKET.delete(gone);
           cursor = r.truncated ? r.cursor : undefined;
         } while (cursor);
       }
-      // its « Analyse solo » maps copied into the administrators' collection (_lib/maplib.js)
-      await dropFromCollection(env, user.id).catch(() => null);
+      await handOver(env, user.id, list);
     }
     await env.DB.batch([env.DB.prepare("DELETE FROM mymap_runs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("DELETE FROM mymap_links WHERE user_id = ?").bind(user.id), env.DB.prepare("DELETE FROM mymaps WHERE user_id = ?").bind(user.id)]);
   } catch (e) { /* no tables yet (migration 0019) */ }
-  // its kept solo analyses and their maps (api/solo)
+  // its kept solo analyses go (the runs); their maps not marked private are handed over to the administrators' collection
   try {
     if (env.BUCKET) {
+      const { list, keep } = await soloHandOver(env, user.id);
       let cursor;
       do {
         const r = await env.BUCKET.list({ prefix: `solo/${user.id}/`, cursor, limit: 1000 });
-        if (r.objects.length) await env.BUCKET.delete(r.objects.map((o) => o.key));
+        const gone = r.objects.map((o) => o.key).filter((k) => !keep.has(k));
+        if (gone.length) await env.BUCKET.delete(gone);
         cursor = r.truncated ? r.cursor : undefined;
       } while (cursor);
+      await handOver(env, user.id, list);
+      // the collection's maps it sent lose its name and number
+      await forgetUser(env, user.id);
     }
   } catch (e) { /* the account goes all the same */ }
   // « Nutrition »'s articles stay, under the name they were published with (migration 0017)

@@ -1,7 +1,7 @@
 // « Mes cartes »'s catalogue in English (pages/mymaps.js, trace/mymapsave.js); the keys of mymaps.fr.js.
 export default {
   "mm.title": "My maps",
-  "mm.lede": "Your very own private library of digital orienteering maps, with your tracks if you wish: every map sorted by country, region and department, found at a glance on the map of the world. Private: nobody but you sees it, unless you share it with a link.",
+  "mm.lede": "Your very own private library of digital orienteering maps, with your tracks if you wish: every map sorted by country, region and department, found at a glance on the map of the world. Private: no other user sees it, unless you share it with a link.",
   "mm.loading": "Loading your maps…",
   "mm.needAccount": "My maps keeps each account's maps and routes. Create an account or sign in to keep yours.",
   "mm.err.load": "The maps could not be loaded.",

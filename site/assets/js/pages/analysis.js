@@ -1949,15 +1949,21 @@ export async function render(main, { query = {}, route } = {}) {
   function keepable() { const me = auth.session(); return !!me && !me.demo && orgaOpt("mymaps", true) && !track?.drawn?.replay; }
   function keepOn() { try { return localStorage.getItem("ocn.an.keep") !== "0"; } catch (e) { return true; } }
   function setKeepOn(on) { try { localStorage.setItem("ocn.an.keep", on ? "1" : "0"); } catch (e) { /* this visit */ } }
+  // « Carte privée » (owner, 2026-11-06): one's own map left out of the administrators' collection (_lib/maplib.js); off by
+  // default, the last choice kept for this browser; not offered on an organiser's map (theirs, published to their runners)
+  function privOn() { try { return localStorage.getItem("ocn.an.keepPriv") === "1"; } catch (e) { return false; } }
+  function setPrivOn(on) { try { localStorage.setItem("ocn.an.keepPriv", on ? "1" : "0"); } catch (e) { /* this visit */ } }
   /** The box « Enregistrer l'analyse », with what it keeps in its tooltip, and the analysis's name (owner, 2026-11-05: named before
    *  it is saved; renamed later in « Analyse de carte »): the name typed this visit, else the one it was kept under, else the race's. */
   let keepName = null;
   const nameNow = () => keepName ?? keptOf()?.title ?? keepTitle();
   const keepBox = () => (keepable() ? html`<label class="an-keep" title="${t("an.keep.hint")}"><input type="checkbox" class="an-keep-cb" ${raw(keepOn() ? "checked" : "")}> ${t("an.keep")}</label>
-    <label class="an-keep-name"><span>${t("an.keep.name")}</span><input type="text" class="an-keep-title" maxlength="200" value="${nameNow()}" placeholder="${t("an.keep.name.ph")}" ${raw(keepOn() ? "" : "disabled")}></label>` : "");
+    <label class="an-keep-name"><span>${t("an.keep.name")}</span><input type="text" class="an-keep-title" maxlength="200" value="${nameNow()}" placeholder="${t("an.keep.name.ph")}" ${raw(keepOn() ? "" : "disabled")}></label>
+    ${orgaMode ? "" : html`<label class="an-keep an-keep-priv" title="${t("an.keep.privTip")}"><input type="checkbox" class="an-keep-pv" ${raw(privOn() ? "checked" : "")}> ${t("an.keep.priv")}</label>`}` : "");
   const bindKeepBox = (root) => {
     $$(".an-keep-cb", root).forEach((cb) => cb.addEventListener("change", () => { setKeepOn(cb.checked); $$(".an-keep-title", root).forEach((x) => { x.disabled = !cb.checked; }); }));
     $$(".an-keep-title", root).forEach((x) => x.addEventListener("input", () => { keepName = x.value.trim(); }));
+    $$(".an-keep-pv", root).forEach((cb) => cb.addEventListener("change", () => setPrivOn(cb.checked)));
   };
   /** What the playback draws of this analysis: what « Mes cartes » and the analysis kept take (trace/mymapsave.js). */
   function mmState() {
@@ -2007,7 +2013,7 @@ export async function render(main, { query = {}, route } = {}) {
       // the name typed; else, saved again, the name it has (the server keeps it, a rename since included); else the race's
       const title = keepName || (was ? "" : keepTitle());
       keeping = SK.save(mmState(), { id: was?.id || null, title, source: orgaMode ? "orga" : track.source === "drawn" ? "drawn" : "solo",
-        orga: orgaMode ? { id: orga.id, n: orgaN } : null });
+        orga: orgaMode ? { id: orga.id, n: orgaN } : null, priv: !orgaMode && privOn() });
       const res = await keeping;
       try { localStorage.setItem(keptKey(), JSON.stringify({ id: res.id, cal: mark, title: title || was?.title || "" })); } catch (e) { /* this visit */ }
       keepName = null;

@@ -971,11 +971,20 @@ Every multiple-choice game was played through to its score page at phone size, w
   centroid —, size), thumbnails copied or made by the administrator's browser (`admin-maps/t/`, views `admin-maps/v/`); one place,
   one map (centres within a quarter of the smaller extent, extents within 1.5×, 200 m without extents): the latest kept, the most
   pixels among those within 60 days of it; the others deleted and recorded (`admin-maps/x/`). Synced a few maps a step from
-  `/api/track` (every 30 min an isolate) and by the collection's page until done; the account's deletion removes its Solo maps.
+  `/api/track` (every 30 min an isolate) and by the collection's page until done. **« Carte privée »** (owner, 2026-11-06, second
+  rule; off by default): Solo's box beside « Enregistrer l'analyse » (one's own map only: `analysis.js` `privOn`, `ocn.an.keepPriv`,
+  the analysis's `priv`) and the Tracer's new-event, import and change-of-map dialogs (`privField`, the card's `mapPrivate`,
+  summary `priv`) keep a map out of the collection — one copied before leaves it at the next step, unless an unmarked source holds
+  the same image. **An account deleted** (owner: « retain the maps in all cases, if making them visible to admins has not been
+  disallowed »): its Mes cartes maps, its unmarked Solo maps and its ownerless Tracer events' unmarked, unencrypted maps are handed
+  over (`handOver`: `admin-maps/in/<uid>-<ms>.json`, the sources left in place until a step copies them, then deleted), its runs,
+  comments and courses go, and the collection's maps lose its name and number (`forgetUser`).
   Shown in « Mes cartes » `?vue=toutes` (administrators: « Ma bibliothèque | Toutes les cartes »), with every account's library
   (read in place, not copied), each card tagged by origin and account, filters origin / account / club, folders by account or club;
   read only, « Fichier d'origine » to download. Admin page tab « Mes cartes » (`?onglet=cartes`): accounts, maps, runs, size against
-  the quota, the collection. The privacy page says the administrators see and keep the maps (6 November 2026). Local test of the
+  the quota, the collection. The privacy page says the administrators may see and keep the maps sent to Ozimut, except those
+  marked « Carte privée », and that they stay, nameless, when the account is deleted (6 November 2026; the Mes cartes lede says
+  « aucun autre utilisateur ne la voit »: Mes cartes has no « Carte privée » yet). Local test of the
   quota: launch config `pages-dev-user-quota` (8783, a regular account, 12 MB).
 - **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs (Méthodes first and
   opened by default, then Calculateur; owner, 2026-10-30) —

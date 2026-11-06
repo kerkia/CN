@@ -2357,4 +2357,6 @@ export default {
   "trc.mv.tplNotListed": "{name} no es una plantilla de este mapa.",
   "trc.mv.tplUnreadable": "No se ha podido leer {name}.",
   "trc.mv.tplUndo": "Plantillas del mapa",
+  "trc.priv.label": "Mapa privado",
+  "trc.priv.tip": "Marcada, nadie fuera del equipo ve el mapa, ni siquiera los administradores del sitio. Sin marcar, los administradores pueden ver el mapa (nunca los recorridos) y guardar una copia.",
 };

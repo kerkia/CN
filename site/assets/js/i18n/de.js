@@ -5465,4 +5465,6 @@ export default {
   "ad.mm.quota": "Vom Kontingent",
   "ad.mm.updated": "Letzte Änderung",
   "ad.mm.none": "Noch kein Konto hat eine Karte.",
+  "an.keep.priv": "Private Karte",
+  "an.keep.privTip": "Angehakt sieht niemand außer dir diese Karte, auch nicht die Administratoren der Website. Nicht angehakt können die Administratoren sie sehen und eine Kopie behalten (nie deine Läufe).",
 };

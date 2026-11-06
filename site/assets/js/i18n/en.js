@@ -5247,4 +5247,6 @@ export default {
   "ad.mm.quota": "Of the quota",
   "ad.mm.updated": "Last change",
   "ad.mm.none": "No account has a map yet.",
+  "an.keep.priv": "Private map",
+  "an.keep.privTip": "Ticked, nobody but you sees this map, not even the site's administrators. Unticked, the administrators may see it and keep a copy (never your runs).",
 };

@@ -50,10 +50,10 @@ async function sendMap(s) {
  * Keep the analysis of state s (trace/mymapsave.js `mount`'s state): { id }. id: the one kept before for this trace, replaced
  * (a calibration made again); gone meanwhile, a new one is made. extra: { title, source, orga: { id, n } }.
  */
-export async function save(s, { id = null, title = "", source = "solo", orga = null } = {}) {
+export async function save(s, { id = null, title = "", source = "solo", orga = null, priv = false } = {}) {
   const run = runOf(s, false);
   const map = await sendMap(s);
-  const body = { title, day: run.day, source, map, geo: s.geo || null, start: run.start, dur: run.dur, dist: run.dist, rec: run.rec, orga };
+  const body = { title, day: run.day, source, map, geo: s.geo || null, start: run.start, dur: run.dur, dist: run.dist, rec: run.rec, orga, priv: !!priv && !orga };
   if (id) {
     try { return { id: (await call(`/${id}`, { method: "PUT", body })).id }; }
     catch (e) { if (e.status !== 404) throw e; }

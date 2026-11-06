@@ -4418,4 +4418,6 @@ export default {
   "ad.mm.quota": "Du quota",
   "ad.mm.updated": "Dernière modification",
   "ad.mm.none": "Aucun compte n'a encore de carte.",
+  "an.keep.priv": "Carte privée",
+  "an.keep.privTip": "Cochée, personne d'autre que vous ne voit cette carte, pas même les administrateurs du site. Non cochée, les administrateurs peuvent la voir et en garder une copie (jamais vos courses).",
 };

@@ -2364,4 +2364,6 @@ export default {
   "trc.mv.tplNotListed": "{name} is not a template of this map.",
   "trc.mv.tplUnreadable": "{name} could not be read.",
   "trc.mv.tplUndo": "Map templates",
+  "trc.priv.label": "Private map",
+  "trc.priv.tip": "Ticked, nobody outside the team sees the map, not even the site's administrators. Unticked, the administrators may see the map (never the courses) and keep a copy.",
 };

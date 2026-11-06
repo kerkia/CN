@@ -2364,4 +2364,6 @@ export default {
   "trc.mv.tplNotListed": "{name} n'est pas un modèle de cette carte.",
   "trc.mv.tplUnreadable": "{name} n'a pas pu être lu.",
   "trc.mv.tplUndo": "Modèles de la carte",
+  "trc.priv.label": "Carte privée",
+  "trc.priv.tip": "Cochée, personne en dehors de l'équipe ne voit la carte, pas même les administrateurs du site. Non cochée, les administrateurs peuvent voir la carte (jamais les circuits) et en garder une copie.",
 };

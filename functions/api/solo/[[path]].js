@@ -2,10 +2,12 @@
 // « Voir la course »; listed in « Analyse de carte », replayed or deleted there; not « Mes cartes », which keeps what one saves
 // to it from the playback's « Export »). Private: only the account reads its own. R2 only (cn-state, binding BUCKET), no D1:
 //   solo/<user>/a/<id>.json   the analysis: { v, title, day, source, map: { sha, type, w, h }, geo, start, dur, dist, rec,
-//                             orga } — rec the run as the playback drew it (trace/mymaps.js encodeRun: positions in the map's
+//                             orga, priv } — rec the run as the playback drew it (trace/mymaps.js encodeRun: positions in the map's
 //                             pixels and times, the controls placed; never heart rate or the watch's other channels); its
 //                             summary in the object's custom metadata `s`, so that the list is one R2 list
 //   solo/<user>/m/<sha>       a map, once per account whatever the number of analyses on it;  …/m/<sha>.thumb  its thumbnail
+// `priv` (owner, 2026-11-06): the map marked « Carte privée » — nobody else sees it, the administrators' collection
+// (_lib/maplib.js) does not take it, nor keeps it when the account is deleted; off by default
 //
 //   GET    /api/solo                  { analyses: [summary + id] }
 //   POST   /api/solo                  the analysis (JSON) -> { id }        PUT /api/solo/<id>  the same, replacing it
@@ -50,11 +52,11 @@ function cleanAnalysis(b) {
   const orga = b.orga && ID.test(String(b.orga.id || "")) ? { id: String(b.orga.id), n: Math.max(0, Math.floor(num(b.orga.n) || 0)) } : null;
   return { v: 1, title: clean(b.title, 200), day: cleanDay(b.day), source: ["solo", "drawn", "orga"].includes(b.source) ? b.source : "solo",
     map: { sha: m.sha, type: m.type, w: Math.round(m.w), h: Math.round(m.h) }, geo: cleanGeo(b.geo),
-    start: num(b.start), dur: num(b.dur), dist: num(b.dist), rec, orga };
+    start: num(b.start), dur: num(b.dur), dist: num(b.dist), rec, orga, priv: !!b.priv };
 }
 /** What the list shows of an analysis (the object's custom metadata: 2 KB at most). */
 const summary = (a, id, created, updated) => ({ id, title: a.title, day: a.day, source: a.source, sha: a.map.sha, w: a.map.w, h: a.map.h, geo: a.geo,
-  start: a.start, dur: a.dur, dist: a.dist, orga: a.orga, created, updated });
+  start: a.start, dur: a.dur, dist: a.dist, orga: a.orga, priv: a.priv || undefined, created, updated });
 
 async function listAll(env, uid) {
   const out = [];

@@ -21,7 +21,9 @@
 //   POST   /api/tracer                       { kind: "race"|"training", title, date, race? (a<agenda id> or a race of
 //                                            « Résultats ») } -> { id }
 //   GET    /api/tracer/<id>                  the card and one's role
-//   PUT    /api/tracer/<id>                  setters: { title?, date?, team?, encrypted? }
+//   PUT    /api/tracer/<id>                  setters: { title?, date?, team?, encrypted?, mapPrivate? }
+//                                            (mapPrivate, owner 2026-11-06: the map marked « Carte privée », left out of the
+//                                            administrators' collection, _lib/maplib.js; also at the creation)
 //   DELETE /api/tracer/<id>                  the owner: everything
 //   GET|PUT /api/tracer/<id>/event           PUT: X-Base-Version (the version edited; 409 if another was saved since)
 //   GET|PUT /api/tracer/<id>/map             PUT: the file (Content-Type, up to 80 MB)
@@ -50,7 +52,7 @@ const LOCK_MS = 150e3;
 
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", orgClub: m.orgClub || "", owner: String(m.owner),
   ownerName: m.ownerName || "", team: m.team.filter((x) => x.lic).map((x) => x.lic).join(","),
-  uids: m.team.filter((x) => x.uid).map((x) => x.uid).join(","), enc: m.encrypted ? "1" : "", updated: m.updated || "", version: String(m.version || 0) });
+  uids: m.team.filter((x) => x.uid).map((x) => x.uid).join(","), enc: m.encrypted ? "1" : "", priv: m.mapPrivate ? "1" : "", updated: m.updated || "", version: String(m.version || 0) });
 async function loadMeta(env, id) {
   const o = await env.BUCKET.get(`${META}${id}.json`);
   if (!o) return null;
@@ -139,7 +141,7 @@ export const onRequest = withUser(async (ctx, user) => {
         if (!(await organises(env, request, user, r, await lazyClub()))) return json({ error: "not organiser" }, 403);
       }
       const meta = { id: newId(), kind, title, date, race, orgClub, owner: user.id, ownerName: user.display_name || "", ownerLic: String(user.licence || ""),
-        team: [], encrypted: null, created: nowIso(), updated: nowIso(), version: 0, map: null };
+        team: [], encrypted: null, mapPrivate: !!b.mapPrivate, created: nowIso(), updated: nowIso(), version: 0, map: null };
       await saveMeta(env, meta);
       return json({ id: meta.id });
     }
@@ -197,6 +199,7 @@ export const onRequest = withUser(async (ctx, user) => {
         meta.encrypted = e && typeof e.salt === "string" && typeof e.check === "string" && e.salt.length < 100 && e.check.length < 400
           ? { salt: e.salt, check: e.check, iter: Number(e.iter) || 250000 } : null;
       }
+      if (b.mapPrivate !== undefined) meta.mapPrivate = !!b.mapPrivate;
       if (b.map !== undefined) meta.map = b.map ? { name: clean(b.map.name, 200), type: clean(b.map.type, 60), size: Number(b.map.size) || 0 } : null;
       if (b.published !== undefined) meta.published = b.published ? { analysis: clean(b.published.analysis, 20),
         analyses: (Array.isArray(b.published.analyses) ? b.published.analyses : []).slice(-20).map((x) => clean(x, 20)).filter(Boolean), at: nowIso() } : null;

@@ -1,7 +1,7 @@
 // « Mes cartes »'s catalogue in German (pages/mymaps.js, trace/mymapsave.js); the keys of mymaps.fr.js.
 export default {
   "mm.title": "Meine Karten",
-  "mm.lede": "Deine ganz eigene, private Bibliothek digitaler OL-Karten, auf Wunsch mit deinen Tracks: jede Karte nach Land, Region und Bezirk geordnet und auf der Weltkarte auf einen Blick zu finden. Privat: Niemand außer dir sieht sie, es sei denn, du teilst sie per Link.",
+  "mm.lede": "Deine ganz eigene, private Bibliothek digitaler OL-Karten, auf Wunsch mit deinen Tracks: jede Karte nach Land, Region und Bezirk geordnet und auf der Weltkarte auf einen Blick zu finden. Privat: Kein anderer Nutzer sieht sie, es sei denn, du teilst sie per Link.",
   "mm.loading": "Deine Karten werden geladen…",
   "mm.needAccount": "Meine Karten bewahrt die Karten und Routen jedes Kontos auf. Erstelle ein Konto oder melde dich an, um deine aufzubewahren.",
   "mm.err.load": "Die Karten konnten nicht geladen werden.",
