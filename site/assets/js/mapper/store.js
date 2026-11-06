@@ -82,8 +82,9 @@ export async function loadVersion(id, n) {
   const r = await api(`/${id}/versions/${n}`, { raw: true });
   return JSON.parse(await gunzip(await r.arrayBuffer()));
 }
-export const lock = (id, force = false) => api(`/${id}/lock`, { method: "POST", body: { force } });
-export const unlock = (id) => api(`/${id}/lock`, { method: "DELETE" }).catch(() => {});
+/** Several mappers at once (collab.js): one's presence, pointer and sector; the others' in return, and the map's version. */
+export const presence = (id, { sector = null, at = null } = {}) => api(`/${id}/presence`, { method: "POST", body: { sector, at } });
+export const leave = (id) => api(`/${id}/presence`, { method: "DELETE" });
 export const invites = (id) => api(`/${id}/invites`);
 export const invite = (id, role, days) => api(`/${id}/invites`, { method: "POST", body: { role, days } });
 export const revoke = (id, n) => api(`/${id}/invites?n=${n}`, { method: "DELETE" });

@@ -368,8 +368,18 @@ function paramList(doc, v, carry, src) {
   // the colours, from the top of OCAD's table down; each keeps the codes of its former string (by number)
   const byNum = new Map();
   for (const p of params) if (p.type === 9) { const n = parseInt(parseParam(p.str ?? "", 9).codes.n, 10); if (Number.isFinite(n) && !byNum.has(n)) byNum.set(n, p.str); }
-  const colorString = (c) => rewrite(old ? null : byNum.get(c.num) ?? null, c.name ?? "", { n: [c.num], c: [(c.cmyk?.[0] || 0) * 100, 0],
+  const colorString0 = (c) => rewrite(old ? null : byNum.get(c.num) ?? null, c.name ?? "", { n: [c.num], c: [(c.cmyk?.[0] || 0) * 100, 0],
     m: [(c.cmyk?.[1] || 0) * 100, 0], y: [(c.cmyk?.[2] || 0) * 100, 0], k: [(c.cmyk?.[3] || 0) * 100, 0], o: [c.overprint ? 1 : 0, 0] });
+  // the spot inks a colour is printed with (Cartographier's colour editor, colors.js): its « s<ink> » / « p<percent> » pairs
+  // written again when the document says which (`spot`); other codes kept
+  const colorString = (c) => {
+    const s = colorString0(c);
+    if (!Array.isArray(c.spot) || !d.colors) return s;
+    const parts = s.split("	"), out = [parts[0]];
+    for (let i = 1; i < parts.length; i++) { if (parts[i][0] === "s") { if (parts[i + 1]?.[0] === "p") i++; continue; } out.push(parts[i]); }
+    for (const x of c.spot) out.push(`s${x.name}`, `p${num(Math.round((x.pct || 0) * 1000) / 10)}`);
+    return out.join("	");
+  };
   const scale = (str) => {
     const r = rw || {};
     const s = rewrite(str, str == null ? "" : null, { m: [doc.scale || 10000, 10000], g: [r.paperGrid ?? (str == null ? 10 : 0), 0], r: [r.on ? 1 : 0, 0],
@@ -384,10 +394,20 @@ function paramList(doc, v, carry, src) {
   const out = [];
   for (const p of params) {
     if (p.type === 9 && redo[9]) { out.push({ colorSlot: true }); continue; }
+    if (p.type === 10 && d.spots && Array.isArray(doc.spots)) continue;                 // the spot inks: written again below
     if (p.type === 1039 && redo[1039]) { if (!out.some((x) => x.type === 1039)) out.push({ type: 1039, objIndex: p.objIndex || 0, str: scale(old ? null : p.str) }); continue; }
     if (p.type === 1026 && redo[1026]) { if (!out.some((x) => x.type === 1026)) out.push({ type: 1026, objIndex: p.objIndex || 0, str: print(old ? null : p.str) }); continue; }
     const raw = p.dirty ? null : rawOfParam(p);
     out.push(raw ? { type: p.type, objIndex: p.objIndex || 0, raw } : { type: p.type, objIndex: p.objIndex || 0, str: p.str ?? "" });
+  }
+  if (d.spots && Array.isArray(doc.spots)) {
+    // the spot inks (type 10), from the document: each keeps the codes of its former string (by name)
+    const byName = new Map();
+    for (const p of params) if (p.type === 10) byName.set(String(p.str || "").split("	")[0], p.str);
+    const first = out.findIndex((x) => x && (x.type === 9 || x.colorSlot));
+    const inks = doc.spots.map((s, i) => ({ type: 10, objIndex: 0, str: rewrite(byName.get(s.name) ?? null, s.name, { n: [s.num ?? i], v: [s.visible === false ? 0 : 1],
+      c: [(s.cmyk?.[0] || 0) * 100], m: [(s.cmyk?.[1] || 0) * 100], y: [(s.cmyk?.[2] || 0) * 100], k: [(s.cmyk?.[3] || 0) * 100], f: [s.freq || 0], a: [s.angle || 0] }) }));
+    out.splice(first < 0 ? out.length : first, 0, ...inks);
   }
   if (redo[9]) {
     // in the former colours' places, in the document's order; more colours after the last, fewer: the places left go

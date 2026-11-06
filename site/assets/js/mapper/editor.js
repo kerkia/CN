@@ -11,6 +11,7 @@ import * as T from "./tools.js";
 import { View } from "./view.js";
 import { mountRibbon } from "./ribbon.js";
 import * as P from "./panels.js";
+import * as C from "./collab.js";
 import { modal, field, sel, num, popupMenu } from "../tracer/dialogs.js";
 import { svg } from "../tracer/icons.js";
 import * as FW from "../fullwin.js";
@@ -57,7 +58,7 @@ export async function openEditor(opts) {
       </div>
       <aside class="mp-right" id="mp-right"></aside>
     </div>
-    <div class="mp-status" id="mp-status"><span id="mp-pos"></span><span id="mp-scale"></span><span id="mp-hint"></span><span id="mp-warn" class="mp-warn"></span></div>`;
+    <div class="mp-status" id="mp-status"><span id="mp-pos"></span><span id="mp-scale"></span><span id="mp-hint"></span><span id="mp-warn" class="mp-warn"></span><span id="mp-team" class="mp-team"></span></div>`;
   container.innerHTML = "";
   container.appendChild(root);
   document.body.classList.add("tr-open", "mp-open");
@@ -68,7 +69,7 @@ export async function openEditor(opts) {
   E.live = new D.Live(opts.doc, { onChange: (c) => changed(c) });
   E.doc = E.live.doc;
   E.view = new View(E.$("#mp-map"), E.live, { onView: () => { status(); E.field?.onView?.(); } });
-  E.view.drawOverlay = (g) => { E.tool?.overlay?.(g); E.field?.overlay?.(g); P.drawComments?.(E, g); };
+  E.view.drawOverlay = (g) => { C.overlay(E, g); E.tool?.overlay?.(g); E.field?.overlay?.(g); P.drawComments?.(E, g); };
   E.refreshFrame = () => import("./data/frame.js").then((F) => F.frameOf(E.doc)).then((f) => { E.frame = f || null; }).catch(() => { E.frame = null; });
   await E.refreshFrame();
   await loadBackgrounds();
@@ -227,13 +228,14 @@ export async function openEditor(opts) {
     if (act === "undo" && !E.live.canUndo) return t("map.why.nothing");
     if (act === "redo" && !E.live.canRedo) return t("map.why.nothing");
     if ((act === "draft-accept" || act === "draft-reject" || act === "draft-acceptKind") && !E.doc.objects.some((o) => o.draft)) return t("map.why.noDraft");
-    if (/^(to-tracer|invite|members|version-save|versions|comments|photo|comment)$/.test(act) && !E.id) return t("map.why.notSaved");
+    if (/^(to-tracer|invite|members|version-save|versions|comments|photo|comment|sector)$/.test(act) && !E.id) return t("map.why.notSaved");
     return "";
   };
   E.isOn = (act) => {
     if (act.startsWith("tool:")) return E.toolName === act.slice(5);
     if (act.startsWith("mode:")) return E.drawMode === act.slice(5);
     if (act === "snap") return !!E.snapping;
+    if (act === "sector") return !!E.mySector;
     if (act === "gps") return !!E.field?.on;
     if (act === "gps-follow") return !!E.field?.follow;
     if (act === "gps-track") return !!E.field?.recording;
@@ -371,7 +373,7 @@ export async function openEditor(opts) {
   const MODULES = { bg: "./backgrounds.js", "map-fade": "./backgrounds.js", data: "./dataui.js", draft: "./dataui.js", gps: "./field.js", photo: "./field.js", comment: "./field.js",
     offline: "./field.js", check: "./checks.js", stats: "./checks.js", "print-area": "./layout.js", "north-lines": "./layout.js", "scale-bar": "./layout.js", legend: "./layout.js",
     logo: "./layout.js", credits: "./layout.js", qr: "./layout.js", "symbol-set": "./layout.js", colors: "./layout.js", export: "./io.js", to: "./io.js",
-    invite: "./team.js", members: "./team.js", version: "./team.js", versions: "./team.js", comments: "./team.js" };
+    invite: "./team.js", members: "./team.js", sector: "./collab.js", "symbol-edit": "./symedit.js", "symbol-new": "./symedit.js", "symbol-delete": "./symedit.js", version: "./team.js", versions: "./team.js", comments: "./team.js" };
   async function fileAct(a) {
     if (a === "new" || a === "open" || a === "import") { await save(true); E.onStart(a); return; }
     if (a === "close") { await E.close(); return; }
@@ -558,11 +560,16 @@ export async function openEditor(opts) {
     if (E.saving) { E._again = true; return; }
     E.saving = true; saveState("saving");
     try {
-      E.version = await S.saveDoc(E.id, E.live.toJSON(), E.version, E.doc.objects.length);
-      E.dirty = false; saveState("saved");
+      const json = E.live.toJSON();
+      E.dirty = false;                                     // changes made while it is sent mark it dirty again
+      try { E.version = await S.saveDoc(E.id, json, E.version, json.objects.length); }
+      catch (e) { E.dirty = true; throw e; }
+      E.baseJSON = JSON.stringify(json);
+      if (!E.dirty) saveState("saved");
       if (Date.now() - (E._lastVersion || 0) > 30 * 60e3) { E._lastVersion = Date.now(); S.saveVersion(E.id, E.live.toJSON(), t("map.save.auto")).catch(() => {}); }
     } catch (e) {
-      if (e.status === 409) { saveState("conflict"); await P.conflict(E, e.data, save); }
+      // a teammate saved since: their version and ours merged, object by object (collab.js), and saved on theirs
+      if (e.status === 409) { saveState("saving"); try { await C.mergeAndSave(E); saveState("saved"); } catch (e2) { saveState("conflict"); await P.conflict(E, e.data, save); } }
       else {
         // without the network: kept on this device, sent when it returns (field.js)
         if (!e.status) { const F = await import("./field.js"); await F.savePending(E).catch(() => {}); saveState("local"); }
@@ -576,18 +583,11 @@ export async function openEditor(opts) {
     void force;
   }
   E.save = save;
-  async function takeLock() {
-    if (!E.id || E.readOnly) return;
-    const r = await S.lock(E.id).catch(() => null);
-    if (r && !r.ok && r.holder) {
-      const v = await modal(E, { title: t("map.lock.title"), body: `<p>${esc(t("map.lock.held", { name: r.holder.name || "?" }))}</p>`, ok: t("map.lock.take"), cancel: t("map.lock.read") });
-      if (v) await S.lock(E.id, true); else { E.readOnly = true; E.ribbon?.draw(); return; }
-    }
-    clearInterval(E._lock); E._lock = setInterval(() => S.lock(E.id).catch(() => {}), 60e3);
-  }
+  // several mappers at once: presence, sectors, merged saves (collab.js); no lock on the whole map
+  const takeLock = async () => C.start(E);
   E.close = async () => {
     await save(true);
-    clearInterval(E._lock); if (E.id && !E.readOnly) S.unlock(E.id);
+    C.stop(E);
     E.field?.stop?.();
     document.removeEventListener("keydown", onKey); document.removeEventListener("keyup", onKey);
     window.removeEventListener("beforeunload", beforeUnload);

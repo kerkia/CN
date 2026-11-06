@@ -30,7 +30,7 @@ export async function act(E, act) {
   if (act === "credits") return credits(E);
   if (act === "qr") return qr(E);
   if (act === "symbol-set") return symbolSet(E);
-  if (act === "colors") { const P = await import("./panels.js"); E._rtab = "colors"; P.drawRight(E); }
+  if (act === "colors") { const C = await import("./colors.js"); return C.editColors(E); }
 }
 
 // ---- print area: two clicks, or the map's extent with a margin -----------------------------------------------------------

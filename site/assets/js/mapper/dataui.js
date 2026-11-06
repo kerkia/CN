@@ -50,6 +50,7 @@ export async function act(E, act) {
   if (act === "data-area") return chooseArea(E);
   if (act === "data-contours") return contours(E);
   if (act === "data-osm") return osm(E);
+  if (act === "data-bdtopo") return bdtopo(E);
   if (act === "data-lidar") return lidar(E);
   if (act === "draft-accept") return accept(E, false);
   if (act === "draft-acceptKind") return accept(E, true);
@@ -81,6 +82,17 @@ async function osm(E) {
   const r = await O.loadOsm(f, areaOf(E), style, { onStage: (k) => say(t(k)) });
   const n = bring(E, r.objects, t("map.undo.data"));
   E.say(tn("map.data.brought", n) + ` · ${r.attribution}`);
+}
+async function bdtopo(E) {
+  const f = await frameOrSay(E); if (!f) return;
+  const say = progress(E);
+  const B = await import("./data/bdtopo.js");
+  let r;
+  try { r = await B.loadBdtopo(f, areaOf(E), styleOf(E), { onStage: (layer, i, n) => say(t("map.data.bdtopo.reading"), i / n) }); }
+  catch (e) { E.say(e.message === "nogeo" ? t("map.data.nogeo") : e.message, "bad"); return; }
+  if (!r.objects.length) { E.say(t("map.data.bdtopo.none"), "bad"); return; }
+  const n = bring(E, r.objects, t("map.undo.data"));
+  E.say(tn("map.data.brought", n) + ` · ${r.credit}`);
 }
 async function lidar(E) {
   const f = await frameOrSay(E); if (!f) return;

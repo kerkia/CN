@@ -76,6 +76,13 @@ export function drawLeft(E) {
     ${recent.length ? `<div class="mp-sym-g"><h4>${esc(t("map.left.recent"))}</h4><div class="mp-sym-list">${recent.map(item).join("")}</div></div>` : ""}
     ${GROUPS.filter(([, , g]) => by.has(g)).map(([, , g]) => `<details class="mp-sym-g" ${q || (E._open || ["vegetation", "relief"]).includes(g) ? "open" : ""} data-g="${g}"><summary>${esc(t(`map.grp.sym.${g}`))} <small>${by.get(g).length}</small></summary><div class="mp-sym-list">${by.get(g).map(item).join("")}</div></details>`).join("")}
     ${!list.length ? `<p class="mp-empty">${esc(t("map.left.none"))}</p>` : ""}`;
+  el.ondblclick = (ev) => { const b = ev.target.closest("[data-sym]"); if (b && !E.readOnly) import("./symedit.js").then((m) => m.editSymbol(E, Number(b.dataset.sym))); };
+  el.oncontextmenu = (ev) => {
+    const b = ev.target.closest("[data-sym]"); if (!b || E.readOnly) return;
+    ev.preventDefault();
+    E.symbol = Number(b.dataset.sym); drawLeft(E);
+    popupMenu(E, ev.clientX, ev.clientY, [["symbol-edit", t("map.rib.symbol-edit")], ["symbol-new", t("map.rib.symbol-new")], ["symbol-delete", t("map.rib.symbol-delete")]], (a) => E.act(a));
+  };
   el.onclick = (ev) => {
     const b = ev.target.closest("[data-sym]");
     if (!b) return;

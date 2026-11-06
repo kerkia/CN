@@ -8,7 +8,7 @@
 //   mapper/<id>/v/<n>            saved versions (author, time, note in the metadata)
 //   mapper/<id>/comments         the team's comments pinned on the map
 //   mapper/<id>/photo/<pid>      the field mode's photos
-//   mapper/<id>/lock             who is editing (refreshed every minute; others open the map read-only)
+//   mapper/<id>/presence         who is editing now and the sector each keeps (several mappers at once; saves merged in the browser)
 //   mapper/<id>/invites          invitation links (only their tokens' hashes)
 // A map is its team's (private by default): its creator and the accounts that joined by an invitation link — « mapper » edits,
 // « viewer » reads and comments. Administrators see the list's figures, not the maps. Any account (but a demo one) creates maps,
@@ -25,7 +25,7 @@
 //   GET    /api/mapper/<id>/versions         the list;  GET …/versions/<n> one;  POST …/versions (body, X-Note)
 //   GET|PUT /api/mapper/<id>/comments
 //   GET|PUT|DELETE /api/mapper/<id>/photo/<pid>
-//   POST|DELETE /api/mapper/<id>/lock
+//   POST|DELETE /api/mapper/<id>/presence   { sector?, at? } -> { editors, version } (also at …/lock, its former name)
 //   GET|POST|DELETE /api/mapper/<id>/invites, POST /api/mapper/<id>/join   as the Tracer's
 
 import { allow, json, readBody, withUser, nowIso, isAdmin } from "../../_lib/api.js";
@@ -37,7 +37,14 @@ const ROLES = ["mapper", "viewer"];
 const STANDARDS = ["ISOM2017-2", "ISSprOM2019-2", "ISMTBOM2022", "ISSkiOM2019", ""];
 const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 const newId = () => Array.from(randomBytes(12), (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
-const LOCK_MS = 150e3, MAX_INVITES = 20, INVITE_DAYS = 7;
+const PRESENCE_MS = 90e3, MAX_INVITES = 20, INVITE_DAYS = 7;
+/** Who is editing a map: { uid: { name, until, sector, at } }, those not seen for PRESENCE_MS dropped. */
+async function presence(env, base) {
+  const o = await env.BUCKET.get(`${base}presence`);
+  const all = o ? await o.json().catch(() => ({})) : {};
+  for (const [u, x] of Object.entries(all)) if (!(x && x.until > Date.now())) delete all[u];
+  return all;
+}
 
 const summary = (m) => ({ id: m.id, title: m.title, owner: String(m.owner), ownerName: m.ownerName || "",
   uids: m.team.filter((x) => x.uid).map((x) => x.uid).join(","), scale: String(m.scale || ""), standard: m.standard || "",
@@ -147,9 +154,8 @@ export const onRequest = withUser(async (ctx, user) => {
 
   if (!sub) {
     if (method === "GET") {
-      const lock = await env.BUCKET.get(`${base}lock`).then((o) => (o ? o.json() : null)).catch(() => null);
-      const held = lock && lock.until > Date.now() && lock.uid !== user.id ? lock : null;
-      return json({ map: meta, role, you: { uid: user.id, name: user.display_name || "" }, lock: held });
+      const editors = await presence(env, base).then((p) => Object.entries(p).filter(([u]) => Number(u) !== user.id).map(([uid, x]) => ({ uid: Number(uid), ...x }))).catch(() => []);
+      return json({ map: meta, role, you: { uid: user.id, name: user.display_name || "" }, editors });
     }
     if (method === "PUT") {
       if (!canEdit(role)) return json({ error: "forbidden" }, 403);
@@ -320,18 +326,20 @@ export const onRequest = withUser(async (ctx, user) => {
     return json({ error: "method" }, 405);
   }
 
-  if (sub === "lock") {
+  // several mappers at once (owner, 2026-11-06): who is editing, refreshed every 30 s, each with the sector they keep for themselves
+  // (a rectangle of the map, in mm: the others' editors refuse to change what lies in it); saves are merged in the browser
+  if (sub === "lock" || sub === "presence") {
     if (!canEdit(role)) return json({ error: "forbidden" }, 403);
-    const cur = await env.BUCKET.get(`${base}lock`).then((o) => (o ? o.json() : null)).catch(() => null);
-    const held = cur && cur.until > Date.now() && cur.uid !== user.id;
+    const all = await presence(env, base);
     if (method === "POST") {
-      const b = await readBody(request);
-      if (held && !b?.force) return json({ ok: false, holder: cur });
-      await env.BUCKET.put(`${base}lock`, JSON.stringify({ uid: user.id, name: user.display_name || "", until: Date.now() + LOCK_MS }), { httpMetadata: { contentType: "application/json" } });
-      return json({ ok: true, took: held ? cur : null });
+      const b = (await readBody(request)) || {};
+      const sec = Array.isArray(b.sector) && b.sector.length === 4 && b.sector.every((v) => Number.isFinite(+v)) ? b.sector.map((v) => Math.round(+v * 100) / 100) : null;
+      all[user.id] = { name: user.display_name || "", until: Date.now() + PRESENCE_MS, sector: sec, at: b.at && b.at.length === 2 ? b.at.map((v) => Math.round(+v * 10) / 10) : null };
+      await env.BUCKET.put(`${base}presence`, JSON.stringify(all), { httpMetadata: { contentType: "application/json" } });
+      return json({ ok: true, editors: Object.entries(all).filter(([u]) => Number(u) !== user.id).map(([uid, x]) => ({ uid: Number(uid), ...x })), version: meta.version || 0 });
     }
     if (method === "DELETE") {
-      if (cur && cur.uid === user.id) await env.BUCKET.delete(`${base}lock`);
+      if (all[user.id]) { delete all[user.id]; await env.BUCKET.put(`${base}presence`, JSON.stringify(all), { httpMetadata: { contentType: "application/json" } }); }
       return json({ ok: true });
     }
     return json({ error: "method" }, 405);

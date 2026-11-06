@@ -80,7 +80,8 @@ async function newMap() {
     <p><button type="button" class="btn btn-sm" data-here>${t("map.new.here")}</button></p>
     ${field(t("map.new.size"), `<select name="size"><option value="0.5">0,5 km</option><option value="1" selected>1 km</option><option value="2">2 km</option><option value="3">3 km</option></select>`)}
     <fieldset class="mp-choice"><legend>${t("map.new.data")}</legend>
-      <label><input type="checkbox" name="osm" checked> ${t("map.new.osm")}</label>
+      <label><input type="checkbox" name="bdtopo" checked> ${t("map.new.bdtopo")}</label>
+      <label><input type="checkbox" name="osm"> ${t("map.new.osm")}</label>
       <label><input type="checkbox" name="dem" checked> ${t("map.new.dem")}</label>
       <label><input type="checkbox" name="lidar"> ${t("map.new.lidar")}</label></fieldset>`,
     onOpen: (form) => form.querySelector("[data-here]").addEventListener("click", () => navigator.geolocation?.getCurrentPosition((p) => { form.place.value = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`; }, () => {}, { enableHighAccuracy: true, timeout: 15000 })),
@@ -100,7 +101,10 @@ async function newMap() {
     E.dataArea = [-half, -half, half, half];
     E.live.transact("", () => E.live.setDocField("printArea", [-half, -half, half, half]));
     E.view.fit(E.dataArea);
-    for (const [k, act] of [["dem", "data-contours"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) if (v[k]) await E.act(act);
+    // BD TOPO in France (IGN's, finer than OpenStreetMap there); elsewhere OpenStreetMap in its place
+    const fr = E.frame?.epsg === 2154;
+    if (v.bdtopo && !fr) v.osm = true;
+    for (const [k, act] of [["dem", "data-contours"], ["bdtopo", "data-bdtopo"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) if (v[k] && (k !== "bdtopo" || fr)) await E.act(act);
   }
 }
 const parsePlace = (s) => { const m = /^\s*(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)\s*$/.exec(String(s || "")); if (!m) return null; const la = Number(m[1].replace(",", ".")), lo = Number(m[2].replace(",", ".")); return Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? [la, lo] : null; };

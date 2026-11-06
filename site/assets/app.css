@@ -3953,3 +3953,28 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 }
 .mp-drawer { display: none; }
 @media (max-width: 900px) { .mp-drawer { display: inline-flex; } }
+/* Cartographier's symbol editor (mapper/symedit.js), colour table (colors.js), shared editing (collab.js) */
+.tr-dialog:has(.mp-symed), .tr-dialog:has(.mp-coltable) { width: min(1100px, 96vw); max-width: 96vw; }
+.mp-symed { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.mp-symed-r { position: sticky; top: 0; }
+.mp-symed-r canvas { width: 320px; height: 200px; border: 1px solid var(--border); border-radius: 8px; background: #fff; display: block; }
+.mp-symfields { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 4px 14px; margin: 8px 0; }
+.mp-symf { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: 12.5px; }
+.mp-symf > span:first-child { color: var(--ink-2); }
+.mp-symf > span:last-child { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.mp-symf input, .mp-symf select { font: inherit; font-size: 12.5px; padding: 3px 5px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--plane); color: var(--ink); }
+.mp-symf select { max-width: 160px; }
+.mp-num { width: 70px; }
+.mp-symed .mp-row { gap: 6px 18px; margin: 4px 0; }
+.mp-elts { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; margin: 8px 0; }
+.mp-elts legend { font-size: 12.5px; color: var(--ink-2); padding: 0 4px; }
+.mp-elt { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0; font-size: 12px; }
+.mp-elt select, .mp-elt input { font: inherit; font-size: 12px; padding: 2px 4px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--plane); color: var(--ink); }
+.mp-pts { flex: 1 1 240px; min-width: 180px; font-family: ui-monospace, Consolas, monospace !important; }
+.mp-coltable td { padding: 2px 4px; }
+.mp-coltable input { font: inherit; font-size: 12px; padding: 2px 4px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--plane); color: var(--ink); }
+.mp-coltable input:not(.mp-num):not([type=checkbox]) { width: 100%; min-width: 120px; }
+.mp-sw { display: inline-block; width: 16px; height: 16px; border-radius: 3px; border: 1px solid var(--border); vertical-align: middle; }
+.mp-nowrap { white-space: nowrap; }
+.mp-team { color: var(--focus); font-weight: 600; }
+@media (max-width: 720px) { .mp-symed { grid-template-columns: 1fr; } .mp-symed-r { position: static; order: -1; } }

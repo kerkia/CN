@@ -55,6 +55,13 @@ export async function act(E, act) {
       return;
     }
     case "export-pdf": return pdf(E, base);
+    case "export-sep": {
+      const C = await import("./colors.js");
+      E.say(t("map.io.writing"), "busy");
+      const r = await C.separationsPdf(E, areaOf(E), base);
+      if (r) { download(r.name, r.bytes, "application/pdf"); E.say(t("map.io.written")); } else E.say("");
+      return;
+    }
     case "export-png": return png(E, base);
     case "export-kmz": return kmz(E, base);
     case "export-geotiff": return png(E, base, true);

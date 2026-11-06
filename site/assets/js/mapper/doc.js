@@ -5,10 +5,13 @@
 import { readOcad, makeContext, compileSymbol, compileObject, symId, applyParams } from "../tracer/vmap/ocad.js";
 import { VColor } from "../tracer/vmap/map.js";
 import * as G from "./geom.js";
+import { spotsFromParams } from "./colors.js";
 
 export const FORMAT = "ozimut-map", VERSION = 1;
 const CELL = 20;                                         // the index's cells, mm
 let nextId = 1;
+/** An id for an object drawn here, unique across the team's editors (several mappers at once: merged by id, collab.js). */
+export const newId = () => 2 ** 40 + Math.floor(Math.random() * 2 ** 50);
 const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o, (k, v) => (k === "inst" || k === "cellKeys" || k === "__rec" ? undefined : v))));
 const symKey = (sym) => `${Math.floor(sym / 1000)}.${sym % 1000}`;
 
@@ -45,6 +48,7 @@ export function fromOcad(bytes, title = "") {
   });
   doc.params = records.params.map((p) => ({ ...p }));
   doc.layoutImages = (map.layoutImages || []).length;     // kept in their parameter strings (type 27), counted here
+  spotsFromParams(doc);                                    // the spot inks and each colour's share of them (colors.js)
   return doc;
 }
 
@@ -56,6 +60,8 @@ export class Live {
     this.undoStack = []; this.redoStack = []; this.tx = null;
     this.version = doc.ocad && doc.ocad.version >= 9 ? doc.ocad.version : 2018;   // new maps, Mapper's and OCAD 6-8 files: OCAD 2018's meanings
     for (const o of doc.objects) { if (!o.id) o.id = nextId++; else nextId = Math.max(nextId, o.id + 1); }
+    // a document saved before the spot inks were read (2026-11-06): read now from its OCAD strings
+    if (doc.spots === undefined && (doc.params || []).some((p) => p.type === 10)) spotsFromParams(doc);
     this.compile();
   }
   /** Compile every record (once at opening, after a change of colours or of many symbols). */
@@ -189,18 +195,22 @@ export class Live {
     if (box) this.tx.box = this.tx.box ? [Math.min(this.tx.box[0], box[0]), Math.min(this.tx.box[1], box[1]), Math.max(this.tx.box[2], box[2]), Math.max(this.tx.box[3], box[3])] : box.slice();
   }
   changed(box, label) { this.onChange({ box, label }); }
+  /** A guard set by the editor (several mappers at once): false for a box in a sector another mapper keeps. */
+  check(box) { if (this.guard && box && !this.guard(box)) { const e = new Error(this.guardMsg || "locked"); e.code = "sector"; throw e; } }
   add(rec) {
-    const o = { ...rec, id: rec.id || nextId++, dirty: true };
+    const o = { ...rec, id: rec.id || newId(), dirty: true };
     delete o.rawAt; delete o.inst;
     if (o.e == null) o.e = { objType: o.otp, status: 1, viewType: 0 };
     this.doc.objects.push(o);
     this.place(o);
+    try { this.check(o.bb); } catch (e) { this.unplace(o); this.doc.objects.pop(); throw e; }
     this.record({ kind: "add", id: o.id, after: clone(o) }, o.bb);
     return o;
   }
   remove(id) {
     const o = this.byId.get(id);
     if (!o) return;
+    this.check(o.bb);
     const i = this.doc.objects.indexOf(o), before = clone(o), box = o.bb;
     this.unplace(o);
     this.doc.objects.splice(i, 1);
@@ -211,6 +221,7 @@ export class Live {
     const o = this.byId.get(id);
     if (!o) return null;
     const before = clone(o), box0 = o.bb;
+    this.check(box0);
     this.unplace(o);
     Object.assign(o, patch, { dirty: true });
     this.place(o);
@@ -307,7 +318,7 @@ export class Live {
         if (back) { const i = this.doc.symbols.findIndex((s) => s.sym === op.sym); if (i >= 0) this.doc.symbols.splice(i, 1); recompile = true; }
         else { this.doc.symbols.push(clone(op.after)); recompile = true; }
       } else if (op.kind === "colors") { this.doc.colors = clone(back ? op.before : op.after); recompile = true; }
-      else if (op.kind === "field") this.doc[op.field] = clone(back ? op.before : op.after);
+      else if (op.kind === "field") { this.doc[op.field] = clone(back ? op.before : op.after); if (op.field === "symbols" || op.field === "params") recompile = true; }
     }
     if (recompile) this.compile();
     to.push(tx);

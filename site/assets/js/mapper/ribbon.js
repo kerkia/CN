@@ -33,7 +33,7 @@ export const TABS = [
   ] },
   { id: "data", groups: [
     { id: "area", items: [B("data-area", "frame", true)] },
-    { id: "sources", items: [B("data-lidar", "mountain", true), B("data-contours", "routes", true), B("data-osm", "map", true)] },
+    { id: "sources", items: [B("data-lidar", "mountain", true), B("data-contours", "routes", true), B("data-bdtopo", "layers", true), B("data-osm", "map", true)] },
     { id: "draft", items: [{ stack: [B("draft-accept", "check"), B("draft-acceptKind", "check"), B("draft-reject", "close")] }] },
   ] },
   { id: "field", groups: [
@@ -48,15 +48,15 @@ export const TABS = [
   { id: "layout", groups: [
     { id: "frame", items: [B("print-area", "frame", true)] },
     { id: "furniture", items: [{ stack: [B("north-lines", "angle"), B("scale-bar", "ruler"), B("legend", "list")] }, { stack: [B("logo", "image"), B("credits", "text"), B("qr", "hash")] }] },
-    { id: "symbols", items: [B("symbol-set", "palette", true), B("colors", "colors", true)] },
+    { id: "symbols", items: [B("symbol-edit", "symbol", true), { stack: [B("symbol-new", "plus"), B("symbol-delete", "trash"), B("symbol-set", "palette")] }, B("colors", "colors", true)] },
   ] },
   { id: "print", groups: [
-    { id: "pdf", items: [B("export-pdf", "printer", true), B("export-png", "image", true)] },
+    { id: "pdf", items: [B("export-pdf", "printer", true), B("export-sep", "colors", true), B("export-png", "image", true)] },
     { id: "files", items: [{ stack: [B("export-ocd", "export"), B("export-omap", "export"), B("export-ozmap", "save")] }, { stack: [B("export-kmz", "globe"), B("export-geotiff", "map")] }] },
     { id: "send", items: [B("to-tracer", "flag", true), B("to-mymaps", "folder", true)] },
   ] },
   { id: "team", groups: [
-    { id: "share", items: [B("invite", "team", true), B("members", "team", true)] },
+    { id: "share", items: [B("invite", "team", true), B("members", "team", true), B("sector", "frame", true)] },
     { id: "history2", items: [B("version-save", "bookmark", true), B("versions", "history", true)] },
     { id: "comments", items: [B("comments", "comment", true)] },
   ] },

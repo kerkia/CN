@@ -1958,9 +1958,26 @@ Every multiple-choice game was played through to its score page at phone size, w
   comments). **Storage**: `functions/api/mapper/[[path]].js` (R2 `mapper-meta/`, `mapper/<id>/doc` gzip JSON, `source`, `files/<sha>`,
   `v/<n>`, `comments`, `photo/`, `lock`, `invites`; 40 maps an account); account deletion hands a map to its first « mapper », else
   deletes it; the privacy page says so. Texts: area `i18n/mapper.*.js`, written by `tools/mapper/catalogue.py` (edit there).
+  **Added the same evening (owner: « build it »)**: the **symbol editor** (`symedit.js`: a record edited field by field by its kind,
+  element lists as « x y; x y » in mm with « *1 »/« *2 » for Bézier handles, a live preview compiled in a context of its own, new
+  from a copy or blank, renumbering moves the objects, deletion only when unused; Mise en page › Symboles, double-click or right-click
+  in the palette); **colours and spot inks** (`colors.js`: the colour table edited — order, CMYK, overprint, each colour's inks
+  « Nom 100 » —, the inks themselves — CMYK, frequency, angle —; read from OCAD's type-9 « s/p » pairs and type-10 strings
+  (`spotsFromParams`, also for documents saved before), written back by `ocadout.js` when `dirty.colors` / `dirty.spots`);
+  **separations** (Imprimer › Séparations: a composite PDF painting single-ink colours in PDF « Separation » colour spaces, or one
+  page per spot ink or per CMYK ink — black at the colour's share, a colour the plate does not print knocking out unless it overprints
+  —, registration marks and plate names); **IGN BD TOPO** (`data/bdtopo.js`: the WFS `data.geopf.fr/wfs/ows`, CORS open, ten layers in
+  Lambert 93, roads by their width — sprint: paved bands at « largeur de chaussée » + sidewalks in town —, buildings, water, walls,
+  banks, hedges, parkings; Données › BD TOPO and the new-map dialog, France only, OpenStreetMap elsewhere); **several mappers at once**
+  (`collab.js`: no exclusive lock any more — presence every 30 s at `/api/mapper/<id>/presence` with each one's pointer and **sector**,
+  a rectangle the others' editors refuse to change (`Live.guard` → `check`, error code « sector »); saves made on an older version
+  merged object by object with the last common version (`merge3`: added, changed, deleted; symbols by number; settings by field; both
+  changed: the change inside one's own sector wins, else the teammate's), an idle editor taking a teammate's version when it sees it;
+  new objects get ids unique across editors, `doc.newId`). Tests: `t_merge.mjs`, `t_spotw.mjs`, `t_bdtopo.mjs` (live WFS).
   Node tests: `node --import ./tools/mapper/shim.mjs tools/mapper/<t_*.mjs>` (`npm install` in `tools/mapper` for xmldom); local
-  page: launch config `pages-dev-mapper` (8780, the test account an administrator). Not done: a symbol editor, real-time co-editing,
-  generalisation, colour separations, OCAD's combined objects kept in step when one copy is edited, BD TOPO, other countries' data.
+  page: launch config `pages-dev-mapper` (8780, the test account an administrator). Not done: generalisation, OCAD's combined objects
+  kept in step when one copy is edited, a DeviceN colour space for colours mixing several inks (CMYK in the composite), other countries'
+  data (study of 2026-11-06 in the session's answer: Switzerland, the Netherlands, Sweden, Spain, Belgium, Germany's open Länder first).
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
   does it (phases 1-3 of the study; OCAD and Mapper maps since the third pass, below), in the browser. **No AGPL code**: Purple

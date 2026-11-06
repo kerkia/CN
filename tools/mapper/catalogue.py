@@ -53,6 +53,9 @@ k("map.new.here", "Ma position", "My position", "Meine Position", "Mi posición"
 k("map.new.size", "Taille de la zone", "Size of the area", "Größe des Gebiets", "Tamaño de la zona")
 k("map.new.data", "Commencer avec, en brouillon", "Start with, as drafts", "Beginnen mit, als Entwurf", "Empezar con, como borrador")
 k("map.new.osm", "Routes, chemins, bâtiments et eau d'OpenStreetMap", "OpenStreetMap's roads, paths, buildings and water", "Straßen, Wege, Gebäude und Gewässer aus OpenStreetMap", "Calles, caminos, edificios y agua de OpenStreetMap")
+k("map.new.bdtopo", "Bâtiments, routes, chemins, eau et murs de la BD TOPO de l'IGN (France ; ailleurs OpenStreetMap)", "Buildings, roads, paths, water and walls from IGN's BD TOPO (France; elsewhere OpenStreetMap)", "Gebäude, Straßen, Wege, Gewässer und Mauern aus der BD TOPO des IGN (Frankreich; anderswo OpenStreetMap)", "Edificios, carreteras, caminos, agua y muros de la BD TOPO del IGN (Francia; en otros lugares OpenStreetMap)")
+k("map.data.bdtopo.reading", "Lecture de la BD TOPO de l'IGN…", "Reading IGN's BD TOPO…", "BD TOPO des IGN wird gelesen…", "Leyendo la BD TOPO del IGN…")
+k("map.data.bdtopo.none", "La BD TOPO n'a rien dans cette zone (elle couvre la France).", "BD TOPO has nothing in this area (it covers France).", "Die BD TOPO hat in diesem Gebiet nichts (sie deckt Frankreich ab).", "La BD TOPO no tiene nada en esta zona (cubre Francia).")
 k("map.new.dem", "Courbes de niveau du modèle de terrain", "Contours from the terrain model", "Höhenlinien aus dem Geländemodell", "Curvas de nivel del modelo del terreno")
 k("map.new.lidar", "Courbes, falaises et végétation du LiDAR (France, quelques minutes)", "LiDAR contours, cliffs and vegetation (France, a few minutes)", "Höhenlinien, Felsen und Vegetation aus dem LiDAR (Frankreich, einige Minuten)", "Curvas, cortados y vegetación del LiDAR (Francia, unos minutos)")
 
@@ -74,10 +77,6 @@ k("map.save.local", "Gardé sur cet appareil", "Kept on this device", "Auf diese
 k("map.save.error", "Enregistrement impossible, nouvel essai bientôt", "Could not save, trying again soon", "Speichern nicht möglich, neuer Versuch gleich", "No se pudo guardar, se reintentará pronto")
 k("map.save.conflict", "Conflit avec une autre version", "Conflict with another version", "Konflikt mit einer anderen Version", "Conflicto con otra versión")
 k("map.save.auto", "Enregistrement automatique", "Automatic save", "Automatische Speicherung", "Guardado automático")
-k("map.lock.title", "Carte en cours de modification", "Map being edited", "Karte wird bearbeitet", "Mapa en edición")
-k("map.lock.held", "{name} modifie cette carte en ce moment.", "{name} is editing this map right now.", "{name} bearbeitet diese Karte gerade.", "{name} está editando este mapa ahora mismo.")
-k("map.lock.take", "Modifier quand même", "Edit anyway", "Trotzdem bearbeiten", "Editar de todos modos")
-k("map.lock.read", "Ouvrir en lecture", "Open read-only", "Nur lesen", "Abrir solo lectura")
 k("map.conflict.title", "Une autre version a été enregistrée", "Another version was saved", "Eine andere Version wurde gespeichert", "Se guardó otra versión")
 k("map.conflict.text", "{by} a enregistré la carte ({at}) pendant que vous la modifiiez. Garder votre version remplace la sienne ; reprendre la sienne abandonne vos modifications non enregistrées.", "{by} saved the map ({at}) while you were editing it. Keeping your version replaces theirs; taking theirs drops your unsaved changes.", "{by} hat die Karte gespeichert ({at}), während du sie bearbeitet hast. Deine Version behalten ersetzt die andere; die andere übernehmen verwirft deine ungespeicherten Änderungen.", "{by} guardó el mapa ({at}) mientras lo editabas. Conservar tu versión sustituye la suya; tomar la suya descarta tus cambios sin guardar.")
 k("map.conflict.mine", "Garder ma version", "Keep my version", "Meine Version behalten", "Conservar mi versión")
@@ -129,7 +128,7 @@ RIB = {
   "bg-calage": ("Caler", "Adjust", "Einpassen", "Ajustar"), "bg-georef": ("Géoréférencer", "Georeference", "Georeferenzieren", "Georreferenciar"),
   "bg-toggle": ("Afficher les fonds", "Show backgrounds", "Hintergründe zeigen", "Mostrar fondos"), "map-fade": ("Estomper la carte", "Fade the map", "Karte abblenden", "Atenuar el mapa"),
   "data-area": ("Zone des données", "Data area", "Datengebiet", "Zona de datos"), "data-lidar": ("LiDAR", "LiDAR", "LiDAR", "LiDAR"), "data-contours": ("Courbes de niveau", "Contours", "Höhenlinien", "Curvas de nivel"),
-  "data-osm": ("OpenStreetMap", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap"), "draft-accept": ("Accepter", "Accept", "Übernehmen", "Aceptar"),
+  "data-osm": ("OpenStreetMap", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap"), "data-bdtopo": ("BD TOPO (France)", "BD TOPO (France)", "BD TOPO (Frankreich)", "BD TOPO (Francia)"), "draft-accept": ("Accepter", "Accept", "Übernehmen", "Aceptar"),
   "draft-acceptKind": ("Accepter ce symbole partout", "Accept this symbol everywhere", "Diese Signatur überall übernehmen", "Aceptar este símbolo en todo"), "draft-reject": ("Rejeter", "Reject", "Verwerfen", "Rechazar"),
   "gps": ("Ma position", "My position", "Meine Position", "Mi posición"), "gps-follow": ("Suivre", "Follow", "Folgen", "Seguir"), "gps-track": ("Enregistrer la trace", "Record track", "Spur aufzeichnen", "Grabar el track"),
   "gps-north": ("Boussole", "Compass", "Kompass", "Brújula"), "photo": ("Photo", "Photo", "Foto", "Foto"), "comment": ("Note sur la carte", "Note on the map", "Notiz auf der Karte", "Nota en el mapa"),
@@ -483,6 +482,105 @@ for key, v in {
   "layoutImage": ("Images de mise en page (logos) non reprises", "Layout images (logos) not kept", "Layoutbilder (Logos) nicht übernommen", "Imágenes de maquetación (logotipos) no conservadas"),
   }.items(): k(f"map.omap.lost.{key}", *v)
 k("map.omap.losses", "À noter, ce que l'autre format ne garde pas : {list}", "Note what the other format does not keep: {list}", "Beachte, was das andere Format nicht behält: {list}", "Ten en cuenta lo que el otro formato no conserva: {list}")
+
+# ---- the symbol editor (symedit.js) ------------------------------------------------------------------------------------------------
+for key, v in {
+  "symbol-edit": ("Modifier le symbole", "Edit symbol", "Signatur bearbeiten", "Editar el símbolo"), "symbol-new": ("Nouveau symbole", "New symbol", "Neue Signatur", "Símbolo nuevo"),
+  "symbol-delete": ("Supprimer le symbole", "Delete symbol", "Signatur löschen", "Eliminar el símbolo"), "export-sep": ("Séparations", "Separations", "Farbauszüge", "Separaciones"),
+  "sector": ("Mon secteur", "My sector", "Mein Sektor", "Mi sector"),
+  }.items(): k(f"map.rib.{key}", *v)
+SYM = {
+  "edit": ("Symbole {n}", "Symbol {n}", "Signatur {n}", "Símbolo {n}"), "new": ("Nouveau symbole", "New symbol", "Neue Signatur", "Símbolo nuevo"),
+  "newName": ("Nouveau symbole", "New symbol", "Neue Signatur", "Símbolo nuevo"), "number": ("Numéro", "Number", "Nummer", "Número"), "name": ("Nom", "Name", "Name", "Nombre"),
+  "rotatable": ("Tourne avec l'objet", "Turns with the object", "Dreht mit dem Objekt", "Gira con el objeto"), "hidden": ("Masqué", "Hidden", "Ausgeblendet", "Oculto"),
+  "preview": ("Aperçu", "Preview", "Vorschau", "Vista previa"), "noPreview": ("Pas d'aperçu pour ce symbole.", "No preview for this symbol.", "Keine Vorschau für diese Signatur.", "Sin vista previa para este símbolo."),
+  "none": ("aucune", "none", "keine", "ninguna"), "color": ("Couleur", "Colour", "Farbe", "Color"), "width": ("Largeur", "Width", "Breite", "Anchura"), "diameter": ("Diamètre", "Diameter", "Durchmesser", "Diámetro"),
+  "ends": ("Extrémités et angles", "Ends and corners", "Enden und Ecken", "Extremos y esquinas"), "dash": ("Tiret", "Dash", "Strich", "Trazo"), "gap": ("Intervalle", "Gap", "Lücke", "Hueco"),
+  "endDash": ("Tiret aux extrémités", "End dash", "Endstrich", "Trazo de los extremos"), "secGap": ("Petit intervalle", "Secondary gap", "Zweite Lücke", "Hueco secundario"),
+  "endGap": ("Intervalle aux extrémités", "End gap", "Endlücke", "Hueco de los extremos"), "minSym": ("Tirets au minimum", "Minimum dashes", "Mindestzahl der Striche", "Trazos mínimos"),
+  "fromStart": ("Raccourcie au début", "Shortened at the start", "Am Anfang verkürzt", "Acortada al inicio"), "toEnd": ("Raccourcie à la fin", "Shortened at the end", "Am Ende verkürzt", "Acortada al final"),
+  "dblMode": ("Ligne double", "Double line", "Doppellinie", "Línea doble"), "dblWidth": ("Écart des deux bords", "Width between the edges", "Abstand der Ränder", "Separación de los bordes"),
+  "dblLeft": ("Bord gauche", "Left edge", "Linker Rand", "Borde izquierdo"), "dblLeftWidth": ("Épaisseur du bord gauche", "Left edge width", "Breite des linken Rands", "Grosor del borde izquierdo"),
+  "dblRight": ("Bord droit", "Right edge", "Rechter Rand", "Borde derecho"), "dblRightWidth": ("Épaisseur du bord droit", "Right edge width", "Breite des rechten Rands", "Grosor del borde derecho"),
+  "dblFill": ("Remplissage entre les bords", "Fill between the edges", "Füllung zwischen den Rändern", "Relleno entre los bordes"), "dblFillOn": ("Remplir", "Fill", "Füllen", "Rellenar"),
+  "dblDash": ("Tiret des bords", "Edge dash", "Strich der Ränder", "Trazo de los bordes"), "dblGap": ("Intervalle des bords", "Edge gap", "Lücke der Ränder", "Hueco de los bordes"),
+  "frame": ("Contour", "Framing", "Umrandung", "Contorno"), "frameWidth": ("Épaisseur du contour", "Framing width", "Breite der Umrandung", "Grosor del contorno"),
+  "nPrim": ("Symboles le long, par groupe", "Symbols along, per group", "Symbole entlang, je Gruppe", "Símbolos a lo largo, por grupo"), "primDist": ("Écart entre eux", "Spacing between them", "Abstand zwischen ihnen", "Separación entre ellos"),
+  "fillOn": ("Remplie", "Filled", "Gefüllt", "Rellena"), "fill": ("Couleur de fond", "Fill colour", "Füllfarbe", "Color de relleno"), "hatchMode": ("Hachures", "Hatching", "Schraffur", "Rayado"),
+  "hatchColor": ("Couleur des hachures", "Hatching colour", "Schraffurfarbe", "Color del rayado"), "hatchWidth": ("Épaisseur des hachures", "Hatch line width", "Schraffurlinienbreite", "Grosor del rayado"),
+  "hatchDist": ("Écart des hachures", "Hatch spacing", "Schraffurabstand", "Separación del rayado"), "hatchAngle1": ("Angle", "Angle", "Winkel", "Ángulo"), "hatchAngle2": ("Second angle", "Second angle", "Zweiter Winkel", "Segundo ángulo"),
+  "structMode": ("Motif", "Pattern", "Muster", "Patrón"), "structWidth": ("Écart horizontal du motif", "Pattern horizontal spacing", "Waagrechter Musterabstand", "Separación horizontal del patrón"),
+  "structHeight": ("Écart vertical du motif", "Pattern vertical spacing", "Senkrechter Musterabstand", "Separación vertical del patrón"), "structAngle": ("Angle du motif", "Pattern angle", "Musterwinkel", "Ángulo del patrón"),
+  "borderOn": ("Bordure", "Border", "Rand", "Borde"), "border": ("Symbole de bordure", "Border symbol", "Randsignatur", "Símbolo de borde"),
+  "font": ("Police", "Font", "Schrift", "Fuente"), "size": ("Taille", "Size", "Größe", "Tamaño"), "bold": ("Gras", "Bold", "Fett", "Negrita"), "italic": ("Italique", "Italic", "Kursiv", "Cursiva"),
+  "align": ("Alignement", "Alignment", "Ausrichtung", "Alineación"), "lineSpace": ("Interligne (%)", "Line spacing (%)", "Zeilenabstand (%)", "Interlineado (%)"), "frMode": ("Cadre du texte", "Text frame", "Textrahmen", "Marco del texto"),
+  "radius": ("Rayon des coins", "Corner radius", "Eckenradius", "Radio de las esquinas"),
+  "points": ("Points", "Points", "Punkte", "Puntos"), "pointsHint": ("x y en mm, séparés par « ; » ; « *1 » ou « *2 » marquent les poignées d'une courbe", "x y in mm, separated by « ; »; « *1 » or « *2 » mark a curve's handles", "x y in mm, getrennt durch „;“; „*1“ oder „*2“ markieren die Anfasser einer Kurve", "x y en mm, separados por «;»; «*1» o «*2» marcan los tiradores de una curva"),
+  "addElt": ("Ajouter un élément", "Add an element", "Element hinzufügen", "Añadir un elemento"), "badNumber": ("Numéro de la forme 101 ou 101.1.", "A number like 101 or 101.1.", "Eine Nummer wie 101 oder 101.1.", "Un número como 101 o 101.1."),
+  "taken": ("Le numéro {n} est déjà pris.", "Number {n} is already used.", "Die Nummer {n} ist schon vergeben.", "El número {n} ya está en uso."),
+  "inUse": ("Des objets utilisent ce symbole : changez-les d'abord de symbole.", "Objects use this symbol: change their symbol first.", "Objekte verwenden diese Signatur: Ändere zuerst ihre Signatur.", "Hay objetos que usan este símbolo: cámbiales antes el símbolo."),
+  "isBorder": ("Ce symbole borde une surface : retirez-le d'abord de sa bordure.", "This symbol borders an area symbol: remove it from that border first.", "Diese Signatur ist der Rand einer Flächensignatur: Entferne sie zuerst dort.", "Este símbolo es el borde de una superficie: quítalo antes de ese borde."),
+  "startFrom": ("Partir de", "Start from", "Ausgehend von", "Partir de"), "copyOf": ("une copie de {s}", "a copy of {s}", "einer Kopie von {s}", "una copia de {s}"),
+  }
+for key, v in SYM.items(): k(f"map.sym.{key}", *v)
+for key, v in {"flat": ("Plates", "Flat", "Flach", "Planos"), "round": ("Arrondies", "Round", "Rund", "Redondeados"), "miter": ("Plates, angles vifs", "Flat, sharp corners", "Flach, spitze Ecken", "Planos, esquinas vivas"),
+  "pointed": ("Pointues", "Pointed", "Spitz", "Puntiagudos"), "pointedRound": ("Pointues, angles arrondis", "Pointed, round corners", "Spitz, runde Ecken", "Puntiagudos, esquinas redondeadas")}.items(): k(f"map.sym.ends.{key}", *v)
+for key, v in {"line": ("Ligne", "Line", "Linie", "Línea"), "area": ("Surface", "Area", "Fläche", "Superficie"), "circle": ("Cercle", "Circle", "Kreis", "Círculo"), "dot": ("Point plein", "Dot", "Punkt", "Punto")}.items(): k(f"map.sym.elt.{key}", *v)
+for key, v in {"elts": ("Éléments", "Elements", "Elemente", "Elementos"), "prim": ("Symboles le long de la ligne", "Symbols along the line", "Symbole entlang der Linie", "Símbolos a lo largo de la línea"),
+  "sec": ("Symboles dans les intervalles", "Symbols in the gaps", "Symbole in den Lücken", "Símbolos en los huecos"), "corner": ("Symboles aux angles", "Symbols at corners", "Symbole an den Ecken", "Símbolos en las esquinas"),
+  "start": ("Symbole au début", "Symbol at the start", "Symbol am Anfang", "Símbolo al inicio"), "end": ("Symbole à la fin", "Symbol at the end", "Symbol am Ende", "Símbolo al final")}.items(): k(f"map.sym.list.{key}", *v)
+for key, v in {"point": ("Symbole ponctuel : ses éléments sont placés autour du point de l'objet (0 0), en mm sur la carte.", "Point symbol: its elements are placed around the object's point (0 0), in map mm.", "Punktsignatur: Ihre Elemente liegen um den Objektpunkt (0 0), in mm auf der Karte.", "Símbolo puntual: sus elementos se sitúan alrededor del punto del objeto (0 0), en mm del mapa."),
+  "line": ("Symbole linéaire : épaisseur, tirets, ligne double, contour et symboles répétés le long.", "Line symbol: width, dashes, double line, framing and symbols repeated along it.", "Liniensignatur: Breite, Striche, Doppellinie, Umrandung und entlang wiederholte Symbole.", "Símbolo lineal: grosor, trazos, línea doble, contorno y símbolos repetidos a lo largo."),
+  "area": ("Symbole de surface : fond, hachures, motif (ses éléments) et bordure.", "Area symbol: fill, hatching, pattern (its elements) and border.", "Flächensignatur: Füllung, Schraffur, Muster (seine Elemente) und Rand.", "Símbolo de superficie: relleno, rayado, patrón (sus elementos) y borde."),
+  "text": ("Symbole de texte.", "Text symbol.", "Textsignatur.", "Símbolo de texto."), "linetext": ("Texte le long d'une ligne.", "Text along a line.", "Text entlang einer Linie.", "Texto a lo largo de una línea."),
+  "rect": ("Rectangle.", "Rectangle.", "Rechteck.", "Rectángulo.")}.items(): k(f"map.sym.kind.{key}", *v)
+for key, v in {"point": ("un point vide", "an empty point symbol", "einer leeren Punktsignatur", "un símbolo puntual vacío"), "line": ("une ligne vide", "an empty line symbol", "einer leeren Liniensignatur", "un símbolo lineal vacío"),
+  "area": ("une surface vide", "an empty area symbol", "einer leeren Flächensignatur", "un símbolo de superficie vacío"), "text": ("un texte vide", "an empty text symbol", "einer leeren Textsignatur", "un símbolo de texto vacío")}.items(): k(f"map.sym.blank.{key}", *v)
+for key, v in {"0": ("aucune", "none", "keine", "ninguna"), "1": ("deux bords pleins", "two solid edges", "zwei durchgezogene Ränder", "dos bordes continuos"), "2": ("bord gauche en tirets", "left edge dashed", "linker Rand gestrichelt", "borde izquierdo discontinuo"),
+  "3": ("deux bords en tirets", "both edges dashed", "beide Ränder gestrichelt", "ambos bordes discontinuos"), "4": ("tout en tirets", "all dashed", "alles gestrichelt", "todo discontinuo")}.items(): k(f"map.sym.dbl.{key}", *v)
+for key, v in {"0": ("aucune", "none", "keine", "ninguno"), "1": ("une direction", "one direction", "eine Richtung", "una dirección"), "2": ("croisées", "crossed", "gekreuzt", "cruzado")}.items(): k(f"map.sym.hatch.{key}", *v)
+for key, v in {"0": ("aucun", "none", "keines", "ninguno"), "1": ("lignes alignées", "aligned rows", "ausgerichtete Reihen", "filas alineadas"), "2": ("lignes décalées", "shifted rows", "versetzte Reihen", "filas desplazadas")}.items(): k(f"map.sym.struct.{key}", *v)
+for key, v in {"left": ("à gauche", "left", "links", "a la izquierda"), "center": ("au centre", "centre", "zentriert", "al centro"), "right": ("à droite", "right", "rechts", "a la derecha"), "justify": ("justifié", "justified", "Blocksatz", "justificado")}.items(): k(f"map.sym.align.{key}", *v)
+for key, v in {"0": ("aucun", "none", "keiner", "ninguno"), "1": ("ombre", "shadow", "Schatten", "sombra"), "2": ("contour", "outline", "Kontur", "contorno")}.items(): k(f"map.sym.fr.{key}", *v)
+
+# ---- colours, inks, separations (colors.js) -------------------------------------------------------------------------------------
+for key, v in {
+  "hint": ("Du haut au bas de l'ordre d'impression. Encres : « Nom 100 » (pourcentage), plusieurs séparées par des virgules.", "From the top to the bottom of the printing order. Inks: « Name 100 » (percentage), several separated by commas.", "Von oben nach unten in der Druckreihenfolge. Druckfarben: „Name 100“ (Prozent), mehrere durch Kommas getrennt.", "De arriba abajo en el orden de impresión. Tintas: «Nombre 100» (porcentaje), varias separadas por comas."),
+  "name": ("Nom", "Name", "Name", "Nombre"), "op": ("Surimp.", "Overpr.", "Überdr.", "Sobreimp."), "overprint": ("Surimpression", "Overprint", "Überdrucken", "Sobreimpresión"),
+  "spots": ("Encres d'accompagnement", "Spot inks", "Schmuckfarben", "Tintas planas"), "spotPh": ("PMS361_Green 60", "PMS361_Green 60", "PMS361_Green 60", "PMS361_Green 60"),
+  "up": ("Monter", "Move up", "Nach oben", "Subir"), "down": ("Descendre", "Move down", "Nach unten", "Bajar"), "delete": ("Supprimer", "Delete", "Löschen", "Eliminar"),
+  "add": ("Nouvelle couleur", "New colour", "Neue Farbe", "Color nuevo"), "new": ("Nouvelle couleur", "New colour", "Neue Farbe", "Color nuevo"),
+  "inks": ("Encres d'accompagnement", "Spot inks", "Schmuckfarben", "Tintas planas"), "inksHint": ("Les encres de l'imprimeur (Pantone…) : leur CMJN pour l'écran, la linéature et l'angle de trame.", "The printer's inks (Pantone…): their CMYK for the screen, screen frequency and angle.", "Die Druckfarben der Druckerei (Pantone…): ihr CMYK für den Bildschirm, Rasterweite und -winkel.", "Las tintas de la imprenta (Pantone…): su CMYK para la pantalla, lineatura y ángulo de trama."),
+  "freq": ("Linéature", "Frequency", "Rasterweite", "Lineatura"), "angle": ("Angle", "Angle", "Winkel", "Ángulo"), "addInk": ("Nouvelle encre", "New ink", "Neue Druckfarbe", "Tinta nueva"), "newInk": ("Encre", "Ink", "Druckfarbe", "Tinta"),
+  "inUse": ("Cette couleur est utilisée par un symbole ou un objet.", "This colour is used by a symbol or an object.", "Diese Farbe wird von einer Signatur oder einem Objekt verwendet.", "Este color lo usa un símbolo o un objeto."),
+  }.items(): k(f"map.col.{key}", *v)
+for key, v in {
+  "title": ("Séparations des couleurs", "Colour separations", "Farbauszüge", "Separaciones de color"), "what": ("Pour l'imprimeur", "For the printer", "Für die Druckerei", "Para la imprenta"),
+  "composite": ("Un PDF en encres d'accompagnement (couleurs de séparation)", "One PDF in spot inks (separation colours)", "Ein PDF in Schmuckfarben (Separationsfarben)", "Un PDF en tintas planas (colores de separación)"),
+  "spotPlates": ("Une page par encre d'accompagnement", "One page per spot ink", "Eine Seite je Schmuckfarbe", "Una página por tinta plana"),
+  "processPlates": ("Une page par encre CMJN (quadrichromie)", "One page per CMYK ink (process)", "Eine Seite je CMYK-Farbe (Vierfarbdruck)", "Una página por tinta CMYK (cuatricromía)"),
+  "noSpots": ("La carte n'a pas d'encres d'accompagnement : définissez-les dans Mise en page › Couleurs.", "The map has no spot inks: define them in Layout › Colours.", "Die Karte hat keine Schmuckfarben: Lege sie unter Layout › Farben an.", "El mapa no tiene tintas planas: defínelas en Maquetación › Colores."),
+  "marks": ("Repères de repérage et nom de chaque plaque", "Registration marks and each plate's name", "Passermarken und Name jeder Druckplatte", "Marcas de registro y nombre de cada plancha"), "plate": ("Plaque", "Plate", "Platte", "Plancha"),
+  }.items(): k(f"map.sep.{key}", *v)
+
+# ---- several mappers at once (collab.js) ------------------------------------------------------------------------------------------
+k("map.collab.others.one", "Aussi sur la carte : {names}", "Also on the map: {names}", "Auch auf der Karte: {names}", "También en el mapa: {names}")
+k("map.collab.others.other", "{n} autres sur la carte : {names}", "{n} others on the map: {names}", "{n} weitere auf der Karte: {names}", "{n} más en el mapa: {names}")
+k("map.collab.pulled", "Modifications de l'équipe reprises.", "The team's changes taken in.", "Änderungen des Teams übernommen.", "Cambios del equipo incorporados.")
+k("map.collab.merged", "Vos modifications et celles de l'équipe ont été réunies.", "Your changes and the team's were merged.", "Deine Änderungen und die des Teams wurden zusammengeführt.", "Tus cambios y los del equipo se han combinado.")
+k("map.collab.mergedConflicts.one", "Réunies ; {n} objet modifié des deux côtés : la version de qui tient le secteur l'emporte.", "Merged; {n} object changed on both sides: the version of the sector's keeper wins.", "Zusammengeführt; {n} Objekt auf beiden Seiten geändert: Die Version dessen, der den Sektor hält, gilt.", "Combinados; {n} objeto cambiado por ambos lados: gana la versión de quien tiene el sector.")
+k("map.collab.mergedConflicts.other", "Réunies ; {n} objets modifiés des deux côtés : la version de qui tient le secteur l'emporte.", "Merged; {n} objects changed on both sides: the version of the sector's keeper wins.", "Zusammengeführt; {n} Objekte auf beiden Seiten geändert: Die Version dessen, der den Sektor hält, gilt.", "Combinados; {n} objetos cambiados por ambos lados: gana la versión de quien tiene el sector.")
+k("map.sector.pick", "Cliquez deux coins de votre secteur : les autres ne pourront pas y modifier la carte.", "Click two corners of your sector: the others will not be able to change the map there.", "Klicke zwei Ecken deines Sektors: Die anderen können die Karte dort nicht ändern.", "Haz clic en dos esquinas de tu sector: los demás no podrán modificar el mapa ahí.")
+k("map.sector.kept", "Secteur réservé.", "Sector kept.", "Sektor reserviert.", "Sector reservado.")
+k("map.sector.released", "Secteur libéré.", "Sector released.", "Sektor freigegeben.", "Sector liberado.")
+k("map.sector.clash", "Ce secteur empiète sur celui de {name}.", "This sector overlaps {name}'s.", "Dieser Sektor überschneidet sich mit dem von {name}.", "Este sector se solapa con el de {name}.")
+k("map.sector.locked", "Un autre cartographe a réservé ce secteur.", "Another mapper keeps this sector.", "Ein anderer Kartograf hat diesen Sektor reserviert.", "Otro cartógrafo tiene reservado este sector.")
+k("map.sector.mine", "Mon secteur", "My sector", "Mein Sektor", "Mi sector")
+k("map.sector.of", "Secteur de {name}", "{name}'s sector", "Sektor von {name}", "Sector de {name}")
+k("map.undo.colors", "Couleurs", "Colours", "Farben", "Colores")
+k("map.undo.symbolEdit", "Symbole modifié", "Symbol edited", "Signatur geändert", "Símbolo modificado")
+k("map.undo.symbolNew", "Nouveau symbole", "New symbol", "Neue Signatur", "Símbolo nuevo")
+k("map.undo.symbolDelete", "Symbole supprimé", "Symbol deleted", "Signatur gelöscht", "Símbolo eliminado")
 
 # ---- the site's own catalogues (nav, tiles, beta) are written by `site_keys` below -----------------------------------------------
 SITE = {
