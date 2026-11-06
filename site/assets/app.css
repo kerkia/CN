@@ -1803,19 +1803,55 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
   .an-side.an-cal .an-actions .btn { flex: none; }
   body:has(#an-work:not([hidden]) .an-side.an-cal) { padding-bottom: 64px; } }
 @media (max-width: 900px) {
-  body.an-theatre .an-layout { display: flex; flex-direction: column; height: auto; gap: 10px; }
-  body.an-theatre .an-mapcol { order: 0; } body.an-theatre .an-map { height: 60vh; flex: none; }
-  body.an-theatre .an-left { order: 2; } body.an-theatre .an-right { order: 3; }
+  body.an-theatre .an-layout { display: flex; flex-direction: column; position: relative; height: var(--an-h, 75vh); gap: 0; }
+  body.an-theatre .an-mapcol { flex: 1 1 auto; min-height: 0; } body.an-theatre .an-map { flex: 1 1 auto; height: auto; min-height: 0; }
   body.an-theatre .an-left [data-pane="graphs"] canvas { height: 240px; flex: none; }
   body.an-theatre .an-split { display: none; }
   .an-bar .an-brief { max-width: 100%; }
 }
-/* a phone: the panels under the map, each its own height; folded, a row of the tabs' names */
+/* a phone (owner, 2026-11-06: the panels were under the map): the map fills the window and each panel is a drawer sliding over it
+   from its side, both slid away at the opening (sidepanel.js); a handle on the map's edge — an arrow and the tab shown — slides it
+   in and back, as does the panel's own ‹ / ›; one open at a time */
+.sp-handle { display: none; }
+/* a phone's trace pickers (owner, 2026-11-06): a button, and a quieter « voir tous les fichiers » beside it */
+.sh-pick-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.sh-pick-any { color: var(--water); text-decoration: underline; cursor: pointer; font-size: 13.5px; }
+label.an-pick { display: flex; justify-content: center; padding: 12px; font-size: 15px; }
+.an-pick-hint { font-size: 12.5px; margin: 6px 0 0; }
 @media (max-width: 900px) {
-  .sp { height: 60vh; }
-  .sp[data-collapsed="1"] { height: auto; }
-  .sp[data-collapsed="1"] .sp-rail { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; padding: 4px 6px; }
-  .sp-rail-tab, .sp-left .sp-rail-tab { writing-mode: horizontal-tb; transform: none; padding: 6px 10px; }
+  .sh-layout, body.an-theatre .an-layout { overflow: clip; }      /* a drawer slid away widens nothing */
+  .sh-layout > .sp, body.an-theatre .an-layout > .sp { position: absolute; top: 0; bottom: 0; z-index: 20; width: min(calc(100% - 64px), 380px); height: auto;
+    overflow: visible; transition: transform .22s ease, box-shadow .22s ease; box-shadow: 0 4px 22px rgba(0, 0, 0, .35); }
+  .sh-layout > .sp-left, body.an-theatre .an-layout > .sp-left { left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: 0; }
+  .sh-layout > .sp-right, body.an-theatre .an-layout > .sp-right { right: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: 0; }
+  .sh-layout > .sp-left[data-collapsed="1"], body.an-theatre .an-layout > .sp-left[data-collapsed="1"] { transform: translateX(-100%); box-shadow: none; }
+  .sh-layout > .sp-right[data-collapsed="1"], body.an-theatre .an-layout > .sp-right[data-collapsed="1"] { transform: translateX(100%); box-shadow: none; }
+  .sh-layout > .sp[data-collapsed="1"] .sp-head, body.an-theatre .an-layout > .sp[data-collapsed="1"] .sp-head { display: flex; }
+  .sh-layout > .sp[data-collapsed="1"] .sp-body, body.an-theatre .an-layout > .sp[data-collapsed="1"] .sp-body { display: flex; }
+  .sh-layout > .sp .sp-rail, body.an-theatre .an-layout > .sp .sp-rail { display: none !important; }
+  .sh-layout > .sp .sp-tabs, body.an-theatre .an-layout > .sp .sp-tabs { overflow-x: auto; scrollbar-width: none; }
+  .sh-layout > .sp .sp-fold, body.an-theatre .an-layout > .sp .sp-fold { min-width: 36px; min-height: 30px; font-size: 16px; }
+  .sh-layout > .sp .sp-handle, body.an-theatre .an-layout > .sp .sp-handle { display: flex; }
+  .sp-handle { position: absolute; top: 58%; transform: translateY(-50%); flex-direction: column; align-items: center; gap: 4px; width: 30px; padding: 10px 0;
+    appearance: none; border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .3); touch-action: manipulation; }
+  .sp-left .sp-handle { left: 100%; border-left: 0; border-radius: 0 10px 10px 0; }
+  .sp-right .sp-handle { right: 100%; border-right: 0; border-radius: 10px 0 0 10px; }
+  .sp-handle-arrow { font-size: 18px; font-weight: 700; line-height: 1; color: var(--flag); }
+  .sp-handle-label { writing-mode: vertical-rl; font-size: 12px; font-weight: 600; max-height: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp-left .sp-handle-label { transform: rotate(180deg); }
+  .sp[data-collapsed="0"] .sp-handle { background: var(--flag-wash); }
+  .sh-layout .an-tools, body.an-theatre .an-layout .an-tools { right: 36px; }   /* clear of the right drawer's handle */
+}
+/* a phone's top line: the title and what may be done on one line, the two views under it; who may open it goes (room for the map) */
+@media (max-width: 640px) {
+  .sh-top.sh-top3 { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l r" "tabs tabs"; gap: 4px 8px; margin-bottom: 6px; }
+  .sh-top3 .sh-top-l { grid-area: l; flex-direction: column; align-items: flex-start; gap: 0; }
+  .sh-top3 .sh-top-l > * { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sh-top3 .sh-top-l .muted { font-size: 12px; }
+  .sh-top3 .sh-top-r { grid-area: r; flex-wrap: nowrap; gap: 4px; }
+  .sh-top3 .sh-tabs { grid-area: tabs; justify-self: center; }
+  .sh-top3 .sh-access { display: none; }
 }
 /* « Analyse de carte » (pages/mapanalysis.js; owner, 2026-11-04): the events opened by their organisers beside a map, a row's map
    as a thumbnail under the mouse, the chosen one's card with its three ways in; every analysis it leads to has its line back at
@@ -2049,9 +2085,9 @@ label.sh-runner.sp-runner { margin: 0; font-weight: inherit; }
 .sh-e-work { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 10px; height: 60vh; min-height: 360px; }
 .sh-e-list { margin: 8px 0 0; padding-left: 22px; font-size: 13px; max-height: 30vh; overflow-y: auto; }
 @media (max-width: 900px) { .sh-e-work { grid-template-columns: 1fr; height: auto !important; } .sh-map { height: 60vh; }
-  .sh-layout { display: flex; flex-direction: column; gap: 10px; height: auto !important; }
-  .sh-layout > .an-split { display: none; } .sh-layout > .sh-mapcol { order: 1; } .sh-layout > .sh-lp { order: 2; } .sh-layout > .sh-rp { order: 3; }
-  .sh-layout > .sh-sp-center { order: 1; overflow: visible; }
+  .sh-layout { display: flex; flex-direction: column; gap: 0; position: relative; }
+  .sh-layout > .an-split { display: none; } .sh-layout > .sh-mapcol { flex: 1 1 auto; min-height: 0; } .sh-layout > .sh-mapcol > .sh-map { height: auto; flex: 1 1 auto; min-height: 0; }
+  .sh-layout > .sh-sp-center { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 34px; }
   .sh-own-cv { flex: none; height: 360px; } }
 /* « En direct » */
 /* the race (owner, 2026-10-21): name and day | status and ranking, two lines; the punches on one line scrolling sideways;

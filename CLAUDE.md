@@ -417,7 +417,12 @@ symbols the sprint text says not to cross or enter. The standards, with their ye
 « Définitions de postes » (`.ms-stds`; owner, 2026-10-31). « Définitions de postes » has the same two tabs: one IOF standard
 (ISCD 2024) for both; « Forêt » shows ISOM 2017-2's symbols beside column D, « Sprint » ISSprOM 2019-2's and keeps the column D
 features that have one, every other column whole (2026-11-04; the hand-picked sprint selections and the « sprint » tag are gone).
-The file inputs of traces take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); on a phone
+The file inputs of maps take any file on a touch screen (`util.fileAccept`: iOS greyed .fit and .tcx out); **a trace's** take MIME
+types only there (`util.traceAccept`, owner 2026-11-06: a phone offered its photos for a GPS track — `application/octet-stream`, any
+file, no image type: no photo library, no camera), and a touch screen gets buttons, never « Déposez … » (`util.touchScreen`): the map
+analysis's « Ajouter ma trace » opens the phone's file picker at once (`shared.js pickTrace`), its first-visit offer a « Choisir ma
+trace » button with « voir tous les fichiers » (no filter) beside it, Solo's files card « Choisir les fichiers » — not yet tried on a
+real iPhone or Android phone; on a phone
 « Analyse solo » offers « Photographier la carte » (`#an-cam`, `capture="environment"`: the rear camera, the photo kept on the phone).
 **The home page** (owner, 2026-10-30): sections one under another, a rule between them, each a link of the bar — « Aperçu »
 (Découvrir, Partout, Arrivée: what Ozimut is, phones, the pledges and the account), Arena, Stats, Coach, Orga, « Tarifs » /
@@ -1275,8 +1280,12 @@ Every multiple-choice game was played through to its score page at phone size, w
   not known — `sequenceKnown` also counts the course's order read on the map, `mapOrdered`, since that day —, `sidepanel.bindPanel`
   showing the tab asked for as soon as it is offered); **a map analysis opens on its whole map, filling the map's area** (owner, 2026-11-05: it opened on the runners gathered at the start), fitted again as the panels settle until the reader moves it, the runners followed once the replay is played or its time moved (`still`; an address naming a time or a leg keeps its view); the widths are kept in the pages' prefs (`gw`, `sw`; Multi `lw`, `rw`), the
   folds and tabs only for the visit; the layout fills the window below its top (`fitHeight` / `fit`), the panels scroll on their own. Solo's
-  « courbes sous la carte » choice is gone. Under 900 px everything stacks: the bar, the map, then each panel 60 vh high (folded: a row
-  of its tabs). Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
+  « courbes sous la carte » choice is gone. **Under 900 px the panels are drawers over the map** (owner, 2026-11-06: they were
+  stacked under it): the map's column fills the window below the top line, each panel slides in from its side over the map
+  (`sidepanel.drawers()`, app.css; width the layout's less 64 px, 380 at most), both slid away at the opening; a handle on the map's
+  edge (`.sp-handle`: an arrow and the tab shown) slides it in and back, as does the panel's ‹ / ›; one open at a time (`sp:close`);
+  the map's tools moved clear of the right handle. Under 640 px the top line is two lines (title and date | add, ⤢ ↗; the views) and
+  drops who may open it. Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
 - **Generated maps** (owner, 2026-11-01, after the question of MapAnt-like maps: a prototype, administrators only, in « Analyse
   solo »): for a trace without a map in metropolitan France, « Générer une carte d'après le LiDAR (essai) » (files card,
   `genBlock`/`genMap`). The map: IGN's LiDAR HD point clouds (COPC LAZ, Licence Ouverte 2.0; each 1 km tile's addresses from IGN's

@@ -17,7 +17,7 @@
 //    rule; the trace's length against the straight line; pace; mean heart rate and cadence).
 // Only the calibration (the controls' positions) is kept, in localStorage, per race, circuit, runner and image.
 
-import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, pctN, fileAccept, traceAccept, touchScreen } from "../util.js";
 import { backLine, multiHref, orgaHref } from "./mapanalysis.js";
 import { fitFromGeo, geoFromFit, frameAt, validGeo } from "../trace/share.js";
 import { anchorsOf, straightPx, timeline, ownGeo, toGpx, drawingOf, parseClock, pxToLatLon } from "../trace/drawroute.js";
@@ -479,8 +479,13 @@ export async function render(main, { query = {}, route } = {}) {
     const iof = files.iof;
     const courseSel = iof?.data?.courses?.length > 1 ? html` <select id="an-iof-course" style="margin-left:8px">${iof.data.courses.map((c, i) => html`<option value="${i}" ${raw(i === iofIndex ? "selected" : "")}>${c.name || `#${i + 1}`}${c.length ? ` · ${fmt(c.length / 1000, 1)} km` : ""}</option>`)}</select>` : "";
     $("#an-files").innerHTML = html`<div class="card-body">
-      <label class="dropzone an-drop" id="an-drop"><input type="file" id="an-in" multiple hidden accept="${fileAccept(ACCEPT)}">
-        <strong>${t(orgaMode ? "an.orga.drop" : "an.drop")}</strong><span class="muted">${t(orgaMode ? "an.orga.drop.hint" : "an.drop.hint")}</span></label>
+      ${touchScreen()
+        // a phone (owner, 2026-11-06): a button opens its file picker — nothing is dropped there; on the organiser's map a trace
+        // only, so no photos (traceAccept)
+        ? html`<label class="btn btn-primary an-pick" id="an-drop"><input type="file" id="an-in" multiple hidden accept="${orgaMode ? traceAccept() : fileAccept(ACCEPT)}">${t(orgaMode ? "an.orga.pick" : "an.pick")}</label>
+          <p class="muted an-pick-hint">${t(orgaMode ? "an.orga.drop.hint" : "an.drop.hint")}</p>`
+        : html`<label class="dropzone an-drop" id="an-drop"><input type="file" id="an-in" multiple hidden accept="${orgaMode ? traceAccept() : fileAccept(ACCEPT)}">
+        <strong>${t(orgaMode ? "an.orga.drop" : "an.drop")}</strong><span class="muted">${t(orgaMode ? "an.orga.drop.hint" : "an.drop.hint")}</span></label>`}
       ${matchMedia("(pointer: coarse)").matches && !orgaMode ? html`<div class="an-cam-row"><label class="btn btn-primary an-cam"><input type="file" id="an-cam" accept="image/*" capture="environment" hidden>${t("an.cam")}</label>
         <span class="muted">${t("an.cam.hint")}</span></div>` : ""}
       ${phone.offered() ? html`<div class="an-cam-row">${phone.button("an-phone")}<span class="muted">${t(orgaMode ? "ph.hint.trace" : "ph.hint.any")}</span></div>` : ""}

@@ -96,6 +96,15 @@ export const isoDay = (d) => d.toISOString().slice(0, 10);
  * files whose extension it does not know (.fit, .tcx), Android's picker can hide them; the page checks what it gets anyway.
  */
 export const fileAccept = (list) => (matchMedia("(pointer: coarse)").matches ? "" : list);
+/** A touch screen: its file inputs are buttons (« Choisir … »), nothing is dropped on them. */
+export const touchScreen = () => matchMedia("(pointer: coarse)").matches;
+/**
+ * A GPS trace's file input (owner, 2026-11-06: a phone offered its photo library and camera for a track): on a touch screen MIME
+ * types only, « application/octet-stream » the one any file is (iOS: public.data, so .fit and .tcx are not greyed out) — no
+ * image type, so iOS opens its files and Android its file picker, with neither photos nor camera; elsewhere the extensions.
+ * The dialogs keep « voir tous les fichiers » beside it (an input with no `accept`) for a picker that hides a file all the same.
+ */
+export const traceAccept = (list = ".gpx,.tcx,.fit") => (touchScreen() ? "application/octet-stream,application/gpx+xml,application/vnd.garmin.tcx+xml,application/xml,text/xml" : list);
 export function addDays(iso, n) {
   const d = new Date(iso + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + n);

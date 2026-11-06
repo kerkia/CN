@@ -17,7 +17,7 @@
 // corridor and compass exercises (pages/sharedviews.js); a headcam video in step (pages/sharedvideo.js); the replay's
 // state in the address. Stored by /api/analyses (R2).
 
-import { html, raw, $, $$, fmt, fmtDate, fileAccept } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, traceAccept, touchScreen } from "../util.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
 import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
@@ -551,6 +551,16 @@ export function sureCircuit(fits) {
   return a?.crop && r(a) >= 0.6 && (!b || r(a) - r(b) >= 0.2) ? a : null;
 }
 
+/** A phone: the trace's file picker at once (owner, 2026-11-06: no window with a drop zone first; the tap that asked still counts). */
+function pickTrace(onFile) {
+  const i = document.createElement("input");
+  i.type = "file"; i.accept = traceAccept(); i.hidden = true;
+  document.body.append(i);
+  i.addEventListener("change", () => { const f = i.files[0]; i.remove(); if (f) onFile(f); });
+  i.addEventListener("cancel", () => i.remove());
+  i.click();
+}
+
 function offerTrack({ A, id, onDone, initial = null }) {
   const m = document.createElement("div");
   m.className = "tr-modal sh-offer";
@@ -558,17 +568,23 @@ function offerTrack({ A, id, onDone, initial = null }) {
   const close = () => { markOffered(id); m.remove(); document.removeEventListener("keydown", onKey, true); };
   const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
   const first = () => {
+    // a phone (owner, 2026-11-06): nothing is dropped there, a button opens its file picker (no photos for a track), and « voir
+    // tous les fichiers » one with no filter, for a picker that would hide the file
+    const touch = touchScreen();
     m.innerHTML = html`<div class="tr-dialog" role="dialog" aria-modal="true" aria-labelledby="sh-offer-t"><h2 id="sh-offer-t">${t("sh.offer.title")}</h2>
-      <div class="tr-form"><p>${t("sh.offer.body")}</p>
-        <label class="dropzone an-drop sh-offer-drop"><input type="file" id="sh-offer-in" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
-          <strong>${t("sh.offer.drop")}</strong><span class="muted">${t("sh.fitTip")}</span></label>
+      <div class="tr-form"><p>${t(touch ? "sh.offer.body.touch" : "sh.offer.body")}</p>
+        ${touch ? html`<div class="sh-pick-row"><label class="btn btn-primary"><input type="file" id="sh-offer-in" accept="${traceAccept()}" hidden>${t("sh.offer.pick")}</label>
+            <label class="sh-pick-any"><input type="file" hidden>${t("sh.pick.any")}</label></div>
+          <p class="hint">${t("sh.fitTip")}</p>`
+        : html`<label class="dropzone an-drop sh-offer-drop"><input type="file" id="sh-offer-in" accept="${traceAccept()}" hidden>
+          <strong>${t("sh.offer.drop")}</strong><span class="muted">${t("sh.fitTip")}</span></label>`}
         <p class="notice" id="sh-offer-note" hidden></p>
         <div class="tr-dlg-btns"><button type="button" class="btn" data-close>${t("sh.offer.later")}</button></div></div></div>`;
     const drop = $(".sh-offer-drop", m);
-    $("#sh-offer-in", m).addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) take(f); });
-    drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
-    drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-    drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer?.files?.[0]; if (f) take(f); });
+    $$("input[type=file]", m).forEach((i) => i.addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) take(f); }));
+    drop?.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+    drop?.addEventListener("dragleave", () => drop.classList.remove("over"));
+    drop?.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer?.files?.[0]; if (f) take(f); });
     $("[data-close]", m).addEventListener("click", close);
   };
   const note = (text) => { const p = $("#sh-offer-note", m); if (p) { p.textContent = text; p.hidden = !text; } };
@@ -1720,7 +1736,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     leftP.setTab("own", !!me);
     if (!me) return;
     el.innerHTML = own ? html`<canvas class="sh-own-cv" id="sh-own-cv"></canvas>`
-      : html`<label class="dropzone sh-own-drop"><input type="file" id="sh-own-file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden><strong>${t("sh.own.drop")}</strong><span class="muted">${t("sh.own.drop.hint")}</span></label>
+      : touchScreen() ? html`<label class="btn btn-primary"><input type="file" id="sh-own-file" accept="${traceAccept()}" hidden>${t("sh.own.pick")}</label><p class="muted" style="margin:6px 0 0">${t("sh.own.drop.hint")}</p>`
+      : html`<label class="dropzone sh-own-drop"><input type="file" id="sh-own-file" accept="${traceAccept()}" hidden><strong>${t("sh.own.drop")}</strong><span class="muted">${t("sh.own.drop.hint")}</span></label>
           <p class="hint" style="margin:6px 0 0">${t("an.fitTip")}</p>
           <p class="notice" id="sh-own-note" hidden></p>`;
     $("#sh-own-file")?.addEventListener("change", async (e) => {
@@ -1795,7 +1812,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       ${auth.session()?.admin ? html`<div class="sh-mine"><b>${t("sh.test.title")}</b>
         <div class="row" style="gap:6px;margin-top:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-test-add">${t("sh.test.add")}</button>
         ${myTests().length ? html`<button type="button" class="btn btn-sm" id="sh-test-rm">${t("sh.test.remove", { n: myTests().length })}</button>` : ""}</div>
-        <input type="file" id="sh-test-file" accept="${fileAccept(".gpx,.tcx,.fit")}" multiple hidden>
+        <input type="file" id="sh-test-file" accept="${traceAccept()}" multiple hidden>
         <p class="hint" style="margin:6px 0 0">${t("sh.test.hint")}</p></div>` : ""}`}
       <div id="sh-upload"></div>`;
     const shownChanged = () => {
@@ -1855,16 +1872,17 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   // this computer or, by a QR code, one's phone (a phone: its own files only), the FIT tip, and « Annuler »; the consent that follows
   // is in « Circuits », shown
   function addDialog() {
+    const take = (f) => { if (!f) return; leftP.fold(false); leftP.show("runners"); upload(f); };
+    if (touchScreen()) { pickTrace(take); return; }        // a phone: its file picker at once (owner, 2026-11-06)
     const m = document.createElement("div");
     m.className = "tr-modal sh-add-modal";
     const close = () => { m.remove(); document.removeEventListener("keydown", onKey, true); };
     const onKey = (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); } };
-    const take = (f) => { if (!f) return; leftP.fold(false); leftP.show("runners"); upload(f); };
     m.innerHTML = html`<div class="tr-dialog" role="dialog" aria-modal="true" aria-labelledby="sh-add-t">
       <h2 id="sh-add-t">${t(runners.some((r) => r.mine) ? "sh.trace.replace" : "sh.trace.add")}</h2>
       <div class="tr-form"><div class="sh-add-ways"><button type="button" class="btn btn-primary" data-pc>💻 ${t("sh.add.pc")}</button>
         ${phone.offered() ? html`<button type="button" class="btn" data-phone title="${t("ph.btn.tip")}">📱 ${t("sh.add.phone")}</button>` : ""}</div>
-        <input type="file" accept="${fileAccept(".gpx,.tcx,.fit")}" hidden>
+        <input type="file" accept="${traceAccept()}" hidden>
         <p class="hint">${t("sh.fitTip")}</p>
         <div class="tr-dlg-btns"><button type="button" class="btn" data-close>${t("sh.cancel")}</button></div></div></div>`;
     document.body.append(m);
