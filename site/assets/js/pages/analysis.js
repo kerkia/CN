@@ -47,6 +47,7 @@ import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
 import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow } from "../trace/sidepanel.js";
+import { keyHtml } from "../trace/legend.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { videoPanel } from "./sharedvideo.js";
@@ -223,7 +224,7 @@ export async function render(main, { query = {}, route } = {}) {
         <div class="an-split" id="an-split-g" title="${t("an.split")}" hidden></div>
         <div class="an-mapcol"><div class="an-bar sh-bar" id="an-bar" hidden></div>
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
-          <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="+">+</button><button type="button" class="btn btn-sm" id="an-zout" title="−">−</button>
+          <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="${t("lg.zin.t")}" aria-label="${t("lg.zin.t")}">+</button><button type="button" class="btn btn-sm" id="an-zout" title="${t("lg.zout.t")}" aria-label="${t("lg.zout.t")}">−</button>
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button>
             <button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-video-btn" title="${t("sh.video.add")}" hidden>🎥</button><input type="file" id="an-video-file" accept="video/*" hidden></div>
           <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
@@ -232,7 +233,8 @@ export async function render(main, { query = {}, route } = {}) {
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
         ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOk ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : []),
-          { key: "export", label: t("an.tab.export"), tip: t("an.tab.export.tip") }] }))}
+          { key: "export", label: t("an.tab.export"), tip: t("an.tab.export.tip") }, { key: "legend", label: t("lg.tab"), tip: t("lg.tab.tip") }],
+          inner: { legend: keyHtml({ video: true }) } }))}
       </div>
     </div>`;
   if (!perso && !here.length && !races.some((r) => r.key === query.course)) {
@@ -1801,7 +1803,7 @@ export async function render(main, { query = {}, route } = {}) {
           <button type="button" class="btn btn-sm" id="an-prev" title="${t("an.prevLeg")}">⏮</button>
           <button type="button" class="btn btn-sm btn-primary" id="an-play" title="${t("an.play")}">▶</button>
           <button type="button" class="btn btn-sm" id="an-next" title="${t("an.nextLeg")}">⏭</button>
-          <select id="an-speed" aria-label="${t("an.speed")}">${SPEEDS.map((v) => html`<option value="${v}" ${raw(v === speed ? "selected" : "")}>×${v}</option>`)}</select></span>
+          <select id="an-speed" aria-label="${t("an.speed")}" title="${t("an.speed")}">${SPEEDS.map((v) => html`<option value="${v}" ${raw(v === speed ? "selected" : "")}>×${v}</option>`)}</select></span>
         <input type="range" class="an-bar-time" id="an-time" min="0" max="${Math.ceil(total)}" step="0.5" value="0" aria-label="${t("an.time")}">
         <span class="sh-clock"><b id="an-t"></b> <span class="muted" id="an-t-sub"></span></span></div>`;
     // what the trace says now: in the pace's bar under the map (owner, 2026-11-05)

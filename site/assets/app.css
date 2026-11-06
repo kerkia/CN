@@ -1813,6 +1813,20 @@ tr.an-total td { border-top: 2px solid var(--border-strong); font-weight: 650; }
    from its side, both slid away at the opening (sidepanel.js); a handle on the map's edge — an arrow and the tab shown — slides it
    in and back, as does the panel's own ‹ / ›; one open at a time */
 .sp-handle { display: none; }
+/* the analyses' « Légende » (owner, 2026-11-06): each button drawn as on the page, its name and what it does */
+.lg { font-size: 13px; }
+.lg-h { margin: 12px 0 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-3); }
+.lg-h:first-child { margin-top: 2px; }
+.lg-list { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.lg-row { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 8px; align-items: start; }
+.lg-row dt { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; padding-top: 1px; color: var(--ink); }
+.lg-row dt > .ico { width: 20px; height: 20px; }
+.lg-row dd { margin: 0; line-height: 1.35; }
+.lg-row dd b { display: block; font-weight: 650; }
+.lg-row dd span { color: var(--ink-2); }
+.lg-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 24px; padding: 0 5px; border: 1px solid var(--border-strong);
+  border-radius: 6px; background: var(--surface); font-size: 12.5px; white-space: nowrap; line-height: 1; }
+.lg-btn svg { display: block; }
 /* a phone's trace pickers (owner, 2026-11-06): a button, and a quieter « voir tous les fichiers » beside it */
 .sh-pick-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
 .sh-pick-any { color: var(--water); text-decoration: underline; cursor: pointer; font-size: 13.5px; }
