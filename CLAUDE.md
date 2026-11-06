@@ -984,7 +984,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   read only, « Fichier d'origine » to download. Admin page tab « Mes cartes » (`?onglet=cartes`): accounts, maps, runs, size against
   the quota, the collection. The privacy page says the administrators may see and keep the maps sent to Ozimut, except those
   marked « Carte privée », and that they stay, nameless, when the account is deleted (6 November 2026; the Mes cartes lede says
-  « aucun autre utilisateur ne la voit »: Mes cartes has no « Carte privée » yet). Local test of the
+  « aucun autre utilisateur ne la voit »). **Mes cartes' « Carte privée »** (same day; migration 0025, `mymaps.private`; the API
+  leaves it out before it): the box in « Nouvelle carte », the edit dialog, the folder import (« Importer ces cartes comme
+  privées ») and the QuickRoute/Ozimut import, a 🔒 on the card and the map's page; such a map is not in the administrators' view
+  and goes with its account. The folder import also leaves out a PDF beside an image of the same name (`plan`'s `dups`: the image
+  made from the PDF, the same map; owner's example folder). Local test of the
   quota: launch config `pages-dev-user-quota` (8783, a regular account, 12 MB).
 - **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs (Méthodes first and
   opened by default, then Calculateur; owner, 2026-10-30) —

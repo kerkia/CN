@@ -82,7 +82,8 @@ export const onRequest = withUser(async ({ request, env, params }) => {
     const [maps, runs] = await env.DB.batch([env.DB.prepare("SELECT * FROM mymaps ORDER BY created_at DESC"),
       env.DB.prepare("SELECT map_id, COUNT(*) AS n FROM mymap_runs GROUP BY map_id")]);
     const nRuns = new Map(runs.results.map((r) => [r.map_id, r.n]));
-    const library = maps.results.map((m) => ({ id: m.id, uid: m.user_id, title: m.title, day: m.day, place: m.place, notes: m.notes, country: m.country || "", region: m.region || "",
+    // a map its owner marked « Carte privée » is not shown (migration 0025)
+    const library = maps.results.filter((m) => !m.private).map((m) => ({ id: m.id, uid: m.user_id, title: m.title, day: m.day, place: m.place, notes: m.notes, country: m.country || "", region: m.region || "",
       dept: m.dept || "", lat: m.lat, lon: m.lon, w: m.w, h: m.h, bytes: m.bytes, thumb: !!m.thumb, runs: nRuns.get(m.id) || 0, created: m.created_at }));
     // who: the accounts behind the libraries and the collection's maps, with their club (France's licensees)
     const uids = [...new Set([...library.map((m) => m.uid), ...collection.map((c) => Number(c.meta.uid)).filter(Boolean)])];

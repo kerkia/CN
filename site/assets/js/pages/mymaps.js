@@ -388,7 +388,8 @@ export async function render(main, { query = {} } = {}) {
         ${nRuns(m) ? html`<span class="muted">${tn("mm.count.runs", nRuns(m))}</span>` : ""}</a>`;
     }
     return html`<a class="mm-card" href="#/mes-cartes?${raw(token ? `partage=${token}&` : "")}carte=${m.id}" data-id="${m.id}">
-      <span class="mm-thumb"><img src="${thumb(m)}" alt="" loading="lazy">${mine && st.links.maps[m.id] ? html`<span class="mm-tag" title="${t("mm.shared.on")}">🔗</span>` : ""}
+      <span class="mm-thumb"><img src="${thumb(m)}" alt="" loading="lazy">${mine && (st.links.maps[m.id] || m.private)
+        ? html`<span class="mm-tag">${m.private ? html`<span title="${t("mm.f.privateTip")}">🔒</span>` : ""}${st.links.maps[m.id] ? html`<span title="${t("mm.shared.on")}">🔗</span>` : ""}</span>` : ""}
         ${mine ? html`<label class="mm-pick" title="${t("mm.sel.one")}"><input type="checkbox" data-id="${m.id}" aria-label="${t("mm.sel.one")}"></label>` : ""}
         <span class="mm-quick">${traces && m.runs.length ? qbtn("replay", t("mm.replay")) : ""}${mine ? html`${qbtn("rename", t("mm.rename"))}${qbtn("note", t("mm.note.map"))}${qbtn("delete", t("mm.delete"))}` : ""}</span>
         ${m.notes ? html`<span class="mm-has-note" title="${m.notes}">${icon("note")}</span>` : ""}</span>
@@ -460,6 +461,7 @@ export async function render(main, { query = {} } = {}) {
       ${!token || st.archive ? html`<p class="mm-back"><a href="#/mes-cartes${raw(token ? `?partage=${token}` : all ? "?vue=toutes" : "")}" id="mm-back">‹ ${token ? t("mm.shared.back", { name: st.name }) : all ? t("mm.adm.title") : t("mm.title")}</a></p>` : ""}
       <div class="page-head"><div><h1>${m.title || t("mm.untitled")}</h1>
         <p class="lede meta">${[m.day ? fmtDate(m.day) : "", ...whereOf(m), m.w ? `${fmt(m.w)} × ${fmt(m.h)} px` : "", token ? t("mm.shared.by", { name: st.name }) : "",
+          mine && m.private ? `🔒 ${t("mm.f.private")}` : "",
           all ? `${t(`mm.adm.src.${m.src}`)} — ${t(m.src === "mymaps" ? "mm.adm.libraryOf" : "mm.adm.sentBy", { name: m.user || `#${m.uid || "?"}` })}${m.club ? ` (${m.club})` : ""}` : ""].filter(Boolean).join(" · ")}</p></div>
         <div class="mm-acts">${all ? html`<a class="btn btn-sm" href="${urlOf(m, "map")}" download>${icon("export")} ${t("mm.adm.original")}</a>` : ""}${traces && m.runs.length ? html`<button type="button" class="btn btn-sm btn-primary" id="mm-replay">${icon("replay")} ${t("mm.replay")}</button>` : ""}
           ${mine ? html`<button type="button" class="btn btn-sm" id="mm-ren">${icon("rename")} ${t("mm.rename")}</button>
@@ -761,6 +763,9 @@ export async function render(main, { query = {} } = {}) {
     d.showModal();
     return d;
   }
+  /** « Carte privée » (owner, 2026-11-06): nobody else sees the map, the administrators included; off by default. */
+  const privBox = (on, id = "", label = "mm.f.private") => html`<label class="mm-check" title="${t("mm.f.privateTip")}"><input type="checkbox" name="private" ${raw(id ? `id="${id}"` : "")} ${raw(on ? "checked" : "")}>
+    <span>${t(label)} <span class="muted">— ${t("mm.f.privateTip")}</span></span></label>`;
   const dlgHead = (title) => html`<div class="mm-dlg-h"><b>${title}</b><button type="button" class="btn btn-ghost btn-sm" data-close aria-label="${t("mm.close")}">✕</button></div>`;
 
   /**
@@ -799,13 +804,14 @@ export async function render(main, { query = {} } = {}) {
       <label class="field"><span>${t("mm.f.place")}</span><input name="place" maxlength="200" value="${m.place}" placeholder="${t("mm.f.place.ph")}"></label>
       <div class="stack mm-form" id="mm-ed-place"></div>
       <label class="field"><span>${t("mm.f.notes")}</span><textarea name="notes" rows="4" maxlength="4000">${m.notes}</textarea></label>
+      ${privBox(m.private)}
       <div class="row"><button class="btn btn-primary" type="submit">${t("mm.save")}</button><button class="btn" type="button" data-close>${t("mm.cancel")}</button></div></form>`);
     const pl = placeFields($("#mm-ed-place", d), m);
     $("form", d).addEventListener("submit", async (e) => {
       e.preventDefault();
       const f = new FormData(e.target);
       try {
-        const { map } = await MM.updateMap(m.id, { title: f.get("title"), day: f.get("day") || null, place: f.get("place"), notes: f.get("notes"), ...pl.value() });
+        const { map } = await MM.updateMap(m.id, { title: f.get("title"), day: f.get("day") || null, place: f.get("place"), notes: f.get("notes"), ...pl.value(), private: !!f.get("private") });
         Object.assign(m, map); d.close(); openMap(m);
       } catch (err) { alert(t("mm.err.save")); }
     });
@@ -827,6 +833,7 @@ export async function render(main, { query = {} } = {}) {
         <label class="field"><span>${t("mm.f.place")}</span><input name="place" maxlength="200" placeholder="${t("mm.f.place.ph")}"></label></div>
       <div class="stack mm-form" id="mm-nf-place"></div>
       <label class="field"><span>${t("mm.f.notes")}</span><textarea name="notes" rows="2" maxlength="4000"></textarea></label>
+      ${privBox(false)}
       <label class="mm-check" id="mm-nf-pers" hidden><input type="checkbox" name="personal"> ${t("mm.personal.ask")}</label>
       <div class="notice" id="mm-nf-err" hidden></div>
       <div class="row"><button class="btn btn-primary" type="submit" id="mm-nf-go" disabled>${t("mm.new.save")}</button><button class="btn" type="button" data-close>${t("mm.cancel")}</button>
@@ -915,7 +922,7 @@ export async function render(main, { query = {} } = {}) {
       $("#mm-nf-state", d).innerHTML = `${bar(null)} ${t("mm.new.saving")}`;
       try {
         const r = await MM.save({ ...entry, title: String(fd.get("title")).trim(), day: fd.get("day") || null, place: String(fd.get("place") || ""), notes: String(fd.get("notes") || ""),
-          ...place, pos, runs }, { personal: !!fd.get("personal") });
+          ...place, pos, runs, private: !!fd.get("private") }, { personal: !!fd.get("personal") });
         prefs.country = place.country; keepPrefs();
         st = await MM.list();
         delete d.dataset.busy;
@@ -990,16 +997,17 @@ export async function render(main, { query = {} } = {}) {
             <p>${errHelp(g)}</p>${pathList(g.paths)}</details>`)}
           ${big.length ? html`<details class="mm-err"><summary><b>${t("mm.folder.err.big")}</b> <span class="muted">— ${tn("mm.folder.files", big.length)}</span></summary>
             <p>${t("mm.folder.fix.big")}</p>${pathList(big.map((m) => m.path))}</details>` : ""}</div>` : ""}
+        ${p.dups.length ? html`<details class="mm-err mm-ign"><summary>${tn("mm.folder.dups", p.dups.length)}</summary><p class="muted">${t("mm.folder.dups.why")}</p>${pathList(p.dups)}</details>` : ""}
         ${p.ignored.length ? html`<details class="mm-err mm-ign"><summary>${tn("mm.folder.ignored", p.ignored.length)}</summary><p class="muted">${t("mm.folder.ignored.why")}</p>${pathList(p.ignored)}</details>` : ""}
-        ${ready.length ? html`${withTracks ? html`<label class="mm-check"><input type="checkbox" id="mm-fd-pers"> ${t("mm.personal.ask")}</label>` : ""}
+        ${ready.length ? html`${privBox(false, "mm-fd-priv", "mm.folder.private")}${withTracks ? html`<label class="mm-check"><input type="checkbox" id="mm-fd-pers"> ${t("mm.personal.ask")}</label>` : ""}
           <div class="row"><button type="button" class="btn btn-primary" id="mm-fd-go">${tn("mm.folder.go", ready.length)}</button>
           <button type="button" class="btn" data-close>${t("mm.cancel")}</button></div>` : ""}`;
       $$("[data-close]", out).forEach((b) => b.addEventListener("click", () => d.close()));
-      $("#mm-fd-go", out)?.addEventListener("click", () => run(ready, known, !!$("#mm-fd-pers", out)?.checked, p.errors.length + big.length));
+      $("#mm-fd-go", out)?.addEventListener("click", () => run(ready, known, !!$("#mm-fd-pers", out)?.checked, p.errors.length + big.length, !!$("#mm-fd-priv", out)?.checked));
     }
 
     // the maps sent one after the other, a bar, « Arrêter »; then what was done and what was not, file by file
-    async function run(list2, known, personal, refused) {
+    async function run(list2, known, personal, refused, priv = false) {
       d.dataset.busy = "1";
       let stop = false;
       const res = { saved: 0, known: 0, failed: [], notes: [] };
@@ -1011,7 +1019,7 @@ export async function render(main, { query = {} } = {}) {
         $("#mm-fd-now", out).textContent = t("mm.folder.now", { i: fmt(i + 1), n: fmt(list2.length), path: m.path });
         setBar($(".mm-fd-bar", out), i / list2.length);
         try {
-          const r = await MI.importOne(m, known, { personal });
+          const r = await MI.importOne(m, known, { personal, priv });
           if (r.status === "known") res.known++; else { res.saved++; if (r.map?.sha) known.add(r.map.sha); }
           for (const n of r.notes) res.notes.push({ path: m.path, ...n });
         } catch (e) {
@@ -1164,6 +1172,7 @@ export async function render(main, { query = {} } = {}) {
       ${failed.length ? html`<div class="notice">${failed.map(([n, k]) => html`<div><b>${n}</b> — ${t(k)}</div>`)}</div>` : ""}
       ${entries.some((e) => e.from === "quickroute") ? html`<p class="muted">${t("mm.imp.qrNote")}</p>` : ""}
       ${personal ? html`<label class="mm-check"><input type="checkbox" id="mm-ip"> ${t("mm.personal.ask")}</label><p class="muted">${t("mm.personal.why")}</p>` : ""}
+      ${entries.length ? privBox(false, "mm-ip-priv") : ""}
       ${entries.length ? html`<div class="stack mm-form" id="mm-ip-place"><p class="muted">${t("mm.imp.placeAll")}</p></div>` : ""}
       <div class="row">${entries.length ? html`<button type="button" class="btn btn-primary" id="mm-igo">${t("mm.imp.go")}</button>` : ""}
         <button type="button" class="btn" data-close>${t("mm.cancel")}</button><span class="muted" id="mm-istate"></span></div>`;
@@ -1179,7 +1188,7 @@ export async function render(main, { query = {} } = {}) {
         try {
           let place = pl.value();
           if (!place.country && e.geo) { const c = MM.toLatLon(e.geo, e.image.width / 2, e.image.height / 2), a = MP.frAt(fr, c.lat, c.lon); if (a) place = { country: "FR", ...a }; }
-          await MM.save({ ...e, ...place, runs: e.newRuns }, { personal: keep });
+          await MM.save({ ...e, ...place, runs: e.newRuns, private: !!$("#mm-ip-priv", box)?.checked }, { personal: keep });
         } catch (err) { console.error(err); errors++; }
         done++;
       }

@@ -15,7 +15,9 @@
 //                                               notes, w, h, geo, country, region, dept, pos) -> { map, existed } (the same
 //                                               image again: the map kept, its place given if it had none;
 //                                               placed: false while migration 0024 is not applied)
-//   PUT    /api/mymaps/maps/<id>                { title, day, place, notes, geo, country, region, dept, pos } -> { map }
+//   PUT    /api/mymaps/maps/<id>                { title, day, place, notes, geo, country, region, dept, pos, private } -> { map }
+//                                               (private, migration 0025: « Carte privée », kept from the administrators too;
+//                                               also in POST's X-Meta)
 //                                               (country, region, dept: migration 0024, left out before it; pos: [lat, lon]
 //                                               of a map without a georeference — a GPS track's first point)
 //   DELETE /api/mymaps/maps/<id>                the map, its runs, its link
@@ -71,6 +73,11 @@ function centre(geo, w, h) {
 const cleanCc = (s) => (/^[A-Za-z]{2}$/.test(String(s || "")) ? String(s).toUpperCase() : "");
 /** [lat, lon] of a map without a georeference, when the browser gives one (a track's first point). */
 const cleanPos = (p) => (Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]) && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180 ? [Number(p[0]), Number(p[1])] : null);
+/** « Carte privée » written (migration 0025); nothing before it. */
+async function setPrivate(env, id, on) {
+  try { await env.DB.prepare("UPDATE mymaps SET private = ? WHERE id = ?").bind(on ? 1 : 0, id).run(); }
+  catch (e) { if (!/no such column/i.test(String(e?.message))) throw e; }
+}
 /** The map's place written (migration 0024): false when the columns are not there yet (the browser's folder import then stops). */
 async function setPlace(env, id, b, m = {}) {
   const v = (k, n) => (k in b ? (k === "country" ? cleanCc(b[k]) : clean(b[k], n)) : m[k] ?? "");
@@ -80,7 +87,7 @@ async function setPlace(env, id, b, m = {}) {
 
 const mapOut = (m) => ({ id: m.id, sha: m.sha, title: m.title, day: m.day, place: m.place, notes: m.notes, type: m.type, bytes: m.bytes,
   w: m.w, h: m.h, geo: m.geo ? JSON.parse(m.geo) : null, lat: m.lat ?? null, lon: m.lon ?? null, country: m.country || "", region: m.region || "",
-  dept: m.dept || "", thumb: !!m.thumb, created: m.created_at, updated: m.updated_at });
+  dept: m.dept || "", private: !!m.private, thumb: !!m.thumb, created: m.created_at, updated: m.updated_at });
 const runOut = (r, shared = false) => ({ id: r.id, map: r.map_id, title: r.title, day: r.day, start: r.start_ms, dur: r.dur, dist: r.dist,
   source: r.source, personal: shared ? false : !!r.personal, bytes: shared ? undefined : r.bytes, note: r.note || "" });
 
@@ -250,6 +257,7 @@ export async function onRequest(ctx) {
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, uid, sha, clean(meta.title, 200), cleanDay(meta.day), clean(meta.place, 200),
           clean(meta.notes, 4000), type, buf.byteLength, w, h, geo ? JSON.stringify(geo) : null, lat, lon, now, now).run();
         const placed = await setPlace(env, id, meta);
+        if (meta.private) await setPrivate(env, id, true);
         const m = await env.DB.prepare("SELECT * FROM mymaps WHERE id = ?").bind(id).first();
         return json({ map: mapOut(m), existed: false, placed });
       }
@@ -266,6 +274,7 @@ export async function onRequest(ctx) {
           .bind("title" in b ? clean(b.title, 200) : m.title, "day" in b ? cleanDay(b.day) : m.day, "place" in b ? clean(b.place, 200) : m.place,
             "notes" in b ? clean(b.notes, 4000) : m.notes, geo ? JSON.stringify(geo) : null, lat, lon, nowIso(), id).run();
         if ("country" in b || "region" in b || "dept" in b) await setPlace(env, id, b, m);
+        if ("private" in b) await setPrivate(env, id, !!b.private);
         return json({ map: mapOut(await env.DB.prepare("SELECT * FROM mymaps WHERE id = ?").bind(id).first()) });
       }
       if (parts.length === 2 && method === "DELETE") {

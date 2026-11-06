@@ -97,6 +97,7 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
       try {
         const { results } = await env.DB.prepare("SELECT * FROM mymaps WHERE user_id = ?").bind(user.id).all();
         for (const m of results) {
+          if (m.private) continue;                       // « Carte privée »: it goes with the account
           const ks = [`mymaps-o/${user.id}/${m.id}`, `mymaps/${user.id}/${m.id}/map`], th = `mymaps/${user.id}/${m.id}/thumb`, vw = `mymaps/${user.id}/${m.id}/view`;
           const pos = Number.isFinite(m.lat) && Number.isFinite(m.lon) && Math.abs(m.lat) + Math.abs(m.lon) > 0.1 ? `${m.lat.toFixed(5)},${m.lon.toFixed(5)}` : "";
           list.push({ keys: ks, thumb: m.thumb ? th : null, view: vw,

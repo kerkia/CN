@@ -239,7 +239,7 @@ export async function save(entry, { personal = false } = {}) {
   const sha = await sha256(blob);
   const meta = { sha, title: entry.title || "", day: entry.day || null, place: entry.place || "", notes: entry.notes || "",
     w: entry.image.width, h: entry.image.height, geo: entry.geo || null, country: entry.country || "", region: entry.region || "", dept: entry.dept || "",
-    pos: entry.pos || null };
+    pos: entry.pos || null, private: !!entry.private };
   const { map, existed, placed } = await call("/maps", { method: "POST", body: blob, headers: { "Content-Type": type, "X-Meta": encodeURIComponent(JSON.stringify(meta)) } });
   if (!existed || !map.thumb) await call(`/maps/${map.id}/thumb`, { method: "PUT", body: await thumbnail(entry.image) }).catch(() => {});
   if (!existed) { const v = await viewCopy(entry.image).catch(() => null); if (v) await call(`/maps/${map.id}/view`, { method: "PUT", body: v }).catch(() => {}); }

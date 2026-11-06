@@ -175,7 +175,8 @@ export const dropHasFolder = (dt) => [...(dt?.items || [])].some((i) => i.webkit
  * maps: [{ file, path, title, day, country, region, dept, place, world, prj, tracks: [File] }];
  * errors: [{ path, code, arg }] — codes: rootFile (a map outside any country's folder), country (the first folder is no
  * country: arg its name), frUnit (in France, a folder that is neither a région nor a département: arg), trackAlone (a track
- * without a map of its name); ignored: [path] (files that are not maps: spreadsheets, documents…).
+ * without a map of its name); ignored: [path] (files that are not maps: spreadsheets, documents…); dups: [path] (a PDF beside an
+ * image of the same name — the same map, the image made from the PDF (owner, 2026-11-06): the image is kept, the PDF left out).
  * fr: mymapsplace.france()'s.
  */
 export function plan(list, fr) {
@@ -185,7 +186,8 @@ export function plan(list, fr) {
   const firsts = new Set(items.map((x) => (x.segs.length > 1 ? x.segs[0] : "")));
   if (firsts.size === 1 && !firsts.has("") && !countryCode([...firsts][0])) root = [...firsts][0];
   for (const x of items) if (root) x.segs = x.segs.slice(1);
-  const maps = [], errors = [], ignored = [];
+  const maps = [], errors = [], ignored = [], dups = [];
+  const IMG = /\.(jpe?g|png|webp|gif|bmp|tiff?)$/i;
   const byDir = new Map();
   for (const x of items) {
     const dir = x.segs.slice(0, -1).join("/");
@@ -197,10 +199,12 @@ export function plan(list, fr) {
     const where = place(segs, fr);
     const companions = (s, re) => files.find((f) => re.test(f.file.name) && fold(stem(f.file.name)) === fold(s));
     const mapsHere = [];
+    const images = new Set(files.filter((f) => IMG.test(f.file.name)).map((f) => fold(stem(f.file.name))));
     for (const x of files) {
       const n = x.file.name;
       if (MAP_EXT.test(n)) {
         if (where.error) { errors.push({ path: x.path, ...where.error }); continue; }
+        if (/\.pdf$/i.test(n) && images.has(fold(stem(n)))) { dups.push(x.path); continue; }
         const s = stem(n), dt = dayIn(s) || where.date;
         const m = { file: x.file, path: x.path, title: (dayIn(s)?.rest || s).trim() || s, day: dt?.day || null, year: dt ? "" : yearIn(s) || where.year,
           country: where.country, region: where.region, dept: where.dept, place: where.place,
@@ -221,7 +225,7 @@ export function plan(list, fr) {
       } else if (!MAP_EXT.test(n) && !WORLD_EXT.test(n) && !SIDE_EXT.test(n)) ignored.push(x.path);
     }
   }
-  return { maps, errors, ignored, root };
+  return { maps, errors, ignored, dups, root };
 }
 /** A folder's path read: { country, region, dept, place, date, year } or { error: { code, arg } }. */
 function place(segs, fr) {
@@ -254,7 +258,7 @@ function place(segs, fr) {
  * its tracks when it is georeferenced. -> { status: "saved" | "known", map, notes: [{ code, file }] } — notes: tracks not
  * placed (noGeo: the map has no georeference; outside: the track is off the map; track: not a track; time: without times).
  */
-export async function importOne(m, known, { personal = false } = {}) {
+export async function importOne(m, known, { personal = false, priv = false } = {}) {
   const head = /\.(jpe?g|png|webp)$/i.test(m.file.name) ? await MM.sha256(m.file) : null;
   if (head && known.has(head) && !m.tracks.length) return { status: "known", notes: [] };
   const entries = await readMap(m.file, { world: m.world, prj: m.prj });
@@ -269,7 +273,7 @@ export async function importOne(m, known, { personal = false } = {}) {
     } catch (err) { notes.push({ code: ["outside", "time"].includes(err.message) ? err.message : "track", file: f.name }); }
   }
   const r = await MM.save({ ...e, title: m.title || e.title, day, place: m.place || e.place || "", country: m.country, region: m.region, dept: m.dept, pos,
-    runs }, { personal });
+    runs, private: priv }, { personal });
   for (const x of entries) x.image?.close?.();
   // the server could not keep the place (migration 0024 not applied): stop rather than lose the folders' sorting
   if (!r.placed) { const err = new Error("not ready"); err.status = 503; throw err; }
