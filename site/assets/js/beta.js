@@ -11,6 +11,7 @@ const NOTICES = {
   tracer: { id: "tracer", key: "ocn.tr.beta", v: "1", guide: "#/documentation?module=orga&onglet=tracer", try: "beta.try.m" },
   multi: { id: "multi", key: "ocn.beta.multi", v: "1", try: "beta.try.f" },
   direct: { id: "direct", key: "ocn.beta.direct", v: "1", try: "beta.try.m" },
+  mapper: { id: "mapper", key: "ocn.beta.mapper", v: "1", try: "beta.try.m" },
 };
 const acked = (n) => { try { return localStorage.getItem(n.key) === n.v; } catch (e) { return false; } };
 const ack = (n) => { try { localStorage.setItem(n.key, n.v); } catch (e) { /* this visit only */ } };

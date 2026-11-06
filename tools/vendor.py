@@ -40,6 +40,8 @@ PACKAGES = {
     "three": ("0.185.1", "three", ["build/three.module.min.js", "build/three.core.min.js"]),
     # « Depuis mon téléphone » (2026-11-03): the QR code the computer shows (MIT, its notice in the file's head)
     "qrcode-generator": ("2.0.4", "qrcode-generator", ["dist/qrcode.mjs", "README.md"]),
+    # « Cartographier » (2026-11-06): union, difference and intersection of areas (MIT; the UMD build defines polygonClipping)
+    "polygon-clipping": ("0.15.7", "polygon-clipping", ["dist/polygon-clipping.umd.min.js", "LICENSE.md"]),
 }
 BUNDLE = {"apache-arrow": "17.0.0", "esbuild": "0.24.0"}      # to bundle DuckDB's browser module
 

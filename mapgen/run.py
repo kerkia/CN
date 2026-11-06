@@ -17,6 +17,9 @@ version (STYLE_V: a style's tiles of an older version are made again).
 
 Out, per tile <id> (e.g. 0391_6819): t/<id>.png (2362 × 2362, 0.42333 m a pixel, the top-left corner at the tile's
 north-west corner; a forest map's symbols) and t/<id>.s.png (the same in a sprint map's), t/<id>.dem.png (500 × 500, a node every 2 m from that corner), t/<id>.json (what and when).
+For Cartographier (2026-11-06), per style: t/<id>.<style>.vec.json, karttapullautin's contours, form lines, cliffs, knolls and
+small depressions as vectors in Lambert 93 (dxf.py), and t/<id>.<style>.vege.png, its vegetation raster (1 m a pixel from
+the tile's north-west corner); the record's "vec" lists the styles that have them, with their version (VEC_V).
 A tile IGN has no LiDAR for yet: t/<id>.json alone, {"none": true}."""
 from __future__ import annotations
 
@@ -37,7 +40,7 @@ import httpx
 import numpy as np
 from PIL import Image
 
-from . import lambert93, osm
+from . import dxf, lambert93, osm
 
 WFS = "https://data.geopf.fr/wfs/ows"
 UA = osm.UA
@@ -58,8 +61,12 @@ KP_VERSION = "2.15.4"
 ID = re.compile(r"^(\d{4})_(\d{4})$")
 MAX_TILES = 16                   # a run's work at most (~4 GB of point clouds)
 # karttapullautin's settings changed from its own defaults (pullauta.ini, written by the program at its first run)
-KP_SETTINGS = {"batch": "1", "lazfolder": "./laz", "batchoutfolder": "./out", "savetempfiles": "0",
-               "savetempfolders": "0", "output_dxf": "0"}
+# (savetempfiles and output_dxf on since 2026-11-06: each tile's contours, cliffs, knolls as DXF and its vegetation raster, for
+# Cartographier's vectors)
+KP_SETTINGS = {"batch": "1", "lazfolder": "./laz", "batchoutfolder": "./out", "savetempfiles": "1",
+               "savetempfolders": "0", "output_dxf": "1"}
+# the vectors' version (t/<id>.<style>.vec.json, dxf.VERSION): the record's "vec" {style: version}
+VEC_V = dxf.VERSION
 
 
 class Progress:
@@ -309,9 +316,12 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
             dem(work / f"mnt_{t}.tif").save(tdir / f"{t}.dem.png", optimize=True)
             v = {k: n for k, n in _versions(tdir, known, t).items() if k != style}
             v[style] = STYLE_V[style]
+            vec = {k: n for k, n in _prior(tdir, known, t).get("vec", {}).items() if k != style}
+            if vectors(home, t, x0, y1, style, tdir, log):
+                vec[style] = VEC_V
             (tdir / f"{t}.json").write_text(json.dumps({
                 "id": t, "x0": x0, "y1": y1, "px": PX, "size": SIZE, "dem": {"step": DEM_STEP, "n": DEM_N}, "styles": sorted(v),
-                "v": v, "lidar": cat[t]["date"], "osm": osm_at, "kp": KP_VERSION, "made": _now()}), encoding="utf-8")
+                "v": v, "vec": vec, "lidar": cat[t]["date"], "osm": osm_at, "kp": KP_VERSION, "made": _now()}), encoding="utf-8")
             res[t] = "done"
         except Exception as ex:
             log(f"{t}: {ex}")
@@ -319,6 +329,40 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
         prog.step()
     log(f"{len(todo)} tiles in {time.monotonic() - t0:.0f} s")
     return res
+
+
+def vectors(home: Path, tid: str, x0: int, y1: int, style: str, tdir: Path, log=print) -> bool:
+    """The tile's vectors (karttapullautin's DXF files, dxf.py) and its vegetation raster, cut to the tile, into
+    tdir/<id>.<style>.vec.json and .vege.png; False when karttapullautin left none (never a reason to fail the tile)."""
+    try:
+        files = dxf.find(home / "out", tid)
+        if not files:
+            return False
+        n = dxf.write(tdir / f"{tid}.{style}.vec.json", dxf.tile_vectors(files, tid, x0, y1, style))
+        veg = next(iter(sorted((home / "out").glob(f"*{tid}*_vege.png"))), None)
+        if veg and veg.with_suffix(".pgw").exists():
+            w = [float(v) for v in veg.with_suffix(".pgw").read_text().split()]
+            i0, j0 = round((x0 - (w[4] - w[0] / 2)) / w[0]), round((y1 - (w[5] - w[3] / 2)) / w[3])
+            k = round(1000 / w[0])
+            Image.open(veg).convert("RGB").crop((i0, j0, i0 + k, j0 + k)).save(tdir / f"{tid}.{style}.vege.png", optimize=True)
+        log(f"{tid}: vectors {n} bytes")
+        return True
+    except Exception as ex:                              # the map is made all the same
+        log(f"{tid}: vectors: {ex}")
+        return False
+
+
+def _prior(tdir: Path, known: Path | None, tid: str) -> dict:
+    """The tile's former record (out/t, else the workflow's copy of R2's), {} when none."""
+    for d in (tdir, known):
+        p = d / f"{tid}.json" if d else None
+        if p and p.exists():
+            try:
+                m = json.loads(p.read_text(encoding="utf-8"))
+            except ValueError:
+                continue
+            return {} if m.get("none") else m
+    return {}
 
 
 def _versions(tdir: Path, known: Path | None, tid: str) -> dict[str, int]:

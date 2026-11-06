@@ -126,11 +126,12 @@ export function readOcad(bytes) {
     for (const p of pos) {
       if (p <= 0 || p > r.length) continue;
       r.seek(p);
-      try { const s = readSymbol(r, version); if (s) syms.push(s); } catch (e) { map.notes.push(t("trc.vmap.badSymbol", { err: e.message })); }
+      try { const s = readSymbol(r, version); if (s) { s.rawAt = [p, s.size]; syms.push(s); } } catch (e) { map.notes.push(t("trc.vmap.badSymbol", { err: e.message })); }
     }
   }
   for (const s of syms) if (s.otp !== 3 && s.otp !== 4) createSymdef(s, ctx);
   for (const s of syms) if (s.otp === 3 || s.otp === 4) createSymdef(s, ctx);
+  const records = { header: h, symbols: syms, objects: [], params: ctx.params || [] };   // for Cartographier (mapper/doc.js)
 
   // the objects
   for (let next = h.firstIdx, guard = 0, objIndex = 1; next > 0 && next < r.length && guard < 100000; guard++) {
@@ -152,6 +153,7 @@ export function readOcad(bytes) {
       r.seek(e.pos);
       try {
         const o = readObject(r, version);
+        records.objects.push({ e, o, rawAt: [e.pos, e.len] });
         if (ctx.cs?.controls.length && o.coords?.length) (ctx.objPos ||= new Map()).set(e.objIndex, { x: coordX(o.coords[0]), y: coordY(o.coords[0]), sym: o.sym });
         // OCAD 12 and later: a course-setting object (view type 1, object string type 1) carries its control's string itself
         // (« 1031 → Yc → a31 → d1.003… »); the Tracer draws the courses, so the object is not drawn with the map
@@ -165,7 +167,7 @@ export function readOcad(bytes) {
         if (version >= 12 && e.viewType >= 2 && e.viewType <= 4) continue;   // OCAD's course previews and temporary objects
         const num = o.sym > 0 ? Math.floor(o.sym / (version >= 9 ? 1000 : 10)) : 0;
         if (num && (num < 700 || num > 799)) ctx.mapObjects = (ctx.mapObjects || 0) + 1;
-        createObject(e, o, ctx);
+        o.inst = createObject(e, o, ctx);
       } catch (err) { /* a damaged object is skipped */ }
     }
   }
@@ -185,7 +187,7 @@ export function readOcad(bytes) {
     map.layoutImages.push(bm);
   }
   map.ready = Promise.all(map.layoutImages.map((x) => x.ready));
-  return { map, version };
+  return { map, version, records, ctx };
 }
 
 /** An image's [width, height] in pixels from its header (PNG, JPEG, GIF, BMP), or null. */
@@ -264,6 +266,7 @@ function readParams(r, first, ctx) {
   for (const e of list) {
     if (e.pos <= 0 || e.pos + e.len > r.length) continue;
     const raw = decode8(r.u.subarray(e.pos, e.pos + e.len));
+    (ctx.params ||= []).push({ type: e.type, objIndex: e.objIndex, str: raw.replace(/\0[\s\S]*$/, ""), rawAt: [e.pos, e.len] });
     const p = parseParam(raw, e.type);
     p.objIndex = e.objIndex;
     if (e.type <= 3 || e.type === 8) p.parts = raw.replace(/\0[\s\S]*$/, "").split("\t").slice(1).filter(Boolean).map((x) => [x[0], x.slice(1)]);
@@ -413,10 +416,11 @@ function createSymdef(s, ctx) {
     else if (s.otp === 4) d = textSymdef(name, id, s, ctx);
     else if (s.otp === 5 || s.otp === 7) d = rectSymdef(name, id, s, ctx);
   } catch (e) { ctx.map.notes.push(t("trc.vmap.symbolErr", { id, err: e.message })); }
-  if (!d) return;
+  if (!d) return null;
   if ((s.status & 2) !== 0) d.visible = false;
   ctx.map.addSymdef(d);
   ctx.symdefs.set(id, d);
+  return d;
 }
 function glyphOf(elts, ctx) {
   const g = new Glyph();
@@ -591,21 +595,21 @@ function createObject(e, o, ctx) {
   if (version >= 9 && o.sym < 0) {
     if (o.sym === -2) {
       if (!ctx.graphics) { ctx.graphics = new GraphicsSymDef(); map.addSymdef(ctx.graphics); }
-      if (o.otp === 3) { const a = areaPath(o.coords); if (a) map.add(new GraphicsArea(ctx.graphics, a, color(ctx, o.col))); }
-      else if (o.otp === 2) { const p = linePath(o.coords); if (p) map.add(new GraphicsLine(ctx.graphics, p, color(ctx, o.col), mm(o.lineWidth), capOf(o.diamFlags), joinOf(o.diamFlags))); }
+      if (o.otp === 3) { const a = areaPath(o.coords); if (a) return map.add(new GraphicsArea(ctx.graphics, a, color(ctx, o.col))); }
+      else if (o.otp === 2) { const p = linePath(o.coords); if (p) return map.add(new GraphicsLine(ctx.graphics, p, color(ctx, o.col), mm(o.lineWidth), capOf(o.diamFlags), joinOf(o.diamFlags))); }
     } else if (o.sym === -3 || o.sym === -4) {
       const layer = o.sym === -3 ? "image" : "layout", def = layoutDef(ctx, layer);
       let visible = true, order = ctx.imageOrder++;
       if (layer === "layout") { const info = ctx.layout?.get(e.objIndex); if (info) { visible = info.visible; order = info.order; } else { visible = false; order = -1; } }
       const cmyk = compressedCmyk(o.col);
-      if (o.otp === 3) { const a = areaPath(o.coords); if (a) map.add(new LayerArea(def, a, cmyk, visible, order)); }
-      else if (o.otp === 2) { const p = linePath(o.coords); if (p) map.add(new LayerLine(def, p, cmyk, mm(o.lineWidth), capOf(o.diamFlags), joinOf(o.diamFlags), visible, order)); }
-      else if (o.otp === 4 || o.otp === 5) map.add(layerText(ctx, def, e, o, cmyk, visible, order));
+      if (o.otp === 3) { const a = areaPath(o.coords); if (a) return map.add(new LayerArea(def, a, cmyk, visible, order)); }
+      else if (o.otp === 2) { const p = linePath(o.coords); if (p) return map.add(new LayerLine(def, p, cmyk, mm(o.lineWidth), capOf(o.diamFlags), joinOf(o.diamFlags), visible, order)); }
+      else if (o.otp === 4 || o.otp === 5) return map.add(layerText(ctx, def, e, o, cmyk, visible, order));
     }
-    return;
+    return null;
   }
   const def = ctx.symdefs.get(symId(o.sym, version));
-  if (!def) return;
+  if (!def) return null;
   let sym = null;
   switch (o.otp) {
     case 1: if (def instanceof PointSymDef && o.coords.length) {
@@ -629,6 +633,7 @@ function createObject(e, o, ctx) {
       break;
   }
   if (sym) map.add(sym);
+  return sym;
 }
 function textLines(text) {
   const lines = (text || "").split(/\r\n|\n|\r/);
@@ -735,4 +740,51 @@ export function areaPath(coords0) {
     start = i;
   }
   return main ? new PathWithHoles(main, holes) : null;
+}
+
+// ---- for Cartographier (mapper/doc.js): compile one record at a time into a map being edited ----------------------------------
+export { createSymdef as compileSymbol, createObject as compileObject, readSymbol as _readSymbol, readObject as _readObject, symId, parseParam };
+/** A compiling context for a map whose records come from elsewhere (a new map, a symbol set, a Mapper file turned into OCAD's
+ *  records): `colors` [{ num, name, cmyk: [0..1]×4, overprint }] from the bottom of the table. */
+export function makeContext(version, colors = []) {
+  const map = new VMap(), ids = new Map();
+  for (const c of colors) ids.set(c.num, map.addColor(new VColor(c.name, c.num, c.cmyk, !!c.overprint)));
+  return { version, map, ids, symdefs: new Map(), graphics: null, layout: new Map(), layoutBitmaps: [], imageOrder: 0, fonts: null };
+}
+export { Reader as OcadReader };
+/** What readParams takes from the parameter strings for drawing, for a map compiled from kept records (Cartographier): the
+ *  layout layer's objects' visibility and order, its images (logos: never left out), the dash metric. `params` as
+ *  readOcad's records give them ({ type, objIndex, str }). Returns the layout images (LayerBitmap, already added). */
+export function applyParams(ctx, params) {
+  const { map, version } = ctx;
+  const multi = new Map(), single = new Map();
+  for (const e of params || []) {
+    const p = parseParam(e.str, e.type);
+    p.objIndex = e.objIndex;
+    if (e.type >= 1024) single.set(e.type, p); else { if (!multi.has(e.type)) multi.set(e.type, []); multi.get(e.type).push(p); }
+  }
+  const view = single.get(1030);
+  if (view && version >= 11) map.useEuclid = pint(view, "p", 0) === 0;
+  const images = [];
+  if (version >= 11) {
+    ctx.layout = new Map();
+    let order = 0;
+    for (const p of multi.get(27) || []) {
+      order -= 1;
+      const vis = pint(p, "s", 1) !== 0, idx = pint(p, "n", p.objIndex), bitmap = pint(p, "r", 0) !== 0;
+      if (!bitmap) { ctx.layout.set(idx, { visible: vis, order }); continue; }
+      let data = null, type = "image/png";
+      const b64 = p.codes.F;
+      if (b64) { try { data = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)); if (data[0] === 0xff) type = "image/jpeg"; else if (data[0] === 0x42) type = "image/bmp"; else if (data[0] === 0x47) type = "image/gif"; } catch (e) { data = null; } }
+      if (!data) continue;
+      const x = Math.round(pnum(p, "x", 0) * 100) / 100, y = Math.round(pnum(p, "y", 0) * 100) / 100, u = pnum(p, "u", 0.1), v = pnum(p, "v", 0.1);
+      const px = imageSize(data), bm = new LayerBitmap(layoutDef(ctx, "layout"), x, y, px ? px[0] * u : 0, px ? px[1] * v : 0, data, type, vis, order);
+      bm.ready = bm.ready.then(() => { if (!px && bm.image) { bm.w = bm.image.width * u; bm.h = bm.image.height * v; bm.bbox = [x, y - bm.h, x + bm.w, y]; } });
+      map.add(bm);
+      images.push(bm);
+    }
+    if (version === 11) ctx.fonts = (multi.get(28) || []).map((p) => ({ name: p.first, size: pnum(p, "s", 10) }));
+  }
+  map.layoutImages = images;
+  return images;
 }

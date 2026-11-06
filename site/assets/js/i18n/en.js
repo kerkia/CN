@@ -5252,4 +5252,12 @@ export default {
   "ad.mm.none": "No account has a map yet.",
   "an.keep.priv": "Private map",
   "an.keep.privTip": "Ticked, nobody but you sees this map, not even the site's administrators. Unticked, the administrators may see it and keep a copy (never your runs).",
+  // « Cartographier » (Orga, 2026-11-06)
+  "nav.orgMapper": "Mapping",
+  "nav.orgMapper.hint": "Draw and update maps, as with OCAD or OpenOrienteering Mapper",
+  "mt.orgMapper": "Draw and update your maps, from LiDAR to the field",
+  "beta.mapper.title": "Mapping, in beta",
+  "beta.mapper.subject": "Mapping: ",
+  "beta.mapper.body": "<p>Mapping has just been built and has had little testing yet. It is a <b>beta version</b>: {try}</p><p>Keep a copy of your OCAD files: a file saved back as OCAD keeps everything you did not change, but has not yet been checked in OCAD itself.</p>",
+  "beta.mapper.note": "Beta version, little tested yet: keep a copy of your OCAD files.",
 };

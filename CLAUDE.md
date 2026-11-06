@@ -20,6 +20,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `migrations/` | D1 schema migrations |
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `mapgen/` | **Generated maps** (a prototype, 2026-11-01): 1 km tiles of an orienteering map from IGN's LiDAR HD through karttapullautin, with OpenStreetMap's features drawn over (`run.py`, `osm.py`, `lambert93.py`; `python -m mapgen tiles|area|ci`), made by `.github/workflows/lidarmap.yml` on the site's request (see « Generated maps ») |
+| `site/assets/js/mapper/` | **Cartographier** (Orga, 2026-11-06): the map editor, OCAD's records as its document (`docs/mapper/model.md`); see « Orga › Cartographier » |
 | `.github/workflows/update.yml` | Hourly quick run, 03:00 Paris full run, 06:00 Paris agenda run, Sat/Sun evening provisional-results runs (every 20 min), deploy on push |
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
 | `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct »), MeOSDjango, O'Live or SPORTident Center race, or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's, MeOSDjango's and O'Live's lists, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js`, `mop.js` (MeOS's online results) and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
@@ -1908,6 +1909,58 @@ Every multiple-choice game was played through to its score page at phone size, w
   « Installer l'application »: the user menu's item and Réglages › « L'application Ozimut » once the browser fires
   `beforeinstallprompt` (Chrome, Edge, Android), else how to (iPhone: Share › « Sur l'écran d'accueil »). An install made on
   ocn.kerkia.com stays on that origin (the bridge then moves its visitor to ozimut.com in a browser tab).
+- **Orga › Cartographier** (`#/orga-carto`, route `orgMapper`, `pages/mapper.js` + `site/assets/js/mapper/`; owner, 2026-11-06, after the
+  study of OCAD and OpenOrienteering Mapper, private artifact https://claude.ai/artifact/2MiaTY5wo677yPPaPJ8Fey): drawing and updating
+  orienteering maps in the browser with the Tracer's ribbon. **The administrators' for now** (`app.js`: the menu entry and the route
+  gate; on a phone too, for the field mode — the one Orga page a phone opens), a beta notice (`beta.js` `mapper`). Owner's decisions:
+  `.ozmap` is Ozimut's own format and holds everything needed to write the map back to OCAD; the Tracer's « Générer une carte »
+  moved here (the Tracer's new-event dialog now only points to Cartographier, `trc.gen.toMapper`); all phases built at once.
+  **The document** (`docs/mapper/model.md`): OCAD's own records as `tracer/vmap/ocad.js` reads them (OCAD 9+ numbering, 0.01 mm,
+  coordinates with their flags), each with `rawAt` in the source file kept beside the document (`source.ocd`); `readOcad` returns
+  `records` and exports `compileSymbol`, `compileObject`, `makeContext`, `applyParams` (the layout's logos and order from the parameter
+  strings: never dropped). `doc.js` `Live` compiles one record at a time into a `VMap`, indexes objects in 20 mm cells, edits by
+  transactions with undo (`add`, `remove`, `update`, `updateSymbol`, `setColors`, `setDocField`); OCAD 6-8 renumbered on import
+  (`num*10+sub` → `num*1000+sub`, circle diameters to the line's middle), new maps and Mapper's compiled with OCAD 2018's meanings.
+  **Writing OCAD** (`mapper/ocadout.js` `writeOcadDoc(doc, source, { version })`): an untouched document is the source byte for byte;
+  else clean records copied byte for byte, dirty ones written over their raw bytes (what Ozimut does not read survives), new ones
+  serialized from every field; index slots kept (course strings point at their objects); colours, scale/georeference and print
+  strings rewritten only when `doc.dirty` says so; hidden objects (status 2, not in `records`) carried through; 9-11 ↔ 12/2018
+  converted. Tested on 82 files (`tools/mapper/t_ocadout.mjs`): unchanged → identical, every record dirty → byte-identical records,
+  serializer alone → deep-equal read back. **Not yet opened in OCAD itself.** **Mapper** (`fromomap.js` `omapToDoc`, `toomap.js`
+  `docToOmap(doc, { losses })`): symbols turned into OCAD records and back (combined symbols flattened into duplicated objects,
+  noted in `omap` fields for the way back; text symbols one record per alignment), losses keyed `map.omap.loss.*` / `lost.*` and
+  said after an import or export (`io.sayLosses`); tested on 32 Mapper and 62 OCAD files (`t_omap.mjs`), not yet opened in Mapper.
+  **Symbol sets** (`mapper/sets/isom2017-2.json` at 1:15 000, enlarged 150 % for 1:10 000 by `layout.scaled`; `issprom2019-2.json` at
+  1:4 000; `minimums.json` the specifications' minimum sizes), written by `docs/mapper/sets.mjs` from `isom.js`'s dimensions and the
+  specification texts; every symbol of both, variants and helper symbols as `.1`… / `.8`, `.9`, approximations noted in `note`;
+  **their CMYK not yet checked against the specifications' colour appendix**. Names shown from the site's catalogues (`ms.s.*`,
+  `ms.sp.s.*`: `panels.symName`), a file's own symbols by the name it gives.
+  **The page**: start (one's maps, « Nouvelle carte » — sprint or forest, its place in Lambert 93 in France else UTM, its size, the
+  open data to start from —, « Importer » OCAD/Mapper/.ozmap); the editor (`editor.js`): ribbon (`ribbon.js` data: Dessiner,
+  Modifier, Fonds, Données, Terrain, Vérifier, Mise en page, Imprimer, Équipe, a contextual tab by the selection's kind, Alt+Q
+  search), symbols on the left (`panels.js`, swatches drawn by the map's engine), selection / parts / backgrounds / colours / problems
+  on the right, a status bar (coordinates, Lambert 93 or the grid, lat/lon, IOF minimum warnings while drawing); under 900 px the
+  panes are drawers. The view (`view.js`): three canvases, the map in 256 px tiles per √2 zoom level drawn from the index
+  (`drawRect`), an edit invalidating its box only. Tools (`tools.js`): select (box, Shift, drag, arrows), vertices (handles, add,
+  Alt-click removes, double-click corner), draw (straight, curve by drag, freehand, right angles, circle; snapping to points and
+  lines, Shift 45°), fill (flood fill of a raster of the lines around the click, traced), cut (a line at a point; areas along a line),
+  cut hole, measure; union / difference / intersection (`boolean.js`, polygon-clipping 0.15.7 vendored), join, reverse, smooth,
+  simplify, change symbol, rotate, duplicate, order, parts. **Data** (`dataui.js` + `data/`): contours from IGN's RGE ALTI or the
+  terrain tiles (`data/contours.js`), OpenStreetMap through Overpass from the browser (`data/osm.js`, mapgen/osm.py's classification
+  as objects), the LiDAR's vectors (`data/lidar.js`: `mapgen/run.py` now keeps karttapullautin's DXFs — `savetempfiles=1`,
+  `output_dxf=1` — as `t/<id>.<style>.vec.json` via `mapgen/dxf.py`, plus `t/<id>.<style>.vege.png`; tiles made before have no
+  vectors, `noVectors`), all in a « Brouillon » part, `draft` and `src` on each object, « Accepter » / « Rejeter ». Checks
+  (`checks.js`), layout (`layout.js`: print area, magnetic north lines, scale bar, legend, logos as OCAD layout images, credits, QR),
+  exports (`io.js`: OCAD, Mapper, .ozmap, vector PDF in CMYK, PNG + world file + .prj, KMZ; to the Tracer and Mes cartes through
+  `pwa.handOver`, which `pages/tracer.js` and `pages/mymaps.js` take on `?recu=1`), field mode (`field.js`: GPS with accuracy,
+  follow, track kept as a GPX background, compass north-up, photos and notes pinned, offline copy in IndexedDB `ocn-mapper` with
+  saves waiting), team (`team.js`: invitation links « mapper » / « viewer », versions every 30 min of work and named, restore,
+  comments). **Storage**: `functions/api/mapper/[[path]].js` (R2 `mapper-meta/`, `mapper/<id>/doc` gzip JSON, `source`, `files/<sha>`,
+  `v/<n>`, `comments`, `photo/`, `lock`, `invites`; 40 maps an account); account deletion hands a map to its first « mapper », else
+  deletes it; the privacy page says so. Texts: area `i18n/mapper.*.js`, written by `tools/mapper/catalogue.py` (edit there).
+  Node tests: `node --import ./tools/mapper/shim.mjs tools/mapper/<t_*.mjs>` (`npm install` in `tools/mapper` for xmldom); local
+  page: launch config `pages-dev-mapper` (8780, the test account an administrator). Not done: a symbol editor, real-time co-editing,
+  generalisation, colour separations, OCAD's combined objects kept in step when one copy is edited, BD TOPO, other countries' data.
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
   does it (phases 1-3 of the study; OCAD and Mapper maps since the third pass, below), in the browser. **No AGPL code**: Purple

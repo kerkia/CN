@@ -5470,4 +5470,12 @@ export default {
   "ad.mm.none": "Noch kein Konto hat eine Karte.",
   "an.keep.priv": "Private Karte",
   "an.keep.privTip": "Angehakt sieht niemand außer dir diese Karte, auch nicht die Administratoren der Website. Nicht angehakt können die Administratoren sie sehen und eine Kopie behalten (nie deine Läufe).",
+  // « Cartographier » (Orga, 2026-11-06)
+  "nav.orgMapper": "Kartieren",
+  "nav.orgMapper.hint": "Karten zeichnen und aktualisieren, wie mit OCAD oder OpenOrienteering Mapper",
+  "mt.orgMapper": "Karten zeichnen und aktualisieren, vom LiDAR bis ins Gelände",
+  "beta.mapper.title": "Kartieren, in der Beta-Version",
+  "beta.mapper.subject": "Kartieren: ",
+  "beta.mapper.body": "<p>Kartieren wurde gerade entwickelt und ist noch wenig getestet. Es ist eine <b>Beta-Version</b>: {try}</p><p>Behalte eine Kopie deiner OCAD-Dateien: Eine als OCAD gespeicherte Datei behält alles Unveränderte, wurde aber noch nicht in OCAD selbst geprüft.</p>",
+  "beta.mapper.note": "Beta-Version, noch wenig getestet: Behalte eine Kopie deiner OCAD-Dateien.",
 };

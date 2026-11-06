@@ -178,6 +178,8 @@ export async function render(main, { query = {} } = {}) {
       $("#mm-doma").addEventListener("click", domaDialog);
       $("#mm-share").addEventListener("click", () => shareDialog({}));
       dropZone($("#mm"));
+      // a map handed over by Cartographier (« Envoyer vers Mes cartes »): the new map's dialog takes it (pwa.js inbox)
+      if (query.recu) import("../pwa.js").then((m) => m.takeInbox()).then((f) => { if (f.length) newMapDialog(f); }).catch(() => {});
     }
     if (!empty) refresh();
   }

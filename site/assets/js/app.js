@@ -52,6 +52,7 @@ const PAGES = {
   booking: () => import("./pages/booking.js"),        // « Réserver un horaire » (Arena): the start times its organisers opened to booking (2026-11-03)
   orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
   orgTracer: () => import("./pages/tracer.js"),
+  orgMapper: () => import("./pages/mapper.js"),         // « Cartographier » (owner, 2026-11-06): the map editor
   modtiles: () => import("./pages/modtiles.js"),   // Coach's and Stats' pages as tiles: their landing on a phone (2026-10-31)
   hub: () => import("./pages/hub.js"),             // the modules page: where one lands, the logo's address (2026-10-30)
   orgaOff: () => import("./pages/hub.js"),         // an Orga page to an account that has not turned the module on, or on a phone
@@ -77,7 +78,7 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", relayHistory: "rh.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
   analysisPerso: "an.perso.lede", analysisOrga: "an.orga.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
-  orgAnalyses: "sh.org.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint" };
+  orgAnalyses: "sh.org.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint", orgMapper: "nav.orgMapper.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
 // The pages of a country's ranked data (owner, 2026-10-20; by country since 2026-10-22): the rankings and everything they
 // hold, and « IA ». They show the site's country's (data.js reads its folder); an account that may not read it (France:
@@ -102,7 +103,7 @@ const ownerOnly = auth.owner;
 // « Nutrition » and its authors' « Rédaction » (owner, 2026-11-01): those given the right on the admin page, its authors and
 // the administrators; nobody else sees them in the menus, and their addresses lead the others to the modules page
 const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites };
-const BETA_ROUTES = new Set(["orgDirect", "orgTracer"]);   // the map analyses out of beta on 2026-11-05 (owner)
+const BETA_ROUTES = new Set(["orgDirect", "orgTracer", "orgMapper"]);   // the map analyses out of beta on 2026-11-05 (owner)
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "vma"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
@@ -152,7 +153,7 @@ function parseHash(hash = location.hash) {
     : head === "envoi" ? "phoneSend"
     : head === "analyse-carte" ? "mapAnalysis" : head === "analyse-orga" ? "analysisOrga"
     : head === "orga-analyses" || head === "orga-competitions" || head === "orga-entrainements" ? "orgAnalyses"     // one list since 2026-11-04 (old addresses)
-    : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer"
+    : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer" : head === "orga-carto" || head === "cartographier" ? "orgMapper"
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
     : head === "relais" ? "relays"
@@ -426,7 +427,9 @@ export function moduleMenus() {
       .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),
     orga: [["orgAnalyses", "#/orga-analyses", t("nav.orgAnalyses")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
-      ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")]],
+      ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")],
+      // « Cartographier » (owner, 2026-11-06): the administrators' while it is tried on real maps
+      ...(auth.session()?.admin ? [["orgMapper", "#/orga-carto", t("nav.orgMapper")]] : [])],
   };
 }
 // the routes outside the menus, by module (a view of a page in the menu, an address of before)
@@ -946,7 +949,9 @@ async function route_() {
     r = parseHash();
   }
   // the Orga module: an account that turned it on, on a computer (owner, 2026-10-30); else a page that says how
-  if (r.route !== "methods" && moduleOf(r) === "orga" && !orgaOpen()) r = { ...r, route: "orgaOff", from: r.route };
+  // « Cartographier » for the administrators for now; on a phone too (its field mode: owner, 2026-11-06)
+  if (r.route === "orgMapper" && !auth.session()?.admin) { history.replaceState(null, "", "#/modules"); r = parseHash(); }
+  if (r.route !== "methods" && moduleOf(r) === "orga" && !orgaOpen() && !(r.route === "orgMapper" && auth.session()?.orga)) r = { ...r, route: "orgaOff", from: r.route };
   // every page for every account (owner, 2026-10-15): « En direct », « Entrainement », the analyses and « Organisation »
   // were for the administrators (or the « live » right) until then
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch

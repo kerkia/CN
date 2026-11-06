@@ -18,9 +18,6 @@ import { readPpen } from "../tracer/ppen.js";
 import { readOcn, isOcnFile, ACCEPT as OCN_ACCEPT } from "../tracer/ocnfile.js";
 import { openMap, isMapFile, mimeOf, imageDpi, isPdf, isVectorMap, MAP_ACCEPT } from "../tracer/mapsrc.js";
 import { geoFromWorld } from "../tracer/geo.js";
-import { LAMBERT93 } from "../trace/georef.js";
-import { setBar } from "../waitbar.js";
-import * as LM from "../trace/lidarmap.js";
 import { where } from "../agendamap.js";
 import { dropHtml, dropZone } from "../tracer/dialogs.js";
 import { centreOnMap } from "../tracer/calage.js";
@@ -44,7 +41,10 @@ export async function render(main, r) {
   notice.then(async () => {
     if (leaving) return;
     if (r.query.id && r.query.invite) await joinByInvite(r.query.id, r.query.invite);
-    if (r.query.id) openEvent(r.query.id); else startScreen();
+    if (r.query.id) openEvent(r.query.id);
+    // a map handed over by Cartographier (« Créer un événement du tracé sur cette carte »): a new event on it (pwa.js inbox)
+    else if (r.query.recu) import("../pwa.js").then((m) => m.takeInbox()).then((f) => (f.length ? choose("new", f) : startScreen())).catch(() => startScreen());
+    else startScreen();
   });
   return { title: t("trc.page.title"), cleanup: () => { leaving = true; document.querySelector(".tr-start")?.remove(); window.__tracer?.close?.(); leaveFull(); } };
 }
@@ -280,107 +280,16 @@ async function openVectorFile(file) {
 const vectorLabel = (src) => `${src.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${src.version}`}, 1:${fmtN(src.scale)}, ${fmtN(src.w)} × ${fmtN(src.h)} mm${src.geoInfo ? `, ${t("trc.page.georef", { name: src.geoInfo.name })}` : ""}`;
 const baseName = (n) => String(n || "").split(/[\\/]/).pop().replace(/\.[^.]+$/, "").toLowerCase();
 
-// ---- a map generated from IGN's LiDAR HD and OpenStreetMap (trace/lidarmap.js; a prototype, administrators only) --------------
-// No base map to pick the area from (no third-party map in the site): its centre is the competition's place, the device's
-// position, coordinates typed, or a trace's extent; its size a square; its style asked first, sprint or forest, nothing
-// chosen beforehand (the two are made by different settings: ISSprOM at 1:4000 with 2.5 m contours, ISOM at 1:10 000 with
-// 5 m ones), the event's standard following it. Only the tiles' ids leave the browser.
-const SIZES = [500, 1000, 1500, 2000, 3000];
-function genHtml() {
-  return `<details class="tr-gen" id="tr-gen"><summary>${escA(t("trc.gen.title"))}</summary>
-    <p class="tr-hint">${escA(t("trc.gen.hint"))}</p>
-    <fieldset class="tr-gen-kind"><legend>${escA(t("trc.gen.kind"))}</legend>
-      <label><input type="radio" name="genKind" value="sprint"> ${escA(t("trc.gen.kindSprint"))}</label>
-      <label><input type="radio" name="genKind" value="forest"> ${escA(t("trc.gen.kindForest"))}</label>
-      <span class="tr-hint">${escA(t("trc.gen.kindHint"))}</span></fieldset>
-    <div class="tr-grid2">${field(escA(t("trc.gen.centre")), `<input name="genCentre" placeholder="${escA(t("trc.gen.centrePh"))}" autocomplete="off">`, escA(t("trc.gen.centreHint")))}
-    ${field(escA(t("trc.gen.size")), `<select name="genSize">${SIZES.map((v) => `<option value="${v}" ${v === 1000 ? "selected" : ""}>${escA(t("trc.gen.sizeOpt", { n: new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(v / 1000) }))}</option>`).join("")}</select>`)}</div>
-    <div class="tr-gen-from"><button type="button" class="btn btn-sm" data-gen-from="race">${escA(t("trc.gen.fromRace"))}</button>
-      <button type="button" class="btn btn-sm" data-gen-from="here">${escA(t("trc.gen.fromHere"))}</button>
-      <label class="btn btn-sm">${escA(t("trc.gen.fromTrace"))}<input type="file" data-gen-trace accept=".gpx,.fit,.tcx" hidden></label></div>
-    <div class="tr-gen-go"><button type="button" class="btn btn-primary" data-gen>${escA(t("trc.gen.btn"))}</button> <progress class="wait-bar" id="tr-gen-bar" max="1" hidden></progress><span class="tr-hint" id="tr-gen-state" role="status"></span></div>
-  </details>`;
-}
-/** The degrees of « 48.3912, -1.1734 » (or with decimal commas: « 48,3912 ; -1,1734 »), else null. */
-function parseCentre(text) {
-  const s = String(text || "").trim();
-  const parts = s.includes(".") ? s.match(/-?\d+(?:\.\d+)?/g) : s.split(/\s*[;\s]\s*/).map((x) => x.replace(",", "."));
-  const [lat, lon] = (parts || []).map(Number);
-  return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? [lat, lon] : null;
-}
-function bindGen(f, races, onMade) {
-  const box = f.querySelector("#tr-gen");
-  if (!box) return;
-  // the line under the button, and its bar while the map is made (frac: the share done, null an hourglass, undefined no bar)
-  const state = (text, bad = false, frac) => {
-    const el = box.querySelector("#tr-gen-state"), b = box.querySelector("#tr-gen-bar");
-    el.textContent = text; el.classList.toggle("tr-bad", bad);
-    b.hidden = frac === undefined; if (frac !== undefined) setBar(b, frac);
-  };
-  const fmt1 = (v) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 4 }).format(v);
-  let traceArea = null, busy = false;
-  const setCentre = (lat, lon) => { f.elements.genCentre.value = `${lat.toFixed(5)}, ${lon.toFixed(5)}`; traceArea = null; };
-  f.elements.genCentre.addEventListener("input", () => { traceArea = null; });
-  f.elements.genSize.addEventListener("change", () => { traceArea = null; });
-  const kind = () => box.querySelector('input[name="genKind"]:checked')?.value || "";
-  box.querySelectorAll('input[name="genKind"]').forEach((el) => el.addEventListener("change", () => {
-    f.elements.std.value = kind() === "sprint" ? "Spr2019" : "2017";
-    state("");
-  }));
-  box.querySelector('[data-gen-from="race"]').addEventListener("click", () => {
-    const r = f.elements.kind.value === "race" ? races.find((x) => x.key === f.elements.race?.value) : null;
-    if (r?.ll) { setCentre(r.ll[0], r.ll[1]); state(r.ll[2] ? t("trc.gen.racePlaceApprox") : t("trc.gen.racePlace")); }
-    else state(t("trc.gen.noRacePlace"), true);
-  });
-  box.querySelector('[data-gen-from="here"]').addEventListener("click", () => {
-    if (!navigator.geolocation) { state(t("trc.gen.hereErr"), true); return; }
-    state(t("trc.gen.hereWait"));
-    navigator.geolocation.getCurrentPosition((p) => { setCentre(p.coords.latitude, p.coords.longitude); state(""); },
-      () => state(t("trc.gen.hereErr"), true), { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 });
-  });
-  box.querySelector("[data-gen-trace]").addEventListener("change", async (e) => {
-    const file = e.target.files[0]; e.target.value = "";
-    if (!file) return;
-    try {
-      const { parseTrace } = await import("../trace/track.js");
-      const tr = parseTrace(file.name, await file.arrayBuffer());
-      traceArea = LM.areaOf(tr);
-      f.elements.genCentre.value = `${fmt1(tr.lat0)}, ${fmt1(tr.lon0)}`;
-      state(t("trc.gen.traceArea", { name: file.name, km2: new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(traceArea.km2) }));
-    } catch (err) { console.error(err); state(t("trc.gen.traceErr", { name: file.name }), true); }
-  });
-  box.querySelector("[data-gen]").addEventListener("click", async () => {
-    if (busy) return;
-    const style = kind();
-    if (!style) { state(t("trc.gen.needKind"), true); box.querySelector('input[name="genKind"]').focus(); return; }
-    const c = parseCentre(f.elements.genCentre.value);
-    if (!traceArea && !c) { state(t("trc.gen.needCentre"), true); return; }
-    const size = Number(f.elements.genSize.value) || 1000;
-    const area = traceArea || LM.areaAround(c[0], c[1], size, size);
-    const [la, lo] = c || [0, 0];
-    if (c && !LM.covered(la, lo)) { state(t("an.gen.outside"), true); return; }
-    if (area.ids.length > LM.MAX_TILES) { state(t("trc.gen.tooBig", { max: LM.MAX_TILES }), true); return; }
-    busy = true; box.querySelector("[data-gen]").disabled = true;
-    try {
-      const made = await LM.make(area, style, (key, vars, frac) => state(t(key, vars), false, frac), () => !document.contains(box));
-      if (!made) return;
-      onMade(made, style);
-      state(made.partial ? t("an.gen.partial") : t("trc.gen.made"), made.partial);
-    } catch (err) { console.error(err); state(t(err.message === "none" ? "an.gen.none" : "an.gen.failed"), true); }
-    finally { busy = false; box.querySelector("[data-gen]").disabled = false; }
-  });
-}
-
 // ---- a new event: its map, dropped or chosen ----------------------------------------------------------------------------------
 async function newEvent(main, files = null) {
   const races = await clubRaces();
-  let mapFile = null, vec = null, handed = false, gen = null;
+  let mapFile = null, vec = null, handed = false;
   const v = await modal({ title: t("trc.page.newEvent"), wide: true, ok: t("trc.page.create"), body: `
     ${kindFields(races)}
     ${dropHtml("tr-new-drop", t("trc.page.newDrop"), MAP_ACCEPT, false)}
     <p class="tr-hint" id="tr-new-map">${escA(t("trc.page.newMapHint"))}</p>
     ${privField()}
-    ${auth.session()?.admin ? genHtml() : ""}
+    ${auth.session()?.admin ? `<p class="tr-hint">${t("trc.gen.toMapper")}</p>` : ""}
     <div class="tr-grid2">${field(escA(t("trc.page.scaleLabel")), '<input name="scale" value="10000" inputmode="numeric">')}
     ${field(escA(t("trc.page.dpiLabel")), `<input name="dpi" inputmode="numeric" placeholder="${escA(t("trc.page.dpiPh"))}">`, escA(t("trc.page.dpiHint")))}
     ${field(escA(t("trc.page.stdLabel")), `<select name="std"><option value="2017">${escA(t("trc.page.stdForest"))}</option><option value="Spr2019">${escA(t("trc.page.stdSprint"))}</option></select>`)}</div>`,
@@ -391,7 +300,7 @@ async function newEvent(main, files = null) {
       if (list.some((x) => isPpenFile(x) || isOcnFile(x))) { handed = true; done(null); importEvent(main, list).then((id) => { if (!id) backToStart(); }); return; }   // the import
       const file = list.find(isMapFile);
       if (!file) { show(t("trc.page.notMap", { name: escA(list[0].name) }), true); return; }
-      mapFile = file; vec = null; gen = null;
+      mapFile = file; vec = null;
       if (isVectorMap(file.name)) {
         show(t("trc.page.reading", { name: escA(file.name) }));
         // an OCAD file holding courses, dropped here with its map or alone: an import (its courses, on itself or on the map it names)
@@ -409,15 +318,6 @@ async function newEvent(main, files = null) {
     };
     dropZone(f.querySelector("#tr-new-drop"), take);
     if (files?.length) take(files);
-    // a map generated from IGN's LiDAR HD and OpenStreetMap: taken as the map file, its georeference kept for the event
-    bindGen(f, races, (made, style) => {
-      mapFile = made.files[0]; vec = null; gen = made;
-      const scale = style === "sprint" ? 4000 : 10000;
-      f.elements.scale.value = String(scale);
-      f.elements.std.value = style === "sprint" ? "Spr2019" : "2017";
-      f.elements.dpi.value = String(Math.round((25.4 * scale) / (made.px * 1000)));
-      show(t("trc.page.mapOk", { name: escA(mapFile.name), info: escA(`${t("trc.page.image")}, ${fmtMb(mapFile.size)}`) }));
-    });
   },
   validate: (o) => kindProblem(o) || (!mapFile ? t("trc.page.needMap") : isVectorMap(mapFile.name) && !vec ? t("trc.page.mapReading") : !(Number(o.scale) > 100) ? t("trc.page.badScale")
     : !isPdf(mapFile.name, mapFile.type) && !vec && o.dpi && !(Number(o.dpi) > 10) ? t("trc.page.badDpi") : null) });
@@ -434,11 +334,6 @@ async function newEvent(main, files = null) {
   if (v.std === "Spr2019") ev.appearance.itemScaling = "RelativeTo15000";
   if (src.world) { const g = geoFromWorld(ev, src.world.wf, null, src.pxW, src.pxH, src.world.crs); if (g) ev.geo = g; }   // a GeoTIFF
   if (src.geoInfo) ev.geo = src.geoInfo.geo;                 // an OCAD or Mapper map's own
-  if (gen && mapFile === gen.files[0]) {                      // a generated map: its world file (Lambert 93) and its credit on the map
-    const g = geoFromWorld(ev, gen.wf, null, src.pxW, src.pxH, LAMBERT93);
-    if (g) ev.geo = g;
-    M.addSpecial(ev, "text", [[2, 6], [Math.min(ev.map.w - 2, 140), 2]], { text: t("trc.gen.credit"), color: "black", font: { name: "Arial", bold: false, italic: false, height: 1.2 } });
-  }
   await S.saveMap(created.id, bytes, type, null);
   await S.api(`/${created.id}`, { method: "PUT", body: { map: { name: mapFile.name, type, size: bytes.length } } });
   await S.saveEvent(created.id, ev, null, 0);

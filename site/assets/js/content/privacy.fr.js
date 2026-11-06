@@ -142,6 +142,8 @@ export const body = (SITE, { world = false } = {}) => `
         préalable de son auteur, sous réserve des exceptions prévues par la loi, notamment les courtes citations qui mentionnent
         l'auteur et la source (article L. 122-5 du Code de la propriété intellectuelle). Les traductions automatiques sont des
         adaptations de l'article et suivent les mêmes règles.</p>
+      <h2 style="font-size:16px">Cartographier</h2>
+      <p>Une carte de la page « Cartographier » (le document de la carte, le fichier OCAD dont elle vient, ses fonds, ses versions, les commentaires et les photos de l'équipe) est conservée dans l'espace de stockage du site (Cloudflare) et n'est accessible qu'à son équipe : son créateur et les personnes qui la rejoignent par un lien d'invitation (personne n'y est recherché par son nom ou son adresse e-mail) ; leur nom et leur compte sont enregistrés avec leur rôle. Les fonds en ligne (photos aériennes et plans de l'IGN, OpenStreetMap) sont lus à chaque ouverture, sans être gardés ; pour les données ouvertes (altitudes de l'IGN, OpenStreetMap, LiDAR), seule l'emprise de la zone est envoyée à ces services. La position GPS du mode terrain reste dans votre navigateur, sauf la trace que vous choisissez d'enregistrer comme fond. Quand le compte est supprimé, chaque carte qu'il a créée passe au premier cartographe de son équipe, sinon elle est supprimée avec tout ce qu'elle contient.</p>
       <h2 style="font-size:16px">Tracé des circuits</h2>
       <p>Un événement de la page « Tracer » (ses circuits, sa carte, ses versions, les commentaires de l'équipe et les états des
         postes notés en mode terrain) est conservé dans l'espace de stockage du site (Cloudflare) et n'est accessible qu'à son équipe :

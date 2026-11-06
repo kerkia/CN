@@ -1,0 +1,534 @@
+"""Cartographier's catalogue (site/assets/js/i18n/mapper.<lang>.js), French the reference, English, German and Spanish beside it.
+Run: python tools/mapper/catalogue.py — writes the four files. Each entry: key: (fr, en, de, es). Plural keys end in .one/.other."""
+import json, re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[2]
+NB = " "
+
+E = {}
+def k(key, fr, en, de, es): E[key] = (fr, en, de, es)
+
+# ---- page and start ------------------------------------------------------------------------------------------------------
+k("map.page.title", "Cartographier", "Mapping", "Kartieren", "Cartografiar")
+k("map.page.lede", "Dessiner et mettre à jour des cartes de course d'orientation dans le navigateur, seul ou en équipe : à partir de vos fichiers OCAD ou OpenOrienteering Mapper, ou d'une nouvelle carte préparée avec le LiDAR, les courbes de niveau et OpenStreetMap.",
+  "Draw and update orienteering maps in your browser, alone or as a team: from your OCAD or OpenOrienteering Mapper files, or from a new map prepared with LiDAR, contours and OpenStreetMap.",
+  "Orientierungslaufkarten im Browser zeichnen und aktualisieren, allein oder im Team: aus deinen OCAD- oder OpenOrienteering-Mapper-Dateien oder aus einer neuen Karte, vorbereitet mit LiDAR, Höhenlinien und OpenStreetMap.",
+  "Dibuja y actualiza mapas de orientación en el navegador, solo o en equipo: a partir de tus archivos de OCAD u OpenOrienteering Mapper, o de un mapa nuevo preparado con LiDAR, curvas de nivel y OpenStreetMap.")
+k("map.page.empty", "Cette carte est vide sur le serveur.", "This map is empty on the server.", "Diese Karte ist auf dem Server leer.", "Este mapa está vacío en el servidor.")
+k("map.start.new", "Nouvelle carte", "New map", "Neue Karte", "Mapa nuevo")
+k("map.start.newDesc", "Une carte sprint ou forêt, au bon jeu de symboles de l'IOF, géoréférencée à l'endroit choisi ; les courbes, les routes et les bâtiments d'OpenStreetMap et le LiDAR peuvent y être ajoutés en brouillon.",
+  "A sprint or forest map with the right IOF symbol set, georeferenced where you choose; contours, OpenStreetMap's roads and buildings and the LiDAR can be added as drafts.",
+  "Eine Sprint- oder Waldkarte mit dem passenden IOF-Signaturensatz, am gewählten Ort georeferenziert; Höhenlinien, Straßen und Gebäude aus OpenStreetMap und das LiDAR können als Entwurf hinzugefügt werden.",
+  "Un mapa de sprint o de bosque con el juego de símbolos de la IOF adecuado, georreferenciado en el lugar elegido; las curvas, las calles y edificios de OpenStreetMap y el LiDAR se pueden añadir como borrador.")
+k("map.start.newBtn", "Créer une carte", "Create a map", "Karte anlegen", "Crear un mapa")
+k("map.start.import", "Importer une carte", "Import a map", "Karte importieren", "Importar un mapa")
+k("map.start.importDesc", "Un fichier OCAD (versions 6 à 2018), OpenOrienteering Mapper (.omap, .xmap) ou Ozimut (.ozmap). Un fichier OCAD réenregistré en OCAD garde à l'identique tout ce que vous n'avez pas modifié.",
+  "An OCAD file (versions 6 to 2018), an OpenOrienteering Mapper file (.omap, .xmap) or an Ozimut file (.ozmap). An OCAD file saved back as OCAD keeps everything you did not change exactly as it was.",
+  "Eine OCAD-Datei (Versionen 6 bis 2018), eine OpenOrienteering-Mapper-Datei (.omap, .xmap) oder eine Ozimut-Datei (.ozmap). Eine OCAD-Datei, die wieder als OCAD gespeichert wird, behält alles Unveränderte genau so, wie es war.",
+  "Un archivo de OCAD (versiones 6 a 2018), de OpenOrienteering Mapper (.omap, .xmap) u Ozimut (.ozmap). Un archivo de OCAD guardado de nuevo como OCAD conserva idéntico todo lo que no hayas modificado.")
+k("map.start.drop", "Déposez le fichier ici, ou cliquez pour le choisir", "Drop the file here, or click to choose it", "Datei hier ablegen oder klicken, um sie auszuwählen", "Suelta el archivo aquí o haz clic para elegirlo")
+k("map.start.mine", "Mes cartes à éditer", "My maps to edit", "Meine Karten zum Bearbeiten", "Mis mapas para editar")
+k("map.start.loading", "Chargement…", "Loading…", "Wird geladen…", "Cargando…")
+k("map.start.none", "Aucune carte pour l'instant.", "No maps yet.", "Noch keine Karten.", "Todavía no hay mapas.")
+k("map.start.objects.one", "{n} objet", "{n} object", "{n} Objekt", "{n} objeto")
+k("map.start.objects.other", "{n} objets", "{n} objects", "{n} Objekte", "{n} objetos")
+k("map.start.shared", "partagée par {name}", "shared by {name}", "geteilt von {name}", "compartido por {name}")
+k("map.start.offline", "hors ligne", "offline", "offline", "sin conexión")
+k("map.start.delete", "Supprimer la carte", "Delete the map", "Karte löschen", "Eliminar el mapa")
+k("map.start.deleteQ", "Supprimer cette carte, ses versions et ses fonds pour toute l'équipe ? Cette action est définitive.", "Delete this map, its versions and its backgrounds for the whole team? This cannot be undone.", "Diese Karte mit ihren Versionen und Hintergründen für das ganze Team löschen? Das kann nicht rückgängig gemacht werden.", "¿Eliminar este mapa, sus versiones y sus fondos para todo el equipo? No se puede deshacer.")
+k("map.untitled", "Carte sans titre", "Untitled map", "Unbenannte Karte", "Mapa sin título")
+
+# ---- new map ---------------------------------------------------------------------------------------------------------------
+k("map.new.title", "Nouvelle carte", "New map", "Neue Karte", "Mapa nuevo")
+k("map.new.name", "Nom de la carte", "Map name", "Name der Karte", "Nombre del mapa")
+k("map.new.kind", "Type de carte", "Kind of map", "Kartentyp", "Tipo de mapa")
+k("map.new.sprint", "Sprint — ISSprOM 2019-2, 1:4 000", "Sprint — ISSprOM 2019-2, 1:4,000", "Sprint — ISSprOM 2019-2, 1:4.000", "Sprint — ISSprOM 2019-2, 1:4.000")
+k("map.new.forest", "Forêt — ISOM 2017-2, 1:10 000", "Forest — ISOM 2017-2, 1:10,000", "Wald — ISOM 2017-2, 1:10.000", "Bosque — ISOM 2017-2, 1:10.000")
+k("map.new.needKind", "Choisissez sprint ou forêt.", "Choose sprint or forest.", "Wähle Sprint oder Wald.", "Elige sprint o bosque.")
+k("map.new.place", "Lieu (latitude, longitude)", "Place (latitude, longitude)", "Ort (Breite, Länge)", "Lugar (latitud, longitud)")
+k("map.new.placeHint", "Le milieu de la carte. Laissé vide, la carte n'est pas géoréférencée et les données ouvertes ne peuvent pas être ajoutées.", "The middle of the map. Left empty, the map is not georeferenced and open data cannot be added.", "Die Mitte der Karte. Leer gelassen, ist die Karte nicht georeferenziert und offene Daten können nicht hinzugefügt werden.", "El centro del mapa. Si se deja vacío, el mapa no queda georreferenciado y no se pueden añadir datos abiertos.")
+k("map.new.badPlace", "Écrivez le lieu ainsi : 48.3512, -1.2038", "Write the place like this: 48.3512, -1.2038", "Schreibe den Ort so: 48.3512, -1.2038", "Escribe el lugar así: 48.3512, -1.2038")
+k("map.new.here", "Ma position", "My position", "Meine Position", "Mi posición")
+k("map.new.size", "Taille de la zone", "Size of the area", "Größe des Gebiets", "Tamaño de la zona")
+k("map.new.data", "Commencer avec, en brouillon", "Start with, as drafts", "Beginnen mit, als Entwurf", "Empezar con, como borrador")
+k("map.new.osm", "Routes, chemins, bâtiments et eau d'OpenStreetMap", "OpenStreetMap's roads, paths, buildings and water", "Straßen, Wege, Gebäude und Gewässer aus OpenStreetMap", "Calles, caminos, edificios y agua de OpenStreetMap")
+k("map.new.dem", "Courbes de niveau du modèle de terrain", "Contours from the terrain model", "Höhenlinien aus dem Geländemodell", "Curvas de nivel del modelo del terreno")
+k("map.new.lidar", "Courbes, falaises et végétation du LiDAR (France, quelques minutes)", "LiDAR contours, cliffs and vegetation (France, a few minutes)", "Höhenlinien, Felsen und Vegetation aus dem LiDAR (Frankreich, einige Minuten)", "Curvas, cortados y vegetación del LiDAR (Francia, unos minutos)")
+
+# ---- top bar, view, status -------------------------------------------------------------------------------------------------
+k("map.top.maps", "Mes cartes à éditer", "My maps to edit", "Meine Karten zum Bearbeiten", "Mis mapas para editar")
+k("map.top.search", "Rechercher une commande ou un symbole (Alt+Q)", "Search a command or a symbol (Alt+Q)", "Befehl oder Signatur suchen (Alt+Q)", "Buscar un comando o un símbolo (Alt+Q)")
+k("map.view.label", "La carte", "The map", "Die Karte", "El mapa")
+k("map.view.zoomIn", "Zoom avant", "Zoom in", "Vergrößern", "Acercar")
+k("map.view.zoomOut", "Zoom arrière", "Zoom out", "Verkleinern", "Alejar")
+k("map.view.fit", "Toute la carte", "Whole map", "Ganze Karte", "Todo el mapa")
+k("map.status.scale", "1:{scale} · écran {view} %", "1:{scale} · screen {view}%", "1:{scale} · Bildschirm {view} %", "1:{scale} · pantalla {view} %")
+k("map.status.sel.one", "{n} objet choisi", "{n} object selected", "{n} Objekt ausgewählt", "{n} objeto seleccionado")
+k("map.status.sel.other", "{n} objets choisis", "{n} objects selected", "{n} Objekte ausgewählt", "{n} objetos seleccionados")
+k("map.status.measure", "{mm} mm sur la carte · {m} m sur le terrain · surface {area} m²", "{mm} mm on the map · {m} m on the ground · area {area} m²", "{mm} mm auf der Karte · {m} m im Gelände · Fläche {area} m²", "{mm} mm en el mapa · {m} m en el terreno · superficie {area} m²")
+k("map.save.dirty", "Modifications non enregistrées", "Unsaved changes", "Ungespeicherte Änderungen", "Cambios sin guardar")
+k("map.save.saving", "Enregistrement…", "Saving…", "Wird gespeichert…", "Guardando…")
+k("map.save.saved", "Enregistré", "Saved", "Gespeichert", "Guardado")
+k("map.save.local", "Gardé sur cet appareil", "Kept on this device", "Auf diesem Gerät behalten", "Guardado en este dispositivo")
+k("map.save.error", "Enregistrement impossible, nouvel essai bientôt", "Could not save, trying again soon", "Speichern nicht möglich, neuer Versuch gleich", "No se pudo guardar, se reintentará pronto")
+k("map.save.conflict", "Conflit avec une autre version", "Conflict with another version", "Konflikt mit einer anderen Version", "Conflicto con otra versión")
+k("map.save.auto", "Enregistrement automatique", "Automatic save", "Automatische Speicherung", "Guardado automático")
+k("map.lock.title", "Carte en cours de modification", "Map being edited", "Karte wird bearbeitet", "Mapa en edición")
+k("map.lock.held", "{name} modifie cette carte en ce moment.", "{name} is editing this map right now.", "{name} bearbeitet diese Karte gerade.", "{name} está editando este mapa ahora mismo.")
+k("map.lock.take", "Modifier quand même", "Edit anyway", "Trotzdem bearbeiten", "Editar de todos modos")
+k("map.lock.read", "Ouvrir en lecture", "Open read-only", "Nur lesen", "Abrir solo lectura")
+k("map.conflict.title", "Une autre version a été enregistrée", "Another version was saved", "Eine andere Version wurde gespeichert", "Se guardó otra versión")
+k("map.conflict.text", "{by} a enregistré la carte ({at}) pendant que vous la modifiiez. Garder votre version remplace la sienne ; reprendre la sienne abandonne vos modifications non enregistrées.", "{by} saved the map ({at}) while you were editing it. Keeping your version replaces theirs; taking theirs drops your unsaved changes.", "{by} hat die Karte gespeichert ({at}), während du sie bearbeitet hast. Deine Version behalten ersetzt die andere; die andere übernehmen verwirft deine ungespeicherten Änderungen.", "{by} guardó el mapa ({at}) mientras lo editabas. Conservar tu versión sustituye la suya; tomar la suya descarta tus cambios sin guardar.")
+k("map.conflict.mine", "Garder ma version", "Keep my version", "Meine Version behalten", "Conservar mi versión")
+k("map.conflict.theirs", "Reprendre la sienne", "Take theirs", "Die andere übernehmen", "Tomar la suya")
+
+# ---- ribbon tabs, groups, contexts -----------------------------------------------------------------------------------------
+for key, v in {
+  "file": ("Fichier", "File", "Datei", "Archivo"), "draw": ("Dessiner", "Draw", "Zeichnen", "Dibujar"), "edit": ("Modifier", "Edit", "Bearbeiten", "Editar"),
+  "backgrounds": ("Fonds", "Backgrounds", "Hintergründe", "Fondos"), "data": ("Données", "Data", "Daten", "Datos"), "field": ("Terrain", "Field", "Gelände", "Terreno"),
+  "check": ("Vérifier", "Check", "Prüfen", "Comprobar"), "layout": ("Mise en page", "Layout", "Layout", "Maquetación"), "print": ("Imprimer", "Print", "Drucken", "Imprimir"),
+  "team": ("Équipe", "Team", "Team", "Equipo")}.items(): k(f"map.tab.{key}", *v)
+for key, v in {
+  "tools": ("Outils", "Tools", "Werkzeuge", "Herramientas"), "draw": ("Dessin", "Drawing", "Zeichnen", "Dibujo"), "snap": ("Aides", "Helpers", "Hilfen", "Ayudas"),
+  "history": ("Historique", "History", "Verlauf", "Historial"), "pick": ("Choisir", "Select", "Auswählen", "Seleccionar"), "cut": ("Couper et joindre", "Cut and join", "Schneiden und verbinden", "Cortar y unir"),
+  "combine": ("Combiner", "Combine", "Kombinieren", "Combinar"), "shape": ("Forme", "Shape", "Form", "Forma"), "symbol": ("Symbole", "Symbol", "Signatur", "Símbolo"),
+  "order": ("Ordre", "Order", "Reihenfolge", "Orden"), "bgAdd": ("Ajouter", "Add", "Hinzufügen", "Añadir"), "bgPlace": ("Placer", "Place", "Platzieren", "Colocar"),
+  "bgView": ("Affichage", "Display", "Anzeige", "Visualización"), "area": ("Zone", "Area", "Gebiet", "Zona"), "sources": ("Sources", "Sources", "Quellen", "Fuentes"),
+  "draft": ("Brouillon", "Draft", "Entwurf", "Borrador"), "gps": ("GPS", "GPS", "GPS", "GPS"), "notes": ("Notes", "Notes", "Notizen", "Notas"),
+  "offline": ("Hors ligne", "Offline", "Offline", "Sin conexión"), "checks": ("Contrôles", "Checks", "Prüfungen", "Controles"), "stats": ("Chiffres", "Figures", "Zahlen", "Cifras"),
+  "frame": ("Cadre", "Frame", "Rahmen", "Marco"), "furniture": ("Éléments", "Elements", "Elemente", "Elementos"), "symbols": ("Symboles", "Symbols", "Signaturen", "Símbolos"),
+  "pdf": ("Imprimer", "Print", "Drucken", "Imprimir"), "files": ("Fichiers", "Files", "Dateien", "Archivos"), "send": ("Envoyer", "Send", "Senden", "Enviar"),
+  "share": ("Partager", "Share", "Teilen", "Compartir"), "history2": ("Versions", "Versions", "Versionen", "Versiones"), "comments": ("Commentaires", "Comments", "Kommentare", "Comentarios"),
+  "ctxShape": ("Forme", "Shape", "Form", "Forma"), "ctxSymbol": ("Symbole", "Symbol", "Signatur", "Símbolo"), "ctxText": ("Texte", "Text", "Text", "Texto"), "ctxDraft": ("Brouillon", "Draft", "Entwurf", "Borrador"),
+  }.items(): k(f"map.grp.{key}", *v)
+for key, v in {
+  "relief": ("Relief (1xx)", "Landforms (1xx)", "Geländeformen (1xx)", "Relieve (1xx)"), "rock": ("Rochers et pierres (2xx)", "Rock and boulders (2xx)", "Felsen und Steine (2xx)", "Rocas y piedras (2xx)"),
+  "water": ("Eau et marais (3xx)", "Water and marsh (3xx)", "Gewässer und Sumpf (3xx)", "Agua y pantanos (3xx)"), "vegetation": ("Végétation (4xx)", "Vegetation (4xx)", "Vegetation (4xx)", "Vegetación (4xx)"),
+  "manmade": ("Aménagements (5xx)", "Man-made features (5xx)", "Künstliche Objekte (5xx)", "Elementos artificiales (5xx)"), "technical": ("Symboles techniques (6xx)", "Technical symbols (6xx)", "Technische Signaturen (6xx)", "Símbolos técnicos (6xx)"),
+  "course": ("Surimpression du parcours (7xx)", "Course overprint (7xx)", "Bahneindruck (7xx)", "Sobreimpresión del recorrido (7xx)"), "other": ("Autres", "Others", "Andere", "Otros"),
+  }.items(): k(f"map.grp.sym.{key}", *v)
+for key, v in {"line": ("Ligne", "Line", "Linie", "Línea"), "area": ("Surface", "Area", "Fläche", "Superficie"), "point": ("Point", "Point", "Punkt", "Punto"),
+  "text": ("Texte", "Text", "Text", "Texto"), "draft": ("Brouillon", "Draft", "Entwurf", "Borrador"), "tab": ("Sélection", "Selection", "Auswahl", "Selección")}.items(): k(f"map.ctx.{key}", *v)
+
+# ---- ribbon commands -----------------------------------------------------------------------------------------------------------
+RIB = {
+  "tool_select": ("Sélection", "Select", "Auswählen", "Seleccionar"), "tool_vertex": ("Sommets", "Points", "Stützpunkte", "Vértices"),
+  "tool_draw": ("Dessiner", "Draw", "Zeichnen", "Dibujar"), "tool_fill": ("Remplir", "Fill", "Füllen", "Rellenar"), "tool_cut": ("Couper", "Cut", "Schneiden", "Cortar"),
+  "tool_hole": ("Trouer", "Cut hole", "Loch ausschneiden", "Agujerear"), "tool_measure": ("Mesurer", "Measure", "Messen", "Medir"),
+  "mode_straight": ("Droit", "Straight", "Gerade", "Recto"), "mode_curve": ("Courbe", "Curve", "Kurve", "Curva"), "mode_free": ("Main levée", "Freehand", "Freihand", "A mano alzada"),
+  "mode_rect": ("Angles droits", "Right angles", "Rechte Winkel", "Ángulos rectos"), "mode_circle": ("Cercle", "Circle", "Kreis", "Círculo"),
+  "snap": ("Accrochage", "Snapping", "Fangen", "Ajuste"), "pipette": ("Pipette", "Pick symbol", "Pipette", "Cuentagotas"), "undo": ("Annuler", "Undo", "Rückgängig", "Deshacer"), "redo": ("Rétablir", "Redo", "Wiederholen", "Rehacer"),
+  "join": ("Joindre", "Join", "Verbinden", "Unir"), "reverse": ("Inverser", "Reverse", "Umkehren", "Invertir"), "union": ("Unir", "Union", "Vereinigen", "Unión"),
+  "difference": ("Soustraire", "Difference", "Abziehen", "Diferencia"), "intersection": ("Intersection", "Intersection", "Schnittmenge", "Intersección"),
+  "smooth": ("Lisser", "Smooth", "Glätten", "Suavizar"), "simplify": ("Simplifier", "Simplify", "Vereinfachen", "Simplificar"), "toggleCurves": ("Courbes ↔ segments", "Curves ↔ segments", "Kurven ↔ Strecken", "Curvas ↔ segmentos"),
+  "changeSymbol": ("Changer de symbole", "Change symbol", "Signatur ändern", "Cambiar símbolo"), "rotate": ("Pivoter", "Rotate", "Drehen", "Girar"), "duplicate": ("Dupliquer", "Duplicate", "Duplizieren", "Duplicar"),
+  "delete": ("Supprimer", "Delete", "Löschen", "Eliminar"), "toFront": ("Au premier plan", "Bring to front", "Nach vorne", "Al frente"), "toBack": ("À l'arrière-plan", "Send to back", "Nach hinten", "Al fondo"),
+  "toPart": ("Changer de partie", "Move to part", "In Teil verschieben", "Mover a parte"), "rotatePattern": ("Pivoter le motif", "Rotate pattern", "Muster drehen", "Girar el patrón"), "editText": ("Modifier le texte", "Edit text", "Text bearbeiten", "Editar el texto"),
+  "bg-add": ("Fichier de fond", "Background file", "Hintergrunddatei", "Archivo de fondo"), "bg-online": ("Fond en ligne", "Online background", "Online-Hintergrund", "Fondo en línea"),
+  "bg-calage": ("Caler", "Adjust", "Einpassen", "Ajustar"), "bg-georef": ("Géoréférencer", "Georeference", "Georeferenzieren", "Georreferenciar"),
+  "bg-toggle": ("Afficher les fonds", "Show backgrounds", "Hintergründe zeigen", "Mostrar fondos"), "map-fade": ("Estomper la carte", "Fade the map", "Karte abblenden", "Atenuar el mapa"),
+  "data-area": ("Zone des données", "Data area", "Datengebiet", "Zona de datos"), "data-lidar": ("LiDAR", "LiDAR", "LiDAR", "LiDAR"), "data-contours": ("Courbes de niveau", "Contours", "Höhenlinien", "Curvas de nivel"),
+  "data-osm": ("OpenStreetMap", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap"), "draft-accept": ("Accepter", "Accept", "Übernehmen", "Aceptar"),
+  "draft-acceptKind": ("Accepter ce symbole partout", "Accept this symbol everywhere", "Diese Signatur überall übernehmen", "Aceptar este símbolo en todo"), "draft-reject": ("Rejeter", "Reject", "Verwerfen", "Rechazar"),
+  "gps": ("Ma position", "My position", "Meine Position", "Mi posición"), "gps-follow": ("Suivre", "Follow", "Folgen", "Seguir"), "gps-track": ("Enregistrer la trace", "Record track", "Spur aufzeichnen", "Grabar el track"),
+  "gps-north": ("Boussole", "Compass", "Kompass", "Brújula"), "photo": ("Photo", "Photo", "Foto", "Foto"), "comment": ("Note sur la carte", "Note on the map", "Notiz auf der Karte", "Nota en el mapa"),
+  "offline": ("Garder hors ligne", "Keep offline", "Offline behalten", "Guardar sin conexión"), "check-run": ("Vérifier la carte", "Check the map", "Karte prüfen", "Comprobar el mapa"),
+  "check-next": ("Problème suivant", "Next problem", "Nächstes Problem", "Siguiente problema"), "check-legibility": ("Lisibilité", "Legibility", "Lesbarkeit", "Legibilidad"), "stats": ("Statistiques", "Statistics", "Statistik", "Estadísticas"),
+  "print-area": ("Zone d'impression", "Print area", "Druckbereich", "Zona de impresión"), "north-lines": ("Lignes du nord", "North lines", "Nordlinien", "Líneas de norte"),
+  "scale-bar": ("Échelle graphique", "Scale bar", "Maßstabsleiste", "Escala gráfica"), "legend": ("Légende", "Legend", "Legende", "Leyenda"), "logo": ("Logo", "Logo", "Logo", "Logotipo"),
+  "credits": ("Sources", "Credits", "Quellen", "Créditos"), "qr": ("Code QR", "QR code", "QR-Code", "Código QR"), "symbol-set": ("Jeu de symboles", "Symbol set", "Signaturensatz", "Juego de símbolos"),
+  "colors": ("Couleurs", "Colours", "Farben", "Colores"), "export-pdf": ("PDF", "PDF", "PDF", "PDF"), "export-png": ("Image", "Image", "Bild", "Imagen"),
+  "export-ocd": ("OCAD", "OCAD", "OCAD", "OCAD"), "export-omap": ("OpenOrienteering Mapper", "OpenOrienteering Mapper", "OpenOrienteering Mapper", "OpenOrienteering Mapper"),
+  "export-ozmap": ("Fichier Ozimut", "Ozimut file", "Ozimut-Datei", "Archivo Ozimut"), "export-kmz": ("KMZ", "KMZ", "KMZ", "KMZ"), "export-geotiff": ("Image géoréférencée", "Georeferenced image", "Georeferenziertes Bild", "Imagen georreferenciada"),
+  "to-tracer": ("Vers le tracé", "To course setting", "Zur Bahnlegung", "Al trazado"), "to-mymaps": ("Vers Mes cartes", "To My maps", "Zu Meine Karten", "A Mis mapas"),
+  "invite": ("Inviter", "Invite", "Einladen", "Invitar"), "members": ("Membres", "Members", "Mitglieder", "Miembros"), "version-save": ("Enregistrer une version", "Save a version", "Version speichern", "Guardar una versión"),
+  "versions": ("Versions", "Versions", "Versionen", "Versiones"), "comments": ("Commentaires", "Comments", "Kommentare", "Comentarios"),
+  "file_new": ("Nouvelle carte", "New map", "Neue Karte", "Mapa nuevo"), "file_open": ("Ouvrir", "Open", "Öffnen", "Abrir"), "file_import": ("Importer", "Import", "Importieren", "Importar"),
+  "file_save-now": ("Enregistrer", "Save", "Speichern", "Guardar"), "file_version-save": ("Enregistrer une version", "Save a version", "Version speichern", "Guardar una versión"),
+  "file_versions": ("Versions", "Versions", "Versionen", "Versiones"), "file_export-ozmap": ("Fichier Ozimut", "Ozimut file", "Ozimut-Datei", "Archivo Ozimut"),
+  "file_export-ocd": ("Exporter en OCAD", "Export as OCAD", "Als OCAD exportieren", "Exportar a OCAD"), "file_export-omap": ("Exporter en Mapper", "Export as Mapper", "Als Mapper exportieren", "Exportar a Mapper"),
+  "file_props": ("Propriétés de la carte", "Map properties", "Karteneigenschaften", "Propiedades del mapa"), "file_close": ("Fermer", "Close", "Schließen", "Cerrar"),
+}
+for key, v in RIB.items(): k(f"map.rib.{key}", *v)
+k("map.file.new", "Nouvelle carte…", "New map…", "Neue Karte…", "Mapa nuevo…")
+k("map.file.open", "Ouvrir une carte…", "Open a map…", "Karte öffnen…", "Abrir un mapa…")
+k("map.file.import", "Importer un fichier…", "Import a file…", "Datei importieren…", "Importar un archivo…")
+k("map.file.save", "Enregistrer maintenant", "Save now", "Jetzt speichern", "Guardar ahora")
+k("map.file.props", "Propriétés de la carte…", "Map properties…", "Karteneigenschaften…", "Propiedades del mapa…")
+k("map.file.close", "Fermer la carte", "Close the map", "Karte schließen", "Cerrar el mapa")
+k("map.file.unknown", "Ce fichier n'est pas une carte qu'Ozimut sait lire (OCAD, OpenOrienteering Mapper, Ozimut).", "This file is not a map Ozimut can read (OCAD, OpenOrienteering Mapper, Ozimut).", "Diese Datei ist keine Karte, die Ozimut lesen kann (OCAD, OpenOrienteering Mapper, Ozimut).", "Este archivo no es un mapa que Ozimut sepa leer (OCAD, OpenOrienteering Mapper, Ozimut).")
+k("map.file.notOzmap", "Ce fichier n'est pas un fichier de carte Ozimut.", "This file is not an Ozimut map file.", "Diese Datei ist keine Ozimut-Kartendatei.", "Este archivo no es un archivo de mapa de Ozimut.")
+k("map.file.newer", "Ce fichier a été écrit par une version plus récente d'Ozimut : rechargez la page.", "This file was written by a newer version of Ozimut: reload the page.", "Diese Datei wurde von einer neueren Ozimut-Version geschrieben: Seite neu laden.", "Este archivo lo escribió una versión más reciente de Ozimut: recarga la página.")
+
+# ---- why greyed ---------------------------------------------------------------------------------------------------------------
+k("map.why.readOnly", "Carte ouverte en lecture seule", "Map open read-only", "Karte nur zum Lesen geöffnet", "Mapa abierto solo para lectura")
+k("map.why.noSel", "Choisissez d'abord un ou plusieurs objets", "Select one or more objects first", "Wähle zuerst ein oder mehrere Objekte", "Selecciona primero uno o varios objetos")
+k("map.why.twoAreas", "Choisissez au moins deux surfaces", "Select at least two areas", "Wähle mindestens zwei Flächen", "Selecciona al menos dos superficies")
+k("map.why.twoLines", "Choisissez au moins deux lignes", "Select at least two lines", "Wähle mindestens zwei Linien", "Selecciona al menos dos líneas")
+k("map.why.noSymbol", "Choisissez d'abord un symbole à gauche", "Choose a symbol on the left first", "Wähle zuerst links eine Signatur", "Elige primero un símbolo a la izquierda")
+k("map.why.nothing", "Rien à faire", "Nothing to do", "Nichts zu tun", "Nada que hacer")
+k("map.why.noDraft", "Aucun objet en brouillon", "No draft objects", "Keine Entwurfsobjekte", "No hay objetos en borrador")
+k("map.why.notSaved", "La carte doit d'abord être enregistrée sur Ozimut", "The map must be saved on Ozimut first", "Die Karte muss zuerst auf Ozimut gespeichert werden", "Primero hay que guardar el mapa en Ozimut")
+
+# ---- hints ----------------------------------------------------------------------------------------------------------------------
+for key, v in {
+  "select": ("Cliquez sur un objet ; Maj pour en ajouter ; un cadre pour en choisir plusieurs ; glisser pour déplacer", "Click an object; Shift adds; a box selects several; drag to move", "Klicke auf ein Objekt; Umschalt fügt hinzu; ein Rahmen wählt mehrere; ziehen zum Verschieben", "Haz clic en un objeto; Mayús añade; un recuadro elige varios; arrastra para mover"),
+  "vertex": ("Glissez un point ou une poignée ; un clic sur la ligne ajoute un point ; Alt+clic en retire un ; double-clic : angle ou arrondi", "Drag a point or a handle; a click on the line adds a point; Alt+click removes one; double-click: corner or smooth", "Punkt oder Anfasser ziehen; Klick auf die Linie fügt einen Punkt hinzu; Alt+Klick entfernt ihn; Doppelklick: Ecke oder rund", "Arrastra un punto o un tirador; un clic en la línea añade un punto; Alt+clic lo quita; doble clic: esquina o curva"),
+  "fill": ("Cliquez à l'intérieur d'une zone fermée par des lignes", "Click inside a region closed by lines", "Klicke in einen von Linien geschlossenen Bereich", "Haz clic dentro de una zona cerrada por líneas"),
+  "cut": ("Cliquez sur une ligne pour la couper, ou tracez une ligne à travers une surface puis Entrée", "Click a line to cut it, or draw a line across an area then Enter", "Klicke auf eine Linie, um sie zu schneiden, oder zeichne eine Linie durch eine Fläche, dann Eingabe", "Haz clic en una línea para cortarla, o traza una línea a través de una superficie y pulsa Intro"),
+  "hole": ("Dessinez le trou dans la surface choisie, puis Entrée", "Draw the hole in the selected area, then Enter", "Zeichne das Loch in die gewählte Fläche, dann Eingabe", "Dibuja el agujero en la superficie elegida y pulsa Intro"),
+  "measure": ("Cliquez les points à mesurer ; double-clic pour finir", "Click the points to measure; double-click to finish", "Klicke die Punkte zum Messen; Doppelklick zum Beenden", "Haz clic en los puntos que medir; doble clic para terminar"),
+  "comment": ("Cliquez où placer la note", "Click where to place the note", "Klicke, wo die Notiz hin soll", "Haz clic donde poner la nota"),
+  "calage": ("Un point du fond, puis sa place sur la carte ; Entrée pour appliquer", "A point of the background, then its place on the map; Enter to apply", "Ein Punkt des Hintergrunds, dann seine Stelle auf der Karte; Eingabe zum Anwenden", "Un punto del fondo y luego su lugar en el mapa; Intro para aplicar"),
+  "area": ("Deux clics pour les coins", "Two clicks for the corners", "Zwei Klicks für die Ecken", "Dos clics para las esquinas"),
+  "place": ("Cliquez où placer l'élément", "Click where to place the element", "Klicke, wo das Element hin soll", "Haz clic donde colocar el elemento"),
+  }.items(): k(f"map.hint.{key}", *v)
+for key, v in {
+  "straight": ("Cliquez chaque point ; double-clic ou Entrée pour finir ; Retour arrière enlève le dernier", "Click each point; double-click or Enter to finish; Backspace removes the last", "Klicke jeden Punkt; Doppelklick oder Eingabe zum Beenden; Rücktaste entfernt den letzten", "Haz clic en cada punto; doble clic o Intro para terminar; Retroceso quita el último"),
+  "curve": ("Cliquez et glissez pour donner la direction de la courbe en chaque point", "Click and drag to set the curve's direction at each point", "Klicken und ziehen, um die Richtung der Kurve an jedem Punkt festzulegen", "Haz clic y arrastra para dar la dirección de la curva en cada punto"),
+  "free": ("Dessinez en gardant le bouton appuyé", "Draw while holding the button down", "Zeichne mit gedrückter Taste", "Dibuja manteniendo el botón pulsado"),
+  "rect": ("Chaque côté à angle droit du précédent (bâtiments) ; revenir au départ ferme", "Each side at a right angle to the previous one (buildings); back to the start closes", "Jede Seite im rechten Winkel zur vorigen (Gebäude); zurück zum Start schließt", "Cada lado en ángulo recto con el anterior (edificios); volver al inicio cierra"),
+  "circle": ("Cliquez le centre et glissez jusqu'au rayon", "Click the centre and drag to the radius", "Klicke den Mittelpunkt und ziehe bis zum Radius", "Haz clic en el centro y arrastra hasta el radio"),
+  }.items(): k(f"map.hint.draw.{key}", *v)
+
+# ---- tools' messages -------------------------------------------------------------------------------------------------------------
+k("map.tool.pickSymbol", "Choisissez d'abord un symbole dans la liste à gauche.", "Choose a symbol in the list on the left first.", "Wähle zuerst eine Signatur in der Liste links.", "Elige primero un símbolo en la lista de la izquierda.")
+k("map.tool.pickArea", "Choisissez d'abord un symbole de surface.", "Choose an area symbol first.", "Wähle zuerst eine Flächensignatur.", "Elige primero un símbolo de superficie.")
+k("map.tool.pickAreaFirst", "Choisissez d'abord la surface à trouer.", "Select the area to cut a hole in first.", "Wähle zuerst die Fläche, in die ein Loch soll.", "Selecciona primero la superficie que agujerear.")
+k("map.tool.notClosed", "Cette zone n'est pas fermée par des lignes à proximité.", "This region is not closed by lines nearby.", "Dieser Bereich ist nicht von Linien in der Nähe geschlossen.", "Esta zona no está cerrada por líneas cercanas.")
+k("map.tool.noSegment", "Aucun segment droit ici : passez la courbe en segments ou ajoutez le point à côté.", "No straight segment here: turn the curve into segments or add the point beside it.", "Hier keine gerade Strecke: Kurve in Strecken umwandeln oder den Punkt daneben setzen.", "No hay un segmento recto aquí: convierte la curva en segmentos o añade el punto al lado.")
+k("map.tool.tooFew", "L'objet garderait trop peu de points.", "The object would keep too few points.", "Das Objekt hätte zu wenige Punkte.", "El objeto se quedaría con muy pocos puntos.")
+k("map.tool.cutDone.one", "{n} surface coupée", "{n} area cut", "{n} Fläche geschnitten", "{n} superficie cortada")
+k("map.tool.cutDone.other", "{n} surfaces coupées", "{n} areas cut", "{n} Flächen geschnitten", "{n} superficies cortadas")
+k("map.tool.cutNone", "La ligne ne traverse aucune surface de part en part.", "The line does not cross any area from side to side.", "Die Linie durchquert keine Fläche ganz.", "La línea no atraviesa ninguna superficie de lado a lado.")
+k("map.tool.emptyResult", "Le résultat est vide.", "The result is empty.", "Das Ergebnis ist leer.", "El resultado está vacío.")
+k("map.tool.joinFar", "Les lignes doivent se toucher bout à bout pour être jointes.", "The lines must meet end to end to be joined.", "Die Linien müssen sich an den Enden berühren, um verbunden zu werden.", "Las líneas deben tocarse por los extremos para unirse.")
+k("map.tool.symbolKind", "Certains objets n'ont pas pris le symbole : un point ne devient pas une ligne.", "Some objects did not take the symbol: a point does not become a line.", "Einige Objekte haben die Signatur nicht übernommen: Ein Punkt wird keine Linie.", "Algunos objetos no tomaron el símbolo: un punto no se convierte en línea.")
+k("map.tool.pipette", "Cliquez sur un objet de la carte pour prendre son symbole.", "Click an object on the map to take its symbol.", "Klicke auf ein Objekt der Karte, um seine Signatur zu übernehmen.", "Haz clic en un objeto del mapa para tomar su símbolo.")
+k("map.warn.area", "Surface de {a} mm² : sous le minimum de {min} mm² des spécifications", "Area of {a} mm²: below the specification's minimum of {min} mm²", "Fläche von {a} mm²: unter dem Mindestwert von {min} mm² der Spezifikation", "Superficie de {a} mm²: por debajo del mínimo de {min} mm² de la especificación")
+k("map.warn.length", "Longueur de {l} mm : sous le minimum de {min} mm des spécifications", "Length of {l} mm: below the specification's minimum of {min} mm", "Länge von {l} mm: unter dem Mindestwert von {min} mm der Spezifikation", "Longitud de {l} mm: por debajo del mínimo de {min} mm de la especificación")
+k("map.text.title", "Texte", "Text", "Text", "Texto")
+k("map.text.label", "Le texte", "The text", "Der Text", "El texto")
+k("map.dlg.angle", "Angle (degrés, sens inverse des aiguilles)", "Angle (degrees, anticlockwise)", "Winkel (Grad, gegen den Uhrzeigersinn)", "Ángulo (grados, sentido antihorario)")
+k("map.dlg.cancel", "Annuler", "Cancel", "Abbrechen", "Cancelar")
+k("map.dlg.close", "Fermer", "Close", "Schließen", "Cerrar")
+k("map.dlg.save", "Enregistrer", "Save", "Speichern", "Guardar")
+k("map.ctxm.pipette", "Prendre ce symbole", "Take this symbol", "Diese Signatur übernehmen", "Tomar este símbolo")
+k("map.ctxm.paste", "Coller", "Paste", "Einfügen", "Pegar")
+k("map.search.none", "Rien trouvé", "Nothing found", "Nichts gefunden", "No se encontró nada")
+
+# ---- undo labels ----------------------------------------------------------------------------------------------------------------
+for key, v in {
+  "draw": ("Dessin", "Drawing", "Zeichnen", "Dibujo"), "text": ("Texte", "Text", "Text", "Texto"), "move": ("Déplacement", "Move", "Verschieben", "Movimiento"),
+  "vertex": ("Point modifié", "Point changed", "Punkt geändert", "Punto modificado"), "cut": ("Coupe", "Cut", "Schnitt", "Corte"), "hole": ("Trou", "Hole", "Loch", "Agujero"),
+  "delete": ("Suppression", "Deletion", "Löschen", "Eliminación"), "duplicate": ("Copie", "Copy", "Kopie", "Copia"), "symbol": ("Symbole changé", "Symbol changed", "Signatur geändert", "Símbolo cambiado"),
+  "reverse": ("Sens inversé", "Direction reversed", "Richtung umgekehrt", "Sentido invertido"), "smooth": ("Lissage", "Smoothing", "Glätten", "Suavizado"), "simplify": ("Simplification", "Simplification", "Vereinfachung", "Simplificación"),
+  "toggleCurves": ("Courbes ↔ segments", "Curves ↔ segments", "Kurven ↔ Strecken", "Curvas ↔ segmentos"), "union": ("Union", "Union", "Vereinigung", "Unión"),
+  "difference": ("Soustraction", "Difference", "Differenz", "Diferencia"), "intersection": ("Intersection", "Intersection", "Schnittmenge", "Intersección"), "join": ("Jonction", "Join", "Verbindung", "Unión de líneas"),
+  "rotate": ("Rotation", "Rotation", "Drehung", "Giro"), "order": ("Ordre", "Order", "Reihenfolge", "Orden"), "part": ("Partie changée", "Part changed", "Teil geändert", "Parte cambiada"),
+  "parts": ("Parties", "Parts", "Teile", "Partes"), "props": ("Propriétés", "Properties", "Eigenschaften", "Propiedades"), "bg": ("Fonds", "Backgrounds", "Hintergründe", "Fondos"),
+  "data": ("Données ajoutées", "Data added", "Daten hinzugefügt", "Datos añadidos"), "accept": ("Brouillon accepté", "Draft accepted", "Entwurf übernommen", "Borrador aceptado"),
+  "reject": ("Brouillon rejeté", "Draft rejected", "Entwurf verworfen", "Borrador rechazado"), "print": ("Zone d'impression", "Print area", "Druckbereich", "Zona de impresión"),
+  "north": ("Lignes du nord", "North lines", "Nordlinien", "Líneas de norte"), "layout": ("Mise en page", "Layout", "Layout", "Maquetación"), "set": ("Jeu de symboles", "Symbol set", "Signaturensatz", "Juego de símbolos"),
+  }.items(): k(f"map.undo.{key}", *v)
+
+# ---- panes ------------------------------------------------------------------------------------------------------------------------
+k("map.left.title", "Symboles", "Symbols", "Signaturen", "Símbolos")
+k("map.left.search", "Numéro ou nom", "Number or name", "Nummer oder Name", "Número o nombre")
+k("map.left.recent", "Récents", "Recent", "Zuletzt", "Recientes")
+k("map.left.none", "Aucun symbole ne correspond.", "No symbol matches.", "Keine Signatur passt.", "Ningún símbolo coincide.")
+for key, v in {"sel": ("Sélection", "Selection", "Auswahl", "Selección"), "parts": ("Parties", "Parts", "Teile", "Partes"), "bg": ("Fonds", "Backgrounds", "Hintergründe", "Fondos"),
+  "colors": ("Couleurs", "Colours", "Farben", "Colores"), "issues": ("Problèmes", "Problems", "Probleme", "Problemas")}.items(): k(f"map.right.{key}", *v)
+k("map.sel.none", "Aucun objet choisi.", "No object selected.", "Kein Objekt ausgewählt.", "Ningún objeto seleccionado.")
+k("map.sel.current", "Symbole pour dessiner :", "Symbol to draw with:", "Signatur zum Zeichnen:", "Símbolo para dibujar:")
+k("map.sel.objects", "Objets", "Objects", "Objekte", "Objetos")
+k("map.sel.symbols", "Symboles", "Symbols", "Signaturen", "Símbolos")
+k("map.sel.scale", "Échelle", "Scale", "Maßstab", "Escala")
+k("map.sel.drafts", "En brouillon", "Drafts", "Entwürfe", "En borrador")
+k("map.sel.symbol", "Symbole", "Symbol", "Signatur", "Símbolo")
+k("map.sel.length", "Longueur", "Length", "Länge", "Longitud")
+k("map.sel.area", "Surface", "Area", "Fläche", "Superficie")
+k("map.sel.holes", "Trous", "Holes", "Löcher", "Agujeros")
+k("map.sel.angle", "Angle", "Angle", "Winkel", "Ángulo")
+k("map.sel.text", "Texte", "Text", "Text", "Texto")
+k("map.sel.source", "Source", "Source", "Quelle", "Fuente")
+k("map.sel.draft", "brouillon", "draft", "Entwurf", "borrador")
+k("map.sel.points", "Points", "Points", "Punkte", "Puntos")
+k("map.sel.count", "Sélection", "Selection", "Auswahl", "Selección")
+k("map.sel.part", "Partie", "Part", "Teil", "Parte")
+for key, v in {"osm": ("OpenStreetMap", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap"), "dem": ("modèle de terrain", "terrain model", "Geländemodell", "modelo del terreno"),
+  "lidar": ("LiDAR", "LiDAR", "LiDAR", "LiDAR"), "bdtopo": ("IGN BD TOPO", "IGN BD TOPO", "IGN BD TOPO", "IGN BD TOPO"), "north": ("lignes du nord", "north lines", "Nordlinien", "líneas de norte"),
+  "layout": ("mise en page", "layout", "Layout", "maquetación")}.items(): k(f"map.src.{key}", *v)
+k("map.parts.hint", "Une partie regroupe des objets à masquer ou verrouiller ensemble (la carte, un brouillon, la mise en page).", "A part groups objects to hide or lock together (the map, a draft, the layout).", "Ein Teil fasst Objekte zusammen, die gemeinsam ausgeblendet oder gesperrt werden (Karte, Entwurf, Layout).", "Una parte agrupa objetos para ocultarlos o bloquearlos juntos (el mapa, un borrador, la maquetación).")
+k("map.parts.current", "Dessiner dans", "Draw in", "Zeichnen in", "Dibujar en")
+k("map.parts.default", "Carte", "Map", "Karte", "Mapa")
+k("map.parts.draft", "Brouillon", "Draft", "Entwurf", "Borrador")
+k("map.parts.add", "Nouvelle partie", "New part", "Neuer Teil", "Nueva parte")
+k("map.parts.name", "Nom", "Name", "Name", "Nombre")
+k("map.parts.rename", "Renommer", "Rename", "Umbenennen", "Cambiar nombre")
+k("map.parts.delete", "Supprimer la partie", "Delete the part", "Teil löschen", "Eliminar la parte")
+k("map.parts.notEmpty", "Videz d'abord la partie de ses objets.", "Move the part's objects out first.", "Verschiebe zuerst die Objekte des Teils.", "Primero saca los objetos de la parte.")
+k("map.parts.show", "Afficher", "Show", "Anzeigen", "Mostrar")
+k("map.parts.hide", "Masquer", "Hide", "Ausblenden", "Ocultar")
+k("map.parts.lock", "Verrouiller", "Lock", "Sperren", "Bloquear")
+k("map.parts.unlock", "Déverrouiller", "Unlock", "Entsperren", "Desbloquear")
+k("map.bg.mapOpacity", "Opacité de la carte", "Map opacity", "Deckkraft der Karte", "Opacidad del mapa")
+k("map.bg.opacity", "Opacité", "Opacity", "Deckkraft", "Opacidad")
+k("map.bg.toggle", "Afficher ou masquer", "Show or hide", "Ein- oder ausblenden", "Mostrar u ocultar")
+k("map.bg.remove", "Retirer le fond", "Remove the background", "Hintergrund entfernen", "Quitar el fondo")
+k("map.bg.none", "Aucun fond. Ajoutez un scan, une photo, un PDF, une image géoréférencée, une trace GPS ou un fond en ligne.", "No backgrounds. Add a scan, a photo, a PDF, a georeferenced image, a GPS track or an online background.", "Keine Hintergründe. Füge einen Scan, ein Foto, ein PDF, ein georeferenziertes Bild, eine GPS-Spur oder einen Online-Hintergrund hinzu.", "No hay fondos. Añade un escaneo, una foto, un PDF, una imagen georreferenciada, un track GPS o un fondo en línea.")
+k("map.bg.reading", "Lecture de {name}…", "Reading {name}…", "{name} wird gelesen…", "Leyendo {name}…")
+k("map.bg.placedGeo", "Fond placé d'après son géoréférencement.", "Background placed from its georeference.", "Hintergrund nach seiner Georeferenzierung platziert.", "Fondo colocado según su georreferenciación.")
+k("map.bg.placedHint", "Fond placé au milieu de l'écran : calez-le sur la carte avec « Caler ».", "Background placed in the middle of the screen: fit it to the map with « Adjust ».", "Hintergrund in der Bildschirmmitte platziert: mit „Einpassen“ an die Karte anpassen.", "Fondo colocado en el centro de la pantalla: ajústalo al mapa con «Ajustar».")
+k("map.bg.needGeo", "La carte doit être géoréférencée (Fichier › Propriétés).", "The map must be georeferenced (File › Properties).", "Die Karte muss georeferenziert sein (Datei › Eigenschaften).", "El mapa debe estar georreferenciado (Archivo › Propiedades).")
+k("map.bg.gpxEmpty", "Cette trace ne contient aucun point.", "This track has no points.", "Diese Spur hat keine Punkte.", "Este track no tiene puntos.")
+k("map.bg.gpxLarge", "Cette trace couvre une zone trop grande pour la carte.", "This track covers too large an area for the map.", "Diese Spur deckt ein zu großes Gebiet für die Karte ab.", "Este track cubre una zona demasiado grande para el mapa.")
+k("map.bg.loading", "Chargement du fond en ligne…", "Loading the online background…", "Online-Hintergrund wird geladen…", "Cargando el fondo en línea…")
+k("map.bg.layer", "Fond", "Background", "Hintergrund", "Fondo")
+k("map.bg.layer.ortho", "Photos aériennes IGN (France)", "IGN aerial photos (France)", "IGN-Luftbilder (Frankreich)", "Fotos aéreas del IGN (Francia)")
+k("map.bg.layer.plan", "Plan IGN (France)", "Plan IGN (France)", "Plan IGN (Frankreich)", "Plan IGN (Francia)")
+k("map.bg.layer.osm", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap")
+k("map.bg.onlineHint", "Les images sont lues à chaque ouverture et ne sont pas gardées ; la carte doit être géoréférencée.", "The images are read at each opening and not kept; the map must be georeferenced.", "Die Bilder werden bei jedem Öffnen gelesen und nicht gespeichert; die Karte muss georeferenziert sein.", "Las imágenes se leen en cada apertura y no se guardan; el mapa debe estar georreferenciado.")
+k("map.bg.credit.ortho", "Fond : © IGN, photos aériennes", "Background: © IGN aerial photos", "Hintergrund: © IGN-Luftbilder", "Fondo: © IGN, fotos aéreas")
+k("map.bg.credit.plan", "Fond : © IGN, Plan IGN", "Background: © IGN, Plan IGN", "Hintergrund: © IGN, Plan IGN", "Fondo: © IGN, Plan IGN")
+k("map.bg.credit.osm", "Fond : © les contributeurs d'OpenStreetMap", "Background: © OpenStreetMap contributors", "Hintergrund: © OpenStreetMap-Mitwirkende", "Fondo: © colaboradores de OpenStreetMap")
+k("map.bg.calageStart", "Cliquez un point du fond…", "Click a point of the background…", "Klicke einen Punkt des Hintergrunds…", "Haz clic en un punto del fondo…")
+k("map.bg.calageTo", "…puis l'endroit où il doit être sur la carte.", "…then where it belongs on the map.", "…dann die Stelle, an die er auf der Karte gehört.", "…y luego el lugar donde va en el mapa.")
+k("map.bg.calagePairs.one", "{n} paire ; il en faut au moins deux, puis Entrée.", "{n} pair; at least two are needed, then Enter.", "{n} Paar; mindestens zwei nötig, dann Eingabe.", "{n} par; hacen falta al menos dos, luego Intro.")
+k("map.bg.calagePairs.other", "{n} paires ; Entrée pour appliquer.", "{n} pairs; Enter to apply.", "{n} Paare; Eingabe zum Anwenden.", "{n} pares; Intro para aplicar.")
+k("map.colors.hint", "Du haut au bas de l'ordre d'impression. Masquer une couleur ne change que l'affichage.", "From the top to the bottom of the printing order. Hiding a colour only changes the display.", "Von oben nach unten in der Druckreihenfolge. Eine Farbe auszublenden ändert nur die Anzeige.", "De arriba abajo en el orden de impresión. Ocultar un color solo cambia la visualización.")
+k("map.colors.toggle", "Afficher ou masquer la couleur", "Show or hide the colour", "Farbe ein- oder ausblenden", "Mostrar u ocultar el color")
+k("map.colors.overprint", "Simuler la surimpression", "Simulate overprinting", "Überdrucken simulieren", "Simular la sobreimpresión")
+
+# ---- properties ----------------------------------------------------------------------------------------------------------------
+k("map.props.title", "Titre", "Title", "Titel", "Título")
+k("map.props.scale", "Échelle", "Scale", "Maßstab", "Escala")
+k("map.props.scaleHint", "Le dénominateur : 10000 pour 1:10 000.", "The denominator: 10000 for 1:10,000.", "Der Nenner: 10000 für 1:10.000.", "El denominador: 10000 para 1:10.000.")
+k("map.props.crs", "Système de coordonnées (EPSG)", "Coordinate system (EPSG)", "Koordinatensystem (EPSG)", "Sistema de coordenadas (EPSG)")
+k("map.props.crsHint", "2154 pour Lambert 93 (France), 326xx pour l'UTM du fuseau xx.", "2154 for Lambert 93 (France), 326xx for UTM zone xx.", "2154 für Lambert 93 (Frankreich), 326xx für UTM-Zone xx.", "2154 para Lambert 93 (Francia), 326xx para el huso UTM xx.")
+k("map.props.origin", "Origine de la carte (X, Y en mètres)", "Map origin (X, Y in metres)", "Kartenursprung (X, Y in Metern)", "Origen del mapa (X, Y en metros)")
+k("map.props.originHint", "Les coordonnées terrain du point 0 ; 0 de la carte.", "The ground coordinates of the map's 0, 0 point.", "Die Geländekoordinaten des Punkts 0, 0 der Karte.", "Las coordenadas del terreno del punto 0, 0 del mapa.")
+k("map.props.grivation", "Angle de la grille (degrés)", "Grid angle (degrees)", "Gitterwinkel (Grad)", "Ángulo de la cuadrícula (grados)")
+k("map.props.grivationHint", "La rotation de la carte par rapport à la grille, le plus souvent 0.", "The map's rotation against the grid, usually 0.", "Die Drehung der Karte gegenüber dem Gitter, meist 0.", "El giro del mapa respecto a la cuadrícula, casi siempre 0.")
+k("map.props.declination", "Déclinaison magnétique (degrés, Est positif)", "Magnetic declination (degrees, east positive)", "Magnetische Deklination (Grad, Ost positiv)", "Declinación magnética (grados, este positivo)")
+k("map.props.declinationHint", "Pour les lignes du nord magnétique ; elle se trouve sur les sites des services géodésiques.", "For the magnetic north lines; geodetic agencies publish it.", "Für die magnetischen Nordlinien; geodätische Dienste veröffentlichen sie.", "Para las líneas del norte magnético; la publican los servicios geodésicos.")
+
+# ---- data -------------------------------------------------------------------------------------------------------------------------
+k("map.data.area", "Zone", "Area", "Gebiet", "Zona")
+k("map.data.area.screen", "Ce que montre l'écran", "What the screen shows", "Was der Bildschirm zeigt", "Lo que muestra la pantalla")
+k("map.data.area.print", "La zone d'impression", "The print area", "Den Druckbereich", "La zona de impresión")
+k("map.data.area.map", "Toute la carte", "The whole map", "Die ganze Karte", "Todo el mapa")
+k("map.data.areaSet", "Zone des données choisie.", "Data area set.", "Datengebiet festgelegt.", "Zona de datos fijada.")
+k("map.data.interval", "Équidistance", "Contour interval", "Äquidistanz", "Equidistancia")
+k("map.data.contoursHint", "Du modèle de terrain de l'IGN (RGE ALTI) en France, ailleurs des tuiles de relief mondiales ; à vérifier sur le terrain.", "From IGN's terrain model (RGE ALTI) in France, elsewhere from worldwide terrain tiles; to be checked in the field.", "In Frankreich aus dem Geländemodell des IGN (RGE ALTI), anderswo aus weltweiten Geländekacheln; im Gelände zu prüfen.", "Del modelo del terreno del IGN (RGE ALTI) en Francia, en otros lugares de teselas de relieve mundiales; hay que comprobarlas sobre el terreno.")
+k("map.data.loadingDem", "Lecture des altitudes…", "Reading the heights…", "Höhen werden gelesen…", "Leyendo las altitudes…")
+k("map.data.kind", "Type de carte", "Kind of map", "Kartentyp", "Tipo de mapa")
+k("map.data.kind.sprint", "Sprint — courbes tous les 2,5 m", "Sprint — contours every 2.5 m", "Sprint — Höhenlinien alle 2,5 m", "Sprint — curvas cada 2,5 m")
+k("map.data.kind.forest", "Forêt — courbes tous les 5 m", "Forest — contours every 5 m", "Wald — Höhenlinien alle 5 m", "Bosque — curvas cada 5 m")
+k("map.data.needKind", "Choisissez sprint ou forêt.", "Choose sprint or forest.", "Wähle Sprint oder Wald.", "Elige sprint o bosque.")
+k("map.data.lidarHint", "Le LiDAR HD de l'IGN (France métropolitaine) traité par karttapullautin : quelques minutes pour les tuiles qui ne sont pas encore prêtes.", "IGN's LiDAR HD (metropolitan France) processed by karttapullautin: a few minutes for tiles not made yet.", "Das LiDAR HD des IGN (französisches Festland), mit karttapullautin verarbeitet: einige Minuten für noch nicht erstellte Kacheln.", "El LiDAR HD del IGN (Francia metropolitana) procesado con karttapullautin: unos minutos para las teselas aún no hechas.")
+k("map.data.nogeo", "La carte doit être géoréférencée pour recevoir des données (Fichier › Propriétés).", "The map must be georeferenced to receive data (File › Properties).", "Die Karte muss georeferenziert sein, um Daten aufzunehmen (Datei › Eigenschaften).", "El mapa debe estar georreferenciado para recibir datos (Archivo › Propiedades).")
+k("map.data.tooLarge", "La zone est trop grande pour le LiDAR : réduisez-la.", "The area is too large for the LiDAR: make it smaller.", "Das Gebiet ist zu groß für das LiDAR: verkleinere es.", "La zona es demasiado grande para el LiDAR: redúcela.")
+k("map.data.missing", "Symboles absents de la carte, objets laissés de côté : {list}. Ajoutez le jeu de symboles de l'IOF (Mise en page › Jeu de symboles).", "Symbols missing from the map, objects left out: {list}. Add the IOF symbol set (Layout › Symbol set).", "Signaturen fehlen in der Karte, Objekte ausgelassen: {list}. Füge den IOF-Signaturensatz hinzu (Layout › Signaturensatz).", "Símbolos ausentes del mapa, objetos omitidos: {list}. Añade el juego de símbolos de la IOF (Maquetación › Juego de símbolos).")
+k("map.data.brought.one", "{n} objet ajouté en brouillon", "{n} object added as a draft", "{n} Objekt als Entwurf hinzugefügt", "{n} objeto añadido como borrador")
+k("map.data.brought.other", "{n} objets ajoutés en brouillon", "{n} objects added as drafts", "{n} Objekte als Entwurf hinzugefügt", "{n} objetos añadidos como borrador")
+k("map.data.accepted.one", "{n} objet accepté", "{n} object accepted", "{n} Objekt übernommen", "{n} objeto aceptado")
+k("map.data.accepted.other", "{n} objets acceptés", "{n} objects accepted", "{n} Objekte übernommen", "{n} objetos aceptados")
+k("map.data.rejected.one", "{n} objet rejeté", "{n} object rejected", "{n} Objekt verworfen", "{n} objeto rechazado")
+k("map.data.rejected.other", "{n} objets rejetés", "{n} objects rejected", "{n} Objekte verworfen", "{n} objetos rechazados")
+k("map.data.noVectors.one", "{n} tuile faite avant les vecteurs : seulement son image", "{n} tile made before vectors: its image only", "{n} Kachel vor den Vektoren erstellt: nur ihr Bild", "{n} tesela hecha antes de los vectores: solo su imagen")
+k("map.data.noVectors.other", "{n} tuiles faites avant les vecteurs : seulement leur image", "{n} tiles made before vectors: their images only", "{n} Kacheln vor den Vektoren erstellt: nur ihre Bilder", "{n} teselas hechas antes de los vectores: solo sus imágenes")
+k("map.data.osm.credit", "© les contributeurs d'OpenStreetMap (ODbL)", "© OpenStreetMap contributors (ODbL)", "© OpenStreetMap-Mitwirkende (ODbL)", "© colaboradores de OpenStreetMap (ODbL)")
+k("map.data.osm.asking", "Demande à OpenStreetMap…", "Asking OpenStreetMap…", "OpenStreetMap wird abgefragt…", "Consultando OpenStreetMap…")
+k("map.data.osm.reading", "Lecture des objets d'OpenStreetMap…", "Reading OpenStreetMap's features…", "OpenStreetMap-Objekte werden gelesen…", "Leyendo los objetos de OpenStreetMap…")
+
+# ---- field --------------------------------------------------------------------------------------------------------------------------
+k("map.field.needGeo", "La carte doit être géoréférencée pour montrer votre position.", "The map must be georeferenced to show your position.", "Die Karte muss georeferenziert sein, um deine Position zu zeigen.", "El mapa debe estar georreferenciado para mostrar tu posición.")
+k("map.field.noGps", "Cet appareil ne donne pas sa position.", "This device does not give its position.", "Dieses Gerät gibt seine Position nicht an.", "Este dispositivo no da su posición.")
+k("map.field.waiting", "Recherche de la position…", "Finding the position…", "Position wird gesucht…", "Buscando la posición…")
+k("map.field.acc", "Position à ± {m} m", "Position within ± {m} m", "Position auf ± {m} m", "Posición a ± {m} m")
+k("map.field.denied", "La position n'est pas autorisée pour ce site (réglages du navigateur).", "Location is not allowed for this site (browser settings).", "Der Standort ist für diese Seite nicht erlaubt (Browsereinstellungen).", "La ubicación no está permitida para este sitio (ajustes del navegador).")
+k("map.field.noFix", "Position introuvable pour l'instant.", "No position for now.", "Im Moment keine Position.", "Sin posición por ahora.")
+k("map.field.noCompass", "La boussole n'est pas disponible.", "The compass is not available.", "Der Kompass ist nicht verfügbar.", "La brújula no está disponible.")
+k("map.field.recording", "Enregistrement de la trace ; touchez à nouveau pour l'arrêter.", "Recording the track; tap again to stop.", "Spur wird aufgezeichnet; erneut tippen zum Beenden.", "Grabando el track; toca de nuevo para pararlo.")
+k("map.field.trackShort", "Trace trop courte : rien de gardé.", "Track too short: nothing kept.", "Spur zu kurz: nichts behalten.", "Track demasiado corto: no se guarda nada.")
+k("map.field.trackName", "Trace de terrain", "Field track", "Geländespur", "Track de campo")
+k("map.comment.title", "Note sur la carte", "Note on the map", "Notiz auf der Karte", "Nota en el mapa")
+k("map.comment.text", "Note", "Note", "Notiz", "Nota")
+k("map.comment.where", "Cliquez où placer la note.", "Click where to place the note.", "Klicke, wo die Notiz hin soll.", "Haz clic donde poner la nota.")
+k("map.comment.later", "La note sera envoyée quand le réseau reviendra.", "The note will be sent when the network returns.", "Die Notiz wird gesendet, sobald das Netz zurück ist.", "La nota se enviará cuando vuelva la red.")
+k("map.comment.none", "Aucun commentaire.", "No comments.", "Keine Kommentare.", "No hay comentarios.")
+k("map.comment.go", "Voir sur la carte", "Show on the map", "Auf der Karte zeigen", "Ver en el mapa")
+k("map.comment.done", "Traité", "Done", "Erledigt", "Hecho")
+k("map.comment.reopen", "À reprendre", "Reopen", "Wieder öffnen", "Reabrir")
+k("map.off.noSupport", "Ce navigateur ne peut pas garder le site hors ligne.", "This browser cannot keep the site offline.", "Dieser Browser kann die Seite nicht offline behalten.", "Este navegador no puede guardar el sitio sin conexión.")
+k("map.off.preparing", "Préparation de la carte hors ligne…", "Preparing the map for offline use…", "Karte wird für die Offline-Nutzung vorbereitet…", "Preparando el mapa sin conexión…")
+k("map.off.kept", "Carte gardée sur cet appareil : elle s'ouvre sans réseau, et vos modifications partent dès qu'il revient.", "Map kept on this device: it opens without the network, and your changes go as soon as it returns.", "Karte auf diesem Gerät behalten: Sie öffnet sich ohne Netz, und deine Änderungen werden gesendet, sobald es zurück ist.", "Mapa guardado en este dispositivo: se abre sin red y tus cambios se envían en cuanto vuelve.")
+
+# ---- checks, statistics ----------------------------------------------------------------------------------------------------------
+k("map.chk.unknown", "Symbole {n} absent de la carte", "Symbol {n} missing from the map", "Signatur {n} fehlt in der Karte", "Símbolo {n} ausente del mapa")
+k("map.chk.points", "Objet avec trop peu de points", "Object with too few points", "Objekt mit zu wenigen Punkten", "Objeto con muy pocos puntos")
+k("map.chk.dup", "Objet en double", "Duplicate object", "Doppeltes Objekt", "Objeto duplicado")
+k("map.chk.draft", "Encore en brouillon", "Still a draft", "Noch Entwurf", "Todavía en borrador")
+k("map.chk.area", "{s} : {a} mm², minimum {min} mm²", "{s}: {a} mm², minimum {min} mm²", "{s}: {a} mm², Minimum {min} mm²", "{s}: {a} mm², mínimo {min} mm²")
+k("map.chk.length", "{s} : {l} mm, minimum {min} mm", "{s}: {l} mm, minimum {min} mm", "{s}: {l} mm, Minimum {min} mm", "{s}: {l} mm, mínimo {min} mm")
+k("map.chk.contour", "Courbes à moins de {min} mm l'une de l'autre", "Contours less than {min} mm apart", "Höhenlinien weniger als {min} mm voneinander", "Curvas a menos de {min} mm una de otra")
+k("map.chk.found.one", "{n} point à revoir", "{n} point to review", "{n} Punkt zu prüfen", "{n} punto que revisar")
+k("map.chk.found.other", "{n} points à revoir", "{n} points to review", "{n} Punkte zu prüfen", "{n} puntos que revisar")
+k("map.chk.none", "Aucun problème trouvé.", "No problems found.", "Keine Probleme gefunden.", "No se encontraron problemas.")
+k("map.chk.again", "Vérifier à nouveau", "Check again", "Erneut prüfen", "Comprobar de nuevo")
+k("map.stats.objects.one", "{n} objet", "{n} object", "{n} Objekt", "{n} objeto")
+k("map.stats.objects.other", "{n} objets", "{n} objects", "{n} Objekte", "{n} objetos")
+k("map.stats.n", "N°", "No.", "Nr.", "N.º")
+k("map.stats.symbol", "Symbole", "Symbol", "Signatur", "Símbolo")
+k("map.stats.count", "Objets", "Objects", "Objekte", "Objetos")
+k("map.stats.length", "Longueur", "Length", "Länge", "Longitud")
+k("map.stats.area", "Surface", "Area", "Fläche", "Superficie")
+
+# ---- layout ------------------------------------------------------------------------------------------------------------------
+k("map.lay.paper", "Zone", "Area", "Bereich", "Zona")
+k("map.lay.draw", "La tracer sur la carte", "Draw it on the map", "Auf der Karte ziehen", "Trazarla en el mapa")
+k("map.lay.fit", "Autour de toute la carte", "Around the whole map", "Um die ganze Karte", "Alrededor de todo el mapa")
+k("map.lay.twoClicks", "Cliquez deux coins opposés.", "Click two opposite corners.", "Klicke zwei gegenüberliegende Ecken.", "Haz clic en dos esquinas opuestas.")
+k("map.lay.noNorthSymbol", "La carte n'a pas de symbole 601 (ligne du nord magnétique) : ajoutez le jeu de symboles de l'IOF.", "The map has no symbol 601 (magnetic north line): add the IOF symbol set.", "Die Karte hat keine Signatur 601 (magnetische Nordlinie): Füge den IOF-Signaturensatz hinzu.", "El mapa no tiene el símbolo 601 (línea del norte magnético): añade el juego de símbolos de la IOF.")
+k("map.lay.spacing", "Espacement (mm sur la carte)", "Spacing (mm on the map)", "Abstand (mm auf der Karte)", "Separación (mm en el mapa)")
+k("map.lay.spacingHint", "Les spécifications : 30 mm à 1:15 000 et 1:10 000, 20 mm en sprint.", "The specifications: 30 mm at 1:15,000 and 1:10,000, 20 mm for sprint.", "Die Spezifikationen: 30 mm bei 1:15.000 und 1:10.000, 20 mm im Sprint.", "Las especificaciones: 30 mm a 1:15.000 y 1:10.000, 20 mm en sprint.")
+k("map.lay.where", "Cliquez où placer l'élément.", "Click where to place the element.", "Klicke, wo das Element hin soll.", "Haz clic donde colocar el elemento.")
+k("map.lay.nothingUsed", "Aucun symbole n'est encore utilisé.", "No symbol is used yet.", "Noch keine Signatur verwendet.", "Todavía no se usa ningún símbolo.")
+k("map.lay.noText", "La carte n'a pas de symbole de texte.", "The map has no text symbol.", "Die Karte hat keine Textsignatur.", "El mapa no tiene ningún símbolo de texto.")
+k("map.lay.creditLidar", "Relief : © IGN, LiDAR HD, traité par karttapullautin", "Relief: © IGN, LiDAR HD, processed by karttapullautin", "Relief: © IGN, LiDAR HD, verarbeitet mit karttapullautin", "Relieve: © IGN, LiDAR HD, procesado con karttapullautin")
+k("map.lay.creditDem", "Courbes : © IGN RGE ALTI ou Mapzen / AWS Terrain Tiles", "Contours: © IGN RGE ALTI or Mapzen / AWS Terrain Tiles", "Höhenlinien: © IGN RGE ALTI oder Mapzen / AWS Terrain Tiles", "Curvas: © IGN RGE ALTI o Mapzen / AWS Terrain Tiles")
+k("map.lay.creditBdtopo", "© IGN, BD TOPO", "© IGN, BD TOPO", "© IGN, BD TOPO", "© IGN, BD TOPO")
+k("map.lay.creditOzimut", "Carte dessinée avec Ozimut — ozimut.com", "Map drawn with Ozimut — ozimut.com", "Karte gezeichnet mit Ozimut — ozimut.com", "Mapa dibujado con Ozimut — ozimut.com")
+k("map.lay.qrUrl", "Adresse du code", "Address in the code", "Adresse im Code", "Dirección del código")
+k("map.lay.set", "Jeu de symboles", "Symbol set", "Signaturensatz", "Juego de símbolos")
+k("map.lay.setHow", "Les symboles déjà dans la carte", "Symbols already in the map", "Signaturen, die schon in der Karte sind", "Los símbolos que ya están en el mapa")
+k("map.lay.setAdd", "Les garder ; ajouter seulement ceux qui manquent", "Keep them; add only the missing ones", "Behalten; nur fehlende hinzufügen", "Conservarlos; añadir solo los que faltan")
+k("map.lay.setReplace", "Les remplacer par ceux des spécifications", "Replace them with the specification's", "Durch die der Spezifikation ersetzen", "Sustituirlos por los de la especificación")
+k("map.lay.setDone", "{a} symboles ajoutés, {r} remplacés.", "{a} symbols added, {r} replaced.", "{a} Signaturen hinzugefügt, {r} ersetzt.", "{a} símbolos añadidos, {r} sustituidos.")
+k("map.lay.noSet", "Le jeu de symboles n'a pas pu être chargé.", "The symbol set could not be loaded.", "Der Signaturensatz konnte nicht geladen werden.", "No se pudo cargar el juego de símbolos.")
+
+# ---- files ------------------------------------------------------------------------------------------------------------------------
+k("map.io.ocdVersion", "Version d'OCAD", "OCAD version", "OCAD-Version", "Versión de OCAD")
+k("map.io.ocdSame", "OCAD {v} (celle du fichier d'origine)", "OCAD {v} (the source file's)", "OCAD {v} (die der Ausgangsdatei)", "OCAD {v} (la del archivo de origen)")
+k("map.io.ocdHint", "Dans la version du fichier d'origine, tout ce que vous n'avez pas modifié est écrit octet pour octet comme il était.", "In the source file's version, everything you did not change is written byte for byte as it was.", "In der Version der Ausgangsdatei wird alles Unveränderte Byte für Byte so geschrieben, wie es war.", "En la versión del archivo de origen, todo lo que no hayas modificado se escribe byte a byte como estaba.")
+k("map.io.writing", "Écriture du fichier…", "Writing the file…", "Datei wird geschrieben…", "Escribiendo el archivo…")
+k("map.io.written", "Fichier enregistré.", "File saved.", "Datei gespeichert.", "Archivo guardado.")
+k("map.io.color", "Couleurs", "Colours", "Farben", "Colores")
+k("map.io.cmyk", "CMJN, pour l'imprimeur", "CMYK, for the printer", "CMYK, für die Druckerei", "CMYK, para la imprenta")
+k("map.io.rgb", "RVB, pour l'écran et les imprimantes de bureau", "RGB, for screens and office printers", "RGB, für Bildschirme und Bürodrucker", "RGB, para pantallas e impresoras de oficina")
+k("map.io.dpi", "Résolution", "Resolution", "Auflösung", "Resolución")
+k("map.io.tooLarge", "Image trop grande : baissez la résolution ou la zone d'impression.", "Image too large: lower the resolution or the print area.", "Bild zu groß: Auflösung oder Druckbereich verkleinern.", "Imagen demasiado grande: baja la resolución o la zona de impresión.")
+k("map.ocad.version", "Cartographier ne sait pas écrire la version {v} d'OCAD (9, 10, 11, 12 ou 2018).", "Cartographier cannot write OCAD version {v} (9, 10, 11, 12 or 2018).", "Cartographier kann OCAD-Version {v} nicht schreiben (9, 10, 11, 12 oder 2018).", "Cartographier no puede escribir la versión {v} de OCAD (9, 10, 11, 12 o 2018).")
+k("map.ocad.notOcad", "Le fichier d'origine n'est pas un fichier OCAD.", "The source file is not an OCAD file.", "Die Ausgangsdatei ist keine OCAD-Datei.", "El archivo de origen no es un archivo OCAD.")
+k("map.omap.notOmap", "Ce fichier n'est pas une carte OpenOrienteering Mapper.", "This file is not an OpenOrienteering Mapper map.", "Diese Datei ist keine OpenOrienteering-Mapper-Karte.", "Este archivo no es un mapa de OpenOrienteering Mapper.")
+k("map.omap.version", "Version {v} du format de Mapper non lue (6 à 9).", "Mapper format version {v} not read (6 to 9).", "Mapper-Formatversion {v} wird nicht gelesen (6 bis 9).", "Versión {v} del formato de Mapper no leída (6 a 9).")
+k("map.omap.badXml", "Le fichier Mapper est illisible (XML invalide).", "The Mapper file cannot be read (invalid XML).", "Die Mapper-Datei ist unlesbar (ungültiges XML).", "El archivo de Mapper es ilegible (XML no válido).")
+
+# ---- team -----------------------------------------------------------------------------------------------------------------------
+k("map.team.invite", "Inviter dans l'équipe", "Invite to the team", "Ins Team einladen", "Invitar al equipo")
+k("map.team.role", "Rôle", "Role", "Rolle", "Rol")
+k("map.team.mapper", "cartographe (modifie)", "mapper (edits)", "Kartograf (bearbeitet)", "cartógrafo (edita)")
+k("map.team.viewer", "lecteur (lit et commente)", "viewer (reads and comments)", "Leser (liest und kommentiert)", "lector (lee y comenta)")
+k("map.team.owner", "propriétaire", "owner", "Eigentümer", "propietario")
+k("map.team.days", "Lien valable (jours)", "Link valid for (days)", "Link gültig (Tage)", "Enlace válido (días)")
+k("map.team.inviteHint", "Personne n'est cherché par son nom ni son e-mail : transmettez le lien comme vous le souhaitez ; qui l'ouvre connecté rejoint la carte.", "Nobody is looked up by name or e-mail: pass the link on as you like; whoever opens it signed in joins the map.", "Niemand wird über Name oder E-Mail gesucht: Gib den Link weiter, wie du willst; wer ihn angemeldet öffnet, tritt der Karte bei.", "No se busca a nadie por nombre ni e-mail: pasa el enlace como quieras; quien lo abra con sesión iniciada se une al mapa.")
+k("map.team.link", "Lien d'invitation", "Invitation link", "Einladungslink", "Enlace de invitación")
+k("map.team.linkHint", "Ce lien fait rejoindre la carte comme {role}, jusqu'au {date}.", "This link joins the map as {role}, until {date}.", "Dieser Link fügt bis {date} als {role} hinzu.", "Este enlace une al mapa como {role}, hasta el {date}.")
+k("map.team.copied", "Lien copié.", "Link copied.", "Link kopiert.", "Enlace copiado.")
+k("map.team.members", "Membres de l'équipe", "Team members", "Teammitglieder", "Miembros del equipo")
+k("map.team.name", "Nom", "Name", "Name", "Nombre")
+k("map.team.remove", "retirer", "remove", "entfernen", "quitar")
+k("map.team.links", "Liens d'invitation en cours", "Current invitation links", "Aktuelle Einladungslinks", "Enlaces de invitación vigentes")
+k("map.team.until", "jusqu'au {date}", "until {date}", "bis {date}", "hasta el {date}")
+k("map.team.revoke", "Révoquer", "Revoke", "Widerrufen", "Revocar")
+k("map.team.saved", "Équipe enregistrée.", "Team saved.", "Team gespeichert.", "Equipo guardado.")
+k("map.team.note", "Note", "Note", "Notiz", "Nota")
+k("map.team.notePh", "Avant la reprise du nord", "Before revising the north", "Vor der Überarbeitung des Nordens", "Antes de revisar el norte")
+k("map.team.versionSaved", "Version enregistrée.", "Version saved.", "Version gespeichert.", "Versión guardada.")
+k("map.team.noVersions", "Aucune version enregistrée.", "No saved versions.", "Keine gespeicherten Versionen.", "No hay versiones guardadas.")
+k("map.team.versionsHint", "La carte actuelle est gardée comme version avant d'être remplacée.", "The current map is kept as a version before it is replaced.", "Die aktuelle Karte wird vor dem Ersetzen als Version behalten.", "El mapa actual se guarda como versión antes de sustituirlo.")
+k("map.team.restore", "Rétablir cette version", "Restore this version", "Diese Version wiederherstellen", "Restaurar esta versión")
+k("map.team.beforeRestore", "Avant le retour à une version", "Before restoring a version", "Vor dem Wiederherstellen einer Version", "Antes de restaurar una versión")
+
+
+# ---- what a conversion to or from Mapper cannot keep (mapper/fromomap.js, toomap.js) ----------------------------------------------
+for key, v in {
+  "symbol": ("Symbole illisible, laissé de côté", "Unreadable symbol, left out", "Unlesbares Symbol, weggelassen", "Símbolo ilegible, omitido"),
+  "capSquare": ("Extrémités carrées : plates dans OCAD", "Square line ends: flat in OCAD", "Eckige Linienenden: in OCAD flach", "Extremos cuadrados: planos en OCAD"),
+  "joinCap": ("Angles et extrémités : arrondis ensemble ou pas du tout dans OCAD", "Corners and ends: OCAD rounds both or neither", "Ecken und Enden: OCAD rundet beide oder keines", "Esquinas y extremos: OCAD redondea ambos o ninguno"),
+  "dashGroups": ("Groupes de plus de deux tirets : deux dans OCAD", "Groups of more than two dashes: two in OCAD", "Gruppen von mehr als zwei Strichen: zwei in OCAD", "Grupos de más de dos trazos: dos en OCAD"),
+  "borders": ("Bordures différentes à gauche et à droite : approchées", "Different left and right borders: approximated", "Unterschiedliche Ränder links und rechts: angenähert", "Bordes izquierdo y derecho distintos: aproximados"),
+  "midDash": ("Symboles au milieu des tirets : placés dans les intervalles", "Symbols at dash centres: placed in the gaps", "Symbole in Strichmitte: in die Lücken gesetzt", "Símbolos en el centro de los trazos: colocados en los huecos"),
+  "midMin": ("« Au moins un symbole » non désactivable dans OCAD", "« At least one symbol » cannot be turned off in OCAD", "„Mindestens ein Symbol“ lässt sich in OCAD nicht abschalten", "«Al menos un símbolo» no se puede desactivar en OCAD"),
+  "patternOffset": ("Décalage de motif ignoré", "Pattern offset dropped", "Musterversatz verworfen", "Desplazamiento del patrón descartado"),
+  "patternOrigin": ("Centre de rotation du motif : l'origine de la carte dans OCAD", "Pattern rotation centre: the map's origin in OCAD", "Drehpunkt des Musters: in OCAD der Kartenursprung", "Centro de rotación del patrón: el origen del mapa en OCAD"),
+  "textUnderline": ("Texte souligné : pas de soulignement dans OCAD", "Underlined text: no underline in OCAD", "Unterstrichener Text: in OCAD ohne Unterstreichung", "Texto subrayado: sin subrayado en OCAD"),
+  "comboPart": ("Partie ponctuelle ou texte d'un symbole combiné ignorée", "Point or text part of a combined symbol left out", "Punkt- oder Textteil eines kombinierten Symbols weggelassen", "Parte de punto o texto de un símbolo combinado omitida"),
+  }.items(): k(f"map.omap.loss.{key}", *v)
+for key, v in {
+  "rectGrid": ("Grille du rectangle non reprise", "Rectangle grid not kept", "Rechteckraster nicht übernommen", "Cuadrícula del rectángulo no conservada"),
+  "decrease": ("Symboles décroissants : de taille constante", "Decreasing symbols: constant size", "Abnehmende Symbole: gleichbleibende Größe", "Símbolos decrecientes: tamaño constante"),
+  "irregular": ("Structure irrégulière : régulière", "Irregular structure: regular", "Unregelmäßige Struktur: regelmäßig", "Estructura irregular: regular"),
+  "wordSpace": ("Espacement des mots ignoré", "Word spacing dropped", "Wortabstand verworfen", "Espaciado entre palabras descartado"),
+  "indent": ("Retraits de paragraphe ignorés", "Paragraph indents dropped", "Absatzeinzüge verworfen", "Sangrías de párrafo descartadas"),
+  "textPoint": ("Symbole ponctuel du texte ignoré", "Text's point symbol dropped", "Punktsymbol des Textes verworfen", "Símbolo de punto del texto descartado"),
+  "textFrame": ("Cadre rectangulaire du texte ignoré", "Text's rectangle frame dropped", "Rechteckrahmen des Textes verworfen", "Marco rectangular del texto descartado"),
+  "lineText": ("Texte le long d'une ligne : texte droit au début de la ligne", "Text along a line: straight text at the line's start", "Text entlang einer Linie: gerader Text am Linienanfang", "Texto a lo largo de una línea: texto recto al inicio de la línea"),
+  "gaps": ("Coupures de ligne (« sans ligne ») ignorées", "Line gaps (« no line ») dropped", "Linienlücken („ohne Linie“) verworfen", "Huecos de línea («sin línea») descartados"),
+  "circleGaps": ("Coupures de cercle ignorées", "Circle gaps dropped", "Kreislücken verworfen", "Huecos de círculo descartados"),
+  "holesInLine": ("Ligne en plusieurs parties : toutes tracées", "Line in several parts: all drawn", "Linie aus mehreren Teilen: alle gezeichnet", "Línea en varias partes: todas dibujadas"),
+  "grid": ("Système de coordonnées OCAD sans équivalent : local", "OCAD grid with no equivalent: local", "OCAD-Koordinatensystem ohne Entsprechung: lokal", "Sistema de coordenadas de OCAD sin equivalente: local"),
+  "layoutImage": ("Images de mise en page (logos) non reprises", "Layout images (logos) not kept", "Layoutbilder (Logos) nicht übernommen", "Imágenes de maquetación (logotipos) no conservadas"),
+  }.items(): k(f"map.omap.lost.{key}", *v)
+k("map.omap.losses", "À noter, ce que l'autre format ne garde pas : {list}", "Note what the other format does not keep: {list}", "Beachte, was das andere Format nicht behält: {list}", "Ten en cuenta lo que el otro formato no conserva: {list}")
+
+# ---- the site's own catalogues (nav, tiles, beta) are written by `site_keys` below -----------------------------------------------
+SITE = {
+  "nav.orgMapper": ("Cartographier", "Mapping", "Kartieren", "Cartografiar"),
+  "nav.orgMapper.hint": ("Dessiner et mettre à jour les cartes, comme avec OCAD ou OpenOrienteering Mapper", "Draw and update maps, as with OCAD or OpenOrienteering Mapper", "Karten zeichnen und aktualisieren, wie mit OCAD oder OpenOrienteering Mapper", "Dibujar y actualizar mapas, como con OCAD u OpenOrienteering Mapper"),
+  "mt.orgMapper": ("Dessiner et mettre à jour ses cartes, du LiDAR au terrain", "Draw and update your maps, from LiDAR to the field", "Karten zeichnen und aktualisieren, vom LiDAR bis ins Gelände", "Dibujar y actualizar tus mapas, del LiDAR al terreno"),
+  "beta.mapper.title": ("Cartographier, en version bêta", "Mapping, in beta", "Kartieren, in der Beta-Version", "Cartografiar, en versión beta"),
+  "beta.mapper.subject": ("Cartographier : ", "Mapping: ", "Kartieren: ", "Cartografiar: "),
+  "beta.mapper.body": ("<p>Cartographier vient d'être réalisé et n'a encore été que peu testé. C'est une <b>version bêta</b> : {try}</p><p>Gardez une copie de vos fichiers OCAD : un fichier réenregistré en OCAD garde tout ce que vous n'avez pas modifié, mais il n'a pas encore été vérifié dans OCAD lui-même.</p>",
+    "<p>Mapping has just been built and has had little testing yet. It is a <b>beta version</b>: {try}</p><p>Keep a copy of your OCAD files: a file saved back as OCAD keeps everything you did not change, but has not yet been checked in OCAD itself.</p>",
+    "<p>Kartieren wurde gerade entwickelt und ist noch wenig getestet. Es ist eine <b>Beta-Version</b>: {try}</p><p>Behalte eine Kopie deiner OCAD-Dateien: Eine als OCAD gespeicherte Datei behält alles Unveränderte, wurde aber noch nicht in OCAD selbst geprüft.</p>",
+    "<p>Cartografiar acaba de crearse y aún se ha probado poco. Es una <b>versión beta</b>: {try}</p><p>Guarda una copia de tus archivos de OCAD: un archivo guardado de nuevo como OCAD conserva todo lo que no hayas modificado, pero todavía no se ha comprobado en el propio OCAD.</p>"),
+  "beta.mapper.note": ("Version bêta, encore peu testée : gardez une copie de vos fichiers OCAD.", "Beta version, little tested yet: keep a copy of your OCAD files.", "Beta-Version, noch wenig getestet: Behalte eine Kopie deiner OCAD-Dateien.", "Versión beta, aún poco probada: guarda una copia de tus archivos de OCAD."),
+}
+
+def french(s):
+    s = re.sub(r" ([:;?!»])", NB + r"\1", s)
+    s = re.sub(r"« ", "«" + NB, s)
+    return s
+
+def write(lang_i, lang):
+    lines = [f"// Cartographier's catalogue in {['French', 'English', 'German', 'Spanish'][lang_i]} (Orga › « Cartographier », site/assets/js/mapper/), loaded by loadArea(\"mapper\") through mapper/lang.js; written by tools/mapper/catalogue.py (mapper.fr.js the reference).",
+             "export default {"]
+    for key, vals in E.items():
+        v = vals[lang_i]
+        if lang_i == 0: v = french(v)
+        lines.append(f"  {json.dumps(key, ensure_ascii=False)}: {json.dumps(v, ensure_ascii=False)},")
+    lines.append("};")
+    (ROOT / f"site/assets/js/i18n/mapper.{lang}.js").write_bytes(("\n".join(lines) + "\n").encode("utf-8"))   # LF, on Windows too
+
+for i, l in enumerate(["fr", "en", "de", "es"]): write(i, l)
+
+# the site's catalogues: keys added after « nav.orgTracer.hint » / « mt.orgTracer » / « beta.direct.note » when missing
+for i, l in enumerate(["fr", "en", "de", "es"]):
+    p = ROOT / f"site/assets/js/i18n/{l}.js"
+    raw = p.read_bytes().decode("utf-8")
+    crlf = "\r\n" in raw
+    s = raw.replace("\r\n", "\n")
+    add = []
+    for key, vals in SITE.items():
+        if f'"{key}":' in s: continue
+        v = french(vals[i]) if i == 0 else vals[i]
+        add.append(f"  {json.dumps(key, ensure_ascii=False)}: {json.dumps(v, ensure_ascii=False)},")
+    if add:
+        m = s.rfind("\n}")
+        s = s[:m] + "\n  // « Cartographier » (Orga, 2026-11-06)\n" + "\n".join(add) + s[m:]
+        if crlf: s = s.replace("\n", "\r\n")
+        p.write_bytes(s.encode("utf-8"))
+print(len(E), "keys")

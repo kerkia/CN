@@ -128,6 +128,8 @@ export const body = (SITE, { world = false } = {}) => `
         permission, subject to the exceptions the law provides, in particular short quotations naming the author and the source
         (article L. 122-5 of the French Intellectual Property Code). The automatic translations are adaptations of the article and
         follow the same rules.</p>
+      <h2 style="font-size:16px">Mapping</h2>
+      <p>A map of the “Mapping” page (the map's document, the OCAD file it came from, its backgrounds, its versions, the team's comments and photos) is kept in the site's storage (Cloudflare) and only its team can open it: its creator and the people who join through an invitation link (nobody is looked up by name or e-mail address); their name and account are recorded with their role. Online backgrounds (IGN's aerial photos and maps, OpenStreetMap) are read at each opening and not kept; for open data (IGN's heights, OpenStreetMap, LiDAR), only the extent of the area is sent to those services. The field mode's GPS position stays in your browser, except a track you choose to save as a background. When the account is deleted, each map it created goes to the first mapper of its team, otherwise it is deleted with everything it holds.</p>
       <h2 style="font-size:16px">Course setting</h2>
       <p>An event of the “Course setting” page (its courses, its map, its versions, the team's comments and the states of the
         controls noted in field mode) is kept in the site's storage (Cloudflare) and is only accessible to its team: its creator and

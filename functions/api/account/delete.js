@@ -88,6 +88,42 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
         cursor = r.truncated ? r.cursor : undefined;
       } while (cursor);
     } catch (e) { /* the account goes all the same */ }
+    // Cartographier's maps the account created (functions/api/mapper): to the first « mapper » of the team who still has an
+    // account; with nobody to take one over, it goes with its versions, backgrounds, comments and photos (owner, 2026-11-06)
+    try {
+      let cursor;
+      do {
+        const r = await env.BUCKET.list({ prefix: "mapper-meta/", cursor, limit: 1000, include: ["customMetadata"] });
+        for (const o of r.objects) {
+          if (Number(o.customMetadata?.owner) !== user.id) continue;
+          const obj = await env.BUCKET.get(o.key);
+          const meta = obj ? await obj.json().catch(() => null) : null;
+          if (!meta) continue;
+          let heir = null;
+          for (const m of meta.team || []) {
+            if (heir || m.role !== "mapper" || Number(m.uid) === user.id) continue;
+            const u = await env.DB.prepare("SELECT id, display_name FROM users WHERE id = ? AND status = 'active'").bind(Number(m.uid)).first();
+            if (u) heir = { u, m };
+          }
+          if (heir) {
+            Object.assign(meta, { owner: heir.u.id, ownerName: heir.u.display_name || heir.m.name || "" });
+            meta.team = meta.team.filter((x) => x !== heir.m);
+            await env.BUCKET.put(o.key, JSON.stringify(meta), { httpMetadata: { contentType: "application/json" },
+              customMetadata: { ...(o.customMetadata || {}), owner: String(meta.owner), ownerName: meta.ownerName, uids: meta.team.filter((x) => x.uid).map((x) => x.uid).join(",") } });
+          } else {
+            const keys = [o.key];
+            let c2;
+            do {
+              const l = await env.BUCKET.list({ prefix: `mapper/${meta.id}/`, cursor: c2, limit: 1000 });
+              keys.push(...l.objects.map((x) => x.key));
+              c2 = l.truncated ? l.cursor : undefined;
+            } while (c2);
+            for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
+          }
+        }
+        cursor = r.truncated ? r.cursor : undefined;
+      } while (cursor);
+    } catch (e) { /* the account goes all the same */ }
   }
   // « Mes cartes » (migration 0019): the account's runs and links go; its maps are handed over to the administrators' collection
   // (owner, 2026-11-06: kept, without the account's name; _lib/maplib.js), their files left in place until copied

@@ -139,6 +139,8 @@ export const body = (SITE, { world = false } = {}) => `
         su autor, salvo las excepciones que prevé la ley, en particular las citas breves que mencionan al autor y la fuente (artículo
         L. 122-5 del Código de la propiedad intelectual francés). Las traducciones automáticas son adaptaciones del artículo y siguen las
         mismas reglas.</p>
+      <h2 style="font-size:16px">Cartografiar</h2>
+      <p>Un mapa de la página «Cartografiar» (el documento del mapa, el archivo de OCAD del que procede, sus fondos, sus versiones, los comentarios y las fotos del equipo) se guarda en el almacenamiento del sitio (Cloudflare) y solo su equipo puede abrirlo: su creador y las personas que se unen con un enlace de invitación (no se busca a nadie por nombre ni dirección de e-mail); su nombre y su cuenta se registran con su rol. Los fondos en línea (fotos aéreas y mapas del IGN, OpenStreetMap) se leen en cada apertura y no se guardan; para los datos abiertos (altitudes del IGN, OpenStreetMap, LiDAR), solo se envía la extensión de la zona a esos servicios. La posición GPS del modo de campo se queda en tu navegador, salvo el track que decidas guardar como fondo. Cuando se elimina la cuenta, cada mapa que creó pasa al primer cartógrafo de su equipo; si no, se elimina con todo lo que contiene.</p>
       <h2 style="font-size:16px">Trazado de recorridos</h2>
       <p>Un evento de la página «Trazado» (sus recorridos, su mapa, sus versiones, los comentarios del equipo y los estados de los
         controles anotados en modo terreno) se conserva en el espacio de almacenamiento del sitio (Cloudflare) y solo es accesible para su equipo:

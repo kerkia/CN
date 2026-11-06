@@ -1,0 +1,119 @@
+// Cartographier's « Données »: open data brought in as objects the mapper can edit — contours from the terrain model (IGN's
+// RGE ALTI in France, else the world's terrain tiles), OpenStreetMap's roads, paths, buildings, water and fences, and the
+// LiDAR's contours, cliffs, knolls and pits (karttapullautin's results, the tiles made by the « lidarmap » workflow) with its
+// vegetation as a background. Everything comes in a part of its own, « Brouillon », each object marked with its source
+// (`src`) and `draft`, never mixed silently with what was surveyed: « Accepter » moves it into the map, « Rejeter » drops it.
+// The area: the print area, else what is on the screen. Owner, 2026-11-06: the Tracer's « Générer une carte » moved here.
+
+import * as G from "./geom.js";
+import { modal, field, sel } from "../tracer/dialogs.js";
+import { setBar } from "../waitbar.js";
+import { t, tn } from "./lang.js";
+
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const DRAFT = "draft";
+
+/** The rectangle (map mm) the data is asked for: the one chosen, else the print area, else the screen. */
+function areaOf(E) { return E.dataArea || E.doc.printArea || E.view.visibleRect(); }
+const styleOf = (E) => (/ISSprOM/i.test(E.doc.standard || "") || E.doc.scale <= 5000 ? "sprint" : "forest");
+function draftPart(E) {
+  if (!E.doc.parts.some((p) => p.id === DRAFT)) E.live.setDocField("parts", [...E.doc.parts, { id: DRAFT, name: t("map.parts.draft"), hidden: false, locked: false }]);
+  return DRAFT;
+}
+/** Objects from a data module into the document, in the draft part; symbols the map lacks are named and their objects left out. */
+function bring(E, objects, label) {
+  const have = new Set(E.doc.symbols.map((s) => s.sym)), missing = new Map();
+  let n = 0;
+  E.live.transact(label, () => {
+    const part = draftPart(E);
+    for (const o of objects) {
+      if (!have.has(o.sym)) { missing.set(o.sym, (missing.get(o.sym) || 0) + 1); continue; }
+      E.live.add({ ang: 0, col: 0, lineWidth: 0, diamFlags: 0, ...o, part, draft: true });
+      n++;
+    }
+  });
+  if (missing.size) E.say(t("map.data.missing", { list: [...missing.keys()].map((s) => `${Math.floor(s / 1000)}${s % 1000 ? "." + (s % 1000) : ""}`).join(", ") }), "bad");
+  return n;
+}
+async function frameOrSay(E) {
+  const f = E.frame || (await import("./data/frame.js").then((F) => F.frameOf(E.doc)).catch(() => null));
+  if (!f?.geo) { E.say(t("map.data.nogeo"), "bad"); return null; }
+  return f;
+}
+/** A progress bar in the toast (waitbar.js: the browser's own <progress>, none while the share is unknown). */
+function progress(E) {
+  const el = E.$("#mp-toast");
+  return (msg, frac = null) => { el.hidden = false; el.className = "mp-toast busy"; el.innerHTML = `${esc(msg)} ${setBar ? "" : ""}<progress class="wait-bar" max="1"${frac != null ? ` value="${frac}"` : ""}></progress>`; };
+}
+
+export async function act(E, act) {
+  if (act === "data-area") return chooseArea(E);
+  if (act === "data-contours") return contours(E);
+  if (act === "data-osm") return osm(E);
+  if (act === "data-lidar") return lidar(E);
+  if (act === "draft-accept") return accept(E, false);
+  if (act === "draft-acceptKind") return accept(E, true);
+  if (act === "draft-reject") return reject(E);
+}
+async function chooseArea(E) {
+  const v = await modal(E, { title: t("map.rib.data-area"), body: field(t("map.data.area"), sel("a", [["screen", t("map.data.area.screen")], ["print", t("map.data.area.print")], ["map", t("map.data.area.map")]], "screen")) });
+  if (!v) return;
+  E.dataArea = v.a === "print" ? E.doc.printArea : v.a === "map" ? E.live.bounds() : E.view.visibleRect();
+  E.say(t("map.data.areaSet"));
+}
+async function contours(E) {
+  const f = await frameOrSay(E); if (!f) return;
+  const v = await modal(E, { title: t("map.rib.data-contours"), body: field(t("map.data.interval"), sel("i", [["2.5", "2,5 m"], ["5", "5 m"], ["10", "10 m"]], styleOf(E) === "sprint" ? "2.5" : "5")) + `<p class="mp-hint">${esc(t("map.data.contoursHint"))}</p>` });
+  if (!v) return;
+  const say = progress(E);
+  say(t("map.data.loadingDem"));
+  const C = await import("./data/contours.js");
+  const r = await C.loadContours(f, areaOf(E), { interval: Number(v.i), onProgress: (x) => say(t("map.data.loadingDem"), x) });
+  const n = bring(E, r.objects, t("map.undo.data"));
+  E.say(tn("map.data.brought", n) + (r.credit ? ` · ${r.credit}` : ""));
+}
+async function osm(E) {
+  const f = await frameOrSay(E); if (!f) return;
+  const style = styleOf(E);
+  const say = progress(E);
+  const O = await import("./data/osm.js");
+  say(t("map.data.osm.asking"));
+  const r = await O.loadOsm(f, areaOf(E), style, { onStage: (k) => say(t(k)) });
+  const n = bring(E, r.objects, t("map.undo.data"));
+  E.say(tn("map.data.brought", n) + ` · ${r.attribution}`);
+}
+async function lidar(E) {
+  const f = await frameOrSay(E); if (!f) return;
+  // the style first, nothing chosen beforehand (owner, 2026-11-01)
+  const v = await modal(E, { title: t("map.rib.data-lidar"), body: `<fieldset class="mp-choice"><legend>${esc(t("map.data.kind"))}</legend>
+    <label><input type="radio" name="s" value="sprint" required> ${esc(t("map.data.kind.sprint"))}</label>
+    <label><input type="radio" name="s" value="forest" required> ${esc(t("map.data.kind.forest"))}</label></fieldset><p class="mp-hint">${esc(t("map.data.lidarHint"))}</p>`,
+    validate: (x) => (x.s ? null : t("map.data.needKind")) });
+  if (!v) return;
+  const say = progress(E);
+  const L = await import("./data/lidar.js");
+  let r;
+  try { r = await L.loadLidar(f, areaOf(E), v.s, { say: (msg, frac) => say(msg, frac), stop: () => E._stopData }); }
+  catch (e) { E.say(e.message === "tooLarge" ? t("map.data.tooLarge") : e.message === "nogeo" ? t("map.data.nogeo") : e.message, "bad"); return; }
+  if (!r) { E.say(""); return; }
+  const n = bring(E, r.objects, t("map.undo.data"));
+  if (r.backgrounds?.length) { const B = await import("./backgrounds.js"); await B.addUrls(E, r.backgrounds); }
+  E.say(tn("map.data.brought", n) + ` · ${r.credit}` + (r.tiles?.noVectors?.length ? ` · ${tn("map.data.noVectors", r.tiles.noVectors.length)}` : ""));
+}
+function accept(E, kind) {
+  const sel = E.selected().filter((o) => o.draft);
+  let list = sel.length ? sel : E.doc.objects.filter((o) => o.draft);
+  if (kind && sel.length) { const syms = new Set(sel.map((o) => o.sym)); list = E.doc.objects.filter((o) => o.draft && syms.has(o.sym)); }
+  E.live.transact(t("map.undo.accept"), () => { for (const o of list) E.live.update(o.id, { draft: false, part: E.part === DRAFT ? "p1" : E.part }); });
+  E.say(tn("map.data.accepted", list.length));
+  E.selChanged();
+}
+function reject(E) {
+  const sel = E.selected().filter((o) => o.draft);
+  const list = sel.length ? sel : E.doc.objects.filter((o) => o.draft);
+  E.live.transact(t("map.undo.reject"), () => { for (const o of list) E.live.remove(o.id); });
+  E.sel.clear(); E.selChanged();
+  E.say(tn("map.data.rejected", list.length));
+}
+export { bring, styleOf };
+void G;

@@ -11,6 +11,7 @@
 //   FLAGS      — the countries' flags (« En direct »)
 //   THREE      — « Analyse solo »'s 3D view (trace/view3d.js), loaded when the view opens
 //   QRCODE     — « Depuis mon téléphone »'s QR code (phonelink.js)
+//   POLYCLIP   — Cartographier's union, difference and intersection of areas (mapper/boolean.js)
 const V = "/assets/vendor";
 export const ECHARTS = `${V}/echarts@5.5.1`;
 export const PDFJS = `${V}/pdfjs-dist@4.10.38/build/pdf.min.mjs`;
@@ -23,6 +24,7 @@ export const DUCKDB_DIR = `${V}/duckdb-wasm@1.32.0/dist`;
 export const FONTSOURCE = `${V}/fontsource`;
 export const THREE = `${V}/three@0.185.1/build/three.module.min.js`;
 export const QRCODE = `${V}/qrcode-generator@2.0.4/dist/qrcode.mjs`;
+export const POLYCLIP = `${V}/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js`;
 /** A country's flag (ISO alpha-2), a 4:3 SVG. */
 export const flag = (cc) => `${V}/flag-icons@7.5.0/flags/4x3/${String(cc).toLowerCase()}.svg`;
 export const FONT_PKG = {
