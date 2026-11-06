@@ -18,8 +18,14 @@ import { DUCKDB_DIR, joined } from "../vendor.js";
 const TABLES = ["runners", "clubs", "races", "results", "cn"];
 const EXAMPLES = [1, 2, 3, 4, 5, 6].map((i) => t(`ia.ex.${i}`));
 // Ozimut's models on Workers AI (the free allowance), the default first; « byok » = the user's own key (askbyok.js)
-const MODELS = [["@cf/openai/gpt-oss-120b", "gpt-oss-120b"], ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B"],
-  ["@cf/mistralai/mistral-small-3.1-24b-instruct", "Mistral Small 3.1"]];
+// (the others for administrators only: functions/_lib/ask.js MODELS, the same list)
+const MODELS = [["@cf/openai/gpt-oss-120b", "gpt-oss-120b"], ["@cf/openai/gpt-oss-20b", "gpt-oss-20b"],
+  ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B"], ["@cf/meta/llama-4-scout-17b-16e-instruct", "Llama 4 Scout"],
+  ["@cf/meta/llama-3.2-11b-vision-instruct", "Llama 3.2 11B"], ["@cf/mistralai/mistral-small-3.1-24b-instruct", "Mistral Small 3.1"],
+  ["@cf/google/gemma-4-26b-a4b-it", "Gemma 4 26B"], ["@cf/qwen/qwen3.8-27b", "Qwen3.8 27B"],
+  ["@cf/qwen/qwen2.5-coder-32b-instruct", "Qwen2.5 Coder 32B"], ["@cf/zai-org/glm-4.7-flash", "GLM 4.7 Flash"],
+  ["@cf/ibm-granite/granite-4.0-h-micro", "Granite 4.0 Micro"], ["@cf/aisingapore/gemma-sea-lion-v4-27b-it", "SEA-LION v4 27B"],
+  ["@cf/utter-project/eurollm-9b-it", "EuroLLM 9B"]];
 
 // what survives a visit to another page: the answers, the database once loaded
 const memo = { answers: [], duck: null, loaded: new Set(), manifest: null };

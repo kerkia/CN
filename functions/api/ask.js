@@ -48,10 +48,10 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   const text = out?.choices?.[0]?.message?.content ?? out?.response ?? (typeof out === "string" ? out : "");
   const answer = parseAnswer(typeof text === "string" ? text : JSON.stringify(text));
   const u = out?.usage || {};
-  const [pin, pout] = MODELS[model];
-  const dollars = ((u.prompt_tokens || 0) * pin + (u.completion_tokens || 0) * pout) / 1e6;
+  const price = MODELS[model];                             // null: no price published, so no neuron count
+  const dollars = price ? ((u.prompt_tokens || 0) * price[0] + (u.completion_tokens || 0) * price[1]) / 1e6 : null;
   const usage = { model, ms: Date.now() - t0, tokensIn: u.prompt_tokens ?? null, tokensOut: u.completion_tokens ?? null,
-    neurons: Math.round(dollars * NEURONS_PER_DOLLAR) };
+    neurons: dollars == null ? null : Math.round(dollars * NEURONS_PER_DOLLAR) };
   if (!answer) return json({ error: "La réponse du modèle n'a pas pu être lue.", code: "unreadable", raw: String(text).slice(0, 2000), usage }, 502);
   return json({ answer, usage });
 });

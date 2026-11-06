@@ -91,15 +91,27 @@ export function userPrompt({ question, previous, failed }) {
   return s;
 }
 
-// the models tried, with Workers AI's prices in dollars per million tokens (input, output), for the pilot's cost line
+// the models administrators may try, with Workers AI's prices in dollars per million tokens (input, output), for the
+// pilot's cost line; null = no price published. Every chat model of the catalogue (`wrangler ai models`, 2026-11-06) that
+// the Workers Free plan runs and that is not deprecated: past the free 10 000 neurons a day the calls fail, nothing is
+// billed. Left out: the models needing a paid billing method (DeepSeek V4.x, GLM 5.x, Kimi K2.6/2.7), those Cloudflare
+// retires on 2026-11-20 (Qwen3-30B, tried 2026-10-15, among them), the LoRA, guard and decision models (Clef, Clairic),
+// Apertus (access on request) and PhoneLLM (an alpha tuned for voice). A model costing more than gpt-oss-120b uses the
+// shared allowance up faster: IA and Santé's translations fail for everyone once it is gone.
 export const MODELS = {
-  // on the Workers Free plan (2026-10-15; DeepSeek V4, Kimi K2 and GLM 5.3 are not): the default, then the others tried
   "@cf/openai/gpt-oss-120b": [0.35, 0.75],
-  "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [0.293, 2.253],
-  "@cf/mistralai/mistral-small-3.1-24b-instruct": [0.351, 0.555],
-  // (Qwen3-30B, tried 2026-10-15, removed 2026-11-06: deprecated by Workers AI on 2026-11-20)
   "@cf/openai/gpt-oss-20b": [0.2, 0.3],
+  "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [0.293, 2.253],
   "@cf/meta/llama-4-scout-17b-16e-instruct": [0.27, 0.85],
+  "@cf/meta/llama-3.2-11b-vision-instruct": [0.049, 0.676],
+  "@cf/mistralai/mistral-small-3.1-24b-instruct": [0.351, 0.555],
+  "@cf/google/gemma-4-26b-a4b-it": [0.1, 0.3],
+  "@cf/qwen/qwen3.8-27b": [0.45, 3.2],
+  "@cf/qwen/qwen2.5-coder-32b-instruct": [0.66, 1.0],
+  "@cf/zai-org/glm-4.7-flash": [0.06, 0.4],
+  "@cf/ibm-granite/granite-4.0-h-micro": [0.017, 0.112],
+  "@cf/aisingapore/gemma-sea-lion-v4-27b-it": [0.351, 0.555],
+  "@cf/utter-project/eurollm-9b-it": null,
 };
 export const DEFAULT_MODEL = "@cf/openai/gpt-oss-120b";
 export const NEURONS_PER_DOLLAR = 1000 / 0.011;           // Workers AI bills $0.011 per 1 000 neurons
