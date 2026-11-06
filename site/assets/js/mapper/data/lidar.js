@@ -7,7 +7,7 @@
 // edges joined again, the cliffs' short strokes gathered into lines. The vegetation stays a raster: a background per tile
 // (its image's address and its world file in Lambert 93, its corners in map mm).
 
-import { areaOfPoints, ask, poll, MAX_TILES, CREDIT_LIDAR } from "../../trace/lidarmap.js";
+import { areaOfPoints, ask, poll, MAX_TILES, CREDIT_LIDAR, CREDITS, gridOfName } from "../../trace/lidarmap.js";
 import { ocad, simplify, clipLine } from "./frame.js";
 
 export { CREDIT_LIDAR };
@@ -21,7 +21,15 @@ export const POINT_SYM = { dotknoll: 109000, uglydotknoll: 109000, udepression: 
 const CLIFFS = new Set(["cliff2", "cliff3"]);
 
 /** The 1 km tiles a rectangle of the map ([x0, y0, x1, y1] mm) touches: { box, ids, km2 } (trace/lidarmap.js). */
-export const tilesOf = (frame, rect) => areaOfPoints(frame.areaLatLon(rect).pts, 0);
+export const tilesOf = (frame, rect) => areaOfPoints(frame.areaLatLon(rect).pts, 0, "auto");
+/** A tile's grid from its id (France's 0450_6800, ch_2583_1219, us_13_0475_4427…: trace/lidarmap.js). */
+export const gridOfTile = (id) => gridOfName(`ozimut-lidar-${id}`);
+/** Its metres → the map's mm: straight when the map is in the tile's grid, else through lat/lon. */
+export function toMm(frame, grid) {
+  if (frame.epsg && frame.epsg === grid.epsg) return (X, Y) => frame.fromReal(X, Y);
+  if (grid.epsg === 2154) return (X, Y) => frame.fromL93mm(X, Y);
+  return (X, Y) => frame.fromLatLon(...grid.inv(X, Y));
+}
 
 /**
  * The tiles made in a style, asking for the missing ones and waiting for the workflow (trace/lidarmap.js make's way, without
@@ -61,7 +69,7 @@ export async function fetchTiles(ids, style, f = fetch) {
   }));
 }
 
-/** A tile's vectors decoded: { lines: [{ layer, z, pts: [[X, Y]…] }], points: [{ layer, X, Y }] } in Lambert 93 metres. */
+/** A tile's vectors decoded: { lines: [{ layer, z, pts: [[X, Y]…] }], points: [{ layer, X, Y }] } in its grid's metres. */
 export function decode(vec) {
   const { x0, y0, q } = vec, lines = [], points = [];
   for (const [layer, list] of Object.entries(vec.lines || {})) {
@@ -126,12 +134,19 @@ export function cliffLines(strokes, near = 1.5) {
   const find = (i) => { while (parent[i] !== i) i = parent[i] = parent[parent[i]]; return i; };
   const cell = near, grid = new Map(), key = (x, y) => `${Math.floor(x / cell)},${Math.floor(y / cell)}`;
   strokes.forEach((s, i) => { for (const p of [s[0], s[s.length - 1]]) { const k = key(...p); (grid.get(k) || grid.set(k, []).get(k)).push([i, p]); } });
+  // each pair of ends once (the cell itself, then four of its eight neighbours), skipped when already joined
+  const HALF = [[1, -1], [1, 0], [1, 1], [0, 1]], n2 = near * near;
+  const meet = (i, p, j, q) => {
+    if (i === j) return;
+    const a = find(i), b = find(j);
+    if (a !== b && (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2 <= n2) parent[a] = b;
+  };
   for (const [k, list] of grid) {
     const [cx, cy] = k.split(",").map(Number);
-    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
-      for (const [j, q] of grid.get(`${cx + dx},${cy + dy}`) || []) for (const [i, p] of list) {
-        if (i !== j && Math.hypot(p[0] - q[0], p[1] - q[1]) <= near) parent[find(i)] = find(j);
-      }
+    for (let u = 0; u < list.length; u++) for (let v = u + 1; v < list.length; v++) meet(list[u][0], list[u][1], list[v][0], list[v][1]);
+    for (const [dx, dy] of HALF) {
+      const other = grid.get(`${cx + dx},${cy + dy}`);
+      if (other) for (const [i, p] of list) for (const [j, q] of other) meet(i, p, j, q);
     }
   }
   const comps = new Map();
@@ -146,17 +161,30 @@ export function cliffLines(strokes, near = 1.5) {
     for (const [x, y] of mids) { sxx += (x - mx) ** 2; syy += (y - my) ** 2; sxy += (x - mx) * (y - my); }
     const th = 0.5 * Math.atan2(2 * sxy, sxx - syy), ux = Math.cos(th), uy = Math.sin(th);
     const proj = (p) => (p[0] - mx) * ux + (p[1] - my) * uy;
-    let cur = mids.reduce((b, p, i) => (proj(p) < proj(mids[b]) ? i : b), 0);
-    const left = new Set(mids.map((_, i) => i)), order = [];
-    while (left.size) {
-      left.delete(cur); order.push(cur);
-      let best = -1, bd = Infinity;
-      for (const j of left) { const d = Math.hypot(mids[j][0] - mids[cur][0], mids[j][1] - mids[cur][1]); if (d < bd) { bd = d; best = j; } }
-      if (best < 0) break;
-      if (bd > 3 * near) { out.push(...pathOf(order, segs, mids)); order.length = 0; }
+    // from the first stroke, each time the nearest stroke left within 3 × near (a grid of the middles); none: the line ends and
+    // the next starts at the stroke left furthest back along the axis
+    const R = 3 * near, cells = new Map(), ck = (x, y) => `${Math.floor(x / R)},${Math.floor(y / R)}`;
+    mids.forEach((p, i) => { const k = ck(...p); (cells.get(k) || cells.set(k, []).get(k)).push(i); });
+    const byAxis = mids.map((_, i) => i).sort((i, j) => proj(mids[i]) - proj(mids[j]));
+    const done = new Uint8Array(mids.length), order = [];
+    let next = 0, cur = byAxis[0];
+    for (;;) {
+      done[cur] = 1; order.push(cur);
+      const [x, y] = mids[cur], cx = Math.floor(x / R), cy = Math.floor(y / R);
+      let best = -1, bd = R;
+      for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const j of cells.get(`${cx + dx},${cy + dy}`) || []) {
+        if (done[j]) continue;
+        const d = Math.hypot(mids[j][0] - x, mids[j][1] - y);
+        if (d <= bd) { bd = d; best = j; }
+      }
+      if (best < 0) {
+        out.push(...pathOf(order, segs, mids)); order.length = 0;
+        while (next < byAxis.length && done[byAxis[next]]) next++;
+        if (next >= byAxis.length) break;
+        best = byAxis[next];
+      }
       cur = best;
     }
-    if (order.length) out.push(...pathOf(order, segs, mids));
   }
   return out;
 }
@@ -170,27 +198,61 @@ function pathOf(order, segs, mids) {
   return [simplify(pts, 0.3)];
 }
 
+/** Cliff strokes thinned where karttapullautin drew them by the tens of thousands a cell (50 m): France's tiles hold at most
+ *  ~1 000 a cell; abroad steep ground, walls and a lake's shore gave 30 000 and more (2026-11-06), which made the joining
+ *  quadratic and no line clearer. In such a cell every k-th stroke is kept (k to bring it under max): the strokes are short
+ *  ticks along the cliff, so the line through their middles stays. Returns { kept, dropped }. */
+export function sparse(strokes, cell = 50, max = DENSE) {
+  const n = new Map(), seen = new Map(), k = (s) => `${Math.floor(s[0][0] / cell)},${Math.floor(s[0][1] / cell)}`;
+  for (const s of strokes) n.set(k(s), (n.get(k(s)) || 0) + 1);
+  const kept = strokes.filter((s) => {
+    const key = k(s), c = n.get(key);
+    if (c <= max) return true;
+    const i = seen.get(key) || 0; seen.set(key, i + 1);
+    return i % Math.ceil(c / max) === 0;
+  });
+  return { kept, dropped: strokes.length - kept.length };
+}
+const DENSE = 1200;   // strokes a 50 m cell: above France's densest (1 039)
+
 /**
- * The objects of the tiles' vectors in the map's mm (frame.js fromL93mm), clipped to rect when given. opts: tolerance (mm,
+ * The objects of the tiles' vectors in the map's mm (each tile placed by its own grid: toMm), clipped to rect when given. opts: tolerance (mm,
  * Douglas-Peucker, 0.05), ugly (keep the knolls and depressions karttapullautin leaves off its image; true).
- * Returns { objects, counts: { <sym>: n } }.
+ * Returns { objects, counts: { <sym>: n }, dense: the cliff strokes thinned out (sparse) }.
  */
 export function vectorObjects(vecs, frame, rect = null, opts = {}) {
   const tol = opts.tolerance ?? 0.05, ugly = opts.ugly ?? true;
-  const lines = [], strokes = { cliff2: [], cliff3: [] }, points = [];
+  // the tiles joined in their own grid's metres (France's Lambert 93, LV95, a UTM zone…), each grid's lines then put in map mm
+  const byGrid = new Map();
   for (const v of vecs) {
-    const d = decode(v);
-    for (const l of d.lines) (CLIFFS.has(l.layer) ? strokes[l.layer].push(l.pts) : lines.push(l));
-    points.push(...d.points);
+    const g = gridOfTile(v.id || ""), k = `${g.country}:${g.zone ?? ""}`;
+    if (!byGrid.has(k)) byGrid.set(k, { grid: g, vecs: [] });
+    byGrid.get(k).vecs.push(v);
   }
-  const all = joinLines(lines);
-  for (const [layer, list] of Object.entries(strokes)) for (const pts of cliffLines(list)) all.push({ layer, z: null, pts });
+  const all = [], points = [];
+  let dense = 0;
+  for (const { grid, vecs: list } of byGrid.values()) {
+    const mm = toMm(frame, grid), lines = [], strokes = { cliff2: [], cliff3: [] }, here = [];
+    for (const v of list) {
+      const d = decode(v);
+      for (const l of d.lines) (CLIFFS.has(l.layer) ? strokes[l.layer].push(l.pts) : lines.push(l));
+      here.push(...d.points);
+    }
+    const joined = joinLines(lines);
+    for (const [layer, raw] of Object.entries(strokes)) {
+      const { kept, dropped } = sparse(raw);
+      dense += dropped;
+      for (const pts of cliffLines(kept)) joined.push({ layer, z: null, pts });
+    }
+    for (const l of joined) all.push({ ...l, pts: l.pts.map(([X, Y]) => mm(X, Y)) });
+    for (const p of here) { [p.x, p.y] = mm(p.X, p.Y); points.push(p); }
+  }
   const objects = [], counts = {};
   const add = (o) => { objects.push(o); counts[o.sym] = (counts[o.sym] || 0) + 1; };
   for (const l of all) {
     const sym = LINE_SYM[l.layer];
     if (!sym) continue;
-    const mm = simplify(l.pts.map(([X, Y]) => frame.fromL93mm(X, Y)), tol);
+    const mm = simplify(l.pts, tol);
     for (const piece of rect ? clipLine(mm, rect) : [mm]) {
       if (piece.length >= 2) add({ sym, otp: 2, ang: 0, coords: piece.map(([x, y]) => ocad(x, y)), src: "lidar", srcId: `lidar:${l.layer}`, draft: true });
     }
@@ -198,16 +260,16 @@ export function vectorObjects(vecs, frame, rect = null, opts = {}) {
   for (const p of points) {
     const sym = POINT_SYM[p.layer];
     if (!sym || (!ugly && p.layer.startsWith("ugly"))) continue;
-    const [x, y] = frame.fromL93mm(p.X, p.Y);
+    const { x, y } = p;
     if (rect && (x < rect[0] || x > rect[2] || y < rect[1] || y > rect[3])) continue;
     add({ sym, otp: 1, ang: 0, coords: [ocad(x, y)], src: "lidar", srcId: `${p.tile}:${p.layer}`, draft: true });
   }
-  return { objects, counts };
+  return { objects, counts, dense };
 }
 
 /**
  * The tiles' rasters as backgrounds: the vegetation image when the tile has it (1 m a pixel), else the generated map's own
- * image (0.42 m a pixel). Each { id, kind: "image", name, url, crs: "EPSG:2154", worldFile: [A, D, B, E, C, F] (the first
+ * image (0.42 m a pixel). Each { id, kind: "image", name, url, crs (the tile's grid, "EPSG:2154" in France), worldFile: [A, D, B, E, C, F] (the first
  * pixel's centre), w, h, cornersMm: [[x, y] × 4] (top-left, top-right, bottom-right, bottom-left) }.
  */
 export function backgrounds(tiles, style, frame) {
@@ -216,8 +278,9 @@ export function backgrounds(tiles, style, frame) {
     const px = vege ? 1 : PX, n = vege ? 1000 : SIZE;
     const url = vege ? `${API}/t/${id}.${style}.vege.png` : `${API}/t/${id}${style === "sprint" ? ".s.png" : ".png"}`;
     const ground = [[x0, y1], [x0 + n * px, y1], [x0 + n * px, y1 - n * px], [x0, y1 - n * px]];
-    return { id, kind: "image", name: `LiDAR ${id}`, url, vege, crs: "EPSG:2154", w: n, h: n,
-      worldFile: [px, 0, 0, -px, x0 + px / 2, y1 - px / 2], cornersMm: ground.map(([X, Y]) => frame.fromL93mm(X, Y)) };
+    const grid = gridOfTile(id), mm = toMm(frame, grid);
+    return { id, kind: "image", name: `LiDAR ${id}`, url, vege, crs: `EPSG:${record.crs || grid.epsg}`, w: n, h: n,
+      worldFile: [px, 0, 0, -px, x0 + px / 2, y1 - px / 2], cornersMm: ground.map(([X, Y]) => mm(X, Y)) };
   });
 }
 
@@ -235,6 +298,6 @@ export async function loadLidar(frame, rect, style = "forest", { say, stop, fetc
   const tiles = await fetchTiles(st.ready, style, f);
   const vecs = tiles.filter((t) => t.vec).map((t) => t.vec);
   const r = vectorObjects(vecs, frame, rect);
-  return { ...r, backgrounds: backgrounds(tiles, style, frame), credit: CREDIT_LIDAR,
+  return { ...r, backgrounds: backgrounds(tiles, style, frame), credit: CREDITS[area.country] || CREDIT_LIDAR,
     tiles: { ...st, noVectors: tiles.filter((t) => !t.vec).map((t) => t.id) } };
 }

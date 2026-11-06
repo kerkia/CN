@@ -42,6 +42,9 @@ PACKAGES = {
     "qrcode-generator": ("2.0.4", "qrcode-generator", ["dist/qrcode.mjs", "README.md"]),
     # « Cartographier » (2026-11-06): union, difference and intersection of areas (MIT; the UMD build defines polygonClipping)
     "polygon-clipping": ("0.15.7", "polygon-clipping", ["dist/polygon-clipping.umd.min.js", "LICENSE.md"]),
+    # « Cartographier » (2026-11-06): GeoTIFF / COG heights read by HTTP range (swissALTI3D, 3DEP, HRDEM, LINZ; MIT). The UMD
+    # bundle defines GeoTIFF and holds its decoders (Deflate, LZW, PackBits, JPEG, LERC and Zstandard as inlined WebAssembly, WebP)
+    "geotiff": ("2.1.3", "geotiff", ["dist-browser/geotiff.js"]),
 }
 BUNDLE = {"apache-arrow": "17.0.0", "esbuild": "0.24.0"}      # to bundle DuckDB's browser module
 

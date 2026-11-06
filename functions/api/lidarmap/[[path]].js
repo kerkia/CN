@@ -9,7 +9,9 @@
 //   lidarmap/req/<id>.json    a request: { id, tiles, style, by, at, status: queued | done | failed, result, progress: { stage:
 //                             lidar | kp | osm | draw, frac, at } while the workflow makes it }
 // Each style has its own karttapullautin render (the sprint one 2.5 m contours drawn at 1:4000), made only when asked.
-// A tile's id is IGN's: its west and north edges in Lambert 93 kilometres ("0391_6819").
+// A tile's id is IGN's in France: its west and north edges in Lambert 93 kilometres ("0391_6819"). Beyond France (2026-11-06,
+// mapgen/grids.py) it names its country and grid, by its west and south edges in km: "ch_2583_1219" (Switzerland, LV95),
+// "nz_1571_5172" (New Zealand, NZTM2000), "us_13_0475_4427" / "ca_18_0433_5038" (the United States, Canada: UTM zone, WGS 84).
 //   POST { tiles: [ids], style }   the tiles' state in that style ("forest" or "sprint"; a tile made in an older version
 //                             of the style, STYLE_V, is made again); the missing ones are asked of the workflow
 //                             → { req?, tiles: { id: state } }
@@ -19,14 +21,28 @@
 import { allow, json, nowIso, readBody, withUser } from "../../_lib/api.js";
 
 const T = "lidarmap/t/", Q = "lidarmap/req/";
-const ID = /^(\d{4})_(\d{4})$/;
-const FILE = /^(\d{4}_\d{4})(\.dem\.png|\.s\.png|\.png|\.json|\.(?:forest|sprint)\.(?:vec\.json|vege\.png))$/;   // the vectors and vegetation for Cartographier (2026-11-06)
+// the tile ids (mapgen/grids.py ID; keep the two in step)
+const ID = /^(?:(\d{4})_(\d{4})|(ch|nz)_(\d{4})_(\d{4})|(us|ca)_(\d{1,2})_(\d{4})_(\d{4}))$/;
+// a tile's files; the vectors and vegetation for Cartographier (2026-11-06)
+const FILE = /^((?:\d{4}_\d{4}|(?:ch|nz)_\d{4}_\d{4}|(?:us|ca)_\d{1,2}_\d{4}_\d{4}))(\.dem\.png|\.s\.png|\.png|\.json|\.(?:forest|sprint)\.(?:vec\.json|vege\.png))$/;
 const STYLES = ["forest", "sprint"];
 // a style's version, as mapgen/run.py's STYLE_V (sprint 2: its own render, 2.5 m contours at 1:4000)
 const STYLE_V = { forest: 1, sprint: 2 };
 const MAX_TILES = 12;
-// metropolitan France and Corsica in Lambert 93 (km): IGN's LiDAR HD covers nothing else
-const inFrance = (id) => { const m = ID.exec(id); return !!m && +m[1] >= 50 && +m[1] <= 1250 && +m[2] >= 6040 && +m[2] <= 7120; };
+// where each grid's numbers may lie (km; mapgen/grids.py RANGE, ZONES): France's metropolitan France and Corsica in Lambert 93
+// (IGN's LiDAR HD covers nothing else), the others their countries
+const RANGE = { fr: [[50, 1250], [6040, 7120]], ch: [[2480, 2840], [1070, 1300]], nz: [[1000, 2130], [4700, 6250]],
+  us: [[100, 900], [1500, 7900]], ca: [[100, 900], [4500, 9400]] };
+const ZONES = { us: [1, 20], ca: [7, 22] };
+const inRange = ([lo, hi], v) => v >= lo && v <= hi;
+/** A tile id the workflow can make: well formed, its numbers in its country's range (a UTM zone written without a leading 0). */
+const validTile = (id) => {
+  const m = ID.exec(id);
+  if (!m) return false;
+  if (m[1]) return inRange(RANGE.fr[0], +m[1]) && inRange(RANGE.fr[1], +m[2]);
+  if (m[3]) return inRange(RANGE[m[3]][0], +m[4]) && inRange(RANGE[m[3]][1], +m[5]);
+  return String(+m[7]) === m[7] && inRange(ZONES[m[6]], +m[7]) && inRange(RANGE[m[6]][0], +m[8]) && inRange(RANGE[m[6]][1], +m[9]);
+};
 
 /** A tile's state in a style: "ready", "none" (no LiDAR there yet) or "missing". */
 async function tileState(env, id, style) {
@@ -55,7 +71,7 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   const body = await readBody(request);
   const ids = [...new Set(Array.isArray(body?.tiles) ? body.tiles.map(String) : [])];
   const style = STYLES.includes(body?.style) ? body.style : "forest";
-  if (!ids.length || ids.length > MAX_TILES || !ids.every(inFrance)) return json({ error: "bad tiles", max: MAX_TILES }, 400);
+  if (!ids.length || ids.length > MAX_TILES || !ids.every(validTile)) return json({ error: "bad tiles", max: MAX_TILES }, 400);
   const tiles = {};
   for (const id of ids) tiles[id] = await tileState(env, id, style);
   const missing = ids.filter((id) => tiles[id] === "missing");

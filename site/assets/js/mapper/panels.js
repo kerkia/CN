@@ -99,16 +99,18 @@ export function drawLeft(E) {
 export function drawRight(E) {
   const el = E.$("#mp-right");
   const tab = E._rtab || "sel";
-  const tabs = ["sel", "parts", "bg", "colors", ...(E.issues ? ["issues"] : [])].map((k) => `<button type="button" class="mp-rtab" data-rtab="${k}" aria-selected="${tab === k}">${esc(t(`map.right.${k}`))}</button>`).join("");
+  const tabs = ["sel", "parts", "bg", "colors", ...(E.issues ? ["issues"] : []), ...(E.genPane ? ["gen"] : [])].map((k) => `<button type="button" class="mp-rtab" data-rtab="${k}" aria-selected="${tab === k}">${esc(t(`map.right.${k}`))}</button>`).join("");
   let body = "";
   if (tab === "sel") body = selHtml(E);
   else if (tab === "parts") body = partsHtml(E);
   else if (tab === "bg") body = bgHtml(E);
   else if (tab === "issues") body = E.issuesHtml ? E.issuesHtml(E) : "";
+  else if (tab === "gen") body = E.genPane ? E.genPane.html(E) : "";
   else body = colorsHtml(E);
   el.innerHTML = `<div class="mp-rtabs" role="tablist">${tabs}</div><div class="mp-rbody">${body}</div>`;
-  el.onclick = (ev) => {
+  el.onclick = async (ev) => {
     const tb = ev.target.closest("[data-rtab]"); if (tb) { E._rtab = tb.dataset.rtab; drawRight(E); return; }
+    if (E._rtab === "gen" && E.genPane && await E.genPane.click(E, ev)) { drawRight(E); return; }
     const a = ev.target.closest("[data-pact]"); if (a) partAct(E, a.dataset.pact, a.dataset.id);
     const b = ev.target.closest("[data-bact]"); if (b) import("./backgrounds.js").then((m) => m.paneAct(E, b.dataset.bact, b.dataset.id));
     const c = ev.target.closest("[data-cact]"); if (c) colorAct(E, c.dataset.cact, Number(c.dataset.num));

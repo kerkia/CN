@@ -6,6 +6,11 @@
 #
 # karttapullautin (GPL-3) is downloaded from its own release, checked against its checksum, and run as it is: it is a
 # program of its own, never part of Ozimut's code or site.
+#
+# Beyond France (2026-11-06, mapgen/grids.py, mapgen/sources.py): Switzerland's swissSURFACE3D, the United States' 3DEP (EPT on
+# AWS), Canada's CanElevation (COPC on S3) and New Zealand's LINZ point clouds (OpenTopography's bucket), all read without an
+# account or a key; laspy with lazrs reads and writes their LAZ, pyproj reprojects them, requests serves laspy's COPC reader
+# and apsw reads CanElevation's tile index by HTTP ranges.
 
 name: lidarmap
 
@@ -18,7 +23,7 @@ permissions:
 jobs:
   maps:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     concurrency:
       group: lidarmap
       cancel-in-progress: false
@@ -41,6 +46,11 @@ jobs:
 
       - run: pip install "httpx>=0.27" "numpy>=2.0" "pillow>=11"
 
+      # the other countries' readers apart: France's maps are made even if one of them cannot be installed
+      - name: Point cloud readers (beyond France)
+        continue-on-error: true
+        run: pip install "laspy[lazrs]>=2.5" "pyproj>=3.7" "requests>=2.31" "apsw>=3.46"
+
       - name: karttapullautin
         run: |
           curl -sSfL -o "$RUNNER_TEMP/kp.tgz" "https://github.com/karttapullautin/karttapullautin/releases/download/v$KP_VERSION/karttapullautin-x86_64-linux.tar.gz"
@@ -62,4 +72,7 @@ jobs:
             fi
             aws s3 cp "$RUNNER_TEMP/out/req/" "$BUCKET/lidarmap/req/" --recursive --endpoint-url "$R2" --only-show-errors
             rm -rf "$RUNNER_TEMP/work/laz" "$RUNNER_TEMP"/work/*/out "$RUNNER_TEMP"/work/mnt_*.tif
+            # the other countries' grids (work/<grid>/) and their downloads go too; their indexes (cache/*/*.json, .geojson) stay
+            find "$RUNNER_TEMP/work" -mindepth 1 -maxdepth 1 -type d ! -name cache ! -name laz ! -name forest ! -name sprint -exec rm -rf {} + 2>/dev/null || true
+            find "$RUNNER_TEMP/work/cache" -type f ! -name "*.json" ! -name "*.geojson" -delete 2>/dev/null || true
           done

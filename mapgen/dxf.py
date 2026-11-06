@@ -6,7 +6,8 @@ runs a little into the neighbours), in Lambert 93.
 The JSON, `t/<id>.<style>.vec.json`:
     {"v": 1, "id": "0391_6819", "style": "forest", "crs": "EPSG:2154", "x0": 391000, "y0": 6818000, "q": 0.1,
      "lines": {"contour": [[z, x, y, dx, dy, …], …], …}, "points": {"dotknoll": [x, y, dx, dy, …], …}}
-coordinates in decimetres (q) from the tile's south-west corner (x0, y0), each line's first point then the steps to the next,
+coordinates in decimetres (q) from the tile's south-west corner (x0, y0) in the tile's system ("crs": Lambert 93 in France,
+LV95, UTM or NZTM2000 beyond, mapgen/grids.py), each line's first point then the steps to the next,
 z its height in decimetres (null when the DXF gives none); a point layer one flat list, the same way.
 
 Only karttapullautin's output files are read: nothing of its code (GPL-3) is here."""
@@ -134,8 +135,10 @@ def _encode(pts, x0, y0):
     return flat
 
 
-def tile_vectors(files: dict[str, Path], tid: str, x0: float, y1: float, style: str, size: float = 1000.0) -> dict:
-    """The tile's vectors from karttapullautin's DXF files ({"contours": path, …}; missing ones skipped), cut to the tile."""
+def tile_vectors(files: dict[str, Path], tid: str, x0: float, y1: float, style: str, size: float = 1000.0,
+                 crs: str = "EPSG:2154") -> dict:
+    """The tile's vectors from karttapullautin's DXF files ({"contours": path, …}; missing ones skipped), cut to the tile,
+    in the tile's system (crs: Lambert 93 in France, the grid's beyond: mapgen/grids.py)."""
     y0, x1 = y1 - size, x0 + size
     lines: dict[str, list] = {}
     points: dict[str, list] = {}
@@ -147,7 +150,7 @@ def tile_vectors(files: dict[str, Path], tid: str, x0: float, y1: float, style: 
         for kind, layer, z, pts in entities(path):
             if layer not in keep:
                 continue
-            zq = None if z is None else round(z / Q)
+            zq = None if z is None or z != z else round(z / Q)          # karttapullautin writes NaN for some heights
             if kind == "POINT":
                 x, y = pts[0]
                 # half-open: a point on the border belongs to one tile only
@@ -166,7 +169,7 @@ def tile_vectors(files: dict[str, Path], tid: str, x0: float, y1: float, style: 
                 enc = _encode(piece, x0, y0)
                 if enc:
                     lines.setdefault(layer, []).append([zq] + enc)
-    return {"v": VERSION, "id": tid, "style": style, "crs": "EPSG:2154", "x0": x0, "y0": y0, "q": Q, "lines": lines, "points": points}
+    return {"v": VERSION, "id": tid, "style": style, "crs": crs, "x0": x0, "y0": y0, "q": Q, "lines": lines, "points": points}
 
 
 def write(out: Path, data: dict) -> int:

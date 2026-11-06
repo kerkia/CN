@@ -53,11 +53,11 @@ k("map.new.here", "Ma position", "My position", "Meine Position", "Mi posición"
 k("map.new.size", "Taille de la zone", "Size of the area", "Größe des Gebiets", "Tamaño de la zona")
 k("map.new.data", "Commencer avec, en brouillon", "Start with, as drafts", "Beginnen mit, als Entwurf", "Empezar con, como borrador")
 k("map.new.osm", "Routes, chemins, bâtiments et eau d'OpenStreetMap", "OpenStreetMap's roads, paths, buildings and water", "Straßen, Wege, Gebäude und Gewässer aus OpenStreetMap", "Calles, caminos, edificios y agua de OpenStreetMap")
-k("map.new.bdtopo", "Bâtiments, routes, chemins, eau et murs de la BD TOPO de l'IGN (France ; ailleurs OpenStreetMap)", "Buildings, roads, paths, water and walls from IGN's BD TOPO (France; elsewhere OpenStreetMap)", "Gebäude, Straßen, Wege, Gewässer und Mauern aus der BD TOPO des IGN (Frankreich; anderswo OpenStreetMap)", "Edificios, carreteras, caminos, agua y muros de la BD TOPO del IGN (Francia; en otros lugares OpenStreetMap)")
+k("map.new.bdtopo", "Bâtiments, routes, chemins et eau des données nationales (IGN en France, swisstopo en Suisse, USGS aux États-Unis ; ailleurs OpenStreetMap)", "Buildings, roads, paths and water from national data (IGN in France, swisstopo in Switzerland, USGS in the USA; elsewhere OpenStreetMap)", "Gebäude, Straßen, Wege und Gewässer aus nationalen Daten (IGN in Frankreich, swisstopo in der Schweiz, USGS in den USA; sonst OpenStreetMap)", "Edificios, carreteras, caminos y agua de los datos nacionales (IGN en Francia, swisstopo en Suiza, USGS en EE. UU.; en otros lugares OpenStreetMap)")
 k("map.data.bdtopo.reading", "Lecture de la BD TOPO de l'IGN…", "Reading IGN's BD TOPO…", "BD TOPO des IGN wird gelesen…", "Leyendo la BD TOPO del IGN…")
 k("map.data.bdtopo.none", "La BD TOPO n'a rien dans cette zone (elle couvre la France).", "BD TOPO has nothing in this area (it covers France).", "Die BD TOPO hat in diesem Gebiet nichts (sie deckt Frankreich ab).", "La BD TOPO no tiene nada en esta zona (cubre Francia).")
 k("map.new.dem", "Courbes de niveau du modèle de terrain", "Contours from the terrain model", "Höhenlinien aus dem Geländemodell", "Curvas de nivel del modelo del terreno")
-k("map.new.lidar", "Courbes, falaises et végétation du LiDAR (France, quelques minutes)", "LiDAR contours, cliffs and vegetation (France, a few minutes)", "Höhenlinien, Felsen und Vegetation aus dem LiDAR (Frankreich, einige Minuten)", "Curvas, cortados y vegetación del LiDAR (Francia, unos minutos)")
+k("map.new.lidar", "Courbes, falaises et végétation du LiDAR (France, Suisse, États-Unis, Canada, Nouvelle-Zélande ; quelques minutes)", "LiDAR contours, cliffs and vegetation (France, Switzerland, USA, Canada, New Zealand; a few minutes)", "Höhenlinien, Felsen und Vegetation aus dem LiDAR (Frankreich, Schweiz, USA, Kanada, Neuseeland; einige Minuten)", "Curvas, cortados y vegetación del LiDAR (Francia, Suiza, EE. UU., Canadá, Nueva Zelanda; unos minutos)")
 
 # ---- top bar, view, status -------------------------------------------------------------------------------------------------
 k("map.top.maps", "Mes cartes à éditer", "My maps to edit", "Meine Karten zum Bearbeiten", "Mis mapas para editar")
@@ -320,13 +320,13 @@ k("map.data.area.print", "La zone d'impression", "The print area", "Den Druckber
 k("map.data.area.map", "Toute la carte", "The whole map", "Die ganze Karte", "Todo el mapa")
 k("map.data.areaSet", "Zone des données choisie.", "Data area set.", "Datengebiet festgelegt.", "Zona de datos fijada.")
 k("map.data.interval", "Équidistance", "Contour interval", "Äquidistanz", "Equidistancia")
-k("map.data.contoursHint", "Du modèle de terrain de l'IGN (RGE ALTI) en France, ailleurs des tuiles de relief mondiales ; à vérifier sur le terrain.", "From IGN's terrain model (RGE ALTI) in France, elsewhere from worldwide terrain tiles; to be checked in the field.", "In Frankreich aus dem Geländemodell des IGN (RGE ALTI), anderswo aus weltweiten Geländekacheln; im Gelände zu prüfen.", "Del modelo del terreno del IGN (RGE ALTI) en Francia, en otros lugares de teselas de relieve mundiales; hay que comprobarlas sobre el terreno.")
+k("map.data.contoursHint", "Du modèle de terrain national (IGN en France, swisstopo en Suisse, USGS aux États-Unis, NRCan au Canada, LINZ en Nouvelle-Zélande), ailleurs des tuiles de relief mondiales ; à vérifier sur le terrain.", "From the national terrain model (IGN in France, swisstopo in Switzerland, USGS in the USA, NRCan in Canada, LINZ in New Zealand), elsewhere from worldwide terrain tiles; to be checked in the field.", "Aus dem nationalen Geländemodell (IGN in Frankreich, swisstopo in der Schweiz, USGS in den USA, NRCan in Kanada, LINZ in Neuseeland), sonst aus weltweiten Reliefkacheln; im Gelände zu prüfen.", "Del modelo digital del terreno nacional (IGN en Francia, swisstopo en Suiza, USGS en EE. UU., NRCan en Canadá, LINZ en Nueva Zelanda), en otros lugares de teselas de relieve mundiales; a comprobar sobre el terreno.")
 k("map.data.loadingDem", "Lecture des altitudes…", "Reading the heights…", "Höhen werden gelesen…", "Leyendo las altitudes…")
 k("map.data.kind", "Type de carte", "Kind of map", "Kartentyp", "Tipo de mapa")
 k("map.data.kind.sprint", "Sprint — courbes tous les 2,5 m", "Sprint — contours every 2.5 m", "Sprint — Höhenlinien alle 2,5 m", "Sprint — curvas cada 2,5 m")
 k("map.data.kind.forest", "Forêt — courbes tous les 5 m", "Forest — contours every 5 m", "Wald — Höhenlinien alle 5 m", "Bosque — curvas cada 5 m")
 k("map.data.needKind", "Choisissez sprint ou forêt.", "Choose sprint or forest.", "Wähle Sprint oder Wald.", "Elige sprint o bosque.")
-k("map.data.lidarHint", "Le LiDAR HD de l'IGN (France métropolitaine) traité par karttapullautin : quelques minutes pour les tuiles qui ne sont pas encore prêtes.", "IGN's LiDAR HD (metropolitan France) processed by karttapullautin: a few minutes for tiles not made yet.", "Das LiDAR HD des IGN (französisches Festland), mit karttapullautin verarbeitet: einige Minuten für noch nicht erstellte Kacheln.", "El LiDAR HD del IGN (Francia metropolitana) procesado con karttapullautin: unos minutos para las teselas aún no hechas.")
+k("map.data.lidarHint", "Le LiDAR national (IGN en France, swisstopo en Suisse, USGS aux États-Unis, NRCan au Canada, LINZ en Nouvelle-Zélande) traité par karttapullautin : quelques minutes pour les tuiles qui ne sont pas encore prêtes, davantage hors de France.", "The national LiDAR (IGN in France, swisstopo in Switzerland, USGS in the USA, NRCan in Canada, LINZ in New Zealand) processed by karttapullautin: a few minutes for tiles not made yet, longer outside France.", "Das nationale LiDAR (IGN in Frankreich, swisstopo in der Schweiz, USGS in den USA, NRCan in Kanada, LINZ in Neuseeland), verarbeitet mit karttapullautin: einige Minuten für noch nicht erstellte Kacheln, außerhalb Frankreichs länger.", "El LiDAR nacional (IGN en Francia, swisstopo en Suiza, USGS en EE. UU., NRCan en Canadá, LINZ en Nueva Zelanda) procesado con karttapullautin: unos minutos para las teselas aún no hechas, más fuera de Francia.")
 k("map.data.nogeo", "La carte doit être géoréférencée pour recevoir des données (Fichier › Propriétés).", "The map must be georeferenced to receive data (File › Properties).", "Die Karte muss georeferenziert sein, um Daten aufzunehmen (Datei › Eigenschaften).", "El mapa debe estar georreferenciado para recibir datos (Archivo › Propiedades).")
 k("map.data.tooLarge", "La zone est trop grande pour le LiDAR : réduisez-la.", "The area is too large for the LiDAR: make it smaller.", "Das Gebiet ist zu groß für das LiDAR: verkleinere es.", "La zona es demasiado grande para el LiDAR: redúcela.")
 k("map.data.missing", "Symboles absents de la carte, objets laissés de côté : {list}. Ajoutez le jeu de symboles de l'IOF (Mise en page › Jeu de symboles).", "Symbols missing from the map, objects left out: {list}. Add the IOF symbol set (Layout › Symbol set).", "Signaturen fehlen in der Karte, Objekte ausgelassen: {list}. Füge den IOF-Signaturensatz hinzu (Layout › Signaturensatz).", "Símbolos ausentes del mapa, objetos omitidos: {list}. Añade el juego de símbolos de la IOF (Maquetación › Juego de símbolos).")
@@ -396,8 +396,8 @@ k("map.lay.spacingHint", "Les spécifications : 30 mm à 1:15 000 et 1:10 000, 2
 k("map.lay.where", "Cliquez où placer l'élément.", "Click where to place the element.", "Klicke, wo das Element hin soll.", "Haz clic donde colocar el elemento.")
 k("map.lay.nothingUsed", "Aucun symbole n'est encore utilisé.", "No symbol is used yet.", "Noch keine Signatur verwendet.", "Todavía no se usa ningún símbolo.")
 k("map.lay.noText", "La carte n'a pas de symbole de texte.", "The map has no text symbol.", "Die Karte hat keine Textsignatur.", "El mapa no tiene ningún símbolo de texto.")
-k("map.lay.creditLidar", "Relief : © IGN, LiDAR HD, traité par karttapullautin", "Relief: © IGN, LiDAR HD, processed by karttapullautin", "Relief: © IGN, LiDAR HD, verarbeitet mit karttapullautin", "Relieve: © IGN, LiDAR HD, procesado con karttapullautin")
-k("map.lay.creditDem", "Courbes : © IGN RGE ALTI ou Mapzen / AWS Terrain Tiles", "Contours: © IGN RGE ALTI or Mapzen / AWS Terrain Tiles", "Höhenlinien: © IGN RGE ALTI oder Mapzen / AWS Terrain Tiles", "Curvas: © IGN RGE ALTI o Mapzen / AWS Terrain Tiles")
+k("map.lay.creditLidar", "Relief : {src}, LiDAR traité par karttapullautin", "Relief: {src}, LiDAR processed by karttapullautin", "Relief: {src}, LiDAR verarbeitet mit karttapullautin", "Relieve: {src}, LiDAR procesado con karttapullautin")
+k("map.lay.creditDem", "Courbes : modèle numérique de terrain national (IGN, swisstopo, USGS 3DEP, NRCan HRDEM, LINZ) ou Mapzen / AWS Terrain Tiles", "Contours: national terrain model (IGN, swisstopo, USGS 3DEP, NRCan HRDEM, LINZ) or Mapzen / AWS Terrain Tiles", "Höhenlinien: nationales Geländemodell (IGN, swisstopo, USGS 3DEP, NRCan HRDEM, LINZ) oder Mapzen / AWS Terrain Tiles", "Curvas: modelo digital del terreno nacional (IGN, swisstopo, USGS 3DEP, NRCan HRDEM, LINZ) o Mapzen / AWS Terrain Tiles")
 k("map.lay.creditBdtopo", "© IGN, BD TOPO", "© IGN, BD TOPO", "© IGN, BD TOPO", "© IGN, BD TOPO")
 k("map.lay.creditOzimut", "Carte dessinée avec Ozimut — ozimut.com", "Map drawn with Ozimut — ozimut.com", "Karte gezeichnet mit Ozimut — ozimut.com", "Mapa dibujado con Ozimut — ozimut.com")
 k("map.lay.qrUrl", "Adresse du code", "Address in the code", "Adresse im Code", "Dirección del código")
@@ -581,6 +581,58 @@ k("map.undo.colors", "Couleurs", "Colours", "Farben", "Colores")
 k("map.undo.symbolEdit", "Symbole modifié", "Symbol edited", "Signatur geändert", "Símbolo modificado")
 k("map.undo.symbolNew", "Nouveau symbole", "New symbol", "Neue Signatur", "Símbolo nuevo")
 k("map.undo.symbolDelete", "Symbole supprimé", "Symbol deleted", "Signatur gelöscht", "Símbolo eliminado")
+
+# ---- generalisation (generalise.js) ----------------------------------------------------------------------------------------------
+k("map.rib.generalise", "Généraliser", "Generalise", "Generalisieren", "Generalizar")
+k("map.grp.generalise", "Généralisation", "Generalisation", "Generalisierung", "Generalización")
+k("map.right.gen", "Généraliser", "Generalise", "Generalisieren", "Generalizar")
+k("map.undo.scale", "Changement d'échelle", "Change of scale", "Maßstabswechsel", "Cambio de escala")
+k("map.undo.generalise", "Généralisation", "Generalisation", "Generalisierung", "Generalización")
+for key, v in {
+  "lede": ("Rendre la carte lisible à son échelle, étape par étape : chaque étape trouve ses cas, « Montrer » les choisit sur la carte, « Appliquer » les traite (annulable).", "Make the map legible at its scale, step by step: each step finds its cases, « Show » selects them on the map, « Apply » handles them (undoable).", "Die Karte Schritt für Schritt in ihrem Maßstab lesbar machen: Jeder Schritt findet seine Fälle, „Zeigen“ wählt sie auf der Karte aus, „Anwenden“ bearbeitet sie (rückgängig machbar).", "Hacer el mapa legible a su escala, paso a paso: cada paso encuentra sus casos, «Mostrar» los selecciona en el mapa, «Aplicar» los trata (se puede deshacer)."),
+  "scale": ("Échelle", "Scale", "Maßstab", "Escala"),
+  "scaleHint": ("Carte au 1:{s}. La nouvelle échelle réduit ou agrandit toute la carte autour de son origine ; son géoréférencement ne change pas.", "Map at 1:{s}. The new scale shrinks or enlarges the whole map about its origin; its georeference stays.", "Karte im Maßstab 1:{s}. Der neue Maßstab verkleinert oder vergrößert die ganze Karte um ihren Ursprung; ihre Georeferenzierung bleibt.", "Mapa a 1:{s}. La nueva escala reduce o amplía todo el mapa alrededor de su origen; su georreferenciación no cambia."),
+  "scaleSyms": ("Les symboles suivent (1:10 000 ↔ 1:15 000 de l'ISOM)", "Symbols follow (ISOM's 1:10,000 ↔ 1:15,000)", "Signaturen folgen (1:10.000 ↔ 1:15.000 der ISOM)", "Los símbolos siguen (1:10.000 ↔ 1:15.000 de la ISOM)"),
+  "apply": ("Appliquer", "Apply", "Anwenden", "Aplicar"), "scaled": ("Carte passée au 1:{s}.", "Map now at 1:{s}.", "Karte jetzt im Maßstab 1:{s}.", "Mapa ahora a 1:{s}."),
+  "small": ("Trop petit", "Too small", "Zu klein", "Demasiado pequeño"),
+  "smallHint": ("Surfaces et lignes sous le minimum de leur symbole dans les spécifications.", "Areas and lines under their symbol's minimum in the specifications.", "Flächen und Linien unter dem Mindestmaß ihrer Signatur laut Spezifikation.", "Superficies y líneas por debajo del mínimo de su símbolo en las especificaciones."),
+  "find": ("Chercher", "Find", "Suchen", "Buscar"), "found.one": ("{n} cas", "{n} case", "{n} Fall", "{n} caso"), "found.other": ("{n} cas", "{n} cases", "{n} Fälle", "{n} casos"),
+  "show": ("Montrer", "Show", "Zeigen", "Mostrar"), "enlarge": ("Agrandir au minimum", "Enlarge to the minimum", "Auf das Mindestmaß vergrößern", "Ampliar al mínimo"), "delete": ("Supprimer", "Delete", "Löschen", "Eliminar"),
+  "dense": ("Trop de points", "Too many points", "Zu viele Punkte", "Demasiados puntos"), "tol": ("Tolérance", "Tolerance", "Toleranz", "Tolerancia"),
+  "simplify": ("Simplifier ({n} points en moins)", "Simplify ({n} points fewer)", "Vereinfachen ({n} Punkte weniger)", "Simplificar ({n} puntos menos)"),
+  "overlaps": ("Surfaces qui se chevauchent", "Overlapping areas", "Überlappende Flächen", "Superficies superpuestas"), "unite": ("Réunir", "Unite", "Vereinigen", "Unir"),
+  "crowded": ("Points trop serrés", "Crowded point features", "Zu dichte Punktobjekte", "Puntos demasiado juntos"), "dist": ("Distance", "Distance", "Abstand", "Distancia"),
+  "thin": ("En garder un", "Keep one", "Eines behalten", "Conservar uno"),
+  "contours": ("Courbes trop serrées", "Contours too close", "Zu enge Höhenlinien", "Curvas demasiado juntas"),
+  "contoursHint": ("À reprendre à la main : déplacer une courbe est un choix du cartographe.", "To fix by hand: moving a contour is the mapper's choice.", "Von Hand zu ändern: Eine Höhenlinie zu verschieben entscheidet der Kartograf.", "A corregir a mano: mover una curva es decisión del cartógrafo."),
+  "next": ("Suivante", "Next", "Nächste", "Siguiente"),
+  }.items(): k(f"map.gen.{key}", *v)
+
+
+# ---- national data abroad (data/ch.js, us.js; trace/terrain.js; backgrounds.js) ----------------------------------------------
+k("map.rib.data-national", "Données nationales", "National data", "Nationale Daten", "Datos nacionales")
+k("map.data.national.none", "Pas de données nationales ouvertes pour ce pays : utilisez OpenStreetMap.", "No open national data for this country: use OpenStreetMap.", "Keine offenen nationalen Daten für dieses Land: Verwende OpenStreetMap.", "No hay datos nacionales abiertos para este país: usa OpenStreetMap.")
+k("map.data.national.reading.bdtopo", "Lecture de la BD TOPO de l'IGN…", "Reading IGN's BD TOPO…", "BD TOPO des IGN wird gelesen…", "Leyendo la BD TOPO del IGN…")
+k("map.data.national.reading.swisstopo", "Lecture de swissTLM3D (swisstopo)…", "Reading swissTLM3D (swisstopo)…", "swissTLM3D (swisstopo) wird gelesen…", "Leyendo swissTLM3D (swisstopo)…")
+k("map.data.national.reading.tnm", "Lecture de The National Map (USGS)…", "Reading The National Map (USGS)…", "The National Map (USGS) wird gelesen…", "Leyendo The National Map (USGS)…")
+k("map.src.swisstopo", "swisstopo", "swisstopo", "swisstopo", "swisstopo")
+k("map.src.tnm", "The National Map (USGS)", "The National Map (USGS)", "The National Map (USGS)", "The National Map (USGS)")
+k("map.lay.creditSwisstopo", "© swisstopo (swissTLM3D)", "© swisstopo (swissTLM3D)", "© swisstopo (swissTLM3D)", "© swisstopo (swissTLM3D)")
+k("map.lay.creditTnm", "USGS The National Map, FEMA USA Structures (domaine public)", "USGS The National Map, FEMA USA Structures (public domain)", "USGS The National Map, FEMA USA Structures (gemeinfrei)", "USGS The National Map, FEMA USA Structures (dominio público)")
+for key, v in {
+  "swissimage": ("Photos aériennes SWISSIMAGE (Suisse)", "SWISSIMAGE aerial photos (Switzerland)", "SWISSIMAGE-Luftbilder (Schweiz)", "Fotos aéreas SWISSIMAGE (Suiza)"),
+  "chmap": ("Carte nationale swisstopo (Suisse)", "swisstopo national map (Switzerland)", "Landeskarte swisstopo (Schweiz)", "Mapa nacional de swisstopo (Suiza)"),
+  "usimagery": ("Photos aériennes USGS (États-Unis)", "USGS aerial imagery (USA)", "USGS-Luftbilder (USA)", "Imágenes aéreas del USGS (EE. UU.)"),
+  "ustopo": ("Carte USGS Topo (États-Unis)", "USGS Topo map (USA)", "USGS-Topokarte (USA)", "Mapa USGS Topo (EE. UU.)"),
+  "nzaerial": ("Photos aériennes LINZ (Nouvelle-Zélande)", "LINZ aerial imagery (New Zealand)", "LINZ-Luftbilder (Neuseeland)", "Fotos aéreas de LINZ (Nueva Zelanda)"),
+  }.items(): k(f"map.bg.layer.{key}", *v)
+for key, v in {
+  "swissimage": ("Fond : © swisstopo, SWISSIMAGE", "Background: © swisstopo, SWISSIMAGE", "Hintergrund: © swisstopo, SWISSIMAGE", "Fondo: © swisstopo, SWISSIMAGE"),
+  "chmap": ("Fond : © swisstopo, carte nationale", "Background: © swisstopo, national map", "Hintergrund: © swisstopo, Landeskarte", "Fondo: © swisstopo, mapa nacional"),
+  "usimagery": ("Fond : USGS The National Map, orthophotos (domaine public)", "Background: USGS The National Map orthoimagery (public domain)", "Hintergrund: USGS The National Map, Orthofotos (gemeinfrei)", "Fondo: USGS The National Map, ortofotos (dominio público)"),
+  "ustopo": ("Fond : USGS The National Map, US Topo (domaine public)", "Background: USGS The National Map, US Topo (public domain)", "Hintergrund: USGS The National Map, US Topo (gemeinfrei)", "Fondo: USGS The National Map, US Topo (dominio público)"),
+  "nzaerial": ("Fond : © LINZ, photos aériennes (CC BY 4.0)", "Background: © LINZ aerial imagery (CC BY 4.0)", "Hintergrund: © LINZ, Luftbilder (CC BY 4.0)", "Fondo: © LINZ, fotos aéreas (CC BY 4.0)"),
+  }.items(): k(f"map.bg.credit.{key}", *v)
 
 # ---- the site's own catalogues (nav, tiles, beta) are written by `site_keys` below -----------------------------------------------
 SITE = {

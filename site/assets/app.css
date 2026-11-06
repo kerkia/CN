@@ -3874,7 +3874,7 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .mp-cv-ov { pointer-events: none; }
 .mp-zoom { position: absolute; right: 10px; bottom: 12px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
 .mp-zoom button { width: 32px; height: 32px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--ink); display: grid; place-items: center; cursor: pointer; }
-.mp-toast { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); max-width: min(560px, 90%); z-index: 6; background: var(--surface); border: 1px solid var(--border-strong);
+.mp-toast { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); width: max-content; max-width: min(560px, 90%); z-index: 6; background: var(--surface); border: 1px solid var(--border-strong);
   border-radius: 8px; box-shadow: var(--shadow-pop); padding: 7px 12px; font-size: 13px; display: flex; gap: 10px; align-items: center; }
 .mp-toast.bad { border-color: var(--bad); }
 .mp-toast progress { width: 140px; }
@@ -3978,3 +3978,8 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .mp-nowrap { white-space: nowrap; }
 .mp-team { color: var(--focus); font-weight: 600; }
 @media (max-width: 720px) { .mp-symed { grid-template-columns: 1fr; } .mp-symed-r { position: static; order: -1; } }
+/* Cartographier's generalisation steps (mapper/generalise.js) */
+.mp-gen { border-top: 1px solid var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.mp-gen h4 { margin: 0; font-size: 13px; }
+.mp-gen-r { margin: 0; font-weight: 600; font-size: 12.5px; }
+.mp-gen select, .mp-gen input[type=number] { font: inherit; font-size: 12.5px; padding: 2px 4px; border: 1px solid var(--border-strong); border-radius: 5px; background: var(--plane); color: var(--ink); }

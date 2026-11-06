@@ -50,7 +50,7 @@ export async function act(E, act) {
   if (act === "data-area") return chooseArea(E);
   if (act === "data-contours") return contours(E);
   if (act === "data-osm") return osm(E);
-  if (act === "data-bdtopo") return bdtopo(E);
+  if (act === "data-bdtopo" || act === "data-national") return national(E);
   if (act === "data-lidar") return lidar(E);
   if (act === "draft-accept") return accept(E, false);
   if (act === "draft-acceptKind") return accept(E, true);
@@ -71,7 +71,7 @@ async function contours(E) {
   const C = await import("./data/contours.js");
   const r = await C.loadContours(f, areaOf(E), { interval: Number(v.i), onProgress: (x) => say(t("map.data.loadingDem"), x) });
   const n = bring(E, r.objects, t("map.undo.data"));
-  E.say(tn("map.data.brought", n) + (r.credit ? ` · ${r.credit}` : ""));
+  E.say(tn("map.data.brought", n) + (r.credit ? ` · ${r.credit.text || r.credit}` : ""));
 }
 async function osm(E) {
   const f = await frameOrSay(E); if (!f) return;
@@ -83,16 +83,29 @@ async function osm(E) {
   const n = bring(E, r.objects, t("map.undo.data"));
   E.say(tn("map.data.brought", n) + ` · ${r.attribution}`);
 }
-async function bdtopo(E) {
+/** The country's own vectors (buildings, roads, paths, water…): IGN's BD TOPO in France, swisstopo's swissTLM3D in Switzerland,
+ *  The National Map in the USA (data/bdtopo.js, ch.js, us.js); elsewhere OpenStreetMap is the source. */
+export async function nationalSource(E, f) {
+  const b = areaOf(E), [la, lo] = f.toLatLon((b[0] + b[2]) / 2, (b[1] + b[3]) / 2);
+  const { countryAt } = await import("../trace/terrain.js");
+  const cc = countryAt(la, lo) || (f.epsg === 2154 ? "FR" : null);
+  return { FR: "bdtopo", CH: "swisstopo", US: "tnm" }[cc] || null;
+}
+async function national(E) {
   const f = await frameOrSay(E); if (!f) return;
+  const src = await nationalSource(E, f);
+  if (!src) { E.say(t("map.data.national.none"), "bad"); return; }
   const say = progress(E);
-  const B = await import("./data/bdtopo.js");
   let r;
-  try { r = await B.loadBdtopo(f, areaOf(E), styleOf(E), { onStage: (layer, i, n) => say(t("map.data.bdtopo.reading"), i / n) }); }
-  catch (e) { E.say(e.message === "nogeo" ? t("map.data.nogeo") : e.message, "bad"); return; }
+  try {
+    const onStage = (layer, i, n) => say(t(`map.data.national.reading.${src}`), n ? i / n : null);
+    if (src === "bdtopo") r = await (await import("./data/bdtopo.js")).loadBdtopo(f, areaOf(E), styleOf(E), { onStage });
+    else if (src === "swisstopo") r = await (await import("./data/ch.js")).loadSwissTlm(f, areaOf(E), styleOf(E), { onStage });
+    else r = await (await import("./data/us.js")).loadTnm(f, areaOf(E), styleOf(E), { onStage });
+  } catch (e) { E.say(e.message === "nogeo" ? t("map.data.nogeo") : /toolarge/i.test(e.message) ? t("map.data.tooLarge") : e.message, "bad"); return; }
   if (!r.objects.length) { E.say(t("map.data.bdtopo.none"), "bad"); return; }
   const n = bring(E, r.objects, t("map.undo.data"));
-  E.say(tn("map.data.brought", n) + ` · ${r.credit}`);
+  E.say(tn("map.data.brought", n) + ` · ${t({ bdtopo: "map.lay.creditBdtopo", swisstopo: "map.lay.creditSwisstopo", tnm: "map.lay.creditTnm" }[src])}`);
 }
 async function lidar(E) {
   const f = await frameOrSay(E); if (!f) return;
@@ -105,12 +118,12 @@ async function lidar(E) {
   const say = progress(E);
   const L = await import("./data/lidar.js");
   let r;
-  try { r = await L.loadLidar(f, areaOf(E), v.s, { say: (msg, frac) => say(msg, frac), stop: () => E._stopData }); }
+  try { r = await L.loadLidar(f, areaOf(E), v.s, { say: (key, vars, frac) => say(t(key, { n: "", t: "", ...vars }), frac), stop: () => E._stopData }); }
   catch (e) { E.say(e.message === "tooLarge" ? t("map.data.tooLarge") : e.message === "nogeo" ? t("map.data.nogeo") : e.message, "bad"); return; }
   if (!r) { E.say(""); return; }
   const n = bring(E, r.objects, t("map.undo.data"));
   if (r.backgrounds?.length) { const B = await import("./backgrounds.js"); await B.addUrls(E, r.backgrounds); }
-  E.say(tn("map.data.brought", n) + ` · ${r.credit}` + (r.tiles?.noVectors?.length ? ` · ${tn("map.data.noVectors", r.tiles.noVectors.length)}` : ""));
+  E.say(tn("map.data.brought", n) + ` · ${r.credit?.text || r.credit}` + (r.tiles?.noVectors?.length ? ` · ${tn("map.data.noVectors", r.tiles.noVectors.length)}` : ""));
 }
 function accept(E, kind) {
   const sel = E.selected().filter((o) => o.draft);

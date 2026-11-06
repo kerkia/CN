@@ -2,8 +2,8 @@
 // each colour's name, CMYK, overprint and the spot inks it is printed with (OCAD's « séparations » : `s<ink>` / `p<percent>`
 // pairs in its colour string, the inks themselves in parameter strings of type 10: name, CMYK, screen frequency and angle) — and
 // the colour separations a printer asks for:
-// - a composite PDF where each colour printed with one spot ink is painted in that ink (a PDF « Separation » colour space, its
-//   CMYK for the screen), the others in CMYK;
+// - a composite PDF where each colour printed with spot inks is painted in them (a PDF « Separation » colour space for one ink,
+//   « DeviceN » for several, their CMYK for the screen), the colours without inks in CMYK;
 // - one page per printing plate (each spot ink, or C, M, Y and K for process printing), in black at the colour's percentage,
 //   a colour above that the plate does not print knocking out what is under it unless it overprints, with registration marks
 //   and the plate's name — what OCAD's « séparations » print.
@@ -158,13 +158,35 @@ export async function separationsPdf(E, area, base) {
       const cs = doc.context.obj([L.PDFName.of("Separation"), L.PDFName.of(s.name.replace(/[^\w.-]/g, "_")), L.PDFName.of("DeviceCMYK"), fn]);
       const key = `CS${i}`; csDict.set(L.PDFName.of(key), doc.context.register(cs)); csName.set(s.name, key);
     });
+    // a colour printed with several inks (a green screened over yellow…): a DeviceN colour space of those inks, its CMYK for the
+    // screen the sum of the inks' CMYK by their tints (a PostScript calculator function, PDF's FunctionType 4)
+    const spotByName = new Map((E.doc.spots || []).map((s) => [s.name, s]));
+    const deviceN = new Map();
+    const deviceNOf = (inks) => {
+      const key = inks.map((x) => x.name).join("|");
+      if (deviceN.has(key)) return deviceN.get(key);
+      const N = inks.length, f = (v) => (Math.round(v * 10000) / 10000).toString();
+      let ps = "{";
+      for (let j = 0; j < 4; j++) {
+        ps += " 0";
+        inks.forEach((x, i) => { ps += ` ${j + 1 + (N - 1 - i)} index ${f(spotByName.get(x.name).cmyk[j])} mul add`; });
+      }
+      ps += ` ${N + 4} 4 roll${" pop".repeat(N)} }`;
+      const fn = doc.context.stream(ps, { FunctionType: 4, Domain: Array(N).fill([0, 1]).flat(), Range: [0, 1, 0, 1, 0, 1, 0, 1] });
+      const cs = doc.context.obj([L.PDFName.of("DeviceN"), inks.map((x) => L.PDFName.of(x.name.replace(/[^\w.-]/g, "_"))), L.PDFName.of("DeviceCMYK"), doc.context.register(fn)]);
+      const name = `DN${deviceN.size}`;
+      csDict.set(L.PDFName.of(name), doc.context.register(cs));
+      deviceN.set(key, name);
+      return name;
+    };
     class SpotTarget extends PdfTarget {
       color(c, fill) {
         const rec = cols.find((x) => x.num === c.id), ink = rec && singleInk(rec);
-        if (ink && csName.has(ink.name)) {
-          this.ops.push(this.L.PDFOperator.of(fill ? "cs" : "CS", [this.L.PDFName.of(csName.get(ink.name))]), this.L.PDFOperator.of(fill ? "scn" : "SCN", [this.L.PDFNumber.of(ink.pct)]));
-          return;
-        }
+        const op = (name, tints) => this.ops.push(this.L.PDFOperator.of(fill ? "cs" : "CS", [this.L.PDFName.of(name)]), this.L.PDFOperator.of(fill ? "scn" : "SCN", tints.map((v) => this.L.PDFNumber.of(v))));
+        if (ink && csName.has(ink.name)) { op(csName.get(ink.name), [ink.pct]); return; }
+        const inks = (rec?.spot || []).filter((x) => x.pct > 0 && spotByName.has(x.name));
+        if (inks.length > 1) { op(deviceNOf(inks), inks.map((x) => x.pct)); return; }
+        if (inks.length === 1) { op(csName.get(inks[0].name), [inks[0].pct]); return; }
         super.color(c, fill);
       }
     }

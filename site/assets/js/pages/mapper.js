@@ -101,21 +101,26 @@ async function newMap() {
     E.dataArea = [-half, -half, half, half];
     E.live.transact("", () => E.live.setDocField("printArea", [-half, -half, half, half]));
     E.view.fit(E.dataArea);
-    // BD TOPO in France (IGN's, finer than OpenStreetMap there); elsewhere OpenStreetMap in its place
-    const fr = E.frame?.epsg === 2154;
-    if (v.bdtopo && !fr) v.osm = true;
-    for (const [k, act] of [["dem", "data-contours"], ["bdtopo", "data-bdtopo"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) if (v[k] && (k !== "bdtopo" || fr)) await E.act(act);
+    // the country's own vectors (BD TOPO, swissTLM3D, The National Map), finer than OpenStreetMap there; elsewhere OpenStreetMap
+    const D = await import("../mapper/dataui.js");
+    const nat = E.frame?.geo ? await D.nationalSource(E, E.frame) : null;
+    if (v.bdtopo && !nat) v.osm = true;
+    for (const [k, act] of [["dem", "data-contours"], ["bdtopo", "data-national"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) if (v[k] && (k !== "bdtopo" || nat)) await E.act(act);
   }
 }
 const parsePlace = (s) => { const m = /^\s*(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)\s*$/.exec(String(s || "")); if (!m) return null; const la = Number(m[1].replace(",", ".")), lo = Number(m[2].replace(",", ".")); return Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? [la, lo] : null; };
-/** The map's grid at a place: Lambert 93 in metropolitan France, else the place's UTM zone; the map's origin at the place. */
+/** The map's grid at a place: Lambert 93 in metropolitan France, the national grid in Switzerland and New Zealand, else UTM. */
 async function realWorldAt([lat, lon], scale) {
   const F = await import("../mapper/data/frame.js");
-  const inFrance = lat > 41 && lat < 51.2 && lon > -5.5 && lon < 9.8;
-  if (inFrance) { const [x, y] = F.toL93(lat, lon); return { x, y, angle: 0, grid: 0, paperGrid: 0, on: true, zone: 0, epsg: 2154, gridScale: 1 }; }
-  const zone = Math.floor((lon + 180) / 6) + 1, epsg = (lat >= 0 ? 32600 : 32700) + zone;
-  const p4 = await F.proj4lib();
-  const [x, y] = p4("WGS84", `+proj=utm +zone=${zone}${lat < 0 ? " +south" : ""} +datum=WGS84 +units=m`, [lon, lat]);
+  const { countryAt } = await import("../trace/terrain.js");
+  const cc = countryAt(lat, lon);
+  if (cc === "FR") { const [x, y] = F.toL93(lat, lon); return { x, y, angle: 0, grid: 0, paperGrid: 0, on: true, zone: 0, epsg: 2154, gridScale: 1 }; }
+  // Switzerland in LV95, New Zealand in NZTM2000, the USA and Canada in NAD83 / UTM (their agencies' own), elsewhere WGS 84 / UTM
+  const zone = Math.floor((lon + 180) / 6) + 1;
+  const epsg = cc === "CH" ? 2056 : cc === "NZ" ? 2193 : (cc === "US" || cc === "CA") && lat >= 0 ? 26900 + zone : (lat >= 0 ? 32600 : 32700) + zone;
+  const p4 = await F.proj4lib(), table = await F.crsTable();
+  const def = table.epsg?.[String(epsg)] || `+proj=utm +zone=${zone}${lat < 0 ? " +south" : ""} +datum=WGS84 +units=m`;
+  const [x, y] = p4("WGS84", def, [lon, lat]);
   void scale;
   return { x, y, angle: 0, grid: 0, paperGrid: 0, on: true, zone: 0, epsg, gridScale: 1 };
 }

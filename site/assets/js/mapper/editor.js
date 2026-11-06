@@ -97,6 +97,8 @@ export async function openEditor(opts) {
     return kinds.size === 1 ? [...kinds][0] : null;
   };
   E.selected = () => [...E.sel].map((id) => E.live.object(id)).filter(Boolean);
+  /** One object per Mapper combined object (its copies follow the one changed: doc.js siblings), for the edits of geometry. */
+  E.lead = (list) => { const seen = new Set(); return list.filter((o) => { if (o.omap?.o == null) return true; const k = `${o.omap.o}|${o.omap.piece || 0}`; if (seen.has(k)) return false; seen.add(k); return true; }); };
   const symLabel = (sym) => { const s = E.live.symbol(sym); return s ? `${Math.floor(sym / 1000)}${sym % 1000 ? "." + (sym % 1000) : ""} ${P.symName(s)}` : ""; };
   E.symLabel = symLabel;
   const rec = (s, pts, closed) => ({ sym: s.sym, otp: closed ? 3 : 2, ang: 0, coords: G.coordsOf([{ pts, hole: false }]), part: E.part, col: 0, lineWidth: 0, diamFlags: 0 });
@@ -124,7 +126,7 @@ export async function openEditor(opts) {
   };
   E.moveSelection = (dx, dy) => {
     if (!guard()) return;
-    E.live.transact(t("map.undo.move"), () => { for (const o of E.selected()) E.live.update(o.id, { coords: o.coords.map((c, i) => (o.otp === 1 && i > 0 ? c : G.moved(c, dx, dy))) }); });
+    E.live.transact(t("map.undo.move"), () => { for (const o of E.lead(E.selected())) E.live.update(o.id, { coords: o.coords.map((c, i) => (o.otp === 1 && i > 0 ? c : G.moved(c, dx, dy))) }); });
     E.view.overlay();
   };
   E.moveVertex = (id, i, to, { dx, dy }) => {
@@ -263,7 +265,7 @@ export async function openEditor(opts) {
     if (act.startsWith("tool:")) { E.setTool(act.slice(5)); return; }
     if (act.startsWith("mode:")) { E.drawMode = act.slice(5); setPref("mode", E.drawMode); if (E.toolName !== "draw") E.setTool("draw"); return; }
     if (act.startsWith("file:")) { await fileAct(act.slice(5)); return; }
-    const sel = E.selected();
+    const sel = /^(rotate|rotatePattern|smooth|simplify|toggleCurves|reverse)$/.test(act) ? E.lead(E.selected()) : E.selected();
     switch (act) {
       case "undo": E.live.undo(); E.sel = new Set([...E.sel].filter((id) => E.live.object(id))); E.selChanged(); return;
       case "redo": E.live.redo(); E.selChanged(); return;
@@ -276,7 +278,10 @@ export async function openEditor(opts) {
       case "duplicate": {
         if (!guard()) return;
         const off = 2 * E.view.mmPerPx * 4, made = [];
-        E.live.transact(t("map.undo.duplicate"), () => { for (const o of sel) made.push(E.live.add({ ...strip(o), coords: o.coords.map((c, i) => (o.otp === 1 && i > 0 ? c : G.moved(c, off, -off))) })); });
+        // a Mapper combined object's copies go together, as a new group of their own (doc.js siblings)
+        const all = [...new Set(sel.flatMap((o) => [o, ...E.live.siblings(o)]))], groups = new Map();
+        const omapOf = (o) => (o.omap?.o == null ? o.omap : { ...o.omap, o: groups.get(o.omap.o) ?? (groups.set(o.omap.o, D.newId()), groups.get(o.omap.o)) });
+        E.live.transact(t("map.undo.duplicate"), () => { for (const o of all) made.push(E.live.add({ ...strip(o), omap: omapOf(o), coords: o.coords.map((c, i) => (o.otp === 1 && i > 0 ? c : G.moved(c, off, -off))) })); });
         E.sel = new Set(made.map((o) => o.id)); E.selChanged(); return;
       }
       case "changeSymbol": {
@@ -373,7 +378,7 @@ export async function openEditor(opts) {
   const MODULES = { bg: "./backgrounds.js", "map-fade": "./backgrounds.js", data: "./dataui.js", draft: "./dataui.js", gps: "./field.js", photo: "./field.js", comment: "./field.js",
     offline: "./field.js", check: "./checks.js", stats: "./checks.js", "print-area": "./layout.js", "north-lines": "./layout.js", "scale-bar": "./layout.js", legend: "./layout.js",
     logo: "./layout.js", credits: "./layout.js", qr: "./layout.js", "symbol-set": "./layout.js", colors: "./layout.js", export: "./io.js", to: "./io.js",
-    invite: "./team.js", members: "./team.js", sector: "./collab.js", "symbol-edit": "./symedit.js", "symbol-new": "./symedit.js", "symbol-delete": "./symedit.js", version: "./team.js", versions: "./team.js", comments: "./team.js" };
+    invite: "./team.js", members: "./team.js", generalise: "./generalise.js", sector: "./collab.js", "symbol-edit": "./symedit.js", "symbol-new": "./symedit.js", "symbol-delete": "./symedit.js", version: "./team.js", versions: "./team.js", comments: "./team.js" };
   async function fileAct(a) {
     if (a === "new" || a === "open" || a === "import") { await save(true); E.onStart(a); return; }
     if (a === "close") { await E.close(); return; }

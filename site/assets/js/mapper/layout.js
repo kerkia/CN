@@ -132,9 +132,17 @@ async function credits(E) {
   const srcs = new Set(E.doc.objects.map((o) => o.src).filter(Boolean));
   const lines = [];
   if (srcs.has("osm")) lines.push(t("map.data.osm.credit"));
-  if (srcs.has("lidar")) lines.push(t("map.lay.creditLidar"));
+  if (srcs.has("lidar")) {
+    // the point clouds' owner, by the country at the map's middle (trace/lidarmap.js CREDITS)
+    const LM = await import("../trace/lidarmap.js");
+    let c = LM.CREDITS.fr;
+    try { const f = await (await import("./data/frame.js")).frameOf(E.doc), b = E.live.bounds(); c = LM.CREDITS[LM.countryAt(...f.toLatLon((b[0] + b[2]) / 2, (b[1] + b[3]) / 2))] || c; } catch (e) { /* France's */ }
+    lines.push(t("map.lay.creditLidar", { src: c.text }));
+  }
   if (srcs.has("dem")) lines.push(t("map.lay.creditDem"));
   if (srcs.has("bdtopo")) lines.push(t("map.lay.creditBdtopo"));
+  if (srcs.has("swisstopo")) lines.push(t("map.lay.creditSwisstopo"));
+  if (srcs.has("tnm")) lines.push(t("map.lay.creditTnm"));
   lines.push(t("map.lay.creditOzimut"));
   const ts = textSymbol(E);
   if (!ts) { E.say(t("map.lay.noText"), "bad"); return; }
@@ -176,16 +184,18 @@ export async function loadSet(name) {
 /** A set's symbols at a map's scale: ISOM's 1:15 000 dimensions enlarged 150 % for 1:10 000 (the specification's rule). */
 export function scaled(set, scale) {
   const f = set.scale === 15000 && scale <= 10000 ? 1.5 : 1;
-  if (f === 1) return set.symbols;
+  return f === 1 ? set.symbols : set.symbols.map((s) => scaleSymbol(s, f));
+}
+/** A symbol record with every dimension multiplied by f (line widths, dashes, gaps, patterns, elements, font sizes…). */
+export function scaleSymbol(s, f) {
   const L = ["lineWidth", "distFromStart", "distToEnd", "mainLength", "endLength", "mainGap", "secGap", "endGap", "primSymDist", "dblWidth", "dblLeftWidth", "dblRightWidth", "dblLength", "dblGap",
-    "frWidth", "hatchLineWidth", "hatchDist", "structWidth", "structHeight", "extent", "fontSize", "lbWidth", "lbDist", "cellWidth", "cellHeight", "radius"];
+    "frWidth", "hatchLineWidth", "hatchDist", "structWidth", "structHeight", "extent", "fontSize", "lbWidth", "lbDist", "cellWidth", "cellHeight", "radius", "frSize", "frLeft", "frTop", "frRight", "frBottom", "frOfX", "frOfY"];
   const el = (e) => ({ ...e, lineWidth: Math.round((e.lineWidth || 0) * f), diameter: Math.round((e.diameter || 0) * f), coords: (e.coords || []).map((c) => ({ x: ((Math.round((c.x >> 8) * f)) << 8) | (c.x & 0xff), y: ((Math.round((c.y >> 8) * f)) << 8) | (c.y & 0xff) })) });
-  return set.symbols.map((s) => {
-    const o = JSON.parse(JSON.stringify(s));
-    for (const k of L) if (typeof o[k] === "number") o[k] = Math.round(o[k] * f);
-    for (const k of ["elts", "prim", "sec", "corner", "start", "end"]) if (Array.isArray(o[k])) o[k] = o[k].map(el);
-    return o;
-  });
+  const o = JSON.parse(JSON.stringify(s));
+  for (const k of L) if (typeof o[k] === "number") o[k] = Math.round(o[k] * f);
+  for (const k of ["elts", "prim", "sec", "corner", "start", "end"]) if (Array.isArray(o[k])) o[k] = o[k].map(el);
+  // `min` stays the specification's own (the checks scale it by the map's scale)
+  return o;
 }
 async function symbolSet(E) {
   const v = await modal(E, { title: t("map.rib.symbol-set"), body: field(t("map.lay.set"), sel("s", Object.entries(SETS).map(([k, n]) => [k, n]), E.doc.scale <= 5000 ? "issprom2019-2" : "isom2017-2"))

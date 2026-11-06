@@ -690,8 +690,8 @@ export async function render(main, { query = {}, route } = {}) {
   }
 
   // ---- a map generated from IGN's LiDAR HD and OpenStreetMap (trace/lidarmap.js; a prototype, administrators only)
-  const genCredit = () => raw(t("an.gen.credit", { ign: html`<a href="${LM.CREDIT_LIDAR.url}" target="_blank" rel="noopener">${LM.CREDIT_LIDAR.text}</a>`,
-    osm: html`<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t("an.gen.osm")}</a>` }));
+  const genCredit = () => { const c = LM.creditOf(files.map?.name); return raw(t("an.gen.credit", { ign: html`<a href="${c.url}" target="_blank" rel="noopener">${c.text}</a>`,
+    osm: html`<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t("an.gen.osm")}</a>` })); };
   /** The files card's block: the credit of a generated map shown, else, for a trace without a map, the offer to make one. */
   function genBlock() {
     if (LM.isGenerated(files.map?.name)) return html`<p class="muted an-gen-credit-line">${genCredit()}${gen?.msg ? html` <b>${gen.msg}</b>` : ""}</p>`;
@@ -2702,7 +2702,7 @@ export async function render(main, { query = {}, route } = {}) {
     if (v3grid?.key === key) return v3grid;
     v3refined = {};
     if (LM.isGenerated(files.map?.name) && files.world?.wf) {
-      const g = await LM.lidarGrid({ wf: files.world.wf, W, H, ...plan });
+      const g = await LM.lidarGrid({ wf: files.world.wf, W, H, ...plan, name: files.map.name });
       v3grid = { ...g, key, plan };
       return v3grid;
     }
@@ -2730,7 +2730,7 @@ export async function render(main, { query = {}, route } = {}) {
       v3 = v; v3info = g;
       v3.setExaggeration(v3ex);
       if (v3relief === "contours") applyRelief();
-      const c = g.source === "lidar" ? LM.CREDIT_LIDAR : CREDIT[g.source];
+      const c = g.source === "lidar" ? g.credit || LM.creditOf(files.map?.name) : CREDIT[g.source];
       v3note(html`${t("an.v3.relief")} <a href="${c.url}" target="_blank" rel="noopener">${c.text}</a>`);
       opts3d(); sync3d();
     } catch (e) {

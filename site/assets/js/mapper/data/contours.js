@@ -1,5 +1,7 @@
 // Contours from a terrain model (Cartographier): a grid of heights laid square in the map's millimetres — IGN's RGE ALTI in
-// France through its elevation service, else the AWS terrain tiles (trace/terrain.js loadGrid) —, cut by marching squares at
+// France through its elevation service, the national LiDAR models of Switzerland (swissALTI3D), the USA (3DEP), Canada (HRDEM)
+// and New Zealand (LINZ) since 2026-11-06, else the AWS terrain tiles (trace/terrain.js loadGrid, whose CREDIT names each
+// source: `credit` below) —, cut by marching squares at
 // every interval (2.5 or 5 m), the pieces joined into long lines, lightly smoothed and simplified (Douglas-Peucker in map mm),
 // then turned into line objects: 101.0 contour, 102.0 index contour (every fifth), 103.0 form line (half an interval, only
 // where the ground is gentle). A closed contour too small to be drawn as a loop becomes a point: 109.0 small knoll or
@@ -201,7 +203,7 @@ export function contourObjects(grid, opts = {}) {
 
 /**
  * Contours for a rectangle of the map ([x0, y0, x1, y1] in map mm) through the frame (frame.js): the heights asked of
- * IGN (France) or the terrain tiles every opts.stepM metres (2 by default; coarser when the grid would pass maxNodes), then
+ * IGN (France), a national model (terrain.js sourcesAt) or the terrain tiles every opts.stepM metres (2 by default; coarser when the grid would pass maxNodes), then
  * contourObjects. Resolves { objects, counts, source, credit, grid: { nx, ny, stepM } }. onProgress(f) from 0 to 1.
  */
 export async function loadContours(frame, rect, opts = {}) {

@@ -1,11 +1,21 @@
-// The ground's heights under a calibrated map, for « Analyse solo »'s 3D view (2026-10-24): a regular grid laid over the map
-// image (its nodes at map pixels, so the image is the mesh's texture as it is), each node's height from
+// The ground's heights under a calibrated map, for « Analyse solo »'s 3D view (2026-10-24) and Cartographier's contours: a
+// regular grid laid over the map image (its nodes at map pixels, so the image is the mesh's texture as it is), each node's
+// height from
 // - IGN's RGE ALTI in France (Géoplateforme's elevation service: 5,000 points a request at most, about one request a second
-//   asked — three at a time here; CORS open; its 1 m model read at the grid's nodes), else, or when IGN fails,
+//   asked — three at a time here; CORS open; its 1 m model read at the grid's nodes),
+// - a national LiDAR model elsewhere where one is open and readable from the browser (2026-11-06; GeoTIFF / COG read with
+//   geotiff.js, the nodes projected by proj4js, both vendored): Switzerland swissALTI3D (swisstopo, 2 m tiles of 1 km found
+//   through its STAC), the USA 3DEP (USGS, its ImageServer's float TIFF at the grid's step, 1 m where flown), Canada HRDEM
+//   (NRCan, the LiDAR projects' 1 m COGs found through its STAC, newest first), New Zealand (LINZ's national 1 m DEM, one COG
+//   a Topo50 sheet on its public S3 bucket); a source that covers under half the nodes gives way to the next,
+//   else, or when they fail,
 // - the AWS open terrain tiles (« Terrarium » PNGs, the height in the colour: R × 256 + G + B / 256 − 32768; SRTM's 30 m
 //   and better national models where Mapzen had them), read at the zoom whose pixel is the grid's step, 15 at most.
-// Only the nodes' coordinates leave the browser, never the trace. The grid is kept in IndexedDB (« ocn-analyse », the
-// analyses' own base; keys « dem:… », the last DEM_KEEP grids) so that the view opens at once the next time.
+// Only the nodes' coordinates (or the area's box) leave the browser, never the trace. The grid is kept in IndexedDB
+// (« ocn-analyse », the analyses' own base; keys « dem:… », the last DEM_KEEP grids) so that the view opens at once the next
+// time.
+
+import { GEOTIFF, PROJ4 } from "../vendor.js";
 
 const IGN = "https://data.geopf.fr/altimetrie/1.0/calcul/alti/rest/elevation.json";
 const IGN_MAX = 4900, IGN_PAR = 3;
@@ -18,7 +28,13 @@ export const CREDIT = {
   ign: { text: "IGN – RGE ALTI®", url: "https://geoservices.ign.fr/rgealti" },
   tiles: { text: "Terrain Tiles (Mapzen, AWS Open Data: SRTM, GMTED, EU-DEM, USGS 3DEP…)", url: "https://github.com/tilezen/joerd/blob/master/docs/attribution.md" },
 };
-CREDIT["ign+tiles"] = { text: `${CREDIT.ign.text}, Terrain Tiles`, url: CREDIT.ign.url };
+Object.assign(CREDIT, {
+  swisstopo: { text: "© swisstopo – swissALTI3D", url: "https://www.swisstopo.admin.ch/en/height-model-swissalti3d" },
+  usgs: { text: "USGS – 3D Elevation Program (3DEP)", url: "https://www.usgs.gov/3d-elevation-program" },
+  nrcan: { text: "NRCan – HRDEM (Open Government Licence – Canada)", url: "https://open.canada.ca/data/en/dataset/957782bf-847c-4644-a757-e383c0057995" },
+  linz: { text: "© LINZ – New Zealand LiDAR 1 m DEM (CC BY 4.0)", url: "https://data.linz.govt.nz/" },
+});
+for (const k of ["ign", "swisstopo", "usgs", "nrcan", "linz"]) CREDIT[`${k}+tiles`] = { text: `${CREDIT[k].text}, Terrain Tiles`, url: CREDIT[k].url };
 
 /**
  * The grid over a map of W × H pixels whose pixels map to metres by toM(px, py): about MAX_NODES nodes, a step of 5 m at
@@ -132,6 +148,289 @@ async function fromTiles(pts, step, onProgress) {
 /** The terrain tiles' heights at points [[lat, lon]…] (the Tracer's climb outside France, 2026-10-24): a Float32Array. */
 export async function tileHeights(pts, step = 10) { return (await fromTiles(pts, step)).z; }
 
+// ---- the national sources (2026-11-06) ------------------------------------------------------------------------------------
+const CH_STAC = "https://data.geo.admin.ch/api/stac/v1/collections/ch.swisstopo.swissalti3d/items";
+const CH_MAX_TILES = 64;                     // 1 km tiles of ~250 KB: 16 MB at most
+const US_3DEP = "https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer/exportImage";
+const US_MAX_SIDE = 4000;
+const CA_STAC = "https://datacube.services.geo.ca/stac/api/search";
+const CA_MAX_ITEMS = 4;
+const NZ_DEM = "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand/dem_1m/2193";
+const NZ_MAX_SHEETS = 4;
+const PAR = 4;
+/** The grids the sources are in (proj4 texts). */
+const CRS = {
+  2056: "+proj=somerc +lat_0=46.9524055555556 +lon_0=7.43958333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +towgs84=674.374,15.056,405.346,0,0,0,0 +units=m +no_defs",
+  3979: "+proj=lcc +lat_0=49 +lon_0=-95 +lat_1=49 +lat_2=77 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs",
+  2193: "+proj=tmerc +lat_0=0 +lon_0=173 +k=0.9996 +x_0=1600000 +y_0=10000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs",
+};
+// NAD83(CSRS) UTM zones by EPSG code (HRDEM projects not in EPSG:3979)
+const CSRS_UTM = { 2955: 11, 2956: 12, 2957: 13, 2958: 17, 2959: 18, 2960: 19, 2961: 20, 2962: 21, 3154: 7, 3155: 8, 3156: 9, 3157: 10, 3158: 14, 3159: 15, 3160: 16, 3761: 22, 9709: 23 };
+/** A grid's proj4 text by its EPSG code, or null. */
+export function crsDef(epsg) {
+  epsg = Number(epsg);
+  if (CRS[epsg]) return CRS[epsg];
+  if (epsg >= 32601 && epsg <= 32660) return `+proj=utm +zone=${epsg - 32600} +datum=WGS84 +units=m +no_defs`;
+  if (epsg >= 32701 && epsg <= 32760) return `+proj=utm +zone=${epsg - 32700} +south +datum=WGS84 +units=m +no_defs`;
+  if (epsg >= 26901 && epsg <= 26923) return `+proj=utm +zone=${epsg - 26900} +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs`;
+  if (CSRS_UTM[epsg]) return `+proj=utm +zone=${CSRS_UTM[epsg]} +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs`;
+  return null;
+}
+
+const inBox = (lat, lon, [a, b, c, d]) => lat >= a && lat <= b && lon >= c && lon <= d;
+const BOX = {
+  CH: [[45.8, 47.82, 5.95, 10.5]],
+  NZ: [[-47.4, -34.3, 166.3, 178.7]],
+  CA: [[41.6, 83.2, -141.1, -52.5]],
+  // the lower 48, Alaska (and the Aleutians across 180°), Hawaii, Puerto Rico and the Virgin Islands
+  US: [[24.4, 49.4, -125, -66.9], [51, 71.5, -180, -129.9], [51, 55, 172, 180], [18.8, 22.4, -160.4, -154.7], [17.6, 18.6, -68, -64.5]],
+};
+const inAny = (cc, lat, lon) => BOX[cc].some((b) => inBox(lat, lon, b));
+// Switzerland's outline, coarsely (its box also holds bits of France, Germany, Italy and Austria)
+const CH_LINE = [[6.0, 46.15], [6.8, 46.0], [7.0, 45.85], [7.9, 45.95], [8.4, 46.45], [8.9, 45.85], [9.05, 45.9], [9.3, 46.5], [10.1, 46.25],
+  [10.5, 46.55], [10.45, 46.95], [9.6, 47.05], [9.55, 47.55], [8.6, 47.8], [7.6, 47.6], [7.0, 47.5], [6.1, 46.95], [6.0, 46.15]];
+// the US-Canada border south of 49° N, as a latitude by longitude, west to east (a rough line: it orders the sources only,
+// their coverage deciding near it); Alaska's border is the 141st meridian, its panhandle left to the coverage too
+const BORDER = [[-125, 48.4], [-123.25, 48.25], [-123.1, 48.6], [-123.0, 49.0], [-95.2, 49.0], [-94.6, 48.7], [-93.0, 48.6], [-91.5, 48.1],
+  [-89.6, 48.0], [-88.4, 48.3], [-84.8, 46.9], [-84.1, 46.5], [-83.5, 46.0], [-82.4, 45.2], [-82.4, 43.0], [-83.1, 42.3], [-82.5, 41.7],
+  [-79.8, 42.5], [-79.0, 43.3], [-76.3, 44.2], [-75.3, 45.0], [-71.5, 45.0], [-71.1, 45.3], [-70.6, 45.6], [-70.0, 46.7], [-69.2, 47.45],
+  [-68.2, 47.35], [-67.8, 47.07], [-67.8, 45.7], [-67.4, 45.2], [-67.0, 44.8]];
+function inCanada(lat, lon) {
+  if (lon < -141) return false;
+  if (lat > 49.4 || lon < BORDER[0][0]) return lat > 48.4;
+  for (let i = 1; i < BORDER.length; i++) {
+    const [x0, y0] = BORDER[i - 1], [x1, y1] = BORDER[i];
+    if (lon <= x1) return lat > (x1 === x0 ? Math.max(y0, y1) : y0 + ((y1 - y0) * (lon - x0)) / (x1 - x0));
+  }
+  return lat > BORDER[BORDER.length - 1][1];
+}
+function inRing(lat, lon, ring) {
+  let c = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i], [xj, yj] = ring[j];
+    if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) c = !c;
+  }
+  return c;
+}
+
+/**
+ * The country whose national data an area is likely in: "CH", "FR", "US", "CA", "NZ" or null — a rough guess by boxes, a
+ * coarse outline of Switzerland and a line for the US-Canada border, used to offer a country's layers, never to refuse data.
+ */
+export function countryAt(lat, lon) {
+  if (inAny("CH", lat, lon) && inRing(lat, lon, CH_LINE)) return "CH";
+  if (inFrance(lat, lon)) return "FR";
+  if (inAny("NZ", lat, lon)) return "NZ";
+  const us = inAny("US", lat, lon), ca = inAny("CA", lat, lon);
+  if (us && ca) return inCanada(lat, lon) ? "CA" : "US";
+  return us ? "US" : ca ? "CA" : null;
+}
+
+/** The sources to try, in order, for an area centred at (lat, lon), of "swisstopo", "ign", "linz", "nrcan", "usgs". */
+export function sourcesAt(lat, lon) {
+  const out = [];
+  if (inAny("CH", lat, lon)) out.push("swisstopo");
+  if (inFrance(lat, lon)) out.push("ign");
+  if (inAny("NZ", lat, lon)) out.push("linz");
+  const us = inAny("US", lat, lon), ca = inAny("CA", lat, lon);
+  // both: Canada first north of the border (3DEP has 30 m heights over southern Canada; HRDEM nothing south of it)
+  if (us && ca) out.push(...(inCanada(lat, lon) ? ["nrcan", "usgs"] : ["usgs", "nrcan"]));
+  else if (us) out.push("usgs");
+  else if (ca) out.push("nrcan");
+  return out;
+}
+
+// ---- the libraries, loaded once (classic scripts setting window.GeoTIFF and window.proj4; already there in tests) ----------
+let gtP = null, p4P = null;
+function script(src, name) {
+  return new Promise((res, rej) => {
+    if (globalThis[name]) { res(globalThis[name]); return; }
+    if (typeof document === "undefined") { rej(new Error(name)); return; }
+    const s = document.createElement("script"); s.src = src;
+    s.onload = () => (globalThis[name] ? res(globalThis[name]) : rej(new Error(name)));
+    s.onerror = () => rej(new Error(name));
+    document.head.appendChild(s);
+  });
+}
+const geotiff = () => (gtP ||= script(GEOTIFF, "GeoTIFF").catch((e) => { gtP = null; throw e; }));
+const proj4js = () => (p4P ||= script(PROJ4, "proj4").catch((e) => { p4P = null; throw e; }));
+/** The points [[lat, lon]…] in a grid (EPSG code): [[X, Y]…]. */
+async function project(pts, epsg) {
+  const p4 = await proj4js(), f = p4("WGS84", crsDef(epsg));
+  return pts.map(([la, lo]) => f.forward([lo, la]));
+}
+const boxOf = (P) => {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const [x, y] of P) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  return [x0, y0, x1, y1];
+};
+const llBox = (pts) => boxOf(pts.map(([la, lo]) => [lo, la]));          // [w, s, e, n]
+async function fetchOk(url, opts = {}, tries = 3) {
+  for (let attempt = 0; ; attempt++) {
+    let r = null;
+    try { r = await fetch(url, { credentials: "omit", referrerPolicy: "no-referrer", ...opts }); } catch (e) { if (attempt >= tries - 1) throw e; }
+    if (r?.ok) return r;
+    if (r && (attempt >= tries - 1 || (r.status !== 429 && r.status < 500))) throw new Error(`${new URL(url).host} ${r.status}`);
+    await new Promise((ok) => setTimeout(ok, 1500 * (attempt + 1)));
+  }
+}
+async function pool(jobs, fn, n = PAR) {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(n, jobs.length) }, async () => { while (next < jobs.length) { const k = next++; await fn(jobs[k], k); } }));
+}
+
+/**
+ * A window of a GeoTIFF / COG (a URL read by HTTP range, or the file's bytes) over the box [x0, y0, x1, y1] in its grid, from
+ * the coarsest of its images whose pixel is at most `res` (its overviews): { data, w, h, x0, y0, rx, ry, nodata }, the
+ * window's top-left corner at (x0, y0), pixels rx × ry (ry negative). null when the box misses the image.
+ */
+export async function readWindow(src, box, res = 0) {
+  const GT = await geotiff();
+  const tif = typeof src === "string" ? await GT.fromUrl(src, { allowFullFile: false }) : await GT.fromArrayBuffer(src);
+  const im0 = await tif.getImage(0), W0 = im0.getWidth(), H0 = im0.getHeight();
+  const [ox, oy] = im0.getOrigin(), [rx0, ry0] = im0.getResolution();
+  let im = im0;
+  if (res > Math.abs(rx0) * 1.5) {
+    const n = await tif.getImageCount();
+    for (let i = 1; i < n; i++) {
+      const o = await tif.getImage(i);
+      if ((o.fileDirectory.NewSubfileType || 0) & 4) continue;              // a mask, not an overview
+      if (Math.abs(rx0) * (W0 / o.getWidth()) <= res * 1.01) im = o; else break;
+    }
+  }
+  const W = im.getWidth(), H = im.getHeight(), rx = rx0 * (W0 / W), ry = ry0 * (H0 / H);
+  const c0 = Math.max(0, Math.floor((box[0] - ox) / rx) - 1), c1 = Math.min(W, Math.ceil((box[2] - ox) / rx) + 1);
+  const r0 = Math.max(0, Math.floor((box[3] - oy) / ry) - 1), r1 = Math.min(H, Math.ceil((box[1] - oy) / ry) + 1);
+  if (c1 <= c0 || r1 <= r0) return null;
+  const [data] = await im.readRasters({ window: [c0, r0, c1, r1], samples: [0] });
+  return { data, w: c1 - c0, h: r1 - r0, x0: ox + c0 * rx, y0: oy + r0 * ry, rx, ry, nodata: im0.getGDALNoData() ?? null };
+}
+
+/** Heights at the points P [[X, Y]…] of a grid from rasters (readWindow's) in it, bilinear on the pixels' centres. */
+function sampleInto(z, P, rasters, onlyHoles = false) {
+  const bad = (v, nd) => !Number.isFinite(v) || (nd !== null && v === nd) || v < -1000 || v > 9000;
+  P.forEach(([X, Y], i) => {
+    if (onlyHoles && !Number.isNaN(z[i])) return;
+    for (const r of rasters) {
+      const fx = (X - r.x0) / r.rx - 0.5, fy = (Y - r.y0) / r.ry - 0.5;
+      if (fx < -0.5 || fy < -0.5 || fx > r.w - 0.5 || fy > r.h - 0.5) continue;
+      const x = Math.max(0, Math.min(r.w - 1.0001, fx)), y = Math.max(0, Math.min(r.h - 1.0001, fy));
+      const i0 = Math.floor(x), j0 = Math.floor(y), ax = x - i0, ay = y - j0, d = r.data, w = r.w;
+      let s = 0, sw = 0;
+      for (const [a, b, wt] of [[i0, j0, (1 - ax) * (1 - ay)], [i0 + 1, j0, ax * (1 - ay)], [i0, j0 + 1, (1 - ax) * ay], [i0 + 1, j0 + 1, ax * ay]]) {
+        const v = d[b * w + a];
+        if (wt > 0 && !bad(v, r.nodata)) { s += v * wt; sw += wt; }
+      }
+      if (sw >= 0.5) { z[i] = s / sw; break; }
+    }
+  });
+}
+const nanShare = (z) => { let n = 0; for (const v of z) if (Number.isNaN(v)) n++; return n / z.length; };
+
+/** swissALTI3D: the 2 m tiles of 1 km (LV95) under the points, each tile's latest year, read whole. null when not Swiss. */
+async function fromSwiss(pts, step, onProgress) {
+  const P = await project(pts, 2056), [x0, y0, x1, y1] = boxOf(P), want = new Set();
+  for (let e = Math.floor(x0 / 1000); e <= Math.floor(x1 / 1000); e++) for (let n = Math.floor(y0 / 1000); n <= Math.floor(y1 / 1000); n++) want.add(`${e}-${n}`);
+  if (want.size > CH_MAX_TILES) throw new Error("swisstopo: area too large");
+  const best = new Map();                        // tile → { year, href }
+  let url = `${CH_STAC}?bbox=${llBox(pts).map((v) => v.toFixed(5)).join(",")}&limit=100`;
+  for (let page = 0; url && page < 8; page++) {
+    const j = await (await fetchOk(url)).json();
+    for (const f of j.features || []) {
+      const m = /swissalti3d_(\d{4})_(\d+-\d+)/.exec(f.id || "");
+      if (!m || !want.has(m[2])) continue;
+      const a = Object.entries(f.assets || {}).find(([k]) => /_2_2056_\d+\.tif$/.test(k));
+      if (a && (!best.has(m[2]) || best.get(m[2]).year < +m[1])) best.set(m[2], { year: +m[1], href: a[1].href });
+    }
+    url = (j.links || []).find((l) => l.rel === "next")?.href || null;
+  }
+  if (best.size < want.size / 2) return null;
+  const rasters = [];
+  let done = 0;
+  await pool([...best.values()], async ({ href }) => {
+    const r = await readWindow(await (await fetchOk(href)).arrayBuffer(), [-Infinity, -Infinity, Infinity, Infinity]);
+    if (r) rasters.push(r);
+    onProgress?.(++done / best.size);
+  });
+  const z = new Float32Array(pts.length).fill(NaN);
+  sampleInto(z, P, rasters);
+  return { z, info: { tiles: best.size, years: [...new Set([...best.values()].map((b) => b.year))].sort() } };
+}
+
+/** 3DEP: one float TIFF of the area at the grid's step (its pixel in degrees), asked of USGS's ImageServer. */
+async function fromUsgs(pts, step, onProgress) {
+  const [lo0, la0, lo1, la1] = llBox(pts), cos = Math.cos((((la0 + la1) / 2) * Math.PI) / 180);
+  let px = Math.max(1, step) / 111320;          // the pixel in degrees of latitude
+  const side = () => [Math.ceil((lo1 - lo0) / (px / cos)) + 3, Math.ceil((la1 - la0) / px) + 3];
+  while (Math.max(...side()) > US_MAX_SIDE) px *= 1.25;
+  const [w, h] = side(), dlo = (w * px) / cos, dla = h * px, cx = (lo0 + lo1) / 2, cy = (la0 + la1) / 2;
+  const q = new URLSearchParams({ bbox: [cx - dlo / 2, cy - dla / 2, cx + dlo / 2, cy + dla / 2].map((v) => v.toFixed(7)).join(","), bboxSR: "4326",
+    imageSR: "4326", size: `${w},${h}`, format: "tiff", pixelType: "F32", noData: "-9999", compression: "LZ77",
+    interpolation: "RSP_BilinearInterpolation", f: "image" });
+  onProgress?.(0.1);
+  const r = await fetchOk(`${US_3DEP}?${q}`);
+  if (!/tiff/.test(r.headers.get("content-type") || "")) throw new Error("3DEP: not a TIFF");
+  const ras = await readWindow(await r.arrayBuffer(), [-Infinity, -Infinity, Infinity, Infinity]);
+  onProgress?.(1);
+  const z = new Float32Array(pts.length).fill(NaN);
+  if (ras) { ras.nodata = -9999; sampleInto(z, pts.map(([la, lo]) => [lo, la]), [ras]); }
+  return { z, info: { size: [w, h], px: Math.round(px * 111320 * 10) / 10 } };
+}
+
+/** HRDEM: the LiDAR projects' DTM COGs over the area (Canada's STAC), newest first, each filling what the newer ones lack. */
+async function fromCanada(pts, step, onProgress) {
+  const bb = llBox(pts).map((v) => v.toFixed(5)).join(",");
+  const j = await (await fetchOk(`${CA_STAC}?collections=hrdem-lidar&bbox=${bb}&limit=40`)).json();
+  const items = (j.features || []).filter((f) => f.assets?.dtm?.href && crsDef(f.properties?.["proj:epsg"] || 3979))
+    .sort((a, b) => String(b.properties?.datetime || "").localeCompare(String(a.properties?.datetime || "")));
+  if (!items.length) return null;
+  const z = new Float32Array(pts.length).fill(NaN), used = [], byCrs = new Map();
+  const tried = items.slice(0, CA_MAX_ITEMS);
+  for (let k = 0; k < tried.length; k++) {
+    const f = tried[k], epsg = f.properties?.["proj:epsg"] || 3979;
+    if (!byCrs.has(epsg)) byCrs.set(epsg, await project(pts, epsg));
+    const P = byCrs.get(epsg), left = P.filter((_, i) => Number.isNaN(z[i]));   // the points still without a height
+    if (!left.length) break;
+    try {
+      const r = await readWindow(f.assets.dtm.href, boxOf(left), step);
+      if (r) { const before = nanShare(z); sampleInto(z, P, [r], true); if (nanShare(z) < before) used.push(f.id); }
+    } catch (e) { console.warn(f.id, e); }
+    onProgress?.((k + 1) / tried.length);
+    if (nanShare(z) < 0.005) break;
+  }
+  return used.length ? { z, info: { projects: used } } : null;
+}
+
+/** NZ Topo50's sheet holding a point of NZTM (24 × 36 km): { code, box }, or null. */
+const TOPO50_ROWS = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+export function topo50(E, N) {
+  const c = Math.floor((E - 988000) / 24000), r = Math.floor((6810000 - N) / 36000);
+  if (c < 1 || c > 99 || r < 0 || r >= 72) return null;
+  return { code: `${"ABC"[Math.floor(r / 24)]}${TOPO50_ROWS[r % 24]}${String(c).padStart(2, "0")}`,
+    box: [988000 + c * 24000, 6810000 - (r + 1) * 36000, 988000 + (c + 1) * 24000, 6810000 - r * 36000] };
+}
+/** LINZ's national 1 m DEM: one COG a Topo50 sheet, the sheets under the points read by HTTP range at the grid's step. */
+async function fromLinz(pts, step, onProgress) {
+  const P = await project(pts, 2193), [x0, y0, x1, y1] = boxOf(P), sheets = new Map();
+  for (const [E, N] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) { const s = topo50(E, N); if (s) sheets.set(s.code, s); }
+  if (!sheets.size || sheets.size > NZ_MAX_SHEETS) return null;
+  const rasters = [];
+  let done = 0;
+  await pool([...sheets.values()], async (s) => {
+    const box = [Math.max(x0, s.box[0]), Math.max(y0, s.box[1]), Math.min(x1, s.box[2]), Math.min(y1, s.box[3])];
+    try { const r = await readWindow(`${NZ_DEM}/${s.code}.tiff`, box, step); if (r) rasters.push(r); }
+    catch (e) { console.warn(s.code, e); }                     // a sheet at sea or without LiDAR: none
+    onProgress?.(++done / sheets.size);
+  });
+  if (!rasters.length) return null;
+  const z = new Float32Array(pts.length).fill(NaN);
+  sampleInto(z, P, rasters);
+  return { z, info: { sheets: [...sheets.keys()] } };
+}
+const NATIONAL = { swisstopo: fromSwiss, usgs: fromUsgs, nrcan: fromCanada, linz: fromLinz };
+/** A national source's heights at the points [[lat, lon]…]: { z, info } (NaN where it has none), or null when it covers none. */
+export async function nationalHeights(source, pts, step = 2, onProgress) { return NATIONAL[source](pts, step, onProgress); }
+
 /** Holes (NaN) filled from their neighbours, repeatedly: a few nodes off IGN's model at a border. */
 function fillHoles(z, nx, ny) {
   for (let pass = 0; pass < 50; pass++) {
@@ -149,37 +448,52 @@ function fillHoles(z, nx, ny) {
 }
 
 /**
- * The grid of heights: { z (Float32Array, row by row from the map's top), nx, ny, step, source ("ign" | "tiles"), ms,
- * cached }. node(i, j) gives the node's [lat, lon]; key names the map and its placing (the cache's key).
+ * The grid of heights: { z (Float32Array, row by row from the map's top), nx, ny, step, source ("ign", "swisstopo", "usgs",
+ * "nrcan", "linz", "tiles", or one of the first five + "+tiles" when the tiles filled its holes), ms, cached }. node(i, j)
+ * gives the node's [lat, lon]; key names the map and its placing (the cache's key).
  */
 export async function loadGrid({ key, nx, ny, step, node, onProgress }) {
-  const ck = `dem:v2:${key}:${nx}x${ny}`;
+  const [la, lo] = node((nx - 1) / 2, (ny - 1) / 2);
+  const order = sourcesAt(la, lo);
+  // grids kept before the national sources (2026-11-06) were the tiles' outside France: a key of their own
+  const national = order.some((s) => s !== "ign");
+  const ck = `dem:${national ? "v3" : "v2"}:${key}:${nx}x${ny}`;
   const hit = await cached(ck);
   if (hit?.z?.length === nx * ny) return { ...hit, cached: true, ms: 0 };
   const t0 = performance.now(), pts = [];
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) pts.push(node(i, j));
-  const [la, lo] = node((nx - 1) / 2, (ny - 1) / 2);
   let z = null, source = "tiles", info = {};
-  if (inFrance(la, lo)) {
+  for (const s of order) {
     try {
-      // a probe of 7 × 7 nodes first: a map mostly outside IGN's model (abroad near a border) asks for the tiles at once
-      const probe = [];
-      for (let b = 0; b < 7; b++) for (let a = 0; a < 7; a++) probe.push(node(Math.round((a / 6) * (nx - 1)), Math.round((b / 6) * (ny - 1))));
-      const pz = await fromIgn(probe);
-      if (pz.filter((v) => Number.isNaN(v)).length > 24) throw new Error("IGN: outside its model");
-      z = await fromIgn(pts, onProgress);
-      source = "ign";
-      // the nodes IGN has no height for (Monaco, the sea, across a border: 3 % of a map by Monaco, 2026-10-24) from the tiles
-      const holes = [];
-      z.forEach((v, k) => { if (Number.isNaN(v)) holes.push(k); });
-      if (holes.length) {
-        try { const r = await fromTiles(holes.map((k) => pts[k]), step); holes.forEach((k, q) => { z[k] = r.z[q]; }); source = "ign+tiles"; info = { holes: holes.length }; }
-        catch (e) { console.warn(e); }
-        fillHoles(z, nx, ny);
+      if (s === "ign") {
+        // a probe of 7 × 7 nodes first: a map mostly outside IGN's model (abroad near a border) asks for the tiles at once
+        const probe = [];
+        for (let b = 0; b < 7; b++) for (let a = 0; a < 7; a++) probe.push(node(Math.round((a / 6) * (nx - 1)), Math.round((b / 6) * (ny - 1))));
+        const pz = await fromIgn(probe);
+        if (pz.filter((v) => Number.isNaN(v)).length > 24) throw new Error("IGN: outside its model");
+        z = await fromIgn(pts, onProgress);
+        info = {};
+      } else {
+        const r = await NATIONAL[s](pts, step, onProgress);
+        // a source covering under half the map gives way to the next one (a map across a border, a model not flown there)
+        if (!r || nanShare(r.z) > 0.5) { if (r) console.warn(`${s}: covers ${Math.round(100 - 100 * nanShare(r.z))}% of the map`); continue; }
+        z = r.z; info = { ...r.info };
       }
-    } catch (e) { console.warn(e); z = null; source = "tiles"; }
+      source = s;
+      break;
+    } catch (e) { console.warn(e); z = null; }
   }
-  if (!z) { const r = await fromTiles(pts, step, onProgress); z = r.z; info = { zoom: r.zoom, tiles: r.tiles }; if (!fillHoles(z, nx, ny)) throw new Error("dem"); }
+  if (z) {
+    // the nodes the source has no height for (Monaco, the sea, across a border: 3 % of a map by Monaco, 2026-10-24) from the tiles
+    const holes = [];
+    z.forEach((v, k) => { if (Number.isNaN(v)) holes.push(k); });
+    if (holes.length) {
+      try { const r = await fromTiles(holes.map((k) => pts[k]), step); holes.forEach((k, q) => { z[k] = r.z[q]; }); source = `${source}+tiles`; info.holes = holes.length; }
+      catch (e) { console.warn(e); }
+      fillHoles(z, nx, ny);
+    }
+  }
+  if (!z) { source = "tiles"; const r = await fromTiles(pts, step, onProgress); z = r.z; info = { zoom: r.zoom, tiles: r.tiles }; if (!fillHoles(z, nx, ny)) throw new Error("dem"); }
   const rec = { z, nx, ny, step, source, ...info, at: Date.now() };
   keep(ck, rec);
   return { ...rec, cached: false, ms: Math.round(performance.now() - t0) };

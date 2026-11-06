@@ -11,10 +11,22 @@ import { t, tn } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 export const ACCEPT = "image/*,.pdf,.tif,.tiff,.gpx,.kml,.kmz,.pgw,.jgw,.tfw,.wld,.prj";
-const ONLINE = {
-  ortho: { url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", max: 19, fr: true },
-  plan: { url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", max: 18, fr: true },
-  osm: { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", max: 18, fr: false },
+// The online layers, all Web Mercator tiles. `country` (ISO alpha-2): offered only for a map there (trace/terrain.js countryAt
+// at the map's middle; every layer when the map has no georeference); `off`: not offered (New Zealand's photos until Ozimut has
+// a LINZ Basemaps key, free on request to LINZ: their keys made in the browser last 90 days).
+const LINZ_KEY = "";
+export const ONLINE = {
+  ortho: { url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", max: 19, country: "FR" },
+  plan: { url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", max: 18, country: "FR" },
+  // swisstopo (open data, « © swisstopo »): SWISSIMAGE 10 cm to 25 cm, the national maps
+  swissimage: { url: "https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.swissimage/default/current/3857/{z}/{x}/{y}.jpeg", max: 20, country: "CH" },
+  chmap: { url: "https://wmts.geo.admin.ch/1.0.0/ch.swisstopo.pixelkarte-farbe/default/current/3857/{z}/{x}/{y}.jpeg", max: 18, country: "CH" },
+  // The National Map (USGS, public domain): its imagery (NAIP and others) and topo cached to zoom 16 (~2 m a pixel)
+  usimagery: { url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryOnly/MapServer/tile/{z}/{y}/{x}", max: 16, country: "US" },
+  ustopo: { url: "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}", max: 16, country: "US" },
+  // LINZ Basemaps (CC BY 4.0, « © LINZ »): New Zealand's aerial photos, a key needed
+  nzaerial: { url: `https://basemaps.linz.govt.nz/v1/tiles/aerial/WebMercatorQuad/{z}/{x}/{y}.webp?api=${LINZ_KEY}`, max: 20, country: "NZ", off: !LINZ_KEY },
+  osm: { url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png", max: 18 },
 };
 
 /** The map's georeference as functions (data/frame.js), or null when the map has none. */
@@ -128,7 +140,7 @@ async function addGpx(E, file) {
   persist(E);
 }
 
-// ---- online layers: IGN's aerial photos and Plan IGN (France), OpenStreetMap --------------------------------------------------------
+// ---- online layers: aerial photos and national maps (France, Switzerland, the USA, New Zealand), OpenStreetMap ----------------
 async function online(E, entry) {
   const fr = await frame(E);
   if (!fr) { E.say(t("map.bg.needGeo"), "bad"); return; }
@@ -246,8 +258,21 @@ function pick(E) {
   const i = document.createElement("input"); i.type = "file"; i.multiple = true; i.accept = ACCEPT;
   i.onchange = () => addFiles(E, i.files); i.click();
 }
+/** The online layers offered for the map: those of the country at its middle and those of no country. */
+async function onlineLayers(E) {
+  let cc = null;
+  const fr = await frame(E);
+  if (fr) {
+    try {
+      const b = E.live.bounds(), [lat, lon] = mmToLatLon(fr, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2);
+      cc = (await import("../trace/terrain.js")).countryAt(lat, lon);
+    } catch (e) { cc = null; }
+  }
+  return Object.keys(ONLINE).filter((k) => !ONLINE[k].off && (!fr || !ONLINE[k].country || ONLINE[k].country === cc));
+}
 async function addOnline(E) {
-  const v = await modal(E, { title: t("map.rib.bg-online"), body: field(t("map.bg.layer"), sel("layer", [["ortho", t("map.bg.layer.ortho")], ["plan", t("map.bg.layer.plan")], ["osm", t("map.bg.layer.osm")]], "ortho")) + `<p class="mp-hint">${esc(t("map.bg.onlineHint"))}</p>` });
+  const keys = await onlineLayers(E);
+  const v = await modal(E, { title: t("map.rib.bg-online"), body: field(t("map.bg.layer"), sel("layer", keys.map((k) => [k, t(`map.bg.layer.${k}`)]), keys[0])) + `<p class="mp-hint">${esc(t("map.bg.onlineHint"))}</p>` });
   if (!v) return;
   const entry = { id: `b${Date.now().toString(36)}`, name: t(`map.bg.layer.${v.layer}`), kind: "online", layer: v.layer, toMap: [1, 0, 0, -1, 0, 0], opacity: 0.6, visible: true, image: null };
   E.view.backgrounds.unshift(entry);

@@ -75,7 +75,7 @@ export class Live {
     this.layoutImages = applyParams(this.ctx, d.params);      // logos and the layout's order: never left out (owner, 2026-11-04)
     for (const s of d.symbols) if (s.otp !== 3 && s.otp !== 4) this.compileSym(s);
     for (const s of d.symbols) if (s.otp === 3 || s.otp === 4) this.compileSym(s);
-    this.byId = new Map(); this.grid = new Map(); this.ordMax = 0;
+    this.byId = new Map(); this.grid = new Map(); this.ordMax = 0; this.groups = new Map();
     d.objects.forEach((o, i) => { o.ord = i + 1; });
     for (const o of d.objects) this.place(o);
     this.map.ready = Promise.all(this.layoutImages.map((b) => b.ready));
@@ -103,6 +103,7 @@ export class Live {
     if (inst && (part?.hidden || o.hidden)) inst.visible = false;
     o.bb = this.bboxOf(o);
     this.indexAdd(o);
+    if (o.omap?.o != null) { let g = this.groups.get(o.omap.o); if (!g) this.groups.set(o.omap.o, (g = new Set())); g.add(o); }
   }
   unplace(o) {
     const inst = o.inst;
@@ -110,6 +111,7 @@ export class Live {
     o.inst = null;
     this.indexDel(o);
     this.byId.delete(o.id);
+    if (o.omap?.o != null) this.groups.get(o.omap.o)?.delete(o);
   }
   bboxOf(o) {
     if (o.inst?.bbox && Number.isFinite(o.inst.bbox[0])) return o.inst.bbox.slice();
@@ -207,9 +209,35 @@ export class Live {
     this.record({ kind: "add", id: o.id, after: clone(o) }, o.bb);
     return o;
   }
+  /** The other copies of one object of a Mapper map whose combined symbol became one OCAD object per part (fromomap.js:
+   *  `omap.o` the source object; a multi-part line's `piece`, an area's border line per `ring`): kept in step. */
+  siblings(o) {
+    if (o?.omap?.o == null) return [];
+    return [...(this.groups.get(o.omap.o) || [])].filter((s) => s !== o && (s.omap.piece || 0) === (o.omap.piece || 0));
+  }
+  /** A sibling's coordinates after `o` changed: the same, or an area's ring as its border line, or a border line back into its area. */
+  siblingCoords(o, s) {
+    const ro = o.omap.ring, rs = s.omap.ring;
+    if (ro == null && rs == null) return o.coords;
+    const parts = G.partsOf(o.coords);
+    if (ro == null && rs != null && o.otp === 3) {
+      const ring = parts[rs]; if (!ring) return null;
+      const pts = ring.pts.map((p) => [p[0], p[1], p[2] & ~G.F.HOLE]);
+      if (pts.length && (pts[0][0] !== pts[pts.length - 1][0] || pts[0][1] !== pts[pts.length - 1][1])) pts.push([pts[0][0], pts[0][1], 0]);
+      return G.coordsOf([{ pts, hole: false }]);
+    }
+    if (ro != null && rs == null && s.otp === 3) {
+      const sp = G.partsOf(s.coords); if (!sp[ro]) return null;
+      const pts = parts[0].pts.slice(); if (pts.length > 1 && pts[0][0] === pts[pts.length - 1][0] && pts[0][1] === pts[pts.length - 1][1]) pts.pop();
+      sp[ro] = { pts, hole: ro > 0 };
+      return G.coordsOf(sp);
+    }
+    return null;
+  }
   remove(id) {
     const o = this.byId.get(id);
     if (!o) return;
+    if (!this._sync && o.omap?.o != null) { this._sync = true; try { for (const s of this.siblings(o)) this.remove(s.id); } finally { this._sync = false; } }
     this.check(o.bb);
     const i = this.doc.objects.indexOf(o), before = clone(o), box = o.bb;
     this.unplace(o);
@@ -227,6 +255,17 @@ export class Live {
     this.place(o);
     this.reorder(o);
     this.record({ kind: "update", id, before, after: clone(o) }, union(box0, o.bb));
+    if (!this._sync && o.omap?.o != null && (patch.coords || patch.ang != null)) {
+      this._sync = true;
+      try {
+        for (const s of this.siblings(o)) {
+          const p = {};
+          if (patch.coords) { const c = this.siblingCoords(o, s); if (c) p.coords = c; }
+          if (patch.ang != null && s.otp === o.otp) p.ang = patch.ang;
+          if (Object.keys(p).length) this.update(s.id, p);
+        }
+      } finally { this._sync = false; }
+    }
     return o;
   }
   /** A render object goes back to its record's place in its symbol's list (its drawing order among its symbol's objects). */

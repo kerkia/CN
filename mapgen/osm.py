@@ -186,10 +186,13 @@ def features(data: dict) -> list[dict]:
     return out
 
 
-def project(feats: list[dict]) -> list[dict]:
-    """Every [lat, lon] in Lambert 93 metres (X, Y), once for all the tiles."""
+def project(feats: list[dict], forward=None) -> list[dict]:
+    """Every [lat, lon] in Lambert 93 metres (X, Y), or in the tiles' own system by forward(lat, lon) -> (X, Y) (beyond
+    France: mapgen/grids.py), once for all the tiles."""
+    fwd = forward or lambert93.forward
+
     def pr(pts):
-        return [lambert93.forward(a, b) for a, b in pts]
+        return [fwd(a, b) for a, b in pts]
     for f in feats:
         if "rings" in f:
             f["rings"] = [(r, pr(p)) for r, p in f["rings"]]

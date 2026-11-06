@@ -1975,9 +1975,47 @@ Every multiple-choice game was played through to its score page at phone size, w
   changed: the change inside one's own sector wins, else the teammate's), an idle editor taking a teammate's version when it sees it;
   new objects get ids unique across editors, `doc.newId`). Tests: `t_merge.mjs`, `t_spotw.mjs`, `t_bdtopo.mjs` (live WFS).
   Node tests: `node --import ./tools/mapper/shim.mjs tools/mapper/<t_*.mjs>` (`npm install` in `tools/mapper` for xmldom); local
-  page: launch config `pages-dev-mapper` (8780, the test account an administrator). Not done: generalisation, OCAD's combined objects
-  kept in step when one copy is edited, a DeviceN colour space for colours mixing several inks (CMYK in the composite), other countries'
-  data (study of 2026-11-06 in the session's answer: Switzerland, the Netherlands, Sweden, Spain, Belgium, Germany's open Länder first).
+  page: launch config `pages-dev-mapper` (8780, the test account an administrator).
+  **Third pass (owner, the same evening: « address the 2 points not done, generalisation as a guided tool, Switzerland, USA, Canada
+  and New Zealand »)**: **DeviceN** — the spot-ink composite paints a colour mixing several inks in a PDF DeviceN space of those
+  inks (its tint transform a PostScript function to CMYK, `colors.js` `deviceNOf`), a colour of one ink in a Separation space as
+  before. **Mapper's combined copies kept in step** (`doc.js` `groups` by `omap.o`, `siblings`, `siblingCoords`: a copy's
+  coordinates follow the one changed — an area's border lines follow its rings —, deleted together, `_sync` under undo; the
+  editor's geometry edits act on one object per group, `E.lead`; a duplicate is a group of its own; `t_combo.mjs` gives the sample's
+  canopy a second line part, the sample files' combined symbols all becoming one OCAD record otherwise). **Generalisation**
+  (`generalise.js`, Vérifier › « Généraliser », a right-hand pane `gen`): a guided sequence — the scale changed (symbols scaled by
+  `layout.scaleSymbol`, the IOF minimums left), then each step found, shown, applied or skipped: objects under the minimum size
+  (enlarged or deleted), lines with points closer than the scale needs (simplified), overlapping areas of one symbol (united,
+  up to four passes), crowded point objects (thinned), contours closer than the line widths (listed, by hand); each step one undo.
+  **Four more countries** (`trace/terrain.js` `countryAt`, `sourcesAt`): the terrain model swisstopo swissALTI3D, USGS 3DEP
+  (ImageServer), NRCan HRDEM (COG), LINZ 1 m DEM (COG), read by geotiff.js 2.1.3 (vendored, `vendor.GEOTIFF`), else the AWS tiles;
+  the country's vectors under Données › « Données nationales » (`data-national`, `dataui.nationalSource`: France BD TOPO,
+  Switzerland swissTLM3D through swisstopo's vector tiles — `data/mvt.js`, `data/ch.js`, 64 tiles at most —, the USA The National
+  Map's TIGER roads and trails, NHD (its server slow: past 75 s the 3D Hydrography Program stands in) and FEMA's USA Structures —
+  `data/us.js`; Canada and New Zealand: OpenStreetMap); online backgrounds by country (`backgrounds.ONLINE` `country`: SWISSIMAGE and
+  the national map in Switzerland, USGS imagery and US Topo in the USA, LINZ aerial in New Zealand once a LINZ key is set,
+  `LINZ_KEY`, empty for now); a new map's grid by country (`pages/mapper.js realWorldAt`: Lambert 93 in France, LV95 2056,
+  NZTM2000 2193, NAD83 / UTM in the USA and Canada, else WGS 84 / UTM; a rough France box took Bern before `countryAt`). Checked in
+  the browser: Bern's old town (1 477 objects from swisstopo, SWISSIMAGE aligned), Central Park (3DEP contours, TIGER roads, the
+  lake, FEMA buildings).
+  **Generated maps abroad** (`mapgen/grids.py`, `mapgen/sources.py`; the workflow, the API and `trace/lidarmap.js` follow):
+  1 km tiles in each country's grid, named by their west and **south** km — `ch_2583_1219` (LV95, swissSURFACE3D's zipped LAS
+  through swisstopo's STAC API, newest year), `us_13_0475_4427` (UTM zone, USGS 3DEP's point tiles on AWS `usgs-lidar-public`,
+  projects from Hobu's `resources.geojson`, reprojected from Web Mercator), `ca_18_0433_5038` (UTM zone, NRCan CanElevation's
+  COPC on S3, its 450 MB index read by HTTP ranges through its R-tree with apsw, one project a tile), `nz_1571_5172` (NZTM2000,
+  LINZ's point clouds on OpenTopography's public bucket, by sheet and tile names); France's `0391_6819` (west, **north** km)
+  unchanged. Abroad a tile's margin is written as `edge_<neighbour>.laz` so that karttapullautin draws its edges with real points
+  (Switzerland, as France, none); runs grouped by grid in `work/<grid>/`; the record gains `crs`, `country`, `src`, `project`; a
+  tile abroad counts double toward a round's 16; `lidarmap.yml` installs `laspy[lazrs] pyproj requests apsw` in a step of its own
+  (`continue-on-error`: France's path never depends on them), 120 min. `trace/lidarmap.js`: `countryAt` (simplified Swiss and US
+  borders embedded, boxes elsewhere), `tileIdsFor`, `gridOf`, `gridOfName`, `CREDITS` / `creditOf` (each country's point clouds
+  credited with their licence: IGN Licence Ouverte 2.0, swisstopo, USGS 3DEP, NRCan OGL-Canada 2.0, LINZ CC BY 4.0); a composed
+  map's world file in its grid (Switzerland's in UTM 32, georef.js having no oblique Mercator: 1 cm over 4 × 3 km). Analyse solo's
+  generated maps and their 3D view, and Cartographier's « LiDAR » (each tile placed by its own grid, `data/lidar.js` `toMm`;
+  `t_lidarabroad.mjs`), take them. Measured on the PC (one tile each, karttapullautin 4-35 s): Switzerland 1.75 M points, download
+  8 s; the USA 27.7 M, 85-95 s; Canada 47 M, 125-134 s; New Zealand 20.8 M, 330 s the first time (338 MB at 1 MB/s). Not yet run in
+  CI, nor with OpenStreetMap drawn over (Overpass did not answer the PC); vector files up to 56 MB (New Zealand sprint).
+  Not done: other countries' data (the Netherlands, Sweden, Spain, Belgium, Germany's open Länder next).
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
   does it (phases 1-3 of the study; OCAD and Mapper maps since the third pass, below), in the browser. **No AGPL code**: Purple

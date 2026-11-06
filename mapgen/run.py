@@ -20,7 +20,16 @@ north-west corner; a forest map's symbols) and t/<id>.s.png (the same in a sprin
 For Cartographier (2026-11-06), per style: t/<id>.<style>.vec.json, karttapullautin's contours, form lines, cliffs, knolls and
 small depressions as vectors in Lambert 93 (dxf.py), and t/<id>.<style>.vege.png, its vegetation raster (1 m a pixel from
 the tile's north-west corner); the record's "vec" lists the styles that have them, with their version (VEC_V).
-A tile IGN has no LiDAR for yet: t/<id>.json alone, {"none": true}."""
+A tile IGN has no LiDAR for yet: t/<id>.json alone, {"none": true}.
+
+Beyond France (2026-11-06): Switzerland, the United States, Canada and New Zealand, each in a grid of its own (grids.py:
+ch_2583_1219 in LV95, us_13_0475_4427 / ca_18_0433_5038 in UTM on WGS 84, nz_1571_5172 in NZTM2000), their point clouds read
+by sources.py, the ground's heights computed from the points' ground class, the rest the same. A run makes each grid's tiles
+apart (karttapullautin's batch mode must never mix two coordinate systems), in work/<grid>/. Every record names its system
+("crs": "EPSG:…", "country") and its source ("src"); the world file's and the vectors' coordinates are in that system.
+
+    py -3 -m mapgen tiles ch_2583_1219 --out DIR
+    py -3 -m mapgen area 40.00 -105.30 40.01 -105.28 --country us --out DIR"""
 from __future__ import annotations
 
 import argparse
@@ -40,7 +49,7 @@ import httpx
 import numpy as np
 from PIL import Image
 
-from . import dxf, lambert93, osm
+from . import dxf, grids, lambert93, osm
 
 WFS = "https://data.geopf.fr/wfs/ows"
 UA = osm.UA
@@ -60,6 +69,13 @@ KP_STYLE = {"forest": {}, "sprint": {"formline": "0", "contour_interval": "2.5",
 KP_VERSION = "2.15.4"
 ID = re.compile(r"^(\d{4})_(\d{4})$")
 MAX_TILES = 16                   # a run's work at most (~4 GB of point clouds)
+# beyond France a tile counts double in a round's work: the American and Canadian clouds hold 25-50 points a m² (IGN's ~10-20),
+# and they are read with a margin (sources.py)
+ABROAD_COST = 2
+
+
+def cost(tids: list[str]) -> int:
+    return sum(1 if grids.parse(t).country == "fr" else ABROAD_COST for t in tids)
 # karttapullautin's settings changed from its own defaults (pullauta.ini, written by the program at its first run)
 # (savetempfiles and output_dxf on since 2026-11-06: each tile's contours, cliffs, knolls as DXF and its vegetation raster, for
 # Cartographier's vectors)
@@ -124,11 +140,8 @@ def tile_ids(lat0: float, lon0: float, lat1: float, lon1: float) -> list[str]:
 
 
 def corner(tid: str) -> tuple[int, int]:
-    """The tile's north-west corner in Lambert 93 metres."""
-    m = ID.match(tid)
-    if not m:
-        raise ValueError(f"bad tile id {tid!r}")
-    return int(m[1]) * 1000, int(m[2]) * 1000
+    """The tile's north-west corner in its system's metres (France: Lambert 93)."""
+    return grids.corner(tid)
 
 
 def catalogue(tids: list[str], http: httpx.Client) -> dict[str, dict]:
@@ -206,13 +219,18 @@ def rendered(home: Path, tid: str, style: str = "forest") -> tuple[Image.Image, 
     px = PX * float(KP_STYLE[style].get("scalefactor", 1))
     x0, y1 = corner(tid)
     i0, j0 = round((x0 - (w[4] - w[0] / 2)) / w[0]), round((y1 - (w[5] - w[3] / 2)) / w[3])
-    if abs(w[0] - px) > 1e-6 or (i0, j0) != (0, 0):
+    if abs(w[0] - px) > 1e-6 or abs(w[3] + px) > 1e-6 or (grids.parse(tid).country == "fr" and (i0, j0) != (0, 0)):
         raise RuntimeError(f"{tid}: unexpected render frame {w}")
     im = Image.open(p)
     bg = Image.new("RGB", im.size, (255, 255, 255))
     bg.paste(im, mask=im.getchannel("A") if im.mode == "RGBA" else None)
     n = round(SIZE * PX / px)
-    return bg.crop((0, 0, n, n)), px
+    if (i0, j0) == (0, 0):
+        return bg.crop((0, 0, n, n)), px
+    # beyond France the render may start where the tile's first point lies: its pixels moved onto the tile's own
+    out = Image.new("RGB", (n, n), (255, 255, 255))
+    out.paste(bg, (-i0, -j0))
+    return out, px
 
 
 def dem(tif: Path) -> Image.Image:
@@ -252,7 +270,26 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
              known: Path | None = None, progress: Progress | None = None) -> dict[str, str]:
     """The tiles' maps in a style into out/t/, each tile's record keeping the styles made before (its former record read
     from out/t, else from known/: the workflow's copy of R2's). Returns each tile's outcome: "done", "none" (no LiDAR
-    there yet) or an error."""
+    there yet) or an error. France's tiles in work/ as before, each other grid's in work/<grid>/ (one karttapullautin run
+    per coordinate system: its batch mode reads every file of its folder as neighbours)."""
+    res: dict[str, str] = {}
+    for g, ids in grids.groups(tids).items():
+        if g == "fr":
+            res.update(_generate(ids, out, work, kp, processes, log, style, known, progress))
+            continue
+        try:
+            res.update(_generate(ids, out, work / g, kp, processes, log, style, known, progress, dl_cache=work / "cache"))
+        except Exception as ex:                         # another grid's tiles of the same run go on
+            log(f"{g}: {ex}")
+            res.update({t: f"error: {ex}"[:300] for t in ids})
+    return res
+
+
+def _generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 4, log=print, style: str = "forest",
+              known: Path | None = None, progress: Progress | None = None, dl_cache: Path | None = None) -> dict[str, str]:
+    """One grid's tiles (generate); dl_cache: where the other countries' downloads and indexes are kept between grids."""
+    tile0 = grids.parse(tids[0])
+    epsg, country = tile0.epsg, tile0.country
     tdir = out / "t"
     tdir.mkdir(parents=True, exist_ok=True)
     (work / "laz").mkdir(parents=True, exist_ok=True)
@@ -261,7 +298,13 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     http = httpx.Client(timeout=120, headers={"User-Agent": UA})
     pace = Pace()
     t0 = time.monotonic()
-    cat = catalogue(tids, http)
+    if country == "fr":
+        cat = catalogue(tids, http)
+    else:
+        from . import sources                            # beyond France: the country's own point clouds (sources.py)
+        prog.start("lidar", total=len(tids))
+        got = sources.prepare(tids, work / "laz", work, dl_cache or work / "cache", log, prog)
+        cat = {t: {**v, "laz": True} for t, v in got.items() if v}
     for t in tids:
         if t not in cat or not cat[t]["laz"]:
             res[t] = "none"
@@ -269,12 +312,13 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     todo = [t for t in tids if t not in res]
     if not todo:
         return res
-    prog.start("lidar", total=2 * len(todo))
-    for t in todo:
-        fetch(http, cat[t]["laz"], work / "laz" / f"LHD_{t}.copc.laz", pace)
-        prog.step()
-        fetch(http, cat[t]["mnt"], work / f"mnt_{t}.tif", pace)
-        prog.step()
+    if country == "fr":
+        prog.start("lidar", total=2 * len(todo))
+        for t in todo:
+            fetch(http, cat[t]["laz"], work / "laz" / f"LHD_{t}.copc.laz", pace)
+            prog.step()
+            fetch(http, cat[t]["mnt"], work / f"mnt_{t}.tif", pace)
+            prog.step()
     log(f"downloaded {len(todo)} tiles in {time.monotonic() - t0:.0f} s")
     t1 = time.monotonic()
     a, b = KP_EST[style]
@@ -282,10 +326,10 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     home = karttapullautin(kp, work, processes, style)
     log(f"karttapullautin ({style}): {time.monotonic() - t1:.0f} s")
     xs, ys = zip(*(corner(t) for t in todo))
-    s, w = lambert93.inverse(min(xs) - 50, min(ys) - 1050)
-    n, e = lambert93.inverse(max(xs) + 1050, max(ys) + 50)
-    s2, w2 = lambert93.inverse(min(xs) - 50, max(ys) + 50)
-    n2, e2 = lambert93.inverse(max(xs) + 1050, min(ys) - 1050)
+    s, w = grids.to_latlon(epsg, min(xs) - 50, min(ys) - 1050)
+    n, e = grids.to_latlon(epsg, max(xs) + 1050, max(ys) + 50)
+    s2, w2 = grids.to_latlon(epsg, min(xs) - 50, max(ys) + 50)
+    n2, e2 = grids.to_latlon(epsg, max(xs) + 1050, min(ys) - 1050)
     # without OpenStreetMap the tiles fail (asked again, they are made again) rather than be kept without roads and paths
     # the answer is kept in the work folder: MAPGEN_OSM_CACHE=1 reads it back (trying a style without asking Overpass again)
     cache = work / f"osm_{todo[0]}_{len(todo)}.json"
@@ -296,7 +340,7 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
         else:
             data = osm.query(min(s, s2), min(w, w2), max(n, n2), max(e, e2), http)
             cache.write_text(json.dumps(data), encoding="utf-8")
-        feats = osm.project(osm.features(data))
+        feats = osm.project(osm.features(data), None if country == "fr" else lambda a, b: grids.from_latlon(epsg, a, b))
         osm_at = _now()
     except Exception as ex:
         log(f"OpenStreetMap: {ex}")
@@ -313,15 +357,20 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
             if img.width != SIZE:
                 img = img.resize((SIZE, SIZE), Image.Resampling.LANCZOS)
             img.quantize(colors=128, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(tdir / f"{t}{STYLES[style]}", optimize=True)
-            dem(work / f"mnt_{t}.tif").save(tdir / f"{t}.dem.png", optimize=True)
+            if country == "fr":
+                dem(work / f"mnt_{t}.tif").save(tdir / f"{t}.dem.png", optimize=True)
+            elif (work / f"dem_{t}.png").exists():          # the ground points' heights (sources.dem_png)
+                shutil.copyfile(work / f"dem_{t}.png", tdir / f"{t}.dem.png")
             v = {k: n for k, n in _versions(tdir, known, t).items() if k != style}
             v[style] = STYLE_V[style]
             vec = {k: n for k, n in _prior(tdir, known, t).get("vec", {}).items() if k != style}
-            if vectors(home, t, x0, y1, style, tdir, log):
+            if vectors(home, t, x0, y1, style, tdir, log, f"EPSG:{epsg}"):
                 vec[style] = VEC_V
             (tdir / f"{t}.json").write_text(json.dumps({
                 "id": t, "x0": x0, "y1": y1, "px": PX, "size": SIZE, "dem": {"step": DEM_STEP, "n": DEM_N}, "styles": sorted(v),
-                "v": v, "vec": vec, "lidar": cat[t]["date"], "osm": osm_at, "kp": KP_VERSION, "made": _now()}), encoding="utf-8")
+                "v": v, "vec": vec, "lidar": cat[t]["date"], "osm": osm_at, "kp": KP_VERSION, "made": _now(), "crs": f"EPSG:{epsg}",
+                "country": country, "src": grids.SOURCES[country]["name"],
+                **({"project": cat[t]["project"]} if cat[t].get("project") else {})}), encoding="utf-8")
             res[t] = "done"
         except Exception as ex:
             log(f"{t}: {ex}")
@@ -331,20 +380,22 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     return res
 
 
-def vectors(home: Path, tid: str, x0: int, y1: int, style: str, tdir: Path, log=print) -> bool:
+def vectors(home: Path, tid: str, x0: int, y1: int, style: str, tdir: Path, log=print, crs: str = "EPSG:2154") -> bool:
     """The tile's vectors (karttapullautin's DXF files, dxf.py) and its vegetation raster, cut to the tile, into
     tdir/<id>.<style>.vec.json and .vege.png; False when karttapullautin left none (never a reason to fail the tile)."""
     try:
         files = dxf.find(home / "out", tid)
         if not files:
             return False
-        n = dxf.write(tdir / f"{tid}.{style}.vec.json", dxf.tile_vectors(files, tid, x0, y1, style))
+        n = dxf.write(tdir / f"{tid}.{style}.vec.json", dxf.tile_vectors(files, tid, x0, y1, style, crs=crs))
         veg = next(iter(sorted((home / "out").glob(f"*{tid}*_vege.png"))), None)
         if veg and veg.with_suffix(".pgw").exists():
             w = [float(v) for v in veg.with_suffix(".pgw").read_text().split()]
             i0, j0 = round((x0 - (w[4] - w[0] / 2)) / w[0]), round((y1 - (w[5] - w[3] / 2)) / w[3])
             k = round(1000 / w[0])
-            Image.open(veg).convert("RGB").crop((i0, j0, i0 + k, j0 + k)).save(tdir / f"{tid}.{style}.vege.png", optimize=True)
+            vi = Image.new("RGB", (k, k), (255, 255, 255))           # beyond France the raster may start off the corner
+            vi.paste(Image.open(veg).convert("RGB"), (-i0, -j0))
+            vi.save(tdir / f"{tid}.{style}.vege.png", optimize=True)
         log(f"{tid}: vectors {n} bytes")
         return True
     except Exception as ex:                              # the map is made all the same
@@ -417,8 +468,8 @@ def ci(reqs: Path, out: Path, work: Path, kp: Path, processes: int, known: Path 
     take = []
     style = next((r.get("style") for r in queued if r.get("style") in STYLES), "forest")
     for r in (r for r in queued if (r.get("style") if r.get("style") in STYLES else "forest") == style):
-        new = [t for t in r.get("tiles", []) if ID.match(t) and t not in tids]
-        if take and len(tids) + len(new) > MAX_TILES:
+        new = [t for t in r.get("tiles", []) if grids.valid(t) and t not in tids]
+        if take and cost(tids) + cost(new) > MAX_TILES:
             break
         tids += new[:MAX_TILES]
         take.append(r)
@@ -446,6 +497,7 @@ def main(argv: list[str] | None = None) -> None:
     sub = ap.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("tiles"); a.add_argument("ids", nargs="+")
     b = sub.add_parser("area"); b.add_argument("box", nargs=4, type=float)
+    b.add_argument("--country", choices=grids.COUNTRIES, default="fr")
     c = sub.add_parser("ci"); c.add_argument("--requests", required=True, type=Path)
     c.add_argument("--known", type=Path, default=None)
     c.add_argument("--progress-to", default=None, help="R2 address the requests' progress is copied to (s3://…/lidarmap/req/)")
@@ -462,7 +514,16 @@ def main(argv: list[str] | None = None) -> None:
     if args.cmd == "ci":
         ci(args.requests, args.out, work, args.kp, args.processes, args.known, args.progress_to)
         return
-    ids = args.ids if args.cmd == "tiles" else tile_ids(*args.box)
+    if args.cmd == "tiles":
+        ids = args.ids
+    elif args.country == "fr":
+        ids = tile_ids(*args.box)
+    else:
+        la0, lo0, la1, lo1 = args.box
+        ids = grids.ids_for(args.country, [(la0, lo0), (la1, lo1), (la0, lo1), (la1, lo0)], 0)
+    bad = [t for t in ids if not grids.valid(t)]
+    if bad:
+        sys.exit(f"bad tile ids: {bad}")
     if len(ids) > MAX_TILES:
         sys.exit(f"{len(ids)} tiles: at most {MAX_TILES}")
     print(json.dumps(generate(ids, args.out, work, args.kp, args.processes, style=args.style), indent=1))
