@@ -97,7 +97,7 @@ export const MODELS = {
   "@cf/openai/gpt-oss-120b": [0.35, 0.75],
   "@cf/meta/llama-3.3-70b-instruct-fp8-fast": [0.293, 2.253],
   "@cf/mistralai/mistral-small-3.1-24b-instruct": [0.351, 0.555],
-  "@cf/qwen/qwen3-30b-a3b-fp8": [0.0509, 0.335],
+  // (Qwen3-30B, tried 2026-10-15, removed 2026-11-06: deprecated by Workers AI on 2026-11-20)
   "@cf/openai/gpt-oss-20b": [0.2, 0.3],
   "@cf/meta/llama-4-scout-17b-16e-instruct": [0.27, 0.85],
 };

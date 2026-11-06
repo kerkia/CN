@@ -19,7 +19,7 @@ const TABLES = ["runners", "clubs", "races", "results", "cn"];
 const EXAMPLES = [1, 2, 3, 4, 5, 6].map((i) => t(`ia.ex.${i}`));
 // Ozimut's models on Workers AI (the free allowance), the default first; « byok » = the user's own key (askbyok.js)
 const MODELS = [["@cf/openai/gpt-oss-120b", "gpt-oss-120b"], ["@cf/meta/llama-3.3-70b-instruct-fp8-fast", "Llama 3.3 70B"],
-  ["@cf/mistralai/mistral-small-3.1-24b-instruct", "Mistral Small 3.1"], ["@cf/qwen/qwen3-30b-a3b-fp8", "Qwen3 30B"]];
+  ["@cf/mistralai/mistral-small-3.1-24b-instruct", "Mistral Small 3.1"]];
 
 // what survives a visit to another page: the answers, the database once loaded
 const memo = { answers: [], duck: null, loaded: new Set(), manifest: null };
