@@ -2916,6 +2916,8 @@ export default {
   "an.gen.notStarted": "La solicitud espera la próxima ejecución del generador.",
   "an.gen.composing": "Montando el mapa… {p} %",
   "an.gen.outside": "Los mapas generados cubren la Francia metropolitana y Córcega, Suiza, EE. UU., Canadá y Nueva Zelanda, donde el LiDAR es abierto.",
+  "an.gen.ask": "Pedir este país a Ozimut",
+  "an.gen.askSubject": "Analyse solo: mapa generado para {where}",
   "an.gen.tooBig": "El track cubre {n} km²: un mapa generado cubre {max} como máximo.",
   "an.gen.none": "Aún no hay LiDAR abierto en este lugar.",
   "an.gen.failed": "No se pudo hacer el mapa. Inténtalo más tarde.",

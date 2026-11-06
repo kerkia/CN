@@ -62,9 +62,16 @@ async function chooseArea(E) {
   E.dataArea = v.a === "print" ? E.doc.printArea : v.a === "map" ? E.live.bounds() : E.view.visibleRect();
   E.say(t("map.data.areaSet"));
 }
+/** The middle of the area the data is read for, [lat, lon], and what Cartographier supports there (support.js). */
+async function placeOf(E, f) {
+  const b = areaOf(E), [lat, lon] = f.toLatLon((b[0] + b[2]) / 2, (b[1] + b[3]) / 2);
+  const SP = await import("./support.js");
+  return { lat, lon, s: await SP.at(lat, lon), SP };
+}
 async function contours(E) {
   const f = await frameOrSay(E); if (!f) return;
-  const v = await modal(E, { title: t("map.rib.data-contours"), body: field(t("map.data.interval"), sel("i", [["2.5", "2,5 m"], ["5", "5 m"], ["10", "10 m"]], styleOf(E) === "sprint" ? "2.5" : "5")) + `<p class="mp-hint">${esc(t("map.data.contoursHint"))}</p>` });
+  const P = await placeOf(E, f).catch(() => null);
+  const v = await modal(E, { title: t("map.rib.data-contours"), body: field(t("map.data.interval"), sel("i", [["2.5", "2,5 m"], ["5", "5 m"], ["10", "10 m"]], styleOf(E) === "sprint" ? "2.5" : "5")) + `<p class="mp-hint">${esc(t("map.data.contoursHint"))}</p>` + (P ? P.SP.noteHtml(P.s, P.lat, P.lon, ["dem"]) : "") });
   if (!v) return;
   const say = progress(E);
   say(t("map.data.loadingDem"));
@@ -94,7 +101,12 @@ export async function nationalSource(E, f) {
 async function national(E) {
   const f = await frameOrSay(E); if (!f) return;
   const src = await nationalSource(E, f);
-  if (!src) { E.say(t("map.data.national.none"), "bad"); return; }
+  if (!src) {
+    // no national data here yet: OpenStreetMap offered, and the way to ask Ozimut for that country
+    const P = await placeOf(E, f).catch(() => null);
+    if (P) await P.SP.explain(E, P.s, P.lat, P.lon, ["vectors"]); else E.say(t("map.data.national.none"), "bad");
+    return;
+  }
   const say = progress(E);
   let r;
   try {
@@ -109,6 +121,8 @@ async function national(E) {
 }
 async function lidar(E) {
   const f = await frameOrSay(E); if (!f) return;
+  const P = await placeOf(E, f).catch(() => null);
+  if (P && !P.s.lidar) { await P.SP.explain(E, P.s, P.lat, P.lon, ["lidar"]); return; }
   // the style first, nothing chosen beforehand (owner, 2026-11-01)
   const v = await modal(E, { title: t("map.rib.data-lidar"), body: `<fieldset class="mp-choice"><legend>${esc(t("map.data.kind"))}</legend>
     <label><input type="radio" name="s" value="sprint" required> ${esc(t("map.data.kind.sprint"))}</label>

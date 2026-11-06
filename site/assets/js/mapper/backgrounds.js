@@ -14,7 +14,7 @@ export const ACCEPT = "image/*,.pdf,.tif,.tiff,.gpx,.kml,.kmz,.pgw,.jgw,.tfw,.wl
 // The online layers, all Web Mercator tiles. `country` (ISO alpha-2): offered only for a map there (trace/terrain.js countryAt
 // at the map's middle; every layer when the map has no georeference); `off`: not offered (New Zealand's photos until Ozimut has
 // a LINZ Basemaps key, free on request to LINZ: their keys made in the browser last 90 days).
-const LINZ_KEY = "";
+export const LINZ_KEY = "";
 export const ONLINE = {
   ortho: { url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", max: 19, country: "FR" },
   plan: { url: "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=GEOGRAPHICALGRIDSYSTEMS.PLANIGNV2&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}", max: 18, country: "FR" },
@@ -272,7 +272,15 @@ async function onlineLayers(E) {
 }
 async function addOnline(E) {
   const keys = await onlineLayers(E);
-  const v = await modal(E, { title: t("map.rib.bg-online"), body: field(t("map.bg.layer"), sel("layer", keys.map((k) => [k, t(`map.bg.layer.${k}`)]), keys[0])) + `<p class="mp-hint">${esc(t("map.bg.onlineHint"))}</p>` });
+  // no layer of the place's own country: what is missing there, and the way to ask for it (support.js)
+  let note = "";
+  if (!keys.some((k) => ONLINE[k].country)) {
+    try {
+      const fr = await frame(E);
+      if (fr) { const b = E.live.bounds(), [lat, lon] = mmToLatLon(fr, (b[0] + b[2]) / 2, (b[1] + b[3]) / 2), SP = await import("./support.js"); note = SP.noteHtml(await SP.at(lat, lon), lat, lon, ["backgrounds"]); }
+    } catch (e) { note = ""; }
+  }
+  const v = await modal(E, { title: t("map.rib.bg-online"), body: field(t("map.bg.layer"), sel("layer", keys.map((k) => [k, t(`map.bg.layer.${k}`)]), keys[0])) + `<p class="mp-hint">${esc(t("map.bg.onlineHint"))}</p>` + note });
   if (!v) return;
   const entry = { id: `b${Date.now().toString(36)}`, name: t(`map.bg.layer.${v.layer}`), kind: "online", layer: v.layer, toMap: [1, 0, 0, -1, 0, 0], opacity: 0.6, visible: true, image: null };
   E.view.backgrounds.unshift(entry);

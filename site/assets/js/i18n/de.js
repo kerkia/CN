@@ -2916,6 +2916,8 @@ export default {
   "an.gen.notStarted": "Die Anfrage wartet auf den nächsten Lauf des Generators.",
   "an.gen.composing": "Karte wird zusammengesetzt… {p} %",
   "an.gen.outside": "Erzeugte Karten gibt es für das französische Mutterland und Korsika, die Schweiz, die USA, Kanada und Neuseeland, wo das LiDAR offen ist.",
+  "an.gen.ask": "Dieses Land bei Ozimut anfragen",
+  "an.gen.askSubject": "Analyse solo: erzeugte Karte für {where}",
   "an.gen.tooBig": "Der Track umfasst {n} km²: eine erzeugte Karte höchstens {max}.",
   "an.gen.none": "Hier gibt es noch kein offenes LiDAR.",
   "an.gen.failed": "Die Karte konnte nicht erstellt werden. Versuche es später noch einmal.",

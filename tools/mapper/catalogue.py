@@ -634,6 +634,18 @@ for key, v in {
   "nzaerial": ("Fond : © LINZ, photos aériennes (CC BY 4.0)", "Background: © LINZ aerial imagery (CC BY 4.0)", "Hintergrund: © LINZ, Luftbilder (CC BY 4.0)", "Fondo: © LINZ, fotos aéreas (CC BY 4.0)"),
   }.items(): k(f"map.bg.credit.{key}", *v)
 
+# ---- support by place (mapper/support.js): what is missing where, and the way to ask Ozimut for a country --------------------
+k("map.support.title", "Pas encore de prise en charge ici", "Not supported here yet", "Hier noch nicht unterstützt", "Aún sin soporte aquí")
+k("map.support.close", "Fermer", "Close", "Schließen", "Cerrar")
+k("map.support.missing", "Pour ce lieu, Cartographier n'a pas encore : {list}. OpenStreetMap et les tuiles de relief mondiales prennent le relais.", "For this place, Cartographier does not have yet: {list}. OpenStreetMap and the worldwide terrain tiles stand in.", "Für diesen Ort hat Cartographier noch nicht: {list}. OpenStreetMap und die weltweiten Reliefkacheln springen ein.", "Para este lugar, Cartographier aún no tiene: {list}. OpenStreetMap y las teselas de relieve mundiales toman el relevo.")
+k("map.support.ask", "Ozimut peut ajouter les données ouvertes d'un pays, quels que soient les pays de votre compte : écrivez-nous en indiquant le pays et, si vous les connaissez, les données que les cartographes y utilisent.", "Ozimut can add a country's open data, whatever the countries of your account: write to us with the country and, if you know them, the data mappers use there.", "Ozimut kann die offenen Daten eines Landes hinzufügen, unabhängig von den Ländern deines Kontos: Schreib uns das Land und, wenn du sie kennst, die Daten, die Kartografen dort nutzen.", "Ozimut puede añadir los datos abiertos de un país, sean cuales sean los países de tu cuenta: escríbenos indicando el país y, si los conoces, los datos que usan allí los cartógrafos.")
+k("map.support.link", "Demander la prise en charge", "Ask for support", "Unterstützung anfragen", "Solicitar soporte")
+k("map.support.subject", "Cartographier : données de cartographie pour {where}", "Cartographier: mapping data for {where}", "Cartographier: Kartendaten für {where}", "Cartographier: datos cartográficos para {where}")
+k("map.support.what.dem", "modèle de terrain national", "national terrain model", "nationales Geländemodell", "modelo digital del terreno nacional")
+k("map.support.what.vectors", "données nationales (bâtiments, routes, eau)", "national data (buildings, roads, water)", "nationale Daten (Gebäude, Straßen, Gewässer)", "datos nacionales (edificios, carreteras, agua)")
+k("map.support.what.lidar", "LiDAR (courbes, falaises, végétation)", "LiDAR (contours, cliffs, vegetation)", "LiDAR (Höhenlinien, Felsen, Vegetation)", "LiDAR (curvas, cortados, vegetación)")
+k("map.support.what.backgrounds", "fonds nationaux (photos aériennes, carte)", "national backgrounds (aerial photos, map)", "nationale Hintergründe (Luftbilder, Karte)", "fondos nacionales (fotos aéreas, mapa)")
+
 # ---- the site's own catalogues (nav, tiles, beta) are written by `site_keys` below -----------------------------------------------
 SITE = {
   "nav.orgMapper": ("Cartographier", "Mapping", "Kartieren", "Cartografiar"),

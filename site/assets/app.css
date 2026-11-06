@@ -3978,6 +3978,11 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .mp-nowrap { white-space: nowrap; }
 .mp-team { color: var(--focus); font-weight: 600; }
 @media (max-width: 720px) { .mp-symed { grid-template-columns: 1fr; } .mp-symed-r { position: static; order: -1; } }
+/* Cartographier: what a place lacks, and the way to ask for it (mapper/support.js) */
+.mp-support { margin-top: 10px; padding: 8px 10px; border-left: 3px solid var(--flag); background: var(--flag-wash, transparent); border-radius: 4px; font-size: 12.5px; }
+.mp-support p { margin: 0; }
+.mp-support p + p { margin-top: 4px; }
+.mp-support a { font-weight: 600; }
 /* Cartographier's generalisation steps (mapper/generalise.js) */
 .mp-gen { border-top: 1px solid var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 6px; }
 .mp-gen h4 { margin: 0; font-size: 13px; }

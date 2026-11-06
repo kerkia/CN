@@ -2034,6 +2034,8 @@ export default {
   "an.gen.notStarted": "La demande attend le prochain passage du générateur.",
   "an.gen.composing": "Assemblage de la carte… {p} %",
   "an.gen.outside": "Les cartes générées couvrent la France métropolitaine et la Corse, la Suisse, les États-Unis, le Canada et la Nouvelle-Zélande, là où le LiDAR est ouvert.",
+  "an.gen.ask": "Demander ce pays à Ozimut",
+  "an.gen.askSubject": "Analyse solo : carte générée pour {where}",
   "an.gen.tooBig": "La trace couvre {n} km² : une carte générée en couvre {max} au plus.",
   "an.gen.none": "Pas encore de LiDAR ouvert à cet endroit.",
   "an.gen.failed": "La carte n’a pas pu être faite. Réessayez plus tard.",

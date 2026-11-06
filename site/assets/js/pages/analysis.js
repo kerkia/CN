@@ -702,7 +702,7 @@ export async function render(main, { query = {}, route } = {}) {
         <option value="forest" ${raw(style === "forest" ? "selected" : "")}>${t("an.gen.forest")}</option>
         <option value="sprint" ${raw(style === "sprint" ? "selected" : "")}>${t("an.gen.sprint")}</option></select></label>
       <button type="button" class="btn btn-sm btn-primary" id="an-gen" ${raw(gen?.busy ? "disabled" : "")}>${t("an.gen.btn")}</button>
-      ${gen?.msg ? html`<span class="an-gen-state${gen.busy ? " busy" : ""}" role="status">${gen.busy ? raw(bar(gen.frac)) : ""}<span class="an-gen-msg">${gen.msg}</span></span>` : ""}
+      ${gen?.msg ? html`<span class="an-gen-state${gen.busy ? " busy" : ""}" role="status">${gen.busy ? raw(bar(gen.frac)) : ""}<span class="an-gen-msg">${gen.msg}</span>${gen.ask ? html` <a href="${gen.ask}" target="_blank" rel="noopener">${t("an.gen.ask")}</a>` : ""}</span>` : ""}
       <p class="muted">${t("an.gen.hint")}</p></div>`;
   }
   async function genMap() {
@@ -717,7 +717,12 @@ export async function render(main, { query = {}, route } = {}) {
       gen = { busy, msg, frac }; filesCard();
     };
     const my = ++genToken;
-    if (!LM.covered(track.lat0, track.lon0)) return say(t("an.gen.outside"), false);
+    if (!LM.covered(track.lat0, track.lon0)) {
+      // no open LiDAR read for that country yet: the way to ask Ozimut for it (whatever the account's own countries)
+      const where = `${track.lat0.toFixed(4)}, ${track.lon0.toFixed(4)}`;
+      gen = { busy: false, msg: t("an.gen.outside"), ask: `#/contact?${new URLSearchParams({ sujet: t("an.gen.askSubject", { where }), from: location.hash || "#/" })}` };
+      filesCard(); return;
+    }
     const area = LM.areaOf(track);
     if (area.ids.length > LM.MAX_TILES) return say(t("an.gen.tooBig", { n: fmt(area.km2, 1), max: LM.MAX_TILES }), false);
     try {

@@ -83,8 +83,20 @@ async function newMap() {
       <label><input type="checkbox" name="bdtopo" checked> ${t("map.new.bdtopo")}</label>
       <label><input type="checkbox" name="osm"> ${t("map.new.osm")}</label>
       <label><input type="checkbox" name="dem" checked> ${t("map.new.dem")}</label>
-      <label><input type="checkbox" name="lidar"> ${t("map.new.lidar")}</label></fieldset>`,
-    onOpen: (form) => form.querySelector("[data-here]").addEventListener("click", () => navigator.geolocation?.getCurrentPosition((p) => { form.place.value = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`; }, () => {}, { enableHighAccuracy: true, timeout: 15000 })),
+      <label><input type="checkbox" name="lidar"> ${t("map.new.lidar")}</label></fieldset>
+    <div data-support></div>`,
+    onOpen: (form) => {
+      // what Cartographier has at the place typed; where something is missing, the way to ask Ozimut for that country
+      let tick = 0;
+      const support = async () => {
+        const my = ++tick, p = parsePlace(form.place.value), box = form.querySelector("[data-support]");
+        if (!p) { box.innerHTML = ""; return; }
+        const SP = await import("../mapper/support.js"), s = await SP.at(...p);
+        if (my === tick) box.innerHTML = SP.noteHtml(s, ...p);
+      };
+      form.place.addEventListener("input", support);
+      form.querySelector("[data-here]").addEventListener("click", () => navigator.geolocation?.getCurrentPosition((p) => { form.place.value = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`; support(); }, () => {}, { enableHighAccuracy: true, timeout: 15000 }));
+    },
     validate: (x) => (!x.kind ? t("map.new.needKind") : x.place && !parsePlace(x.place) ? t("map.new.badPlace") : null) });
   if (!v) return;
   const sprint = v.kind === "sprint", scale = sprint ? 4000 : 10000, standard = sprint ? "ISSprOM2019-2" : "ISOM2017-2";

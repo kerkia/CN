@@ -2015,6 +2015,12 @@ Every multiple-choice game was played through to its score page at phone size, w
   `t_lidarabroad.mjs`), take them. Measured on the PC (one tile each, karttapullautin 4-35 s): Switzerland 1.75 M points, download
   8 s; the USA 27.7 M, 85-95 s; Canada 47 M, 125-134 s; New Zealand 20.8 M, 330 s the first time (338 MB at 1 MB/s). Not yet run in
   CI, nor with OpenStreetMap drawn over (Overpass did not answer the PC); vector files up to 56 MB (New Zealand sprint).
+  **Where a place has no specific support** (owner, 2026-11-06: « mappers work across countries », so this follows the place
+  mapped, never the account's countries or Ozimut's rankings): `mapper/support.js` (`at(lat, lon)`: national terrain model,
+  national data, LiDAR, national backgrounds) says what is missing and invites to ask Ozimut for that country (« Demander la prise
+  en charge », « Nous écrire » with the place in its subject) — under the new-map dialog as the place is typed, in the contours'
+  and online backgrounds' dialogs, and as a dialog of its own for « Données nationales » and « LiDAR » there; Analyse solo's map
+  generation outside the LiDAR countries likewise (`an.gen.ask`).
   Not done: other countries' data (the Netherlands, Sweden, Spain, Belgium, Germany's open Länder next).
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
