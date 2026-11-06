@@ -1028,6 +1028,8 @@ export function build(X) {
           <p>El control deslizante bajo los botones de zoom (o Mapa › Vista › Intensidad) aclara el mapa, para ver mejor el recorrido. ${W("map-change")} pone otro (una versión corregida,
             un escaneo mejor, el archivo OCAD en lugar de una imagen): los controles conservan su sitio en la hoja, sus coordenadas (una nueva versión del mismo
             archivo OCAD), su sitio en el terreno (dos mapas georreferenciados), o se alinean después con dos clics.</p>
+          <h3>Mapas de entrenamiento</h3>
+          <p>${W("map-colors")} oculta colores y símbolos de un mapa de OCAD o Mapper, para todos los recorridos o para uno: un mapa sin caminos, sin vegetación, solo con el relieve o las curvas de nivel, con un clic. ${W("exercise")} oculta el mapa de un recorrido salvo un pasillo a lo largo de sus tramos y ventanas alrededor de sus controles, y sigue al recorrido cuando cambia; los logotipos del mapa siguen visibles.</p>
           <h3>El violeta del recorrido</h3>
           <p>El grupo Mapa › Violeta ajusta cómo se coloca el recorrido sobre el mapa; cada modo se muestra ahí en miniatura:</p>
           <ul class="mx-list">
@@ -1417,10 +1419,7 @@ export function build(X) {
             Livelox).</p>
           <h3>Mapas</h3>
           <p>${W("maps")}: otros mapas en el evento, alineados con el primero (por sus georreferencias, el mismo marco o dos
-            puntos en cada uno), y el mapa de cada parte de un recorrido. ${W("map-colors")} oculta colores y símbolos de un mapa de OCAD o
-            Mapper, para todos los recorridos o para uno: un mapa sin caminos, sin vegetación, solo con el relieve o las curvas de nivel,
-            con un clic. ${W("exercise")} oculta el mapa de un recorrido salvo un pasillo a lo largo de sus tramos y ventanas alrededor de
-            sus controles, y sigue al recorrido cuando cambia; los logotipos del mapa siguen visibles. ${W("map-templates")} muestra las plantillas que se le dan a un mapa de OCAD. ${W("field-states")} da nombre a los estados de los
+            puntos en cada uno), y el mapa de cada parte de un recorrido. ${W("map-templates")} muestra las plantillas que se le dan a un mapa de OCAD. ${W("field-states")} da nombre a los estados de los
             controles en el modo de campo.</p>
         </section>`,
       calculs: () => html`

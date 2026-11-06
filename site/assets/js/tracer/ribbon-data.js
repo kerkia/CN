@@ -80,8 +80,9 @@ export const TABS = [
     { id: "maps", title: t("trc.rd.gMaps"), pro: true, items: [
       B("maps", t("trc.rd.maps"), "multimap", { need: "edit", tip: t("trc.rd.mapsTip") }),
       stack(S("map-templates", t("trc.rd.mapTemplates"), "layers", { need: "vector", tip: t("trc.rd.mapTemplatesTip") }))] },
-    // training maps (owner, 2026-11-05): a course's map filtered (contours only, no paths…), a corridor and windows
-    { id: "training", title: t("trc.rd.gTraining"), pro: true, items: [
+    // training maps (owner, 2026-11-05; every account's since 2026-11-06): a course's map filtered (contours only, no paths…),
+    // a corridor and windows
+    { id: "training", title: t("trc.rd.gTraining"), items: [
       B("map-colors", t("trc.rd.mapColors"), "colors", { need: "vector", tip: t("trc.rd.mapColorsTip") }),
       B("exercise", t("trc.rd.exercise"), "mask", { need: "course", tip: t("trc.rd.exerciseTip") })] },
     { id: "position", title: t("trc.rd.gPosition"), items: [

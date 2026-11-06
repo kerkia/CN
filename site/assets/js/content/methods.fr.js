@@ -1028,6 +1028,8 @@ export function build(X) {
           <p>Le curseur sous les boutons de zoom (ou Carte › Affichage › Intensité) pâlit la carte, pour mieux voir le circuit. ${W("map-change")} en met une autre (une version corrigée,
             un meilleur scan, le fichier OCAD au lieu d'une image) : les postes gardent leur place sur la feuille, leurs coordonnées (une nouvelle version du même
             fichier OCAD), leur place sur le terrain (deux cartes géoréférencées), ou se calent ensuite en deux clics.</p>
+          <h3>Cartes d'entraînement</h3>
+          <p>${W("map-colors")} cache des couleurs et des symboles d'une carte OCAD ou Mapper, pour tous les circuits ou pour un seul : une carte sans chemins, sans végétation, avec le relief ou les courbes seules, en un clic. ${W("exercise")} cache la carte d'un circuit sauf un couloir le long de ses interpostes et des fenêtres autour de ses postes, et suit le circuit quand il change ; les logos de la carte restent visibles.</p>
           <h3>Le violet du circuit</h3>
           <p>Le groupe Carte › Violet règle la façon dont le circuit se pose sur la carte ; chaque façon y est montrée en petit :</p>
           <ul class="mx-list">
@@ -1417,10 +1419,7 @@ export function build(X) {
             Livelox).</p>
           <h3>Cartes</h3>
           <p>${W("maps")} : d'autres cartes dans l'événement, calées sur la première (par leurs géoréférencements, le même cadre, ou deux
-            points sur chacune), et la carte de chaque partie d'un circuit. ${W("map-colors")} cache des couleurs et des symboles d'une carte OCAD
-            ou Mapper, pour tous les circuits ou pour un seul : une carte sans chemins, sans végétation, avec le relief ou les courbes
-            seules, en un clic. ${W("exercise")} cache la carte d'un circuit sauf un couloir le long de ses interpostes et des fenêtres
-            autour de ses postes, et suit le circuit quand il change ; les logos de la carte restent visibles. ${W("map-templates")} montre les modèles d'une carte OCAD qu'on lui donne. ${W("field-states")} nomme les états des
+            points sur chacune), et la carte de chaque partie d'un circuit. ${W("map-templates")} montre les modèles d'une carte OCAD qu'on lui donne. ${W("field-states")} nomme les états des
             postes en mode terrain.</p>
         </section>`,
       calculs: () => html`

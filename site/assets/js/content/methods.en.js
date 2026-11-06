@@ -1027,6 +1027,8 @@ export function build(X) {
           <p>The slider under the zoom buttons (or Map › View › Intensity) fades the map, to see the course better. ${W("map-change")} puts in another one (a corrected version,
             a better scan, the OCAD file instead of an image): the controls keep their place on the sheet, their coordinates (a new version of the same
             OCAD file), their place on the ground (two georeferenced maps), or are aligned afterwards in two clicks.</p>
+          <h3>Training maps</h3>
+          <p>${W("map-colors")} hides colours and symbols of an OCAD or Mapper map, for every course or for one: a map without paths, without vegetation, with the relief or the contours only, in one click. ${W("exercise")} hides a course's map except a corridor along its legs and windows round its controls, and follows the course when it changes; the map's logos stay visible.</p>
           <h3>The course's purple</h3>
           <p>The Map › Purple group sets how the course sits on the map; each way is shown there in miniature:</p>
           <ul class="mx-list">
@@ -1410,10 +1412,7 @@ export function build(X) {
             variation as a course, and a package for Livelox's import page (a direct upload to Livelox needs an agreement with Livelox).</p>
           <h3>Maps</h3>
           <p>${W("maps")}: other maps in the event, placed on the first (by their georeferencing, the same frame, or two points on each),
-            and the map of each part of a course. ${W("map-colors")} hides colours and symbols of an OCAD or Mapper map, for every course or for one:
-            a map without paths, without vegetation, with the relief or the contours only, in one click. ${W("exercise")} hides a course's
-            map except a corridor along its legs and windows round its controls, and follows the course when it changes; the map's logos
-            stay visible. ${W("map-templates")} shows the
+            and the map of each part of a course. ${W("map-templates")} shows the
             templates of an OCAD map you give it. ${W("field-states")} names the controls' states in field mode.</p>
         </section>`,
       calculs: () => html`

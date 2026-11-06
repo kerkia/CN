@@ -1028,6 +1028,8 @@ export function build(X) {
           <p>Der Schieberegler unter den Zoomknöpfen (oder Karte › Ansicht › Intensität) hellt die Karte auf, damit die Bahn besser zu sehen ist. ${W("map-change")} setzt eine andere ein (eine korrigierte Fassung,
             einen besseren Scan, die OCAD-Datei statt eines Bildes): Die Posten behalten ihre Stelle auf dem Blatt, ihre Koordinaten (eine neue Fassung derselben
             OCAD-Datei), ihre Stelle im Gelände (zwei georeferenzierte Karten), oder sie werden danach mit zwei Klicks ausgerichtet.</p>
+          <h3>Trainingskarten</h3>
+          <p>${W("map-colors")} blendet Farben und Symbole einer OCAD- oder Mapper-Karte aus, für alle Bahnen oder für eine: eine Karte ohne Wege, ohne Vegetation, nur mit Gelände oder Höhenlinien, mit einem Klick. ${W("exercise")} blendet die Karte einer Bahn aus, bis auf einen Korridor entlang ihrer Teilstrecken und Fenster um ihre Posten, und folgt der Bahn, wenn sie sich ändert; die Logos der Karte bleiben sichtbar.</p>
           <h3>Das Violett der Bahn</h3>
           <p>Die Gruppe Karte › Violett legt fest, wie die Bahn auf der Karte liegt; jede Art wird dort im Kleinen gezeigt:</p>
           <ul class="mx-list">
@@ -1418,10 +1420,7 @@ export function build(X) {
             Livelox).</p>
           <h3>Karten</h3>
           <p>${W("maps")}: weitere Karten in der Veranstaltung, auf die erste ausgerichtet (über ihre Georeferenzierungen, denselben Rahmen oder zwei
-            Punkte auf jeder), und die Karte jedes Teils einer Bahn. ${W("map-colors")} blendet Farben und Symbole einer OCAD- oder
-            Mapper-Karte aus, für alle Bahnen oder für eine: eine Karte ohne Wege, ohne Vegetation, nur mit Gelände oder Höhenlinien, mit
-            einem Klick. ${W("exercise")} blendet die Karte einer Bahn aus, bis auf einen Korridor entlang ihrer Teilstrecken und Fenster
-            um ihre Posten, und folgt der Bahn, wenn sie sich ändert; die Logos der Karte bleiben sichtbar. ${W("map-templates")} zeigt die Hintergrundkarten einer OCAD-Karte, die man ihr gibt. ${W("field-states")} benennt die Zustände der
+            Punkte auf jeder), und die Karte jedes Teils einer Bahn. ${W("map-templates")} zeigt die Hintergrundkarten einer OCAD-Karte, die man ihr gibt. ${W("field-states")} benennt die Zustände der
             Posten im Feldmodus.</p>
         </section>`,
       calculs: () => html`

@@ -2023,10 +2023,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   are to be checked**. Climb outside France: `trace/terrain.js` `tileHeights` (advanced level only; IGN unchanged for everyone).
   **Not built**: Condes's .wcd (closed format, needs Condes and sample files), a direct Livelox upload (needs Livelox's agreement:
   the package stands in), more interface languages (with the site's), EPS and IOF XML 1.0. Local tests: launch configs
-  `pages-dev-tracer` (8781, the test account an administrator) and `pages-dev-tracer-user` (8782, not); the guide's chapter « Le niveau
+  `pages-dev-tracer` (8781, the test account an administrator) and `pages-dev-tracer-user` (8782, not; wrangler 4.156.2); the guide's chapter « Le niveau
   avancé » (`?onglet=tracer&voir=avance`).
 - **Training maps in the Tracer** (owner, 2026-11-05, after the OCAD study, private artifact
-  https://claude.ai/artifact/GNEXysSHwavEj636KdgQDU; the advanced level, administrators for now): ribbon Carte › « Carte
+  https://claude.ai/artifact/GNEXysSHwavEj636KdgQDU; the advanced level for a day, **every account's since 2026-11-06**, owner: the
+  group « training » no longer `pro`, its guide text in « La carte »'s « Cartes d'entraînement »): ribbon Carte › « Carte
   d'entraînement ». **« Filtrer la carte… »** (act `map-colors`, `mapview.colorsDialog`, OCAD/Mapper maps only) hides colours **and
   symbols**, for every course (`ev.mapHidden` colour ids, `ev.mapHiddenSyms` symbol ids) or for one (`course.mapHide { colors,
   symbols }`; « Comme tous les circuits » drops it) — `model.mapHideFor(ev, course)`; ready-made choices (`presetSymbols`, by
@@ -2045,7 +2046,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   them. Defaults 80 m forest, 30 m at 1:5000 or larger. A .ppen keeps none of it (`ppenLosses` « mapfilter »). Tested 2026-11-05 on
   the local « ent opa 8 nov26 deski P » event (OCAD 2018): « Courbes seules » on one course, the whole map on the others, a 60 m
   corridor on another, both on screen and in the PDF (vector); the geometry in Node (a 4-leg loop: corridor and island in 52 ms).
-  Not done: image, scan or PDF maps (masks only; filtering them would mean repainting pixels), opening it to every account.
+  Not done: image, scan or PDF maps (masks only; filtering them would mean repainting pixels). The mask it makes is a « mask » special,
+  which only administrators draw by hand (`PRO_SPECIALS`); everyone removes it with the dialog's « Retirer le masque ».
 - **OCAD course files in the Tracer** (owner, 2026-11-04: « why can't an OCAD file be imported alone? »; every account, the essential
   level): an `.ocd` holding courses (OCAD's course-setting project) is an event file of its own on « Importer un événement », and on the
   start screen or « Nouvel événement » it goes to the import (`pages/tracer.js` `ocadCourses`); its map is the file itself when it holds
