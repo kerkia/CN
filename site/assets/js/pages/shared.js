@@ -1799,7 +1799,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           <span class="sh-name">${leg && legTime(r, leg) != null ? html`<span class="sh-vtag" style="--v:${routeVar(r).c}" title="${routeVar(r).name}">${routeVar(r).key}</span> ` : ""}${r.name}${r.mine ? html` <span class="tag">${t("sh.me")}</span>` : ""}${r.test ? html` <span class="tag">${t("sh.test.tag")}</span>` : ""}</span>
           <button type="button" class="sh-follow-one${r === sel && follow === "sel" ? " on" : ""}" data-follow="${r.uid}" aria-pressed="${r === sel && follow === "sel"}" title="${t("sh.followOne")}">⌖</button>
           <span class="num muted">${leg ? (lt != null ? html`${clock(lt)}${lt > bestLeg ? html` <span class="sh-behind">${signed(lt - bestLeg)}</span>` : ""}` : "—")
-            : r.official?.time != null ? clock(r.official.time) : total(r) != null ? `~${clock(total(r))}` : "—"}</span>
+            : r.official?.time != null ? clock(r.official.time) : total(r) != null ? html`<span class="sh-est" title="${t("sh.time.est")}">~${clock(total(r))}</span>` : "—"}</span>
           ${score ? html`<span class="sh-sub muted">${t("sh.score.n", { n: visitsOf(r).length, m: scoreN })}</span>` : leg && dist != null ? html`<span class="sh-sub muted">${fmt(dist)} m · ${pace(dist / lt)}</span>` : r.official?.place ? html`<span class="sh-sub muted">${t("sh.place", { p: r.official.place })}</span>` : ""}
           ${notesOn && r.note ? html`<span class="sh-note" title="${t("sh.note.of", { r: r.name })}">${r.note}</span>` : ""}</div>`; })}</div>`
         : html`<div class="empty">${t("sh.noTraces")}</div>`}

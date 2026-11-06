@@ -43,7 +43,9 @@ export function keyHtml(o = {}) {
   groups.push([t("lg.h.panels"), [
     phone ? [`${btn("›")}${btn("‹")}`, t("lg.handle"), t("lg.handle.d.phone")] : [`${btn("‹")}${btn("›")}`, t("lg.fold"), t("lg.fold.d")],
     [btn(`${phone ? "▴" : "▸"} ${t("sh.strip.title")}`), t("sh.strip.title"), t("lg.strip.d")],
-    ...(o.multi ? [[btn("⌖"), t("lg.follow", cols), t("lg.follow.d", cols)]] : []),
+    ...(o.multi ? [[btn("⌖"), t("lg.follow", cols), t("lg.follow.d", cols)],
+      // the runners' times: « ~ » = read on the track, not published
+      [btn("~"), t("lg.timeEst"), t("lg.timeEst.d", { tab: cols.tab, col: t("prov.time") })]] : []),
   ]]);
   return html`<div class="lg">${groups.map(([head, items]) => html`<h4 class="lg-h">${head}</h4>
     <dl class="lg-list">${items.map(([ico, name, d]) => html`<div class="lg-row"><dt>${raw(ico)}</dt><dd><b>${name}</b><span>${d}</span></dd></div>`)}</dl>`)}</div>`;

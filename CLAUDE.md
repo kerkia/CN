@@ -1355,10 +1355,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   temps » and « Ajouter / Remplacer ma trace » carry an icon (`sidepanel.ICONS`, `iconLabel`) before their words on a computer, in
   their place under 900 px (their title says them), where the line is one line and drops who may open it; its right part never
   wraps, so « ⤢ » is always the top right corner (who may open it cut short instead); **no « ↗ » in the analyses**
-  (`fullwin.buttons({ tab: false })`; the Tracer keeps its own). **« Légende »** (owner, 2026-11-06: a phone shows no tooltips), the
+  (`fullwin.buttons({ tab: false })`; the Tracer keeps its own). **« Aide »** (Help, Hilfe, Ayuda; « Légende » until 2026-11-06 evening, owner) (owner, 2026-11-06: a phone shows no tooltips), the
   right panel's last tab in both analyses (`trace/legend.js keyHtml`; texts `lg.*`): every button and icon of the page drawn as there,
   its name and what it does, by place (top line, the bar, the map, the panels — the phone's handles or the computer's ‹ ›); the map
-  analysis adds its views, « Ajouter ma trace », its start modes and the « Suivre » column. Every icon button has a tooltip (the zoom's
+  analysis adds its views, « Ajouter ma trace », its start modes, the « Suivre » column and the times marked « ~ » (read on the
+  trace, no published time: `sh.time.est` their tooltip, `lg.timeEst`). Every icon button has a tooltip (the zoom's
   + −, ▶, the speed, the start control too). Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
 - **Generated maps** (owner, 2026-11-01, after the question of MapAnt-like maps: a prototype, administrators only, in « Analyse
   solo »): for a trace without a map in metropolitan France, « Générer une carte d'après le LiDAR (essai) » (files card,
