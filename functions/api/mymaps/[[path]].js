@@ -9,8 +9,12 @@
 //   GET    /api/mymaps                          { maps: [map + runs], links: { archive, maps: { id: link }, sets: [link + maps] }, name }
 //                                               (a link: { token, traces })
 //   POST   /api/mymaps/maps                     the image as the body, X-Meta (URI-encoded JSON: sha, title, day, place,
-//                                               notes, w, h, geo) -> { map, existed } (the same image again: the map kept)
-//   PUT    /api/mymaps/maps/<id>                { title, day, place, notes, geo } -> { map }
+//                                               notes, w, h, geo, country, region, dept, pos) -> { map, existed } (the same
+//                                               image again: the map kept, its place given if it had none;
+//                                               placed: false while migration 0024 is not applied)
+//   PUT    /api/mymaps/maps/<id>                { title, day, place, notes, geo, country, region, dept, pos } -> { map }
+//                                               (country, region, dept: migration 0024, left out before it; pos: [lat, lon]
+//                                               of a map without a georeference — a GPS track's first point)
 //   DELETE /api/mymaps/maps/<id>                the map, its runs, its link
 //   PUT    /api/mymaps/maps/<id>/thumb          the thumbnail as the body
 //   GET    /api/mymaps/maps/<id>/map | /thumb
@@ -59,9 +63,19 @@ function centre(geo, w, h) {
   return [(geo.a * y - geo.d * x) / det, (geo.e * x - geo.b * y) / det];       // [lat, lon]
 }
 const key = (uid, map, rest) => `mymaps/${uid}/${map}/${rest}`;
+const cleanCc = (s) => (/^[A-Za-z]{2}$/.test(String(s || "")) ? String(s).toUpperCase() : "");
+/** [lat, lon] of a map without a georeference, when the browser gives one (a track's first point). */
+const cleanPos = (p) => (Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]) && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180 ? [Number(p[0]), Number(p[1])] : null);
+/** The map's place written (migration 0024): false when the columns are not there yet (the browser's folder import then stops). */
+async function setPlace(env, id, b, m = {}) {
+  const v = (k, n) => (k in b ? (k === "country" ? cleanCc(b[k]) : clean(b[k], n)) : m[k] ?? "");
+  try { await env.DB.prepare("UPDATE mymaps SET country = ?, region = ?, dept = ? WHERE id = ?").bind(v("country"), v("region", 120), v("dept", 120), id).run(); return true; }
+  catch (e) { if (!/no such column/i.test(String(e?.message))) throw e; return false; }
+}
 
 const mapOut = (m) => ({ id: m.id, sha: m.sha, title: m.title, day: m.day, place: m.place, notes: m.notes, type: m.type, bytes: m.bytes,
-  w: m.w, h: m.h, geo: m.geo ? JSON.parse(m.geo) : null, thumb: !!m.thumb, created: m.created_at, updated: m.updated_at });
+  w: m.w, h: m.h, geo: m.geo ? JSON.parse(m.geo) : null, lat: m.lat ?? null, lon: m.lon ?? null, country: m.country || "", region: m.region || "",
+  dept: m.dept || "", thumb: !!m.thumb, created: m.created_at, updated: m.updated_at });
 const runOut = (r, shared = false) => ({ id: r.id, map: r.map_id, title: r.title, day: r.day, start: r.start_ms, dur: r.dur, dist: r.dist,
   source: r.source, personal: shared ? false : !!r.personal, bytes: shared ? undefined : r.bytes, note: r.note || "" });
 
@@ -194,27 +208,34 @@ export async function onRequest(ctx) {
 
     if (parts[0] === "maps") {
       if (parts.length === 1 && method === "POST") {
-        if (!(await allow(env, `mymaps:${uid}`, 400, 3600))) return json({ error: "rate" }, 429);
+        if (!(await allow(env, `mymaps:${uid}`, 2000, 3600))) return json({ error: "rate" }, 429);
         let meta;
         try { meta = JSON.parse(decodeURIComponent(request.headers.get("X-Meta") || "")); } catch (e) { return json({ error: "meta" }, 400); }
         const type = String(request.headers.get("Content-Type") || "").split(";")[0].trim();
         const sha = String(meta?.sha || "");
         if (!TYPES.includes(type) || !/^[0-9a-f]{64}$/.test(sha)) return json({ error: "type" }, 415);
         const old = await env.DB.prepare("SELECT * FROM mymaps WHERE user_id = ? AND sha = ?").bind(uid, sha).first();
-        if (old) return json({ map: mapOut(old), existed: true });
+        if (old) {
+          // a map kept before without its place (Analyse solo's) takes the one now given (a folder's import)
+          let placed = "country" in old;
+          if (placed && !old.country && cleanCc(meta.country)) { placed = await setPlace(env, old.id, meta); Object.assign(old, { country: cleanCc(meta.country), region: clean(meta.region, 120), dept: clean(meta.dept, 120) }); }
+          return json({ map: mapOut(old), existed: true, placed });
+        }
         const buf = await bodyBytes(request, MAX_MAP);
         if (!buf) return json({ error: "size" }, 413);
         const d = new Uint8Array(await crypto.subtle.digest("SHA-256", buf));
         if ([...d].map((x) => x.toString(16).padStart(2, "0")).join("") !== sha) return json({ error: "sha" }, 400);
         const w = Math.round(num(meta.w) || 0), h = Math.round(num(meta.h) || 0);
         if (!(w > 0 && h > 0 && w <= 40000 && h <= 40000)) return json({ error: "size" }, 400);
-        const geo = cleanGeo(meta.geo), [lat, lon] = centre(geo, w, h), id = newId(), now = nowIso();
+        const geo = cleanGeo(meta.geo), id = newId(), now = nowIso();
+        const [lat, lon] = geo ? centre(geo, w, h) : cleanPos(meta.pos) || [null, null];
         await env.BUCKET.put(key(uid, id, "map"), buf, { httpMetadata: { contentType: type } });
         await env.DB.prepare(`INSERT INTO mymaps (id, user_id, sha, title, day, place, notes, type, bytes, w, h, geo, lat, lon, created_at, updated_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(id, uid, sha, clean(meta.title, 200), cleanDay(meta.day), clean(meta.place, 200),
           clean(meta.notes, 4000), type, buf.byteLength, w, h, geo ? JSON.stringify(geo) : null, lat, lon, now, now).run();
+        const placed = await setPlace(env, id, meta);
         const m = await env.DB.prepare("SELECT * FROM mymaps WHERE id = ?").bind(id).first();
-        return json({ map: mapOut(m), existed: false });
+        return json({ map: mapOut(m), existed: false, placed });
       }
       const id = parts[1] || "";
       if (!ID.test(id)) return json({ error: "not found" }, 404);
@@ -223,10 +244,12 @@ export async function onRequest(ctx) {
       if (parts.length === 2 && method === "PUT") {
         const b = await readBody(request);
         if (!b) return json({ error: "fields" }, 400);
-        const geo = "geo" in b ? cleanGeo(b.geo) : m.geo ? JSON.parse(m.geo) : null, [lat, lon] = centre(geo, m.w, m.h);
+        const geo = "geo" in b ? cleanGeo(b.geo) : m.geo ? JSON.parse(m.geo) : null;
+        const [lat, lon] = geo ? centre(geo, m.w, m.h) : "pos" in b ? cleanPos(b.pos) || [null, null] : [m.lat, m.lon];
         await env.DB.prepare("UPDATE mymaps SET title = ?, day = ?, place = ?, notes = ?, geo = ?, lat = ?, lon = ?, updated_at = ? WHERE id = ?")
           .bind("title" in b ? clean(b.title, 200) : m.title, "day" in b ? cleanDay(b.day) : m.day, "place" in b ? clean(b.place, 200) : m.place,
             "notes" in b ? clean(b.notes, 4000) : m.notes, geo ? JSON.stringify(geo) : null, lat, lon, nowIso(), id).run();
+        if ("country" in b || "region" in b || "dept" in b) await setPlace(env, id, b, m);
         return json({ map: mapOut(await env.DB.prepare("SELECT * FROM mymaps WHERE id = ?").bind(id).first()) });
       }
       if (parts.length === 2 && method === "DELETE") {
@@ -246,7 +269,7 @@ export async function onRequest(ctx) {
       }
       if (parts.length === 3 && ["map", "thumb"].includes(parts[2]) && method === "GET") return serve(env, key(uid, id, parts[2]));
       if (parts.length === 3 && parts[2] === "runs" && method === "POST") {
-        if (!(await allow(env, `mymaps:${uid}`, 400, 3600))) return json({ error: "rate" }, 429);
+        if (!(await allow(env, `mymaps:${uid}`, 2000, 3600))) return json({ error: "rate" }, 429);
         const text = await request.text();
         if (text.length > MAX_RUN) return json({ error: "size" }, 413);
         let b;

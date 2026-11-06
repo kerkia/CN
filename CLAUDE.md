@@ -925,6 +925,34 @@ Every multiple-choice game was played through to its score page at phone size, w
   account deletion removes all (`api/account/delete.js`); the privacy page's « Mes cartes ». Texts in the area catalogue
   `i18n/mymaps.{fr,en,de,es}.js` (`loadArea("mymaps")`); the Coach guide's chapter `cartes`. Local test: launch config
   `pages-dev-mymaps` (8799); DOMA samples in the git-ignored `site/data/_trtest/mymaps/`.
+  **The library** (owner, 2026-11-06: « your very own, private, library of orienteering digital maps, with traces if you wish »):
+  each map has a place — **migration 0024** (`mymaps.country` ISO alpha-2, `region`, `dept`: in France the région's name and the
+  département's number, elsewhere names as given; the API leaves them out and answers `placed: false` before it) —, and
+  `trace/mymapsplace.js` names countries by the browser's `Intl.DisplayNames` in ten languages (folder names « Suede »,
+  « Sweden », « SE »; FX, IC… left out: FX took « France ») and France's units from `geo/regions.json` / `departements.json`
+  (a département gives its région; a point its département: maps georeferenced in France before 0024 are placed in memory). The
+  page: figures (maps, % with a track, countries, regions) for the scope shown and each folder; filters country › region ›
+  département › year (`?pays=&region=&dep=&annee=`); folders by place (country › region › département › place) or by date
+  (year › month, a year read from the name when no date: « Ball-Trap S 2019 ») or none (`?groupe=`, kept in `ocn.mm.prefs`
+  `libGroup`), unfolded in place or entered (`?dossier=` keys joined by « ~ »), a breadcrumb, a filter's level not repeated as a
+  folder; beside them on a computer the Agenda's map (`agendamap.mount` with `area`/`missing` keys of its own, `fitDots` on the
+  world's map), a map's own position (georeference, else a track's first point) or its département's / région's / country's
+  centre (hollow), a click opening the map. Each card has, under the mouse, ▶ Rejouer (the latest run), ✎ Renommer, 💬
+  Commenter (the map's notes), 🗑 Supprimer — the same SVG icons before the same buttons on the map's page (`icon()`).
+  « Nouvelle carte »: any map file (images incl. GIF/BMP/TIFF, PDF, KMZ, OCAD/Mapper rendered, QuickRoute/Ozimut JPEGs, a world
+  file + .prj beside it) and a GPS track; the name from the file, the date from the name or the track, the place from the
+  georeference or the track's start in France; name and country required; a track on a georeferenced map placed at once
+  (`mymapsimport.runOn`, source « track »), else the map kept with the track's start as its position and handed with the track
+  to « Analyse solo » to be calibrated. « Ajouter une trace » on a map's page likewise. **« Importer un dossier »**
+  (`trace/mymapsimport.js` `plan`, `importOne`; `<input webkitdirectory>` or a folder dropped anywhere on the page): the format
+  shown in the dialog (`mm.fmt.*`) — <country>/<in France a département « 77 - Seine-et-Marne » or « 77 », or a région then a
+  département; elsewhere a region, then a province « 28 - Segovia »>/[place folders…]/<map name, a date in it>; a year or date
+  folder gives the date; a track of the same name (or starting with it) beside a map is its run —, the folder chosen dropped
+  when it is no country; each file outside the format named with its reason and how to fix it (`rootFile`, `country`,
+  `frUnit`, `trackAlone`, over 80 MB), other files listed as ignored; then sent one by one (a bar, « Arrêter »), maps already
+  kept skipped by SHA-256, and a report (added, already there, failed with why, tracks not placed). Tested on paths shaped like
+  the owner's example folder (`P:\Alec\CO\O Maps`: Country / « NN - Département » or region / [place] / name.png, ~530 PNG and
+  145 PDF) and end to end with generated maps, a world file and GPX tracks. Rate limit 2 000 maps an hour an account (400 before).
 - **VMA** (`#/vma`, `pages/vma.js`, menu « Entrainement » after Jeux; 2026-10-14; every account since 2026-10-15): three tabs (Méthodes first and
   opened by default, then Calculateur; owner, 2026-10-30) —
   Calculateur (demi-Cooper 6 min / Cooper 12 min: laps of a 400 m track in a chosen lane — lane 1 400 m measured 0.30 m from

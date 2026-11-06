@@ -5,48 +5,91 @@
 // (#/mes-cartes?partage=<token>[&carte=<id>]; a visitor without an account too). Every map goes out as Ozimut's file, one
 // or all in a zip, and comes back the same. DOMA: no import yet — its button asks the Ozimut team to turn it on for the
 // account, a message ready to send. No quota for now (owner).
+//
+// The library (owner, 2026-11-06): its figures (maps, share with a track, countries, regions) for the whole library and for
+// each folder; filters by country, region and département; a map of where the maps are (agendamap.js, the Agenda's: the
+// mouse over a dot names its maps, a click opens one); the maps grouped in folders by place (country › region ›
+// département › place) or by date (year › month), each folder unfolded in place or entered, a breadcrumb leading back;
+// on each card, under the mouse, the icons of « Rejouer », « Renommer », « Commenter » and « Supprimer » — the same icons
+// before the same actions on the map's own page. « Nouvelle carte »: a map in any format, a GPS track if one wishes, the
+// name, date and place asked when the files do not give them. « Importer un dossier »: a folder of maps sorted by
+// country / region / département / place (trace/mymapsimport.js), its format shown, each file that does not follow it named
+// with the reason.
 
-import { html, raw, $, $$, fmt, fmtDate, fmtTime, fileAccept } from "../util.js";
+import { html, raw, $, $$, fmt, fmtDate, fmtTime, fileAccept, pctN } from "../util.js";
 import { t, tn, loadArea, lang } from "../i18n.js";
 import * as auth from "../auth.js";
 import { replaceQuery } from "../app.js";
 import * as MM from "../trace/mymaps.js";
+import * as MP from "../trace/mymapsplace.js";
+import * as MI from "../trace/mymapsimport.js";
+import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 
 await loadArea("mymaps");
 
 const SKEY = "ocn.mm.prefs";
-// a map alone: an image, a PDF (its first page), a KMZ (its image, georeferenced); with its runs: QuickRoute's and Ozimut's JPEGs, a zip of them
-const ACCEPT_MAP = ".jpg,.jpeg,.png,.webp,.pdf,.kmz,image/jpeg,image/png,image/webp,application/pdf";
+// with their runs: QuickRoute's and Ozimut's JPEGs, a zip of them
 const ACCEPT_TRACE = ".jpg,.jpeg,.zip,image/jpeg,application/zip";
 const prefs = (() => { try { return JSON.parse(localStorage.getItem(SKEY) || "{}") || {}; } catch (e) { return {}; } })();
 const keepPrefs = () => { try { localStorage.setItem(SKEY, JSON.stringify(prefs)); } catch (e) { /* this visit */ } };
 const km = (m) => (m == null ? "—" : t("mm.km", { n: fmt(m / 1000, 1) }));
 const pace = (dur, dist) => (dur && dist ? `${fmtTime(Math.round((dur / dist) * 1000))} ${t("mm.perKm")}` : "—");
 const size = (b) => (b < 1024 * 1024 ? t("mm.kb", { n: fmt(Math.max(1, b / 1024)) }) : t("mm.mb", { n: fmt(b / 1024 / 1024, 1) }));
-const yearOf = (m) => (m.day || m.created || "").slice(0, 4);
+/** A map's year: its date's, else one its name or place gives (« Ball-Trap S 2019 »). */
+const yearOf = (m) => (m.day || "").slice(0, 4) || MI.yearIn(m.title) || MI.yearIn(m.place);
 const shareUrl = (token, map) => `${location.origin}${location.pathname}#/mes-cartes?partage=${token}${map ? `&carte=${map}` : ""}`;
+const wide = () => matchMedia("(min-width: 980px)").matches;
+
+// the actions' icons: the same on a card (under the mouse) and before the same buttons on the map's page
+const PATHS = {
+  replay: '<path d="M8 5v14l11-7z" fill="currentColor" stroke="none"/>',
+  rename: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  note: '<path d="M4 5h16v11H10l-5 4v-4H4z"/><path d="M8 9h8M8 12h5"/>',
+  delete: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  edit: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  add: '<path d="M12 5v14M5 12h14"/>',
+  track: '<path d="M5 19c3-1 3-5 6-6s4 2 7-1"/><circle cx="5" cy="19" r="1.6"/><circle cx="18" cy="12" r="1.6"/>',
+  folder: '<path d="M3 6h6l2 2h10v11H3z"/>',
+  import: '<path d="M3 6h6l2 2h10v11H3z"/><path d="M12 11v6M9 14l3 3 3-3"/>',
+  share: '<circle cx="6" cy="12" r="2.2"/><circle cx="17" cy="6" r="2.2"/><circle cx="17" cy="18" r="2.2"/><path d="M8 11l7-4M8 13l7 4"/>',
+  export: '<path d="M12 4v11M8 11l4 4 4-4M5 19h14"/>',
+};
+const icon = (k) => raw(`<svg class="mm-ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${PATHS[k]}</svg>`);
 
 export async function render(main, { query = {} } = {}) {
   const me = auth.session();
   const token = /^[a-z2-9]{8,40}$/.test(query.partage || "") ? query.partage : null;
   let st = { maps: [], links: { archive: null, maps: {}, sets: [] }, name: "", archive: false };
   let q = query.q || "", year = query.annee || "";
+  const flt = { country: query.pays || "", region: query.region || "", dept: query.dep || "" };
+  let group = ["lieu", "date", "aucun"].includes(query.groupe) ? query.groupe : ["lieu", "date", "aucun"].includes(prefs.libGroup) ? prefs.libGroup : "lieu";
+  let path = query.dossier ? String(query.dossier).split("~").filter(Boolean) : [];
   main.innerHTML = html`<div class="mm" id="mm"><div class="empty">${t("mm.loading")}</div></div>`;
   if (!token && !me) {
     $("#mm").innerHTML = html`<div class="card"><div class="card-body"><p>${t("mm.needAccount")}</p></div></div>`;
     return { title: t("mm.title") };
   }
+  let fr;
   try {
-    st = token ? { ...(await MM.shared(token)), links: { archive: null, maps: {}, sets: [] } } : await MM.list();
+    [st, fr] = await Promise.all([token ? MM.shared(token).then((s) => ({ ...s, links: { archive: null, maps: {}, sets: [] } })) : MM.list(), MP.france()]);
   } catch (e) {
     $("#mm").innerHTML = html`<div class="card"><div class="card-body"><p>${t(token ? "mm.shared.gone" : e.status === 503 ? "mm.err.notReady" : "mm.err.load")}</p></div></div>`;
     return { title: t("mm.title") };
   }
+  // a map georeferenced in France and kept before its place was asked (2026-11-06): its département and région from its centre
+  for (const m of st.maps) {
+    if (m.country || !Number.isFinite(m.lat)) continue;
+    const a = MP.frAt(fr, m.lat, m.lon);
+    if (a) Object.assign(m, { country: "FR", region: a.region, dept: a.dept });
+  }
   const mine = !token;
+  const traces = !token || st.traces !== false;
   const byId = (id) => st.maps.find((m) => m.id === id);
-  let viewer = null;
+  let viewer = null, mapCtl = null, mapEl = null, mapCc = "", mapGen = 0, mapWorld = false;
   const sel = new Set();                     // the maps ticked in the gallery (one's own): what the selection's actions act on
+  const deptOf = (m) => MP.deptLabel(fr, m.country, m.dept);
+  const whereOf = (m) => [m.place, deptOf(m), m.region && m.region !== m.dept ? m.region : "", MP.countryName(m.country)].filter(Boolean);
 
   function draw() {
     viewer?.close(); viewer = null;
@@ -54,69 +97,307 @@ export async function render(main, { query = {} } = {}) {
     if (id && byId(id)) return openMap(byId(id));
     drawList();
   }
+  const address = () => replaceQuery({ partage: token, q: q || null, annee: year || null, pays: flt.country || null, region: flt.region || null,
+    dep: flt.dept || null, groupe: group === (prefs.libGroup || "lieu") ? null : group, dossier: group !== "aucun" && path.length ? path.join("~") : null });
 
-  // ---- the gallery ---------------------------------------------------------------------------------------------------
-  // (owner, 2026-11-01) the three ways of adding a map, one a line — Analyse solo first: all automatic, no file —, then the maps;
-  // what acts on maps (export, share, delete) shows once some are ticked; the whole library is shared from the head
+  // ---- the library -----------------------------------------------------------------------------------------------------
+  // (owner, 2026-11-01) the ways of adding a map, one a line; (2026-11-06) « Nouvelle carte » and « Importer un dossier » in the
+  // head, the others folded under them
   const ways = (open) => html`<details class="card mm-ways" ${raw(open ? "open" : "")}><summary>${t("mm.add.title")}</summary><div class="card-body">
       <div class="mm-way mm-way-best"><div><b>${t("mm.add.solo")}</b> <span class="mm-best">${t("mm.add.best")}</span>
         <p>${t("mm.add.solo.text")}</p></div><a class="btn btn-sm btn-primary" href="#/analyse-solo">${t("mm.add.solo.go")}</a></div>
+      <div class="mm-way"><div><b>${t("mm.add.new")}</b><p>${t("mm.add.new.text")}</p></div>
+        <button type="button" class="btn btn-sm" data-act="new">${icon("add")} ${t("mm.new")}</button></div>
+      <div class="mm-way"><div><b>${t("mm.add.folder")}</b><p>${t("mm.add.folder.text")}</p></div>
+        <button type="button" class="btn btn-sm" data-act="folder">${icon("import")} ${t("mm.folder")}</button></div>
       <div class="mm-way"><div><b>${t("mm.add.trace")}</b><p>${t("mm.add.trace.text")}
         <button type="button" class="linklike" id="mm-doma">${t("mm.add.doma")}</button></p></div>
         <label class="btn btn-sm" for="mm-files">${t("mm.add.trace.go")}</label><input type="file" id="mm-files" multiple hidden accept="${fileAccept(ACCEPT_TRACE)}"></div>
-      <div class="mm-way"><div><b>${t("mm.add.map")}</b><p>${t("mm.add.map.text")}</p></div>
-        <label class="btn btn-sm" for="mm-blank">${t("mm.add.map.go")}</label><input type="file" id="mm-blank" multiple hidden accept="${fileAccept(ACCEPT_MAP)}"></div>
       ${phone.offered() ? html`<div class="mm-way"><div><b>${t("ph.mm.title")}</b><p>${t("ph.mm.text")}</p></div>${phone.button("mm-phone")}</div>` : ""}
       <p class="muted mm-drop-hint">${t("mm.add.drop")}</p></div></details>`;
+
   function drawList() {
     for (const id of [...sel]) if (!byId(id)) sel.delete(id);
-    const years = [...new Set(st.maps.map(yearOf).filter(Boolean))].sort().reverse();
-    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    const shown = st.maps.filter((m) => (!year || yearOf(m) === year)
-      && words.every((w) => [m.title, m.place, m.notes, ...m.runs.map((r) => r.title)].join(" ").toLowerCase().includes(w)));
-    const nRuns = st.maps.reduce((n, m) => n + m.runs.length, 0), bytes = st.maps.reduce((n, m) => n + m.bytes + m.runs.reduce((k, r) => k + (r.bytes || 0), 0), 0);
+    const empty = !st.maps.length;
     $("#mm").innerHTML = html`
       <div class="page-head"><div><h1>${token ? t("mm.shared.title", { name: st.name }) : t("mm.title")}</h1>
         <p class="lede">${token ? t(st.traces ? "mm.shared.lede" : "mm.shared.ledeMap") : t("mm.lede")}</p></div>
-        ${mine ? html`<div class="mm-acts"><button type="button" class="btn btn-sm" id="mm-share">${st.links.archive ? `🔗 ${t("mm.shareLib.on")}` : t("mm.shareLib")}</button></div>` : ""}</div>
-      ${mine ? ways(!st.maps.length) : ""}
-      ${st.maps.length ? html`<div class="filters mm-filters">
+        ${mine ? html`<div class="mm-acts"><button type="button" class="btn btn-sm btn-primary" data-act="new">${icon("add")} ${t("mm.new")}</button>
+          <button type="button" class="btn btn-sm" data-act="folder">${icon("import")} ${t("mm.folder")}</button>
+          <button type="button" class="btn btn-sm" id="mm-share">${icon("share")} ${st.links.archive ? t("mm.shareLib.on") : t("mm.shareLib")}</button></div>` : ""}</div>
+      ${mine ? ways(empty) : ""}
+      ${empty ? (mine ? html`<div class="card"><div class="card-body prose mm-empty"><p>${t("mm.empty")}</p></div></div>`
+        : html`<div class="card"><div class="card-body prose mm-empty">${t("mm.shared.none")}</div></div>`) : html`
+        <div class="mm-stats" id="mm-stats"></div>
+        <div class="filters mm-filters">
           <input type="search" id="mm-q" placeholder="${t("mm.search")}" value="${q}" aria-label="${t("mm.search")}">
-          <select id="mm-year" aria-label="${t("mm.year")}"><option value="">${t("mm.allYears")}</option>${years.map((y) => html`<option ${raw(y === year ? "selected" : "")}>${y}</option>`)}</select>
-          <span class="muted">${tn("mm.count.maps", st.maps.length)}${token && !st.traces ? "" : ` · ${tn("mm.count.runs", nRuns)}`}${mine ? ` · ${size(bytes)}` : ""}</span>
-          ${mine && shown.length ? html`<button type="button" class="btn btn-ghost btn-sm" id="mm-selall">${t("mm.sel.all")}</button>` : ""}</div>
+          <span class="mm-fsel" id="mm-fsel"></span>
+          <span class="mm-group"><span class="muted">${t("mm.group")}</span><span class="seg" role="group" aria-label="${t("mm.group")}">
+            ${["lieu", "date", "aucun"].map((g) => html`<button type="button" data-mmgroup="${g}" aria-pressed="${group === g}">${t(`mm.group.${g}`)}</button>`)}</span></span>
+          ${mine ? html`<button type="button" class="btn btn-ghost btn-sm" id="mm-selall">${t("mm.sel.all")}</button>` : ""}</div>
         ${mine ? html`<div class="mm-selbar" id="mm-selbar" role="toolbar" aria-label="${t("mm.sel.bar")}" hidden><b id="mm-sel-n"></b>
-          <button type="button" class="btn btn-sm btn-primary" id="mm-sel-export">${t("mm.sel.export")}</button>
-          <button type="button" class="btn btn-sm" id="mm-sel-share">${t("mm.sel.share")}</button>
-          <button type="button" class="btn btn-sm mm-danger" id="mm-sel-del">${t("mm.sel.delete")}</button>
+          <button type="button" class="btn btn-sm btn-primary" id="mm-sel-export">${icon("export")} ${t("mm.sel.export")}</button>
+          <button type="button" class="btn btn-sm" id="mm-sel-share">${icon("share")} ${t("mm.sel.share")}</button>
+          <button type="button" class="btn btn-sm mm-danger" id="mm-sel-del">${icon("delete")} ${t("mm.sel.delete")}</button>
           <button type="button" class="btn btn-ghost btn-sm" id="mm-sel-none">${t("mm.sel.none")}</button></div>` : ""}
-        <div class="mm-grid" id="mm-grid">${shown.map(card)}</div>
-        ${shown.length ? "" : html`<div class="empty">${t("mm.none.filter")}</div>`}`
-      : mine ? "" : html`<div class="card"><div class="card-body prose mm-empty">${t("mm.shared.none")}</div></div>`}`;
-    $("#mm-q")?.addEventListener("input", (e) => { q = e.target.value; replaceQuery({ partage: token, q: q || null, annee: year || null }); redrawGrid(); });
-    $("#mm-year")?.addEventListener("change", (e) => { year = e.target.value; replaceQuery({ partage: token, q: q || null, annee: year || null }); drawList(); });
-    $$(".mm-card").forEach((c) => c.addEventListener("click", (e) => { if (e.target.closest(".mm-pick")) return; e.preventDefault(); go(c.dataset.id); }));
-    if (!mine) return;
-    // a tick changes the marks and the selection's bar only: the cards (and their pictures) stay
-    const marks = () => {
-      $$(".mm-card").forEach((c) => { const on = sel.has(c.dataset.id); c.classList.toggle("picked", on); const i = $(".mm-pick input", c); if (i) i.checked = on; });
-      $("#mm-grid")?.classList.toggle("picking", sel.size > 0);
-      const bar = $("#mm-selbar");
-      if (bar) { bar.hidden = !sel.size; $("#mm-sel-n").textContent = tn("mm.sel.count", sel.size); }
+        <div class="mm-lib" id="mm-lib"><div class="mm-lib-main" id="mm-main"></div>
+          <aside class="mm-lib-side"><div id="mm-libmap" class="mm-libmap"></div></aside></div>`}`;
+    mapCtl?.destroy?.(); mapCtl = null; mapEl = null;
+    const page = $("#mm");                       // (the site's header has its own [data-group] menu items: every query here stays in the page)
+    $$("[data-act=new]", page).forEach((b) => b.addEventListener("click", () => newMapDialog()));
+    $$("[data-act=folder]", page).forEach((b) => b.addEventListener("click", () => folderDialog()));
+    $("#mm-q")?.addEventListener("input", (e) => { q = e.target.value; refresh(); });
+    $$("[data-mmgroup]", page).forEach((b) => b.addEventListener("click", () => {
+      group = prefs.libGroup = b.dataset.mmgroup; keepPrefs(); path = [];
+      $$("[data-mmgroup]", page).forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      refresh();
+    }));
+    const lib = $("#mm-lib");
+    if (lib) bindLib(lib);
+    if (mine) {
+      $("#mm-selall")?.addEventListener("click", () => { const all = scope().every((m) => sel.has(m.id)); scope().forEach((m) => (all ? sel.delete(m.id) : sel.add(m.id))); marks(); });
+      $("#mm-sel-none")?.addEventListener("click", () => { sel.clear(); marks(); });
+      $("#mm-sel-export")?.addEventListener("click", () => exportDialog(st.maps.filter((m) => sel.has(m.id))));
+      $("#mm-sel-share")?.addEventListener("click", () => shareDialog(sel.size === 1 ? { map: byId([...sel][0]) } : { ids: [...sel] }));
+      $("#mm-sel-del")?.addEventListener("click", deleteSelection);
+      $("#mm-files").addEventListener("change", (e) => { const f = [...e.target.files]; e.target.value = ""; if (f.length) importFiles(f); });
+      // a photo or a file from the phone (phonelink.js): the new map's dialog takes it
+      phone.bind("mm-phone", { kind: "map", multiple: false, onFiles: (f) => newMapDialog(f) });
+      $("#mm-doma").addEventListener("click", domaDialog);
+      $("#mm-share").addEventListener("click", () => shareDialog({}));
+      dropZone($("#mm"));
+    }
+    if (!empty) refresh();
+  }
+
+  // the maps the filters keep, then those of the folder shown
+  const filtered = () => {
+    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return st.maps.filter((m) => (!year || yearOf(m) === year)
+      && (!flt.country || m.country === flt.country) && (!flt.region || MP.fold(m.region) === MP.fold(flt.region)) && (!flt.dept || MP.fold(m.dept) === MP.fold(flt.dept))
+      && words.every((w) => [m.title, m.place, m.notes, m.region, deptOf(m), MP.countryName(m.country), ...m.runs.map((r) => r.title)].join(" ").toLowerCase().includes(w)));
+  };
+  let tree = null, node = null;
+  const scope = () => (node ? node.maps : filtered());
+
+  // ---- folders ----------------------------------------------------------------------------------------------------------
+  const coll = new Intl.Collator(lang(), { numeric: true, sensitivity: "base" });
+  const monthLabel = (day) => { const s = fmtDate(`${day.slice(0, 7)}-01`, "month"); return s.charAt(0).toUpperCase() + s.slice(1); };
+  const LEVELS = {
+    lieu: [(m) => (m.country ? { k: m.country, label: MP.countryName(m.country) } : null),
+      (m) => (m.region ? { k: MP.fold(m.region), label: m.region } : null),
+      (m) => (m.dept ? { k: MP.fold(m.dept), label: deptOf(m) } : null),
+      (m) => (m.place ? { k: MP.fold(m.place), label: m.place } : null)],
+    date: [(m) => { const y = yearOf(m); return y ? { k: y, label: y } : null; },
+      (m) => (m.day ? { k: m.day.slice(0, 7), label: monthLabel(m.day) } : null)],
+  };
+  /** The folders of maps: { key, label, maps (all below), kids: [node], direct: [map], depth }. */
+  function build(maps) {
+    const L = LEVELS[group];
+    const grow = (n, d) => {
+      n.kids = []; n.direct = [];
+      if (!L || d >= L.length || n.key === "~") { n.direct = n.maps; return; }
+      const kids = new Map();
+      for (const m of n.maps) {
+        let g = L[d](m);
+        if (!g && d === 0) g = { k: "~", label: t(group === "date" ? "mm.lib.noDate" : "mm.lib.noPlace") };
+        if (!g) { n.direct.push(m); continue; }
+        if (!kids.has(g.k)) kids.set(g.k, { key: g.k, label: g.label, maps: [], depth: d + 1 });
+        kids.get(g.k).maps.push(m);
+      }
+      n.kids = [...kids.values()].sort((a, b) => (a.key === "~") - (b.key === "~") || (group === "date" ? b.key.localeCompare(a.key) : coll.compare(a.label, b.label)));
+      for (const k of n.kids) grow(k, d + 1);
     };
+    const root = { key: "", label: token ? t("mm.shared.title", { name: st.name }) : t("mm.lib.root"), maps, depth: 0 };
+    // the levels a filter fixes are not folders (France chosen: its regions at the top)
+    grow(root, group === "lieu" ? (flt.dept ? 3 : flt.region ? 2 : flt.country ? 1 : 0) : 0);
+    return root;
+  }
+  const at = (root, p) => { let n = root; const trail = [root]; for (const k of p) { const c = n.kids.find((x) => x.key === k); if (!c) break; n = c; trail.push(c); } return trail; };
+
+  // a set of maps in figures: maps, share with a track, countries, regions (owner, 2026-11-06)
+  const figures = (maps) => {
+    const n = maps.length, withRuns = maps.filter((m) => m.runs.length).length;
+    return { n, pct: n ? Math.round((100 * withRuns) / n) : 0, countries: new Set(maps.map((m) => m.country).filter(Boolean)).size,
+      regions: new Set(maps.filter((m) => m.region).map((m) => `${m.country}|${MP.fold(m.region)}`)).size };
+  };
+  const figLine = (maps, depth) => {
+    const f = figures(maps), loc = group === "lieu";
+    return [tn("mm.count.maps", f.n), traces ? t("mm.fig.pctLine", { n: f.pct }) : "",
+      !(loc && depth >= 1) && f.countries ? tn("mm.fig.countries", f.countries) : "", !(loc && depth >= 2) && f.regions ? tn("mm.fig.regions", f.regions) : ""].filter(Boolean).join(" · ");
+  };
+  function drawStats(maps, label) {
+    const f = figures(maps), runs = maps.reduce((s, m) => s + m.runs.length, 0), bytes = maps.reduce((n, m) => n + m.bytes + m.runs.reduce((k, r) => k + (r.bytes || 0), 0), 0);
+    const tile = (v, k, sub = "") => html`<div class="mm-stat"><b>${v}</b><span>${k}</span>${sub ? html`<small class="muted">${sub}</small>` : ""}</div>`;
+    $("#mm-stats").innerHTML = html`<span class="mm-stats-h muted">${label}</span>
+      ${tile(fmt(f.n), tn("mm.fig.maps", f.n), mine ? size(bytes) : "")}
+      ${traces ? tile(pctN(f.pct), t("mm.fig.pct"), tn("mm.count.runs", runs)) : ""}
+      ${tile(fmt(f.countries), tn("mm.fig.countriesK", f.countries))}
+      ${tile(fmt(f.regions), tn("mm.fig.regionsK", f.regions))}`;
+  }
+
+  // the filters: country, then its regions, then their départements (each list from the maps kept)
+  function drawFilters() {
+    const opts = (vals, cur, label, allKey, name) => html`<select data-f="${name}" aria-label="${label}"><option value="">${t(allKey)}</option>
+      ${vals.map(([v, l]) => html`<option value="${v}" ${raw(MP.fold(v) === MP.fold(cur) ? "selected" : "")}>${l}</option>`)}</select>`;
+    const countries = [...new Set(st.maps.map((m) => m.country).filter(Boolean))].map((c) => [c, MP.countryName(c)]).sort((a, b) => coll.compare(a[1], b[1]));
+    const inC = st.maps.filter((m) => !flt.country || m.country === flt.country);
+    const regions = [...new Map(inC.filter((m) => m.region).map((m) => [MP.fold(m.region), [m.region, m.region]])).values()].sort((a, b) => coll.compare(a[1], b[1]));
+    const inR = inC.filter((m) => !flt.region || MP.fold(m.region) === MP.fold(flt.region));
+    const depts = [...new Map(inR.filter((m) => m.dept).map((m) => [MP.fold(m.dept), [m.dept, deptOf(m)]])).values()].sort((a, b) => coll.compare(a[1], b[1]));
+    const years = [...new Set(st.maps.map(yearOf).filter(Boolean))].sort().reverse();
+    $("#mm-fsel").innerHTML = html`${countries.length ? opts(countries, flt.country, t("mm.f.country"), "mm.allCountries", "country") : ""}
+      ${regions.length ? opts(regions, flt.region, t("mm.f.region"), "mm.allRegions", "region") : ""}
+      ${depts.length ? opts(depts, flt.dept, t("mm.f.dept"), "mm.allDepts", "dept") : ""}
+      ${years.length ? opts(years.map((y) => [y, y]), year, t("mm.year"), "mm.allYears", "year") : ""}`;
+    $$("[data-f]", $("#mm-fsel")).forEach((s) => s.addEventListener("change", () => {
+      const k = s.dataset.f;
+      if (k === "year") year = s.value;
+      else { flt[k] = s.value; if (k === "country") { flt.region = ""; flt.dept = ""; } if (k === "region") flt.dept = ""; }
+      path = [];
+      refresh();
+    }));
+  }
+
+  function refresh() {
+    if (!st.maps.length) return drawList();
+    if (!$("#mm-main")) return;
+    drawFilters();
+    tree = build(filtered());
+    const trail = group === "aucun" ? [tree] : at(tree, path);
+    node = trail.at(-1);
+    path = trail.slice(1).map((n) => n.key);
+    address();
+    drawStats(node.maps, node === tree ? (filtered().length === st.maps.length ? t("mm.fig.all") : t("mm.fig.filtered")) : t("mm.fig.folder", { name: node.label }));
+    const crumbs = html`<nav class="mm-crumbs" aria-label="${t("mm.lib.crumbs")}">${trail.map((n, i) => (i === trail.length - 1
+      ? html`<b>${i ? icon("folder") : ""}${n.label}</b>` : html`<a href="#" data-to="${i}">${i ? icon("folder") : ""}${n.label}</a><span class="sep">›</span>`))}</nav>`;
+    $("#mm-main").innerHTML = html`${trail.length > 1 ? crumbs : ""}${content(node, path)}${node.maps.length ? "" : html`<div class="empty">${t("mm.none.filter")}</div>`}`;
     marks();
-    $$(".mm-pick input").forEach((c) => c.addEventListener("change", () => { if (c.checked) sel.add(c.dataset.id); else sel.delete(c.dataset.id); marks(); }));
-    $("#mm-selall")?.addEventListener("click", () => { const all = shown.every((m) => sel.has(m.id)); shown.forEach((m) => (all ? sel.delete(m.id) : sel.add(m.id))); marks(); });
-    $("#mm-sel-none")?.addEventListener("click", () => { sel.clear(); marks(); });
-    $("#mm-sel-export")?.addEventListener("click", () => exportDialog(st.maps.filter((m) => sel.has(m.id))));
-    $("#mm-sel-share")?.addEventListener("click", () => shareDialog(sel.size === 1 ? { map: byId([...sel][0]) } : { ids: [...sel] }));
-    $("#mm-sel-del")?.addEventListener("click", deleteSelection);
-    for (const id of ["#mm-files", "#mm-blank"]) $(id).addEventListener("change", (e) => { const f = [...e.target.files]; e.target.value = ""; if (f.length) importFiles(f); });
-    // a photo or a file from the phone (phonelink.js): the import's own dialog takes over
-    phone.bind("mm-phone", { kind: "map", multiple: false, onFiles: (f) => { importFiles(f); } });
-    $("#mm-doma").addEventListener("click", domaDialog);
-    $("#mm-share").addEventListener("click", () => shareDialog({}));
-    dropZone($("#mm"));
+    drawMap(node.maps);
+  }
+  const folderRow = (n, p) => html`<details class="mm-folder" data-path="${p.join("~")}"><summary>
+      <span class="mm-fold-ic">${icon("folder")}</span><b class="mm-fold-name">${n.label}</b><span class="muted mm-fold-st">${figLine(n.maps, n.depth)}</span>
+      <a href="#" class="btn btn-ghost btn-sm mm-enter" data-enter="${p.join("~")}" title="${t("mm.lib.enter.tip")}">${t("mm.lib.enter")} ›</a></summary><div class="mm-fold-body"></div></details>`;
+  const content = (n, p) => html`${n.kids.length ? html`<div class="mm-folders">${n.kids.map((k) => folderRow(k, [...p, k.key]))}</div>` : ""}
+    ${n.direct.length ? html`<div class="mm-grid">${n.direct.map(card)}</div>` : ""}`;
+  const nodeAt = (p) => at(tree, p).at(-1);
+
+  // one listener for the whole library: cards, their icons, ticks, folders unfolded or entered, the breadcrumb
+  function bindLib(lib) {
+    lib.addEventListener("toggle", (e) => {
+      const d = e.target.closest?.(".mm-folder");
+      if (!d || !d.open || d.dataset.filled) return;
+      const p = d.dataset.path.split("~"), body = $(".mm-fold-body", d);
+      body.innerHTML = String(content(nodeAt(p), p));
+      d.dataset.filled = "1";
+      marks();
+    }, true);
+    lib.addEventListener("click", (e) => {
+      const to = e.target.closest("[data-to]");
+      if (to) { e.preventDefault(); path = path.slice(0, Number(to.dataset.to)); refresh(); window.scrollTo({ top: Math.min(window.scrollY, $("#mm-stats").offsetTop - 80) }); return; }
+      const en = e.target.closest("[data-enter]");
+      if (en) { e.preventDefault(); e.stopPropagation(); path = en.dataset.enter.split("~"); refresh(); return; }
+      const qa = e.target.closest("[data-q]");
+      if (qa) { e.preventDefault(); e.stopPropagation(); quick(qa.dataset.q, byId(qa.closest(".mm-card").dataset.id), qa); return; }
+      if (e.target.closest(".mm-pick")) return;
+      const c = e.target.closest(".mm-card");
+      if (c) { e.preventDefault(); go(c.dataset.id); }
+    });
+    lib.addEventListener("change", (e) => {
+      const c = e.target.closest(".mm-pick input");
+      if (!c) return;
+      if (c.checked) sel.add(c.dataset.id); else sel.delete(c.dataset.id);
+      marks();
+    });
+    // the card under the mouse marked on the map, and the map's dot under the mouse marks its card
+    lib.addEventListener("mouseover", (e) => { const c = e.target.closest(".mm-card"); if (c) mapCtl?.hover(c.dataset.id); });
+    lib.addEventListener("mouseout", (e) => { const c = e.target.closest(".mm-card"); if (c && !c.contains(e.relatedTarget)) mapCtl?.hover(null); });
+  }
+  // a tick changes the marks and the selection's bar only: the cards (and their pictures) stay
+  function marks() {
+    if (!mine) return;
+    $$(".mm-card").forEach((c) => { const on = sel.has(c.dataset.id); c.classList.toggle("picked", on); const i = $(".mm-pick input", c); if (i) i.checked = on; });
+    $("#mm-lib")?.classList.toggle("picking", sel.size > 0);
+    const b = $("#mm-selbar");
+    if (b) { b.hidden = !sel.size; $("#mm-sel-n").textContent = tn("mm.sel.count", sel.size); }
+  }
+
+  // ---- the map of the library (a computer: the Agenda's map, agendamap.js) ------------------------------------------------
+  async function drawMap(maps) {
+    const el = $("#mm-libmap"), gen = ++mapGen;
+    if (!el || !wide()) return;
+    const evs = [];
+    for (const m of maps) {
+      const p = await MP.position(m, fr);
+      if (!p) continue;
+      evs.push({ key: m.id, name: m.title || t("mm.untitled"), place: whereOf(m)[0] || m.title, date: m.day || null, ...(p[2] ? { pos: [p[0], p[1], 1] } : { gps: [p[0], p[1]] }) });
+    }
+    if (gen !== mapGen) return;
+    const ccs = new Set(maps.map((m) => m.country).filter(Boolean));
+    const cc = ccs.size === 1 && maps.every((m) => m.country) ? [...ccs][0] : "xw";
+    if (!mapCtl || mapEl !== el || mapCc !== cc) {
+      mapCtl?.destroy?.();
+      const AM = await import("../agendamap.js");
+      const opts = { onPick: (k) => go(k), onHover: (k) => $$(".mm-card").forEach((c) => c.classList.toggle("hot", c.dataset.id === k)), area: "mm.map.approx", missing: "mm.map.missing" };
+      mapCtl = await AM.mount(el, cc, opts);
+      mapWorld = cc === "xw" || !mapCtl;
+      if (!mapCtl && cc !== "xw") mapCtl = await AM.mount(el, "xw", opts);      // (a country without an outline: the world's)
+      mapEl = el; mapCc = cc;
+      if (gen !== mapGen) return;
+    }
+    mapCtl?.show(evs, null);
+    if (mapWorld) mapCtl?.fitDots();
+  }
+
+  // ---- the cards and their actions --------------------------------------------------------------------------------------
+  const thumb = (m) => (m.thumb ? MM.mapUrl(m.id, "thumb", token) : MM.mapUrl(m.id, "map", token));
+  const qbtn = (k, label) => html`<button type="button" class="mm-q" data-q="${k}" title="${label}" aria-label="${label}">${icon(k)}</button>`;
+  const card = (m) => {
+    const dur = m.runs.reduce((s, r) => s + (r.dur || 0), 0), dist = m.runs.reduce((s, r) => s + (r.dist || 0), 0);
+    const w = whereOf(m);
+    return html`<a class="mm-card" href="#/mes-cartes?${raw(token ? `partage=${token}&` : "")}carte=${m.id}" data-id="${m.id}">
+      <span class="mm-thumb"><img src="${thumb(m)}" alt="" loading="lazy">${mine && st.links.maps[m.id] ? html`<span class="mm-tag" title="${t("mm.shared.on")}">🔗</span>` : ""}
+        ${mine ? html`<label class="mm-pick" title="${t("mm.sel.one")}"><input type="checkbox" data-id="${m.id}" aria-label="${t("mm.sel.one")}"></label>` : ""}
+        <span class="mm-quick">${traces && m.runs.length ? qbtn("replay", t("mm.replay")) : ""}${mine ? html`${qbtn("rename", t("mm.rename"))}${qbtn("note", t("mm.note.map"))}${qbtn("delete", t("mm.delete"))}` : ""}</span>
+        ${m.notes ? html`<span class="mm-has-note" title="${m.notes}">${icon("note")}</span>` : ""}</span>
+      <b>${m.title || t("mm.untitled")}</b>
+      <span class="muted">${[m.day ? fmtDate(m.day) : "", w.slice(0, 2).join(", ")].filter(Boolean).join(" · ")}</span>
+      <span class="muted">${!traces ? (w[w.length - 1] || "") : m.runs.length ? html`${tn("mm.count.runs", m.runs.length)}${dist ? ` · ${km(dist)}` : ""}${dur ? ` · ${fmtTime(Math.round(dur))}` : ""}` : t("mm.mapOnly")}</span></a>`;
+  };
+  // the icons' actions — the same as the buttons of the map's page
+  async function quick(k, m, btn) {
+    if (!m) return;
+    if (k === "replay") return replayLast(m, btn);
+    if (k === "rename") return renameMap(m, () => refresh());
+    if (k === "note") return noteDialog(m, () => refresh());
+    if (k === "delete") return deleteMap(m, () => refresh());
+  }
+  async function replayLast(m, btn) {
+    const r = [...m.runs].sort((a, b) => (b.start || 0) - (a.start || 0))[0];
+    if (!r) return;
+    if (btn) btn.disabled = true;
+    try { await MM.replay(m, r, r.title || m.title || t("mm.untitledRun"), token); }
+    catch (e) { console.error(e); if (btn) btn.disabled = false; alert(t("mm.replay.err")); }
+  }
+  async function renameMap(m, after) {
+    const v = prompt(t("mm.rename.mapAsk"), m.title || "");
+    if (v == null) return;
+    try { Object.assign(m, (await MM.updateMap(m.id, { title: v.trim() })).map); after(); } catch (e) { alert(t("mm.err.save")); }
+  }
+  async function deleteMap(m, after) {
+    if (!confirm(t("mm.delete.ask", { title: m.title || t("mm.untitled") }))) return;
+    try { await MM.deleteMap(m.id); st.maps = st.maps.filter((x) => x.id !== m.id); sel.delete(m.id); after(); } catch (e) { alert(t("mm.err.save")); }
+  }
+  function noteDialog(m, after) {
+    const d = dialog(html`${dlgHead(t("mm.note.map"))}<form class="stack mm-form" method="dialog">
+      <p class="muted">${m.title || t("mm.untitled")}</p>
+      <textarea name="notes" rows="6" maxlength="4000" placeholder="${t("mm.note.mapPh")}">${m.notes}</textarea>
+      <div class="row"><button class="btn btn-primary" type="submit">${t("mm.save")}</button><button class="btn" type="button" data-close>${t("mm.cancel")}</button></div></form>`);
+    $("textarea", d).focus();
+    $("form", d).addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try { Object.assign(m, (await MM.updateMap(m.id, { notes: new FormData(e.target).get("notes") })).map); d.close(); after(); } catch (err) { alert(t("mm.err.save")); }
+    });
   }
   const keepScroll = (fn) => { const y = window.scrollY; fn(); window.scrollTo(0, y); };
   async function deleteSelection() {
@@ -124,49 +405,37 @@ export async function render(main, { query = {} } = {}) {
     if (!ids.length || !confirm(tn("mm.sel.deleteAsk", ids.length))) return;
     let failed = 0;
     for (const id of ids) { try { await MM.deleteMap(id); st.maps = st.maps.filter((m) => m.id !== id); sel.delete(id); } catch (e) { failed++; } }
-    keepScroll(drawList);
+    keepScroll(refresh);
     if (failed) alert(t("mm.err.save"));
   }
-  function redrawGrid() {
-    const pos = $("#mm-q")?.selectionStart;
-    drawList();
-    const i = $("#mm-q");
-    if (i) { i.focus(); i.setSelectionRange(pos, pos); }
-  }
-  const thumb = (m) => (m.thumb ? MM.mapUrl(m.id, "thumb", token) : MM.mapUrl(m.id, "map", token));
-  const card = (m) => {
-    const dur = m.runs.reduce((s, r) => s + (r.dur || 0), 0), dist = m.runs.reduce((s, r) => s + (r.dist || 0), 0);
-    return html`<a class="mm-card" href="#/mes-cartes?${raw(token ? `partage=${token}&` : "")}carte=${m.id}" data-id="${m.id}">
-      <span class="mm-thumb"><img src="${thumb(m)}" alt="" loading="lazy">${mine && st.links.maps[m.id] ? html`<span class="mm-tag" title="${t("mm.shared.on")}">🔗</span>` : ""}
-        ${mine ? html`<label class="mm-pick" title="${t("mm.sel.one")}"><input type="checkbox" data-id="${m.id}" aria-label="${t("mm.sel.one")}"></label>` : ""}</span>
-      <b>${m.title || t("mm.untitled")}</b>
-      <span class="muted">${[m.day ? fmtDate(m.day) : "", m.place].filter(Boolean).join(" · ")}</span>
-      <span class="muted">${token && !st.traces ? "" : m.runs.length ? html`${tn("mm.count.runs", m.runs.length)}${dist ? ` · ${km(dist)}` : ""}${dur ? ` · ${fmtTime(Math.round(dur))}` : ""}` : t("mm.mapOnly")}</span></a>`;
-  };
   function go(id) {
     query = { ...query, carte: id };
-    replaceQuery({ partage: token, carte: id, q: null, annee: null });
+    replaceQuery({ partage: token, carte: id });
     draw();
     window.scrollTo(0, 0);
   }
   function back() {
     query = { ...query, carte: null };
-    replaceQuery({ partage: token, carte: null, q: q || null, annee: year || null });
     draw();
   }
 
   // ---- one map: drawn with its runs -------------------------------------------------------------------------------------
   function openMap(m) {
+    mapCtl?.destroy?.(); mapCtl = null;
     const hidden = new Set();
     let colourBy = prefs.colour === "pace" ? "pace" : "run";
     $("#mm").innerHTML = html`
       ${!token || st.archive ? html`<p class="mm-back"><a href="#/mes-cartes${raw(token ? `?partage=${token}` : "")}" id="mm-back">‹ ${token ? t("mm.shared.back", { name: st.name }) : t("mm.title")}</a></p>` : ""}
       <div class="page-head"><div><h1>${m.title || t("mm.untitled")}</h1>
-        <p class="lede meta">${[m.day ? fmtDate(m.day) : "", m.place, `${fmt(m.w)} × ${fmt(m.h)} px`, token ? t("mm.shared.by", { name: st.name }) : ""].filter(Boolean).join(" · ")}</p></div>
-        <div class="mm-acts">${mine ? html`<button type="button" class="btn btn-sm" id="mm-edit">${t("mm.edit")}</button>
-          <button type="button" class="btn btn-sm" id="mm-mshare">${st.links.maps[m.id] ? `🔗 ${t("mm.shared.on")}` : t("mm.shareMap")}</button>` : ""}
-          <button type="button" class="btn btn-sm" id="mm-mexport">${t("mm.exportMap")}</button>
-          ${mine ? html`<button type="button" class="btn btn-sm mm-danger" id="mm-del">${t("mm.delete")}</button>` : ""}</div></div>
+        <p class="lede meta">${[m.day ? fmtDate(m.day) : "", ...whereOf(m), `${fmt(m.w)} × ${fmt(m.h)} px`, token ? t("mm.shared.by", { name: st.name }) : ""].filter(Boolean).join(" · ")}</p></div>
+        <div class="mm-acts">${traces && m.runs.length ? html`<button type="button" class="btn btn-sm btn-primary" id="mm-replay">${icon("replay")} ${t("mm.replay")}</button>` : ""}
+          ${mine ? html`<button type="button" class="btn btn-sm" id="mm-ren">${icon("rename")} ${t("mm.rename")}</button>
+          <button type="button" class="btn btn-sm" id="mm-note">${icon("note")} ${t("mm.note.map")}</button>
+          <button type="button" class="btn btn-sm" id="mm-edit">${icon("edit")} ${t("mm.edit")}</button>
+          <label class="btn btn-sm" for="mm-addtrack" title="${t("mm.addTrack.tip")}">${icon("track")} ${t("mm.addTrack")}</label><input type="file" id="mm-addtrack" hidden accept="${fileAccept(MI.ACCEPT_TRACK)}">
+          <button type="button" class="btn btn-sm" id="mm-mshare">${icon("share")} ${st.links.maps[m.id] ? t("mm.shared.on") : t("mm.shareMap")}</button>` : ""}
+          <button type="button" class="btn btn-sm" id="mm-mexport">${icon("export")} ${t("mm.exportMap")}</button>
+          ${mine ? html`<button type="button" class="btn btn-sm mm-danger" id="mm-del">${icon("delete")} ${t("mm.delete")}</button>` : ""}</div></div>
       ${m.notes ? html`<p class="mm-notes">${m.notes}</p>` : ""}
       <div class="mm-view">
         <div class="mm-map"><canvas id="mm-canvas"></canvas>
@@ -194,10 +463,10 @@ export async function render(main, { query = {} } = {}) {
         ${r.note && noteOpen !== r.id ? html`<p class="mm-run-note">${r.note}</p>` : ""}
         ${mine && noteOpen === r.id ? html`<div class="mm-note-edit"><textarea id="mm-note-ta" rows="3" maxlength="1000" placeholder="${t("mm.note.ph")}">${r.note || ""}</textarea>
           <span><button type="button" class="btn btn-sm btn-primary" data-note-save="${r.id}">${t("mm.note.save")}</button> <button type="button" class="btn btn-sm" data-note-cancel>${t("mm.note.cancel")}</button></span></div>` : ""}
-        <span class="mm-run-acts"><button type="button" class="btn btn-sm" data-replay="${r.id}" title="${t("mm.replay.tip")}">▶ ${t("mm.replay")}</button>
-        ${mine ? html`<button type="button" class="btn btn-ghost btn-sm" data-ren="${r.id}">${t("mm.rename")}</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-note="${r.id}">${t(r.note ? "mm.note.edit" : "mm.note.add")}</button>
-          <button type="button" class="btn btn-ghost btn-sm" data-rm="${r.id}">${t("mm.remove")}</button>` : ""}</span></li>`)}`;
+        <span class="mm-run-acts"><button type="button" class="btn btn-sm" data-replay="${r.id}" title="${t("mm.replay.tip")}">${icon("replay")} ${t("mm.replay")}</button>
+        ${mine ? html`<button type="button" class="btn btn-ghost btn-sm" data-ren="${r.id}">${icon("rename")} ${t("mm.rename")}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-note="${r.id}">${icon("note")} ${t(r.note ? "mm.note.edit" : "mm.note.add")}</button>
+          <button type="button" class="btn btn-ghost btn-sm" data-rm="${r.id}">${icon("delete")} ${t("mm.remove")}</button>` : ""}</span></li>`)}`;
       // « Rejouer » (owner, 2026-11-04): the map and the run handed to « Analyse solo », played at once (MM.replayGpx)
       $$("[data-replay]").forEach((b) => b.addEventListener("click", async () => {
         const r = m.runs.find((x) => x.id === b.dataset.replay);
@@ -228,7 +497,7 @@ export async function render(main, { query = {} } = {}) {
 
     // the canvas: the map at the view's zoom, the runs over it; dragged, wheeled, pinched
     const dpr = () => window.devicePixelRatio || 1;
-    function size() {
+    function sizeCv() {
       const box = cv.parentElement.getBoundingClientRect();
       cv.width = Math.round(box.width * dpr()); cv.height = Math.round(box.height * dpr());
     }
@@ -305,10 +574,10 @@ export async function render(main, { query = {} } = {}) {
     $("#mm-zin").addEventListener("click", () => zoomAt(1.4, cv.width / dpr() / 2, cv.height / dpr() / 2));
     $("#mm-zout").addEventListener("click", () => zoomAt(1 / 1.4, cv.width / dpr() / 2, cv.height / dpr() / 2));
     $("#mm-fit").addEventListener("click", () => { fit(); paint(); });
-    const ro = new ResizeObserver(() => { const had = !!view; size(); if (!had) fit(); paint(); });
+    const ro = new ResizeObserver(() => { const had = !!view; sizeCv(); if (!had) fit(); paint(); });
     ro.observe(cv.parentElement);
     viewer = { close: () => ro.disconnect() };
-    size();
+    sizeCv();
 
     (async () => {
       try {
@@ -320,46 +589,331 @@ export async function render(main, { query = {} } = {}) {
       paint();
     })();
 
+    $("#mm-replay")?.addEventListener("click", (e) => replayLast(m, e.currentTarget));
     if (mine) {
+      $("#mm-ren").addEventListener("click", () => renameMap(m, () => openMap(m)));
+      $("#mm-note").addEventListener("click", () => noteDialog(m, () => openMap(m)));
       $("#mm-edit").addEventListener("click", () => editDialog(m));
       $("#mm-mshare").addEventListener("click", () => shareDialog({ map: m }));
-      $("#mm-del").addEventListener("click", async () => {
-        if (!confirm(t("mm.delete.ask", { title: m.title || t("mm.untitled") }))) return;
-        try { await MM.deleteMap(m.id); st.maps = st.maps.filter((x) => x.id !== m.id); back(); } catch (e) { alert(t("mm.err.save")); }
-      });
+      $("#mm-del").addEventListener("click", () => deleteMap(m, back));
+      $("#mm-addtrack").addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) addTrack(m, f); });
     }
     $("#mm-mexport").addEventListener("click", () => exportDialog([m]));
   }
 
+  // « Ajouter une trace »: on a georeferenced map the track is placed at once; else « Analyse solo » calibrates it, and its
+  // « Export › Enregistrer dans Mes cartes » adds it to this map (the same image: the same map)
+  async function addTrack(m, file) {
+    let tr;
+    try { tr = await MI.readTrack(file); } catch (e) { alert(t(e.message === "time" ? "mm.track.time" : "mm.track.bad")); return; }
+    if (m.geo) {
+      try {
+        const run = MI.runOn(tr.track, m.geo, m.w, m.h, file.name.replace(/\.[a-z0-9]+$/i, ""));
+        const personal = run.personal && confirm(t("mm.track.personalAsk"));
+        const { runs } = await saveRuns(m, [run], personal);
+        m.runs.push(...runs);
+        if (!m.day) m.day = run.day;
+        openMap(m);
+      } catch (e) { alert(t(e.message === "outside" ? "mm.track.outside" : "mm.err.save")); }
+      return;
+    }
+    if (!confirm(t("mm.track.calibrate"))) return;
+    const blob = await (await fetch(MM.mapUrl(m.id, "map", token), { credentials: "same-origin" })).blob();
+    const ext = /png/.test(blob.type) ? "png" : /webp/.test(blob.type) ? "webp" : "jpg";
+    await (await import("../pwa.js")).toSolo([new File([blob], MM.fileName(m.title, m.day, ext), { type: blob.type }), file]);
+  }
+  /** Runs added to a map kept: through MM.save, which finds the map by its image. */
+  async function saveRuns(m, runs, personal) {
+    const blob = await (await fetch(MM.mapUrl(m.id, "map"), { credentials: "same-origin" })).blob();
+    const image = await createImageBitmap(blob);
+    try { return await MM.save({ blob, name: `map.${blob.type.split("/")[1] || "jpg"}`, image, title: m.title, day: m.day, geo: m.geo, runs }, { personal }); }
+    finally { image.close?.(); }
+  }
+
   // ---- dialogs -----------------------------------------------------------------------------------------------------------
-  function dialog(inner, { wide = false } = {}) {
+  function dialog(inner, { wide: w = false } = {}) {
     const d = document.createElement("dialog");
-    d.className = `mm-dlg${wide ? " wide" : ""}`;
+    d.className = `mm-dlg${w ? " wide" : ""}`;
     d.innerHTML = String(inner);
     document.body.append(d);
     d.addEventListener("close", () => d.remove());
-    d.addEventListener("click", (e) => { if (e.target === d) d.close(); });
+    d.addEventListener("click", (e) => { if (e.target === d && !d.dataset.busy) d.close(); });
+    d.addEventListener("cancel", (e) => { if (d.dataset.busy) e.preventDefault(); });
     $$("[data-close]", d).forEach((b) => b.addEventListener("click", () => d.close()));
     d.showModal();
     return d;
   }
   const dlgHead = (title) => html`<div class="mm-dlg-h"><b>${title}</b><button type="button" class="btn btn-ghost btn-sm" data-close aria-label="${t("mm.close")}">✕</button></div>`;
 
+  /**
+   * The place's fields — country, then region and département: in France the régions and départements as lists (a
+   * département chosen sets its région), elsewhere names typed, those of the library offered — in `box`. -> { value() }.
+   */
+  function placeFields(box, init = {}) {
+    const v = { country: init.country || "", region: init.region || "", dept: init.dept || "" };
+    const known = (k) => [...new Set(st.maps.filter((m) => m.country === v.country && m[k]).map((m) => m[k]))].sort(coll.compare);
+    const draw = () => {
+      const isFr = v.country === "FR";
+      const depts = isFr ? fr.depts.filter((d) => !v.region || d.region === v.region || d.code === v.dept) : [];
+      box.innerHTML = html`<label class="field"><span>${t("mm.f.country")}</span><select name="country"><option value="">—</option>
+          ${MP.countryList().map(([c, n]) => html`<option value="${c}" ${raw(c === v.country ? "selected" : "")}>${n}</option>`)}</select></label>
+        <div class="mm-row2"><label class="field"><span>${t("mm.f.region")}</span>${isFr
+          ? html`<select name="region"><option value="">—</option>${fr.regions.map((r) => html`<option ${raw(r.name === v.region ? "selected" : "")}>${r.name}</option>`)}</select>`
+          : html`<input name="region" maxlength="120" value="${v.region}" list="mm-dl-region"><datalist id="mm-dl-region">${known("region").map((x) => html`<option value="${x}">`)}</datalist>`}</label>
+        <label class="field"><span>${t("mm.f.dept")}</span>${isFr
+          ? html`<select name="dept"><option value="">—</option>${depts.map((d) => html`<option value="${d.code}" ${raw(d.code === v.dept ? "selected" : "")}>${d.code} ${d.name}</option>`)}</select>`
+          : html`<input name="dept" maxlength="120" value="${v.dept}" list="mm-dl-dept"><datalist id="mm-dl-dept">${known("dept").map((x) => html`<option value="${x}">`)}</datalist>`}</label></div>`;
+      $("[name=country]", box).addEventListener("change", (e) => { v.country = e.target.value; v.region = ""; v.dept = ""; draw(); });
+      $("[name=region]", box).addEventListener(isFr ? "change" : "input", (e) => { v.region = e.target.value; if (isFr) { if (v.dept && fr.depts.find((d) => d.code === v.dept)?.region !== v.region) v.dept = ""; draw(); } });
+      $("[name=dept]", box).addEventListener(isFr ? "change" : "input", (e) => {
+        v.dept = e.target.value;
+        if (isFr && v.dept) { v.region = fr.depts.find((d) => d.code === v.dept)?.region || v.region; draw(); }
+      });
+    };
+    draw();
+    return { value: () => ({ ...v }), set: (o) => { Object.assign(v, o); draw(); } };
+  }
+
   function editDialog(m) {
     const d = dialog(html`${dlgHead(t("mm.edit"))}<form class="stack mm-form" method="dialog">
       <label class="field"><span>${t("mm.f.title")}</span><input name="title" maxlength="200" value="${m.title}"></label>
       <label class="field"><span>${t("mm.f.day")}</span><input name="day" type="date" value="${m.day || ""}"></label>
-      <label class="field"><span>${t("mm.f.place")}</span><input name="place" maxlength="200" value="${m.place}"></label>
+      <label class="field"><span>${t("mm.f.place")}</span><input name="place" maxlength="200" value="${m.place}" placeholder="${t("mm.f.place.ph")}"></label>
+      <div class="stack mm-form" id="mm-ed-place"></div>
       <label class="field"><span>${t("mm.f.notes")}</span><textarea name="notes" rows="4" maxlength="4000">${m.notes}</textarea></label>
       <div class="row"><button class="btn btn-primary" type="submit">${t("mm.save")}</button><button class="btn" type="button" data-close>${t("mm.cancel")}</button></div></form>`);
+    const pl = placeFields($("#mm-ed-place", d), m);
     $("form", d).addEventListener("submit", async (e) => {
       e.preventDefault();
       const f = new FormData(e.target);
       try {
-        const { map } = await MM.updateMap(m.id, { title: f.get("title"), day: f.get("day") || null, place: f.get("place"), notes: f.get("notes") });
+        const { map } = await MM.updateMap(m.id, { title: f.get("title"), day: f.get("day") || null, place: f.get("place"), notes: f.get("notes"), ...pl.value() });
         Object.assign(m, map); d.close(); openMap(m);
       } catch (err) { alert(t("mm.err.save")); }
     });
+  }
+
+  // ---- « Nouvelle carte » (owner, 2026-11-06): a map in any format, a GPS track if one wishes, what the files do not say asked
+  function newMapDialog(given = []) {
+    const d = dialog(html`${dlgHead(t("mm.new.title"))}<form class="stack mm-form" id="mm-nf" novalidate>
+      <p class="muted">${t("mm.new.text")}</p>
+      <div class="mm-pickers">
+        <div class="mm-drop2" data-drop="map"><b>${t("mm.new.map")}</b><span class="muted" id="mm-nf-map">${t("mm.new.map.hint")}</span>
+          <label class="btn btn-sm" for="mm-nf-mapin">${t("mm.new.choose")}</label><input type="file" id="mm-nf-mapin" hidden multiple accept="${fileAccept(`${MI.ACCEPT},.jgw,.pgw,.tfw,.wld,.prj`)}"></div>
+        <div class="mm-drop2" data-drop="track"><b>${t("mm.new.track")}</b><span class="muted" id="mm-nf-track">${t("mm.new.track.hint")}</span>
+          <label class="btn btn-sm" for="mm-nf-trackin">${t("mm.new.choose")}</label><input type="file" id="mm-nf-trackin" hidden accept="${fileAccept(MI.ACCEPT_TRACK)}"></div>
+      </div>
+      <div class="mm-nf-prev" id="mm-nf-prev" hidden><canvas id="mm-nf-cv"></canvas><span class="muted" id="mm-nf-info"></span></div>
+      <label class="field"><span>${t("mm.f.title")} *</span><input name="title" maxlength="200" required></label>
+      <div class="mm-row2"><label class="field"><span>${t("mm.f.day")}</span><input name="day" type="date"></label>
+        <label class="field"><span>${t("mm.f.place")}</span><input name="place" maxlength="200" placeholder="${t("mm.f.place.ph")}"></label></div>
+      <div class="stack mm-form" id="mm-nf-place"></div>
+      <label class="field"><span>${t("mm.f.notes")}</span><textarea name="notes" rows="2" maxlength="4000"></textarea></label>
+      <label class="mm-check" id="mm-nf-pers" hidden><input type="checkbox" name="personal"> ${t("mm.personal.ask")}</label>
+      <div class="notice" id="mm-nf-err" hidden></div>
+      <div class="row"><button class="btn btn-primary" type="submit" id="mm-nf-go" disabled>${t("mm.new.save")}</button><button class="btn" type="button" data-close>${t("mm.cancel")}</button>
+        <span class="muted" id="mm-nf-state"></span></div></form>`, { wide: true });
+    const f = $("#mm-nf", d), err = $("#mm-nf-err", d);
+    const pl = placeFields($("#mm-nf-place", d), { country: prefs.country || "" });
+    let entry = null, track = null;
+    const say = (k, vars) => { err.textContent = k ? t(k, vars) : ""; err.hidden = !k; };
+    const fill = (name, val) => { const i = f.elements[name]; if (i && !i.value && val) i.value = val; };
+    const located = (lat, lon) => {
+      const cur = pl.value();
+      if (cur.region || cur.dept) return;
+      const at = MP.frAt(fr, lat, lon);
+      if (at) pl.set({ country: "FR", region: at.region, dept: at.dept });
+    };
+    async function takeMap(files) {
+      say(null);
+      const main = files.find((x) => MI.MAP_EXT.test(x.name)) || files[0];
+      if (!main) return;
+      $("#mm-nf-map", d).textContent = t("mm.imp.reading");
+      try {
+        const world = files.find((x) => /\.(jgw|pgw|tfw|gfw|bpw|wld|jpgw|pngw|tifw)$/i.test(x.name)), prj = files.find((x) => /\.prj$/i.test(x.name));
+        const es = await MI.readMap(main, { world, prj });
+        entry = es[0];
+        const dn = MI.dayIn(entry.title);
+        fill("title", dn?.rest || entry.title); fill("day", entry.day || dn?.day); fill("place", entry.place);
+        $("#mm-nf-map", d).textContent = `${main.name} · ${fmt(entry.image.width)} × ${fmt(entry.image.height)} px`;
+        $("#mm-nf-info", d).textContent = [t(entry.geo ? "mm.new.geo" : "mm.new.noGeo"), entry.runs?.length ? tn("mm.count.runs", entry.runs.length) : ""].filter(Boolean).join(" · ");
+        const cv = $("#mm-nf-cv", d), k = Math.min(1, 280 / entry.image.width, 200 / entry.image.height);
+        cv.width = Math.round(entry.image.width * k); cv.height = Math.round(entry.image.height * k);
+        cv.getContext("2d").drawImage(entry.image, 0, 0, cv.width, cv.height);
+        $("#mm-nf-prev", d).hidden = false;
+        if (entry.geo) { const c = MM.toLatLon(entry.geo, entry.image.width / 2, entry.image.height / 2); located(c.lat, c.lon); }
+      } catch (e) {
+        entry = null;
+        $("#mm-nf-map", d).textContent = main.name;
+        if (e.message === "newer") say("mm.imp.newer");
+        else if (["unknown", "map", "pdf"].includes(e.message)) say("mm.new.badMap");
+        else { err.textContent = e.message; err.hidden = false; }          // (a TIFF's own message)
+      }
+      check();
+    }
+    async function takeTrack(file) {
+      say(null);
+      try {
+        track = { file, ...(await MI.readTrack(file)) };
+        $("#mm-nf-track", d).textContent = `${file.name} · ${fmtDate(track.day)} · ${km(track.track.cum[track.track.n - 1])}`;
+        fill("day", track.day);
+        located(track.start[0], track.start[1]);
+        $("#mm-nf-pers", d).hidden = !Object.keys(track.track.ch).some((c) => ["hr", "ele", "cad"].includes(c));
+      } catch (e) { track = null; $("#mm-nf-track", d).textContent = file.name; say(e.message === "time" ? "mm.track.time" : "mm.track.bad"); }
+      check();
+    }
+    const check = () => { $("#mm-nf-go", d).disabled = !entry; };
+    $("#mm-nf-mapin", d).addEventListener("change", (e) => { const fs = [...e.target.files]; e.target.value = ""; if (fs.length) takeMap(fs); });
+    $("#mm-nf-trackin", d).addEventListener("change", (e) => { const x = e.target.files[0]; e.target.value = ""; if (x) takeTrack(x); });
+    // files dropped on the dialog: the tracks to the track, the rest to the map
+    d.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) e.preventDefault(); });
+    d.addEventListener("drop", (e) => {
+      e.preventDefault();
+      const fs = [...(e.dataTransfer?.files || [])], tr = fs.find((x) => MI.TRACK_EXT.test(x.name)), rest = fs.filter((x) => x !== tr);
+      if (rest.length) takeMap(rest);
+      if (tr) takeTrack(tr);
+    });
+    if (given.length) {
+      const tr = given.find((x) => MI.TRACK_EXT.test(x.name)), rest = given.filter((x) => x !== tr);
+      if (rest.length) takeMap(rest);
+      if (tr) takeTrack(tr);
+    }
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!entry) return;
+      const fd = new FormData(f), place = pl.value();
+      if (!String(fd.get("title") || "").trim()) { say("mm.new.needTitle"); f.elements.title.focus(); return; }
+      if (!place.country) { say("mm.new.needCountry"); $("[name=country]", d).focus(); return; }
+      const runs = [...(entry.runs || [])];
+      let pos = null, late = false;
+      if (track) {
+        if (entry.geo) {
+          try { runs.push(MI.runOn(track.track, entry.geo, entry.image.width, entry.image.height, String(fd.get("title")))); }
+          catch (er) { say("mm.track.outside"); return; }
+        } else { pos = track.start; late = true; }
+      }
+      const btn = $("#mm-nf-go", d);
+      btn.disabled = true; d.dataset.busy = "1";
+      $("#mm-nf-state", d).innerHTML = `${bar(null)} ${t("mm.new.saving")}`;
+      try {
+        const r = await MM.save({ ...entry, title: String(fd.get("title")).trim(), day: fd.get("day") || null, place: String(fd.get("place") || ""), notes: String(fd.get("notes") || ""),
+          ...place, pos, runs }, { personal: !!fd.get("personal") });
+        prefs.country = place.country; keepPrefs();
+        st = await MM.list();
+        delete d.dataset.busy;
+        if (late && confirm(t("mm.track.calibrate"))) {
+          d.close();
+          const ext = /png/.test(entry.blob.type) ? "png" : /webp/.test(entry.blob.type) ? "webp" : "jpg";
+          await (await import("../pwa.js")).toSolo([new File([entry.blob], MM.fileName(String(fd.get("title")), fd.get("day"), ext), { type: entry.blob.type }), track.file]);
+          return;
+        }
+        d.close();
+        go(r.map.id);
+      } catch (er) {
+        delete d.dataset.busy; btn.disabled = false; $("#mm-nf-state", d).textContent = "";
+        say(er.status === 413 ? "mm.err.size" : er.status === 503 ? "mm.err.notReady" : "mm.err.save");
+      }
+    });
+  }
+
+  // ---- « Importer un dossier » (owner, 2026-11-06) ------------------------------------------------------------------------
+  const FORMAT_TREE = () => [
+    [0, t("mm.fmt.root"), t("mm.fmt.root.n")],
+    [1, "France/", t("mm.fmt.country")],
+    [2, "77 - Seine-et-Marne/", t("mm.fmt.frDept")],
+    [3, "Fontainebleau/", t("mm.fmt.place")],
+    [4, "Apremont N.png", t("mm.fmt.map")],
+    [4, "Apremont N.gpx", t("mm.fmt.track")],
+    [3, "Bois Rond 2023-05-14.pdf", t("mm.fmt.date")],
+    [1, `${MP.countryName("ES")}/`, t("mm.fmt.country2")],
+    [2, "Madrid/", t("mm.fmt.region")],
+    [3, "La Cabrera.jpg", t("mm.fmt.map2")],
+  ];
+  const formatHtml = () => html`<div class="mm-fmt"><b>${t("mm.fmt.title")}</b>
+    <div class="mm-tree">${FORMAT_TREE().map(([lv, name, note]) => html`<div class="mm-tree-l" style="padding-left:${lv * 18}px"><code>${name}</code><span class="muted">${note}</span></div>`)}</div>
+    <ul class="mm-rules">${["country", "level2", "deeper", "name", "track", "formats"].map((k) => html`<li>${t(`mm.fmt.rule.${k}`)}</li>`)}</ul></div>`;
+  function folderDialog(list = null) {
+    const d = dialog(html`${dlgHead(t("mm.folder.title"))}<div class="stack mm-form" id="mm-fd">
+      <p>${t("mm.folder.text")}</p>
+      ${formatHtml()}
+      <div class="mm-drop2 mm-drop-folder"><b>${t("mm.folder.pick")}</b><span class="muted">${t("mm.folder.pick.hint")}</span>
+        <label class="btn btn-primary btn-sm" for="mm-fd-in">${icon("folder")} ${t("mm.folder.choose")}</label>
+        <input type="file" id="mm-fd-in" hidden webkitdirectory directory multiple></div>
+      <div id="mm-fd-out"></div></div>`, { wide: true });
+    const out = $("#mm-fd-out", d);
+    $("#mm-fd-in", d).addEventListener("change", (e) => { const fs = MI.filesOfInput(e.target.files); e.target.value = ""; if (fs.length) review(fs); });
+    d.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) e.preventDefault(); });
+    d.addEventListener("drop", async (e) => { e.preventDefault(); if (d.dataset.busy) return; const fs = await MI.filesOfDrop(e.dataTransfer); if (fs.length) review(fs); });
+    if (list) review(list);
+
+    // what the folder holds, read from its paths: the maps ready, each file that does not follow the format and why
+    function review(files) {
+      const p = MI.plan(files, fr);
+      const known = new Set(st.maps.map((m) => m.sha));
+      const byCountry = new Map();
+      for (const m of p.maps) byCountry.set(m.country, (byCountry.get(m.country) || 0) + 1);
+      const withTracks = p.maps.filter((m) => m.tracks.length).length;
+      const groups = new Map();
+      for (const e of p.errors) { const k = `${e.code}|${e.arg || ""}`; if (!groups.has(k)) groups.set(k, { ...e, paths: [] }); groups.get(k).paths.push(e.path); }
+      const errText = (g) => t(`mm.folder.err.${g.code}`, { name: g.arg || "" });
+      const errHelp = (g) => t(`mm.folder.fix.${g.code}`, { name: g.arg || "" });
+      const pathList = (paths) => html`<ul class="mm-paths">${paths.slice(0, 12).map((x) => html`<li>${x}</li>`)}${paths.length > 12 ? html`<li class="muted">${t("mm.folder.more", { n: fmt(paths.length - 12) })}</li>` : ""}</ul>`;
+      const big = p.maps.filter((m) => m.file.size > 80 * 1024 * 1024);
+      const ready = p.maps.filter((m) => !big.includes(m));
+      const bytes = ready.reduce((s, m) => s + m.file.size, 0);
+      out.innerHTML = html`
+        ${p.root ? html`<p class="muted">${t("mm.folder.root", { name: p.root })}</p>` : ""}
+        ${ready.length ? html`<div class="mm-ok"><b>✓ ${tn("mm.folder.ready", ready.length)}</b> <span class="muted">(${size(bytes)}${withTracks ? ` · ${tn("mm.folder.withTracks", withTracks)}` : ""})</span>
+          <div class="muted">${[...byCountry].sort((a, b) => b[1] - a[1]).map(([c, n]) => `${MP.countryName(c)} ${fmt(n)}`).join(" · ")}</div></div>`
+        : html`<div class="notice">${t("mm.folder.none")}</div>`}
+        ${groups.size || big.length ? html`<div class="mm-errs"><b>✗ ${tn("mm.folder.errors", p.errors.length + big.length)}</b>
+          ${[...groups.values()].map((g) => html`<details class="mm-err"><summary><b>${errText(g)}</b> <span class="muted">— ${tn("mm.folder.files", g.paths.length)}</span></summary>
+            <p>${errHelp(g)}</p>${pathList(g.paths)}</details>`)}
+          ${big.length ? html`<details class="mm-err"><summary><b>${t("mm.folder.err.big")}</b> <span class="muted">— ${tn("mm.folder.files", big.length)}</span></summary>
+            <p>${t("mm.folder.fix.big")}</p>${pathList(big.map((m) => m.path))}</details>` : ""}</div>` : ""}
+        ${p.ignored.length ? html`<details class="mm-err mm-ign"><summary>${tn("mm.folder.ignored", p.ignored.length)}</summary><p class="muted">${t("mm.folder.ignored.why")}</p>${pathList(p.ignored)}</details>` : ""}
+        ${ready.length ? html`${withTracks ? html`<label class="mm-check"><input type="checkbox" id="mm-fd-pers"> ${t("mm.personal.ask")}</label>` : ""}
+          <div class="row"><button type="button" class="btn btn-primary" id="mm-fd-go">${tn("mm.folder.go", ready.length)}</button>
+          <button type="button" class="btn" data-close>${t("mm.cancel")}</button></div>` : ""}`;
+      $$("[data-close]", out).forEach((b) => b.addEventListener("click", () => d.close()));
+      $("#mm-fd-go", out)?.addEventListener("click", () => run(ready, known, !!$("#mm-fd-pers", out)?.checked, p.errors.length + big.length));
+    }
+
+    // the maps sent one after the other, a bar, « Arrêter »; then what was done and what was not, file by file
+    async function run(list2, known, personal, refused) {
+      d.dataset.busy = "1";
+      let stop = false;
+      const res = { saved: 0, known: 0, failed: [], notes: [] };
+      out.innerHTML = html`<div class="stack mm-form"><div>${raw(bar(0, "mm-fd-bar"))}</div><span id="mm-fd-now" class="muted"></span>
+        <div class="row"><button type="button" class="btn" id="mm-fd-stop">${t("mm.folder.stop")}</button></div></div>`;
+      $("#mm-fd-stop", out).addEventListener("click", () => { stop = true; $("#mm-fd-stop", out).disabled = true; });
+      for (const [i, m] of list2.entries()) {
+        if (stop) break;
+        $("#mm-fd-now", out).textContent = t("mm.folder.now", { i: fmt(i + 1), n: fmt(list2.length), path: m.path });
+        setBar($(".mm-fd-bar", out), i / list2.length);
+        try {
+          const r = await MI.importOne(m, known, { personal });
+          if (r.status === "known") res.known++; else { res.saved++; if (r.map?.sha) known.add(r.map.sha); }
+          for (const n of r.notes) res.notes.push({ path: m.path, ...n });
+        } catch (e) {
+          console.error(m.path, e);
+          res.failed.push({ path: m.path, why: e.status === 413 ? t("mm.err.size") : e.status === 429 ? t("mm.folder.rate") : e.status === 503 ? t("mm.err.notReady")
+            : ["unknown", "map", "pdf"].includes(e.message) ? t("mm.folder.unreadable") : e.status ? t("mm.err.save") : e.message || t("mm.folder.unreadable") });
+          if (e.status === 429 || e.status === 503) break;
+        }
+      }
+      delete d.dataset.busy;
+      st = await MM.list().catch(() => st);
+      const noteText = (n) => t(`mm.folder.note.${n.code}`, { file: n.file });
+      out.innerHTML = html`<div class="stack mm-form">
+        <div class="mm-ok"><b>${tn("mm.folder.done", res.saved)}</b>${res.known ? html` <span class="muted">· ${tn("mm.folder.known", res.known)}</span>` : ""}
+          ${stop ? html` <span class="muted">· ${t("mm.folder.stopped")}</span>` : ""}${refused ? html` <span class="muted">· ${tn("mm.folder.refused", refused)}</span>` : ""}</div>
+        ${res.failed.length ? html`<div class="mm-errs"><b>✗ ${tn("mm.folder.failed", res.failed.length)}</b><ul class="mm-paths">${res.failed.map((x) => html`<li>${x.path} — ${x.why}</li>`)}</ul></div>` : ""}
+        ${res.notes.length ? html`<div class="mm-errs mm-warn"><b>${tn("mm.folder.notes", res.notes.length)}</b><ul class="mm-paths">${res.notes.map((n) => html`<li>${n.path} — ${noteText(n)}</li>`)}</ul></div>` : ""}
+        <div class="row"><button type="button" class="btn btn-primary" data-close>${t("mm.close")}</button></div></div>`;
+      $$("[data-close]", out).forEach((b) => b.addEventListener("click", () => d.close()));
+      d.addEventListener("close", () => { if (!$("#mm-canvas")) drawList(); }, { once: true });
+    }
   }
 
   // A link (owner, 2026-11-01): to the whole library ({}), one map ({ map }) or a selection ({ ids }); it shares the maps with the
@@ -369,10 +923,10 @@ export async function render(main, { query = {} } = {}) {
   function shareDialog(target) {
     const m = target.map || null, ids = target.ids || null;
     const cur = () => (m ? st.links.maps[m.id] : ids ? st.links.sets.find((x) => sameSet(x.maps, ids)) : st.links.archive);
-    let traces = cur()?.traces ?? true;
-    const scope = m ? [m] : ids ? ids.map(byId).filter(Boolean) : st.maps;
+    let withTraces = cur()?.traces ?? true;
+    const scopeMaps = m ? [m] : ids ? ids.map(byId).filter(Boolean) : st.maps;
     // a QuickRoute map carries its route in the picture itself: shared alone, the route still shows
-    const painted = scope.some((x) => x.runs.some((r) => r.source === "quickroute"));
+    const painted = scopeMaps.some((x) => x.runs.some((r) => r.source === "quickroute"));
     const d = dialog(html`${dlgHead(t(m ? "mm.shareMap" : ids ? "mm.sel.share" : "mm.shareLib"))}<div class="stack mm-form" id="mm-sh"></div>`);
     const body = () => (m ? { map: m.id } : ids ? { maps: ids } : { map: null });
     const keep = (r) => {
@@ -394,8 +948,8 @@ export async function render(main, { query = {} } = {}) {
       const link = cur();
       $("#mm-sh", d).innerHTML = html`<p>${m ? t("mm.share.mapText") : ids ? tn("mm.share.selText", ids.length) : t("mm.share.allText")}</p>
         <fieldset class="mm-what"><legend>${t("mm.share.what")}</legend>
-          <label class="mm-check"><input type="radio" name="mm-what" value="1" ${raw(traces ? "checked" : "")}> <span>${t("mm.share.withTraces")}</span></label>
-          <label class="mm-check"><input type="radio" name="mm-what" value="0" ${raw(traces ? "" : "checked")}> <span>${t("mm.share.mapOnly")}</span></label>
+          <label class="mm-check"><input type="radio" name="mm-what" value="1" ${raw(withTraces ? "checked" : "")}> <span>${t("mm.share.withTraces")}</span></label>
+          <label class="mm-check"><input type="radio" name="mm-what" value="0" ${raw(withTraces ? "" : "checked")}> <span>${t("mm.share.mapOnly")}</span></label>
           ${painted ? html`<p class="muted">${t("mm.share.qrNote")}</p>` : ""}</fieldset>
         ${link ? html`<div class="mm-link"><input readonly value="${shareUrl(link.token, m?.id)}" id="mm-url"><button type="button" class="btn btn-sm btn-primary" id="mm-copy">${t("mm.copy")}</button></div>
           <p class="muted">${t(link.traces ? "mm.share.who" : "mm.share.whoMap")}</p>
@@ -406,9 +960,9 @@ export async function render(main, { query = {} } = {}) {
       $("#mm-copy", d)?.addEventListener("click", (e) => copy(e.currentTarget, $("#mm-url", d).value));
       $$("[data-copy]", d).forEach((b) => b.addEventListener("click", () => copy(b, b.dataset.copy)));
       const set = async (on) => {
-        try { keep(await MM.setLink({ ...body(), on, traces })); fill(); } catch (e) { alert(t("mm.err.save")); }
+        try { keep(await MM.setLink({ ...body(), on, traces: withTraces })); fill(); } catch (e) { alert(t("mm.err.save")); }
       };
-      $$('input[name="mm-what"]', d).forEach((r) => r.addEventListener("change", () => { traces = r.value === "1"; if (cur()) set(true); }));
+      $$('input[name="mm-what"]', d).forEach((r) => r.addEventListener("change", () => { withTraces = r.value === "1"; if (cur()) set(true); }));
       $("#mm-on", d)?.addEventListener("click", () => set(true));
       $("#mm-off", d)?.addEventListener("click", () => set(false));
       $$("[data-revoke]", d).forEach((b) => b.addEventListener("click", async () => {
@@ -451,10 +1005,21 @@ export async function render(main, { query = {} } = {}) {
   }
 
   // ---- imports -----------------------------------------------------------------------------------------------------------
+  // files dropped on the page: a folder opens the folder import; QuickRoute's and Ozimut's JPEGs (or a zip of them) their
+  // import; any other map « Nouvelle carte »
   function dropZone(el) {
-    el.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files")) { e.preventDefault(); el.classList.add("mm-drop"); } });
+    el.addEventListener("dragover", (e) => { if ([...(e.dataTransfer?.types || [])].includes("Files") && !document.querySelector(".mm-dlg")) { e.preventDefault(); el.classList.add("mm-drop"); } });
     el.addEventListener("dragleave", (e) => { if (!el.contains(e.relatedTarget)) el.classList.remove("mm-drop"); });
-    el.addEventListener("drop", (e) => { e.preventDefault(); el.classList.remove("mm-drop"); const f = [...(e.dataTransfer?.files || [])]; if (f.length) importFiles(f); });
+    el.addEventListener("drop", async (e) => {
+      if (document.querySelector(".mm-dlg")) return;
+      e.preventDefault(); el.classList.remove("mm-drop");
+      if (MI.dropHasFolder(e.dataTransfer)) { const fs = await MI.filesOfDrop(e.dataTransfer); if (fs.length) folderDialog(fs); return; }
+      const f = [...(e.dataTransfer?.files || [])];
+      if (!f.length) return;
+      if (f.some((x) => /\.zip$/i.test(x.name)) || (f.length > 1 && f.every((x) => /\.jpe?g$/i.test(x.name)))) importFiles(f);
+      else if (f.length === 1 && /\.jpe?g$/i.test(f[0].name)) importFiles(f);
+      else newMapDialog(f);
+    });
   }
   async function importFiles(files) {
     const d = dialog(html`${dlgHead(t("mm.import"))}<div class="stack mm-form" id="mm-imp"><p class="muted">${t("mm.imp.reading")}</p></div>`, { wide: true });
@@ -463,6 +1028,8 @@ export async function render(main, { query = {} } = {}) {
       try { for (const e of await MM.readFile(f)) entries.push({ ...e, file: f.name, sha: await MM.sha256(e.blob), on: true }); }
       catch (e) { failed.push([f.name, e.message === "newer" ? "mm.imp.newer" : "mm.imp.unknown"]); }
     }
+    // a lone image that is neither QuickRoute's nor Ozimut's: « Nouvelle carte », which asks for its name and place
+    if (files.length === 1 && entries.length === 1 && entries[0].from === "image") { d.close(); newMapDialog(files); return; }
     const shaKnown = new Map(st.maps.map((m) => [m.sha, m]));
     for (const e of entries) {
       const old = shaKnown.get(e.sha);
@@ -478,17 +1045,23 @@ export async function render(main, { query = {} } = {}) {
       ${failed.length ? html`<div class="notice">${failed.map(([n, k]) => html`<div><b>${n}</b> — ${t(k)}</div>`)}</div>` : ""}
       ${entries.some((e) => e.from === "quickroute") ? html`<p class="muted">${t("mm.imp.qrNote")}</p>` : ""}
       ${personal ? html`<label class="mm-check"><input type="checkbox" id="mm-ip"> ${t("mm.personal.ask")}</label><p class="muted">${t("mm.personal.why")}</p>` : ""}
+      ${entries.length ? html`<div class="stack mm-form" id="mm-ip-place"><p class="muted">${t("mm.imp.placeAll")}</p></div>` : ""}
       <div class="row">${entries.length ? html`<button type="button" class="btn btn-primary" id="mm-igo">${t("mm.imp.go")}</button>` : ""}
         <button type="button" class="btn" data-close>${t("mm.cancel")}</button><span class="muted" id="mm-istate"></span></div>`;
+    const pl = entries.length ? placeFields($("#mm-ip-place", box).appendChild(document.createElement("div")), { country: prefs.country || "" }) : null;
     $$("[data-close]", box).forEach((b) => b.addEventListener("click", () => d.close()));
     $$("[data-i]", box).forEach((c) => c.addEventListener("change", () => { entries[c.dataset.i].on = c.checked; }));
     $("#mm-igo", box)?.addEventListener("click", async () => {
-      const go = entries.filter((e) => e.on), keep = !!$("#mm-ip", box)?.checked, btn = $("#mm-igo", box), state = $("#mm-istate", box);
+      const goList = entries.filter((e) => e.on), keep = !!$("#mm-ip", box)?.checked, btn = $("#mm-igo", box), state = $("#mm-istate", box);
       btn.disabled = true;
       let done = 0, errors = 0;
-      for (const e of go) {
-        state.textContent = t("mm.imp.progress", { i: done + 1, n: go.length });
-        try { await MM.save({ ...e, runs: e.newRuns }, { personal: keep }); } catch (err) { console.error(err); errors++; }
+      for (const e of goList) {
+        state.textContent = t("mm.imp.progress", { i: done + 1, n: goList.length });
+        try {
+          let place = pl.value();
+          if (!place.country && e.geo) { const c = MM.toLatLon(e.geo, e.image.width / 2, e.image.height / 2), a = MP.frAt(fr, c.lat, c.lon); if (a) place = { country: "FR", ...a }; }
+          await MM.save({ ...e, ...place, runs: e.newRuns }, { personal: keep });
+        } catch (err) { console.error(err); errors++; }
         done++;
       }
       st = await MM.list();
@@ -530,5 +1103,5 @@ export async function render(main, { query = {} } = {}) {
   }
 
   draw();
-  return { title: t("mm.title"), cleanup: () => { viewer?.close(); $$(".mm-dlg").forEach((d) => d.close()); } };
+  return { title: t("mm.title"), cleanup: () => { viewer?.close(); mapCtl?.destroy?.(); $$(".mm-dlg").forEach((d) => d.close()); } };
 }

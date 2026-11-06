@@ -211,6 +211,7 @@ export async function getRun(id, token) {
 /**
  * Keep a map and its runs: the map once per account (the same image again goes to the map kept), its thumbnail, then each run.
  * entry: { blob (the image as it came), name, image (drawn: ImageBitmap or canvas), title, day, place, notes, geo,
+ * country, region, dept (where it is), pos ([lat, lon] of a map without a georeference: a track's first point),
  * runs: [{ title, day, source, start, dur, dist, rec }] }, personal: keep the runs' channels -> { map, existed, runs }.
  */
 export async function save(entry, { personal = false } = {}) {
@@ -219,8 +220,9 @@ export async function save(entry, { personal = false } = {}) {
   const blob = entry.blob.type === type ? entry.blob : new Blob([entry.blob], { type });
   const sha = await sha256(blob);
   const meta = { sha, title: entry.title || "", day: entry.day || null, place: entry.place || "", notes: entry.notes || "",
-    w: entry.image.width, h: entry.image.height, geo: entry.geo || null };
-  const { map, existed } = await call("/maps", { method: "POST", body: blob, headers: { "Content-Type": type, "X-Meta": encodeURIComponent(JSON.stringify(meta)) } });
+    w: entry.image.width, h: entry.image.height, geo: entry.geo || null, country: entry.country || "", region: entry.region || "", dept: entry.dept || "",
+    pos: entry.pos || null };
+  const { map, existed, placed } = await call("/maps", { method: "POST", body: blob, headers: { "Content-Type": type, "X-Meta": encodeURIComponent(JSON.stringify(meta)) } });
   if (!existed || !map.thumb) await call(`/maps/${map.id}/thumb`, { method: "PUT", body: await thumbnail(entry.image) }).catch(() => {});
   const runs = [];
   for (const r of entry.runs || []) {
@@ -228,7 +230,7 @@ export async function save(entry, { personal = false } = {}) {
     runs.push((await call(`/maps/${map.id}/runs`, { method: "POST", body: { title: r.title || "", day: r.day || null, start: r.start ?? rec.t0, dur: r.dur, dist: r.dist,
       source: r.source || "", note: r.note || "", personal: personal && !!rec.ch, rec } })).run);
   }
-  return { map, existed, runs };
+  return { map, existed, runs, placed: placed !== false };
 }
 
 // ---- reading files: QuickRoute's and Ozimut's JPEGs, a zip of them ------------------------------------------------------
@@ -268,12 +270,13 @@ const blank = (blob, name, image, geo = null, from = "image") => ({ blob, name, 
 async function readPlain(file, bytes) {
   const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
   const isImg = (bytes[0] === 0xff && bytes[1] === 0xd8) || (bytes[0] === 0x89 && bytes[1] === 0x50)
-    || (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50);
+    || (bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50)
+    || (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) || (bytes[0] === 0x42 && bytes[1] === 0x4d);      // GIF, BMP: kept as PNG
   if (!isPdf && !isImg) throw new Error("unknown");
   const { readMap, imageBlob } = await import("./mapfile.js");
   const image = await readMap(isPdf ? new File([bytes], file.name, { type: "application/pdf" }) : file).catch(() => { throw new Error("unknown"); });
   const blob = await imageBlob(file, image);
-  return blank(blob, isPdf ? `${stem(file.name)}.png` : file.name, image);
+  return blank(blob, /^image\/(jpeg|png|webp)$/.test(blob.type) && !isPdf ? file.name : `${stem(file.name)}.png`, image);
 }
 /** A KMZ's map: its overlay's image, georeferenced by the overlay's corners. */
 async function readKmz(bytes, name) {

@@ -24,9 +24,10 @@ export const where = (e) => (e.gps ? [e.gps[0], e.gps[1], false] : e.pos ? [e.po
 /**
  * The map in `el` for country `cc`. Returns { show(events, selected), hover(key), select(key) } — or null when the country
  * has no outline. onPick(key): a dot clicked; onHover(key | null): the mouse over a dot; levels: { dept, region }, the
- * country's units' names (« département », « canton »…) for the legend.
+ * country's units' names (« département », « canton »…) for the legend; area, missing: the legend's keys (« Mes cartes » has
+ * its own: maps, not competitions).
  */
-export async function mount(el, cc, { onPick, onHover, levels = {}, area = "agd.map.area" } = {}) {
+export async function mount(el, cc, { onPick, onHover, levels = {}, area = "agd.map.area", missing: missingKey = "agd.map.missing" } = {}) {
   const geo = await outline(cc);
   if (!geo) { el.hidden = true; return null; }
   el.hidden = false;
@@ -122,7 +123,7 @@ export async function mount(el, cc, { onPick, onHover, levels = {}, area = "agd.
     byKey = new Map(spots.flatMap((s) => s.events.map((e) => [e.key, s])));
     dotsG.innerHTML = spots.map((s, i) => (s.ghost ? "" : `<circle data-i="${i}" class="${s.approx ? "agm-ring" : "agm-dot"}" cx="${s.x.toFixed(1)}" cy="${s.y.toFixed(1)}"/>`)).join("");
     const n = missing + outside;
-    el.querySelector(".agm-missing").textContent = n ? tn("agd.map.missing", n) : "";
+    el.querySelector(".agm-missing").textContent = n ? tn(missingKey, n) : "";
     cur.selected = selected || null;
     resize();
     highlight();
@@ -158,7 +159,7 @@ export async function mount(el, cc, { onPick, onHover, levels = {}, area = "agd.
     tipSpot = spots[Number(c.dataset.i)];
     const evs = tipSpot.events;
     tip.innerHTML = html`<b>${(evs[0].place || "").trim() || evs[0].name}</b>${tipSpot.approx ? html` <span class="dim">${t("agd.map.approx")}</span>` : ""}
-      ${evs.slice(0, 6).map((e) => html`<div>${fmtDate(e.date, "short")} · ${e.name}</div>`)}${evs.length > 6 ? html`<div class="dim">${t("agd.map.more", { n: evs.length - 6 })}</div>` : ""}`;
+      ${evs.slice(0, 6).map((e) => html`<div>${e.date ? `${fmtDate(e.date, "short")} · ` : ""}${e.name}</div>`)}${evs.length > 6 ? html`<div class="dim">${t("agd.map.more", { n: evs.length - 6 })}</div>` : ""}`;
     tip.hidden = false;
     const r = box.getBoundingClientRect(), cr = c.getBoundingClientRect();
     const left = Math.min(r.width - 250, Math.max(4, cr.left - r.left + 12)), top = cr.top - r.top + 12;
@@ -187,8 +188,17 @@ export async function mount(el, cc, { onPick, onHover, levels = {}, area = "agd.
     highlight();
   }
   function hover(key) { cur.hover = key || null; highlight(); }
+  /** The view fitted on the dots (« Mes cartes »: the world's map closes in on where the maps are), else the whole frame. */
+  function fitDots() {
+    if (!spots.length) return setView(full);
+    const xs = spots.map((s) => s.x), ys = spots.map((s) => s.y);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const w = Math.max(x1 - x0, full.w / 12) * 1.3, h = Math.max(y1 - y0, full.h / 12) * 1.3;
+    const W = Math.max(w, h * (full.w / full.h)), H = W * (full.h / full.w);          // (setView keeps the frame's proportions)
+    setView({ x: (x0 + x1) / 2 - W / 2, y: (y0 + y1) / 2 - H / 2, w: W, h: H });
+  }
   const ro = new ResizeObserver(() => resize());
   ro.observe(svg);
   function destroy() { ro.disconnect(); window.removeEventListener("pointermove", onMove); window.removeEventListener("pointerup", onUp); }
-  return { show, hover, select, destroy, has: (key) => byKey.has(key) };
+  return { show, hover, select, destroy, fitDots, has: (key) => byKey.has(key) };
 }

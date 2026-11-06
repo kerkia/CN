@@ -3647,7 +3647,7 @@ body.nut-ed-open .page { padding-bottom: 10px; }      /* the page's 96 px under 
 .mm-run label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
 .mm-sw { display: inline-block; width: 14px; height: 4px; border-radius: 2px; flex: none; }
 .mm-src { font-size: 12px; }
-.mm-run-acts { display: flex; gap: 4px; }
+.mm-run-acts { display: flex; flex-wrap: wrap; gap: 4px; }
 .mm-run-acts .btn { padding: 2px 6px; font-size: 12px; }
 /* a run's comment, read and written in place; the one written when « Analyse solo » saves the run */
 .mm-run-note { margin: 2px 0; padding-left: 8px; border-left: 2px solid var(--border); font-size: 12.5px; font-style: italic; white-space: pre-line; overflow-wrap: anywhere; }
@@ -3698,6 +3698,69 @@ body.nut-ed-open .page { padding-bottom: 10px; }      /* the page's 96 px under 
 .mm-others li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; }
 @media (max-width: 640px) { .mm-way { flex-direction: column; align-items: stretch; } }
 .mm-selbar[hidden] { display: none; }
+/* « Mes cartes »: the library (owner, 2026-11-06) — figures, filters, folders, the map beside, the cards' icons, the dialogs */
+.mm-dlg { overflow-y: auto; }
+.mm-dlg.wide { width: min(760px, calc(100vw - 24px)); }
+.mm-ic { width: 16px; height: 16px; vertical-align: -3px; flex: none; }
+.mm-acts .btn, .mm-run-acts .btn, .mm-way .btn, .mm-selbar .btn, .mm-drop2 .btn { display: inline-flex; align-items: center; gap: 5px; }
+.mm-stats { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin-bottom: 12px; }
+.mm-stats-h { flex-basis: 100%; font-size: 12.5px; }
+.mm-stat { display: flex; flex-direction: column; min-width: 120px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.mm-stat b { font-size: 22px; line-height: 1.15; color: var(--grp, var(--ink)); }
+.mm-stat span { font-size: 13px; color: var(--ink-2); }
+.mm-stat small { font-size: 11.5px; }
+.mm-fsel { display: contents; }
+.mm-group { display: inline-flex; align-items: center; gap: 6px; }
+.mm-lib { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 36%); gap: 14px; align-items: start; }
+.mm-lib-side { position: sticky; top: 76px; }
+.mm-libmap .agm { height: min(62vh, 560px); }
+.mm-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 10px; font-size: 14px; }
+.mm-crumbs a, .mm-crumbs b { display: inline-flex; align-items: center; gap: 4px; }
+.mm-crumbs .sep { color: var(--ink-3); margin: 0 2px; }
+.mm-folders { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.mm-folder { border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.mm-folder > summary { display: flex; align-items: center; gap: 8px; padding: 6px 10px; cursor: pointer; list-style: none; }
+.mm-folder > summary::-webkit-details-marker { display: none; }
+.mm-folder > summary::before { content: "▸"; color: var(--ink-2); width: 10px; flex: none; transition: transform .15s; }
+.mm-folder[open] > summary::before { transform: rotate(90deg); }
+.mm-folder > summary:hover { background: var(--surface-2); border-radius: 8px; }
+.mm-fold-ic { color: var(--grp, var(--accent)); display: inline-flex; }
+.mm-fold-name { font-size: 14.5px; }
+.mm-fold-st { font-size: 12.5px; flex: 1; min-width: 0; }
+.mm-enter { margin-left: auto; flex: none; }
+.mm-fold-body { padding: 4px 10px 10px 26px; }
+.mm-fold-body .mm-folders { margin-bottom: 8px; }
+.mm-quick { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 4px; }
+.mm-q { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 7px;
+  background: var(--surface); color: var(--ink); cursor: pointer; box-shadow: 0 1px 3px rgba(0, 0, 0, .18); }
+.mm-q:hover, .mm-q:focus-visible { border-color: var(--grp, var(--accent)); color: var(--grp, var(--accent)); }
+.mm-q[data-q="delete"]:hover { color: var(--bad); border-color: var(--bad); }
+.mm-q:disabled { opacity: .5; cursor: wait; }
+@media (hover: hover) { .mm-quick { opacity: 0; transition: opacity .12s; } .mm-card:hover .mm-quick, .mm-card:focus-within .mm-quick { opacity: 1; } }
+.mm-has-note { position: absolute; left: 6px; bottom: 6px; display: inline-flex; padding: 3px; border-radius: 6px; background: var(--surface); color: var(--ink-2); }
+.mm-card.hot { border-color: var(--flag, var(--accent)); box-shadow: 0 0 0 2px var(--flag, var(--accent)); }
+#mm-lib.picking .mm-pick { opacity: 1; }
+.mm-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mm-pickers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mm-drop2 { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px 12px; border: 1px dashed var(--border-strong, var(--border)); border-radius: 8px; font-size: 13px; }
+.mm-drop2 .muted { overflow-wrap: anywhere; }
+.mm-nf-prev { display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.mm-nf-prev canvas { max-width: 280px; border: 1px solid var(--line); border-radius: 6px; }
+.mm-fmt { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); font-size: 13px; }
+.mm-tree { margin: 8px 0; font-size: 12.5px; line-height: 1.6; overflow-x: auto; }
+.mm-tree-l { display: flex; gap: 12px; white-space: nowrap; }
+.mm-tree-l code { min-width: 24ch; font-weight: 600; background: none; padding: 0; }
+.mm-rules { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.mm-ok { padding: 8px 12px; border-left: 3px solid var(--good); background: var(--surface-2); border-radius: 0 6px 6px 0; }
+.mm-errs { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px; border-left: 3px solid var(--bad); background: var(--surface-2); border-radius: 0 6px 6px 0; }
+.mm-errs.mm-warn { border-left-color: var(--flag, #ef6c00); }
+.mm-err > summary { cursor: pointer; font-size: 13.5px; }
+.mm-err p { margin: 6px 0; font-size: 13px; }
+.mm-ign { font-size: 13px; }
+.mm-paths { margin: 4px 0 0; padding-left: 18px; max-height: 26vh; overflow-y: auto; font-size: 12.5px; overflow-wrap: anywhere; }
+@media (max-width: 979px) { .mm-lib { grid-template-columns: 1fr; } .mm-lib-side { display: none; } }
+@media (max-width: 640px) { .mm-row2, .mm-pickers { grid-template-columns: 1fr; } .mm-stat { min-width: calc(50% - 4px); flex: 1; } .mm-fold-st { display: none; }
+  .mm-nf-prev { flex-direction: column; align-items: flex-start; } .mm-tree-l code { min-width: 0; } }
 
 /* « Depuis mon téléphone » (phonelink.js, pages/phonesend.js; 2026-11-03): the computer's QR code, the phone's page */
 .ph-dlg { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px 16px; background: var(--surface); color: var(--ink);
