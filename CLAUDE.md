@@ -1284,8 +1284,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   stacked under it): the map's column fills the window below the top line, each panel slides in from its side over the map
   (`sidepanel.drawers()`, app.css; width the layout's less 64 px, 380 at most), both slid away at the opening; a handle on the map's
   edge (`.sp-handle`: an arrow and the tab shown) slides it in and back, as does the panel's ‹ / ›; one open at a time (`sp:close`);
-  the map's tools moved clear of the right handle. Under 640 px the top line is two lines (title and date | add, ⤢ ↗; the views) and
-  drops who may open it. Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
+  the map's tools moved clear of the right handle. The pace under the map is a bottom drawer there (`.sh-bottom`: « ▴ Allure » and
+  the moment's figures on one line over the map's bottom edge, the curve sliding up; folded at the opening, `stripArrow`), and the
+  layout's minimum height drops to 200 px (a phone held sideways). **The top line** (owner, 2026-11-06): « Carte », « Analyse des
+  temps » and « Ajouter / Remplacer ma trace » carry an icon (`sidepanel.ICONS`, `iconLabel`) before their words on a computer, in
+  their place under 900 px (their title says them), where the line is one line and drops who may open it; its right part never
+  wraps, so « ⤢ » is always the top right corner (who may open it cut short instead); **no « ↗ » in the analyses**
+  (`fullwin.buttons({ tab: false })`; the Tracer keeps its own). Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
 - **Generated maps** (owner, 2026-11-01, after the question of MapAnt-like maps: a prototype, administrators only, in « Analyse
   solo »): for a trace without a map in metropolitan France, « Générer une carte d'après le LiDAR (essai) » (files card,
   `genBlock`/`genMap`). The map: IGN's LiDAR HD point clouds (COPC LAZ, Licence Ouverte 2.0; each 1 km tile's addresses from IGN's

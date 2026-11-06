@@ -1843,15 +1843,24 @@ label.an-pick { display: flex; justify-content: center; padding: 12px; font-size
   .sp[data-collapsed="0"] .sp-handle { background: var(--flag-wash); }
   .sh-layout .an-tools, body.an-theatre .an-layout .an-tools { right: 36px; }   /* clear of the right drawer's handle */
 }
-/* a phone's top line: the title and what may be done on one line, the two views under it; who may open it goes (room for the map) */
-@media (max-width: 640px) {
-  .sh-top.sh-top3 { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l r" "tabs tabs"; gap: 4px 8px; margin-bottom: 6px; }
-  .sh-top3 .sh-top-l { grid-area: l; flex-direction: column; align-items: flex-start; gap: 0; }
+/* the analyses' top line (owner, 2026-11-06): its right part on one line, « ⤢ » always in the top right corner, who may open it cut
+   short when the room runs out; the views and « Ajouter ma trace » an icon beside their words, the icon alone on a phone, where the
+   line is one line — the title and date over each other — and who may open it goes (room for the map) */
+.sh-top3 .sh-top-r { flex-wrap: nowrap; }
+.sh-top3 .sh-top-r > * { flex: none; }
+.sh-top3 .sh-top-r > .sh-access { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-viewtabs button, .ico-btn { display: inline-flex; align-items: center; gap: 6px; }
+.ico { flex: none; display: block; }
+@media (max-width: 900px) {
+  .sh-top.sh-top3 { gap: 4px 8px; margin-bottom: 6px; }
+  .sh-top3 .sh-top-l { flex-direction: column; align-items: flex-start; gap: 0; }
   .sh-top3 .sh-top-l > * { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .sh-top3 .sh-top-l .muted { font-size: 12px; }
-  .sh-top3 .sh-top-r { grid-area: r; flex-wrap: nowrap; gap: 4px; }
-  .sh-top3 .sh-tabs { grid-area: tabs; justify-self: center; }
+  .sh-top3 .sh-top-r { gap: 4px; }
   .sh-top3 .sh-access { display: none; }
+  .sh-top3 .ico-lbl { display: none; }
+  .sh-top3 .sh-viewtabs { margin-left: 0; } .sh-top3 .sh-viewtabs button { padding: 5px 12px; }
+  .sh-top3 .ico-btn { padding: 4px 9px; }
 }
 /* « Analyse de carte » (pages/mapanalysis.js; owner, 2026-11-04): the events opened by their organisers beside a map, a row's map
    as a thumbnail under the mouse, the chosen one's card with its three ways in; every analysis it leads to has its line back at
@@ -2330,6 +2339,23 @@ body[data-group="orga"] { --grp: var(--flag); --grp-wash: var(--flag-wash); }
 .sh-mapcol > .sh-map { flex: 1 1 auto; }
 .sh-strip { flex: 0 0 120px; width: 100%; height: 120px; display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); cursor: col-resize; touch-action: none; }
 .sh-strip[hidden] { display: none; }
+.sh-bottom { display: flex; flex-direction: column; gap: 6px; flex: none; min-width: 0; }
+/* a phone (owner, 2026-11-06): the pace under the map is a drawer too, from the bottom over the map — its « ▴ Allure » bar (and the
+   moment's figures, on one line) on the map's bottom edge, the curve sliding up above it and down again */
+@media (max-width: 900px) {
+  .sh-layout > .sh-mapcol, body.an-theatre .an-mapcol { position: relative; }
+  .sh-mapcol > .sh-bottom, body.an-theatre .an-mapcol > .sh-bottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 15; gap: 4px; padding: 4px 6px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent); border: 1px solid var(--border); border-bottom: 0; border-radius: 10px 10px 0 0;
+    box-shadow: 0 -3px 12px rgba(0, 0, 0, .2); }
+  .sh-mapcol > .sh-bottom:not(:has(> :not([hidden]))) { display: none; }
+  .sh-bottom .sh-stripbar { flex-wrap: nowrap; }
+  .sh-bottom .an-bar-stats { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; min-width: 0; }
+  .sh-bottom .sh-strip-tog { font-size: 13px; padding: 4px 10px; }
+  .sh-bottom .sh-strip { animation: sh-slide-up .22s ease; }
+  .sh-mapcol .an-hud, body.an-theatre .an-mapcol .an-hud, .sh-mapcol .an-legend, body.an-theatre .an-mapcol .an-legend,
+    .sh-mapcol .an-3d-credit, body.an-theatre .an-mapcol .an-3d-credit, body.an-theatre .an-mapcol .an-gen-credit { bottom: 44px; }
+}
+@keyframes sh-slide-up { from { transform: translateY(60px); opacity: 0; } }
 .sh-var td { white-space: nowrap; vertical-align: middle; }
 .sh-var-name { width: 160px; font: inherit; font-size: 12.5px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--ink); }
 .sh-vtag { display: inline-block; min-width: 16px; padding: 0 4px; border-radius: 4px; background: var(--v); color: #fff; font-size: 11px; font-weight: 650; text-align: center; }

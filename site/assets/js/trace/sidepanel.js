@@ -26,6 +26,18 @@ export function panelHtml({ id, side, tabs, inner = {}, cls = "" }) {
 
 /** A phone (the layout's own breakpoint, app.css): the panels are drawers over the map, slid away at the opening, one open at a time. */
 export const drawers = () => matchMedia("(max-width: 900px)").matches;
+/** The pace strip's « Allure » button's arrow: open ▾; folded ▸, or ▴ on a phone where it slides up over the map. */
+export const stripArrow = (on) => (on ? "▾" : drawers() ? "▴" : "▸");
+
+/** The analyses' top line's icons (owner, 2026-11-06): beside their words on a computer, in their place on a phone (app.css). */
+const svg = (body) => `<svg class="ico" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+export const ICONS = {
+  map: svg('<path d="M2.5 5 7 3l6 2 4.5-2v12L13 17l-6-2-4.5 2z"/><path d="M7 3v12M13 5v12"/>'),
+  times: svg('<circle cx="10" cy="11" r="6.5"/><path d="M10 11V7.5M8 1.8h4M10 1.8v2.7M15.2 4.6l1.3-1.3"/>'),
+  add: svg('<path d="M2.5 16.5c2-4 4-.5 6-4s3.5-6 6.5-6"/><circle cx="15" cy="6.5" r="1.4" fill="currentColor"/><path d="M5 3v5M2.5 5.5h5"/>'),
+};
+/** A button's content: its icon and its words (the words hidden on a phone, the button's title saying them). */
+export const iconLabel = (icon, text) => `${ICONS[icon]}<span class="ico-lbl">${text}</span>`;
 
 /**
  * The panel's behaviour: el the <aside>; state { tab, collapsed }; onChange(state) after a change (the page saves it and lays

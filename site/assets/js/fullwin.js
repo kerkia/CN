@@ -66,8 +66,9 @@ export function newTab() {
   for (const [k, v] of Object.entries(extra)) if (v != null && v !== "") q.set(k, String(v)); else q.delete(k);
   window.open(`${location.href.replace(/#.*$/, "")}${path}?${q}`, "_blank");
 }
-/** The two buttons, as HTML (pages pass it through raw()). */
-export const buttons = () => { const l = look(); return `<button type="button" class="btn btn-sm fw-btn" data-fw="toggle" aria-pressed="${l.on}" title="${l.title}">${l.text}</button>${inOwnTab() ? "" : `<button type="button" class="btn btn-sm fw-btn" data-fw="tab" title="${t("fw.tab")}">↗</button>`}`; };
+/** The two buttons, as HTML (pages pass it through raw()); `tab: false` leaves « ↗ » out (the analyses, owner 2026-11-06: of no use
+ *  on a phone, and not wanted on a computer either). */
+export const buttons = ({ tab = true } = {}) => { const l = look(); return `<button type="button" class="btn btn-sm fw-btn" data-fw="toggle" aria-pressed="${l.on}" title="${l.title}">${l.text}</button>${inOwnTab() || !tab ? "" : `<button type="button" class="btn btn-sm fw-btn" data-fw="tab" title="${t("fw.tab")}">↗</button>`}`; };
 
 let bound = false;
 /** Once per visit: the buttons' clicks (wherever a page draws them) and Échap. */

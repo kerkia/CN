@@ -46,7 +46,7 @@ import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow } from "../trace/sidepanel.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { videoPanel } from "./sharedvideo.js";
@@ -227,8 +227,8 @@ export async function render(main, { query = {}, route } = {}) {
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button>
             <button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-video-btn" title="${t("sh.video.add")}" hidden>🎥</button><input type="file" id="an-video-file" accept="video/*" hidden></div>
           <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
-        <div class="sh-stripbar" id="an-stripbar" hidden><button type="button" class="sh-strip-tog" id="an-ps-tog" aria-expanded="true" title="${t("an.strip.fold")}">▾ ${t("sh.strip.title")}</button><span class="an-bar-stats" id="an-stats"></span></div>
-        <canvas class="sh-strip" id="an-ps" hidden></canvas></div>
+        <div class="sh-bottom"><div class="sh-stripbar" id="an-stripbar" hidden><button type="button" class="sh-strip-tog" id="an-ps-tog" aria-expanded="true" title="${t("an.strip.fold")}">▾ ${t("sh.strip.title")}</button><span class="an-bar-stats" id="an-stats"></span></div>
+        <canvas class="sh-strip" id="an-ps" hidden></canvas></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
         ${raw(panelHtml({ id: "an-right", side: "right", cls: "an-right", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOk ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : []),
@@ -283,7 +283,7 @@ export async function render(main, { query = {}, route } = {}) {
   let chans = new Set(Array.isArray(prefs.chans) && !oldDefault ? prefs.chans : ["pace", ...Object.keys(CHANNEL_COLOUR)]);
   const pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);     // the map's and the trace's opacity, %
-  let showStrip = prefs.strip !== false;                   // the pace under the map, as « Analyse de carte »'s (owner, 2026-11-05)
+  let showStrip = prefs.strip !== false && !drawers();     // (a phone: slid down at the opening)                   // the pace under the map, as « Analyse de carte »'s (owner, 2026-11-05)
   // « Parcours sur la carte » (owner, 2026-11-05, as « Analyse de carte »): the course drawn over the map, by default only where
   // the map does not show it already — an organiser's circuit printed, or a course read on the map; the choice kept for each kind
   let courseOn = prefs.showCourse !== false, courseOver = prefs.courseOver === true, showCourse = false;
@@ -938,7 +938,7 @@ export async function render(main, { query = {}, route } = {}) {
   function fitHeight() {
     if (!document.body.classList.contains("an-theatre")) { layoutEl.style.removeProperty("--an-h"); return; }
     const top = layoutEl.getBoundingClientRect().top + window.scrollY;
-    layoutEl.style.setProperty("--an-h", `${Math.max(380, Math.floor(innerHeight - top - 18))}px`);
+    layoutEl.style.setProperty("--an-h", `${Math.max(drawers() ? 200 : 380, Math.floor(innerHeight - top - 18))}px`);
   }
   const leftP = bindPanel($("#an-left"), lp, { onChange: () => { savePrefs(); applyLayout(); }, onShow: (k) => { if (k === "graphs") { sizeStrip(); drawStrip(); } else if (k === "routes") rcCurrent(true); } });
   const rightP = bindPanel($("#an-right"), rp, { onChange: () => { savePrefs(); applyLayout(); } });
@@ -1791,7 +1791,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-top").innerHTML = html`<span class="sh-top-l">${orgaMode ? html`<b class="sh-title">${orga.A.title}</b><span class="muted">${[orga.A.date ? fmtDate(orga.A.date) : "", t(orga.A.kind === "race" ? "ma.kind.race" : "sh.kind.club")].filter(Boolean).join(" · ")}</span>`
         : perso ? html`<b class="sh-title">${openedKept?.title || t("an.perso.title")}</b><span class="muted">${fmtDate(day0)}</span>`
         : html`<b class="sh-title">${rc0?.name || race?.name || ""}</b><span class="muted">${[fmtDate(day0), klass()?.name, withTimes ? runner()?.name : ""].filter(Boolean).join(" · ")}</span>`}</span>
-      <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis}`)}</span>` : ""}<span class="muted an-kept" id="an-kept"></span><span class="fw-btns">${raw(fwButtons())}</span></span>`;
+      <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis}`)}</span>` : ""}<span class="muted an-kept" id="an-kept"></span><span class="fw-btns">${raw(fwButtons({ tab: false }))}</span></span>`;
     $("#an-top").hidden = false;
     // the controls over the map's column, as « Analyse de carte »'s: follow, the transport, the speed, the time
     $("#an-bar").innerHTML = html`
@@ -1812,7 +1812,7 @@ export async function render(main, { query = {}, route } = {}) {
         ${avail.filter((c) => c !== "ele").map((c) => stat(t(CHANNEL_LABEL[c]), `an-ch-${c}`, html` <span class="muted">${unitOf(c)}</span>`))}
         ${short.map((x) => html`<span class="an-warn" title="${x}">⚠ ${x}</span>`)}`;
     $("#an-stripbar").hidden = false; $("#an-ps").hidden = !showStrip;
-    $("#an-ps-tog").setAttribute("aria-expanded", String(showStrip)); $("#an-ps-tog").textContent = `${showStrip ? "▾" : "▸"} ${t("sh.strip.title")}`;
+    $("#an-ps-tog").setAttribute("aria-expanded", String(showStrip)); $("#an-ps-tog").textContent = `${stripArrow(showStrip)} ${t("sh.strip.title")}`;
     showPanels(false);
     $("#an-bar").hidden = false; $("#an-side").hidden = true; $("#an-left").hidden = false; $("#an-right").hidden = false;
     // the right panel: the display, and (administrators) the computed routes' settings
@@ -2017,7 +2017,7 @@ export async function render(main, { query = {}, route } = {}) {
   function setStrip(on) {
     showStrip = on; savePrefs();
     $("#an-ps").hidden = !on;
-    const b = $("#an-ps-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${on ? "▾" : "▸"} ${t("sh.strip.title")}`; }
+    const b = $("#an-ps-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${stripArrow(on)} ${t("sh.strip.title")}`; }
     fitHeight(); paceStrip();
   }
   // the race's pace over its own time, smoothed over a few seconds to half a minute, the controls marked (made once per width)

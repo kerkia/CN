@@ -29,7 +29,7 @@ import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel } from "../trace/sidepanel.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
 import { gridPlan, loadGrid, heightAt, CREDIT } from "../trace/terrain.js";
@@ -374,7 +374,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       ${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}
       <span class="sh-top-add" id="sh-top-add"></span>
       <span class="muted sh-access">${t(`sh.access.${A.vis === "public" && A.visitors ? "all" : A.vis}`)}</span>
-      <span class="fw-btns">${raw(fwButtons())}</span></span></div>
+      <span class="fw-btns">${raw(fwButtons({ tab: false }))}</span></span></div>
     <div id="sh-viewer"></div>
     <div id="sh-splits" class="sh-splits" hidden></div>`;
   // two views of the analysis (owner, 2026-11-04): the map (the replay, its panels) and Arena's split analysis of the times the
@@ -383,7 +383,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   // and runners in the left panel, the views in the middle, their settings in the right panel
   let pane = query.vue === "temps" ? "splits" : "map", splitsKey = "", splitsView = null, splitsCourse = null;
   const sp = { lp: { tab: "runners", collapsed: false }, rp: { tab: "settings", collapsed: false }, lw: 320, rw: 270 };
-  const spFit = () => { const el = $("#sh-sp-layout"); if (!el || pane !== "splits") return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(380, Math.floor(innerHeight - top - 16))}px`; };
+  const spFit = () => { const el = $("#sh-sp-layout"); if (!el || pane !== "splits") return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(drawers() ? 200 : 380, Math.floor(innerHeight - top - 16))}px`; };
   window.addEventListener("resize", spFit);
   function splitsLayout() {
     if ($("#sh-sp-layout")) return;
@@ -409,8 +409,8 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     apply();
   }
   const drawTabs = () => {
-    $("#sh-tabs").innerHTML = A.courses.length ? html`<nav class="sh-viewtabs" role="tablist">${[["map", t("sh.pane.map")], ["splits", t("sh.pane.splits")]].map(([k, l]) =>
-      html`<button type="button" role="tab" data-pane="${k}" aria-selected="${k === pane}">${l}</button>`)}</nav>` : "";
+    $("#sh-tabs").innerHTML = A.courses.length ? html`<nav class="sh-viewtabs" role="tablist">${[["map", t("sh.pane.map"), "map"], ["splits", t("sh.pane.splits"), "times"]].map(([k, l, ic]) =>
+      html`<button type="button" role="tab" data-pane="${k}" aria-selected="${k === pane}" title="${l}" aria-label="${l}">${raw(iconLabel(ic, l))}</button>`)}</nav>` : "";
     $$("#sh-tabs [data-pane]").forEach((b) => b.addEventListener("click", () => showPane(b.dataset.pane)));
   };
   async function showPane(p) {
@@ -1309,7 +1309,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   let orient = prefs.orient === "leg" ? "leg" : "north", lastTurn = 0;      // the map turned to the leg (as « Analyse solo »)
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
   let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
-  let showStrip = prefs.strip !== false;                   // the runners' paces under the map
+  let showStrip = prefs.strip !== false && !drawers();     // the runners' paces under the map (a phone: slid down at the opening)
   let ex3d = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].includes(prefs.ex3d) ? prefs.ex3d : 1.5;   // the 3D view's vertical exaggeration
   // the picture exported (« Export »): the part of the map in view or all of it, PNG or JPEG, with a title and the runners' colours
   const shot = { zone: ["race", "map"].includes(prefs.shotZone) ? prefs.shotZone : "view", type: prefs.shotType === "jpeg" ? "jpeg" : "png", legend: prefs.shotLegend !== false };
@@ -1343,8 +1343,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
           <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button>${videoOn ? html`<button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden>` : ""}</div>
         <div class="an-hud" id="sh-hud"></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
-        <div class="sh-stripbar"><button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${showStrip ? "▾" : "▸"} ${t("sh.strip.title")}</button><span class="an-bar-stats" id="sh-stats"></span></div>
-        <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div>
+        <div class="sh-bottom"><div class="sh-stripbar"><button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${stripArrow(showStrip)} ${t("sh.strip.title")}</button><span class="an-bar-stats" id="sh-stats"></span></div>
+        <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
       ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOn ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : []),
         { key: "export", label: t("an.tab.export"), tip: t("sh.tab.export.tip") }] }))}</div>`;
@@ -1614,7 +1614,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   function setStrip(on) {
     showStrip = on; savePrefs();
     $("#sh-strip").hidden = !on;
-    const b = $("#sh-strip-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${on ? "▾" : "▸"} ${t("sh.strip.title")}`; }
+    const b = $("#sh-strip-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${stripArrow(on)} ${t("sh.strip.title")}`; }
     const c = $("#sh-strip-on"); if (c) c.checked = on;
     drawStrip(); window.dispatchEvent(new Event("resize"));
   }
@@ -1966,8 +1966,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <span class="sh-clock"><b id="sh-t"></b> <span class="muted" id="sh-t-sub"></span></span>
         </div>`;
     const topAdd = $("#sh-top-add");
-    if (topAdd) topAdd.innerHTML = you.visitor ? "" : html`${!canAdd ? "" : runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-bar-add">${t("sh.trace.replace")}</button>`
-      : html`<button type="button" class="btn btn-sm btn-primary" id="sh-bar-add">${t("sh.trace.add")}</button>`}`;
+    if (topAdd) topAdd.innerHTML = you.visitor ? "" : html`${!canAdd ? "" : runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm ico-btn" id="sh-bar-add" title="${t("sh.trace.replace")}" aria-label="${t("sh.trace.replace")}">${raw(iconLabel("add", t("sh.trace.replace")))}</button>`
+      : html`<button type="button" class="btn btn-sm btn-primary ico-btn" id="sh-bar-add" title="${t("sh.trace.add")}" aria-label="${t("sh.trace.add")}">${raw(iconLabel("add", t("sh.trace.add")))}</button>`}`;
     rightP.pane("display").innerHTML = html`
         <div class="an-opts">
           <label><span>${t("an.width")}</span><select id="sh-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
@@ -2680,7 +2680,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   leftP.setTab("legs", !score);
 
   // ---- the layout: the window's height below the top line
-  function fit() { const el = $("#sh-layout"); if (!el) return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(380, Math.floor(innerHeight - top - 16))}px`; }
+  function fit() { const el = $("#sh-layout"); if (!el) return; const top = el.getBoundingClientRect().top + window.scrollY; el.style.height = `${Math.max(drawers() ? 200 : 380, Math.floor(innerHeight - top - 16))}px`; }
   window.addEventListener("resize", fit);
   $("#sh-zin").addEventListener("click", () => mv.zoomBy(1.4));
   $("#sh-zout").addEventListener("click", () => mv.zoomBy(1 / 1.4));
