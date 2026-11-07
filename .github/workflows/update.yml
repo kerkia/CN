@@ -107,9 +107,12 @@ jobs:
 
       - name: Restore state from R2
         run: |
+          # R2 now and then leaves a transfer unanswered (2026-11-07: « Timed out waiting for first byte » on the
+          # save): the state's copies are tried 3 times before the run gives up (the same in « Save state to R2 »)
+          r2cp() { for i in 1 2 3; do aws s3 cp "$@" --endpoint-url "$R2" --only-show-errors && return 0; echo "R2 copy failed (attempt $i of 3)"; [ $i -lt 3 ] && sleep $((i * 20)); done; return 1; }
           mkdir -p "$STATE"
-          aws s3 cp "$BUCKET/db.sqlite3.zst" "$STATE/" --endpoint-url "$R2" --only-show-errors
-          aws s3 cp "$BUCKET/site-state.tar.zst" "$STATE/" --endpoint-url "$R2" --only-show-errors
+          r2cp "$BUCKET/db.sqlite3.zst" "$STATE/"
+          r2cp "$BUCKET/site-state.tar.zst" "$STATE/"
           python ci/state.py unpack "$STATE"
           # the files organisers uploaded on « Récemment » (functions/api/upload.js), read by the provisional results
           aws s3 sync "$BUCKET/uploads/" "$CN_DATA_DIR/uploads/" --endpoint-url "$R2" --only-show-errors || echo "no uploads"
@@ -159,11 +162,12 @@ jobs:
             echo "nothing changed — state left as it is"; exit 0
           fi
           python ci/state.py pack "$STATE"
+          r2cp() { for i in 1 2 3; do aws s3 cp "$@" --endpoint-url "$R2" --only-show-errors && return 0; echo "R2 copy failed (attempt $i of 3)"; [ $i -lt 3 ] && sleep $((i * 20)); done; return 1; }
           # site state first: a run cut short after it still leaves a consistent pair
           # (an older database only makes the next run find the same changes again)
-          aws s3 cp "$STATE/site-state.tar.zst" "$BUCKET/" --endpoint-url "$R2" --only-show-errors
+          r2cp "$STATE/site-state.tar.zst" "$BUCKET/"
           if [ "$after" != "$DB_BEFORE" ]; then
-            aws s3 cp "$STATE/db.sqlite3.zst" "$BUCKET/" --endpoint-url "$R2" --only-show-errors
+            r2cp "$STATE/db.sqlite3.zst" "$BUCKET/"
           fi
           echo "state saved"
 
