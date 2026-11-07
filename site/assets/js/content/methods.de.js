@@ -871,7 +871,7 @@ export function build(X) {
       "rep-cross": "Welche Bahnen zu welchem Posten kommen.", "rep-load": "Die Zahl der erwarteten Teilnehmer an jedem Posten und auf jeder Teilstrecke.",
       "rep-audit": "Die Prüfungen: zu nahe Posten, unvollständige Postenbeschreibungen, Codes, Teilstrecken, die ein Sperrgebiet queren … (Kapitel „Prüfen“).",
       "rep-climb": "Die Steigung jeder Bahn, nach dem Geländemodell des IGN.", "rep-times": "Die erwartete Siegerzeit jeder Bahn und die Länge für eine angestrebte Zeit.",
-      "rep-pickup": "Wann und in welcher Reihenfolge die Posten eingesammelt werden.", "rep-after": "Nach dem Lauf: Zeiten, Fehler und gewählte Routen auf jeder Teilstrecke.",
+      "rep-pickup": "Wann und in welcher Reihenfolge die Posten eingesammelt werden.", tour: "Der schnellste Weg über alle gewählten Posten (standardmäßig alle): für den Bahnkontrolleur und zum Setzen oder Einsammeln der Posten.", "rep-after": "Nach dem Lauf: Zeiten, Fehler und gewählte Routen auf jeder Teilstrecke.",
       comments: "Die Kommentare des Teams, an die Karte geheftet.", field: "Auf dem Handy: die Karte mit deiner GPS-Position, um die Posten zu setzen und zu prüfen.",
       "view-course": "Die ganze Bahn einpassen.", "view-map": "Die ganze Karte einpassen.", "view-all": "Die Posten der anderen Bahnen blass zeigen, um sie zu übernehmen.",
       "view-printarea": "Den Rahmen des Druckbereichs zeigen.", "view-others": "Andere Bahnen blassblau unter der aktuellen zeigen.",
@@ -1307,7 +1307,13 @@ export function build(X) {
               Sie öffnet sich ohne Netz, und die Änderungen werden gesendet, sobald das Netz zurück ist.</p></div>
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Einsammeln</h3><p>${W("rep-pickup")}: ab wann jeder Posten
               eingesammelt werden kann, und die Reihenfolge jedes Einsammlers.</p></div>
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("tour", 18)} Postenrunde</h3><p>${W("tour")}: der schnellste Weg über die angekreuzten Posten (standardmäßig alle), für den Bahnkontrolleur und alle,
+              die sie setzen oder einsammeln; nummeriert auf der Karte, als GPX, Bild oder CSV exportierbar.</p></div>
           </div>
+          <p>Die Postenrunde beginnt am Start, an einem Posten oder am günstigsten, und endet im Ziel, am Ausgangspunkt oder irgendwo; sie rechnet
+            mit dem gewählten Tempo und der Zeit an jedem Posten. Die Karte wird gelesen wie für die berechneten Routen der Analysen (eine OCAD- oder
+            Mapper-Karte über ihre Symbole, jede andere über ihre Farben), die Sperrgebiete und Begrenzungen des Bahnlegers sind geschlossen, das Relief
+            zählt, wenn die Karte georeferenziert ist; die Reihenfolge ist die schnellste gefundene (exakt bis 10 Posten).</p>
           <p>Außerdem: ${W("import-course")} übernimmt die Posten einer gedruckten Bahn (ein PDF oder ein Foto eines vergangenen Laufs), danach zu prüfen;
             ${W("view-others")} zeigt andere Bahnen blass an, um Kreuzungen und zu nahe Posten zu vermeiden.</p>
         </section>`,

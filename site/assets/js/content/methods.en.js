@@ -871,7 +871,7 @@ export function build(X) {
       "rep-cross": "Which courses visit which control.", "rep-load": "The number of competitors expected at each control and on each leg.",
       "rep-audit": "The checks: controls too close together, incomplete descriptions, codes, legs that cross an out-of-bounds area… (chapter “Checking”).",
       "rep-climb": "The climb of each course, from IGN's terrain model.", "rep-times": "The expected winning time of each course, and the length for a target time.",
-      "rep-pickup": "When and in which order to collect the controls.", "rep-after": "After the race: times, mistakes and routes taken on each leg.",
+      "rep-pickup": "When and in which order to collect the controls.", tour: "The fastest way through every control chosen (all by default): for the controller, and for putting out or collecting the controls.", "rep-after": "After the race: times, mistakes and routes taken on each leg.",
       comments: "The team's comments, pinned on the map.", field: "On the phone: the map with your GPS position, to put out and check the controls.",
       "view-course": "Fit the whole course in view.", "view-map": "Fit the whole map in view.", "view-all": "Show the other courses' controls faintly, to reuse them.",
       "view-printarea": "Show the print area's frame.", "view-others": "Show other courses in pale blue under the current one.",
@@ -1306,7 +1306,13 @@ export function build(X) {
               it opens without a network, and the changes are sent when the network comes back.</p></div>
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Collection</h3><p>${W("rep-pickup")}: when each control can be
               collected, and each collector's order of collection.</p></div>
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("tour", 18)} Control tour</h3><p>${W("tour")}: the fastest way through the controls ticked (all by default), for the controller and for those who put
+              them out or collect them; numbered on the map, exported as GPX, image or CSV.</p></div>
           </div>
+          <p>The control tour starts at the start, a control or the best-placed one, and ends at the finish, back at its starting point or
+            anywhere; it counts the pace chosen and the time spent at each control. The map is read as for the analyses' computed routes (an OCAD or
+            Mapper map by its symbols, any other by its colours), the setter's out-of-bounds areas and boundaries closed, the relief counted when the
+            map is georeferenced; the order is the fastest found (exact up to 10 controls).</p>
           <p>Also: ${W("import-course")} takes the controls of a printed course (a PDF or a photo of a past race), to be checked afterwards;
             ${W("view-others")} shows other courses faintly, to avoid crossings and controls too close together.</p>
         </section>`,

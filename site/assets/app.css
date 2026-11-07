@@ -2505,6 +2505,23 @@ body.full-win .tr-app { border: 0; }
 .tr-mapwrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; outline: none; cursor: grab; }
 .tr-mapwrap canvas:not([data-tool="select"]) { cursor: crosshair; }
 /* the 3D view of the course shown (tracer/relief3d.js), over the map pane */
+/* « Tournée des postes » (tracer/tour.js): its panel over the map's top right corner */
+.tr-tour { position: absolute; top: 8px; right: 8px; z-index: 5; width: min(360px, calc(100% - 16px)); max-height: calc(100% - 16px); display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.18); font-size: 13px; }
+.tr-tour-head { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.tr-tour-head > b { margin-right: auto; }
+.tr-tour.folded .tr-tour-body { display: none; }
+.tr-tour.folded .tr-tour-head { border-bottom: 0; }
+.tr-tour-body { overflow: auto; padding: 8px 10px; min-height: 0; }
+.tr-tour-body p { margin: 0 0 6px; }
+.tr-tour-prog { display: flex; flex-direction: column; gap: 6px; }
+.tr-tour-btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.tr-tour-list tbody tr { cursor: pointer; }
+.tr-tour-list tbody tr:hover, .tr-tour-list tbody tr:focus { background: color-mix(in srgb, #ff7a00 14%, transparent); outline: none; }
+.tr-tour-miss td { color: var(--bad, #b42318); }
+.tr-tour-quick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+.tr-tour-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 2px 8px; max-height: 220px; overflow: auto; padding: 4px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; }
+@media (max-width: 900px) { .tr-tour { width: calc(100% - 16px); max-height: 55%; } }
 .tr-3d { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; background: var(--surface); }
 .tr-3d-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 6px 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
 .tr-3d-bar > b { margin-right: auto; }

@@ -2258,6 +2258,31 @@ Every multiple-choice game was played through to its score page at phone size, w
   corridor on another, both on screen and in the PDF (vector); the geometry in Node (a 4-leg loop: corridor and island in 52 ms).
   Not done: image, scan or PDF maps (masks only; filtering them would mean repainting pixels). The mask it makes is a « mask » special,
   which only administrators draw by hand (`PRO_SPECIALS`); everyone removes it with the dialog's « Retirer le masque ».
+- **« Tournée des postes » / Control tour in the Tracer** (owner, 2026-11-07: « trace the optimal route through a selected list of
+  controls, by default all », for the controller, and for placing and collecting controls; every account, the essential level): ribbon
+  Équipe et course › Terrain › « Tournée des postes » (act `tour`, `tracer/tour.js`). A dialog: the controls (all normal controls ticked;
+  Tous / Aucun / « Les postes d'un circuit… » selects one course's, all branches), « Partir de » (a start, a finish, any control, or the
+  best-placed control) and « Finir à » (back to the starting point, any control, a start/finish/control), the pace (min/km in ordinary
+  forest on the flat; 10 forest, 8 sprint) and the minutes at each control (2), the last two kept in `localStorage ocn.tr.tour`. The
+  computation reuses the analyses' route engine in its worker (`routeplan.planner`): a frame round the points (300 m or 15 % margin, 1.5 m a
+  pixel, 9 Mpx at most), an OCAD/Mapper map by its symbols (`vectorroutes.layers`), any other by its colours (a PDF rendered at the frame's
+  resolution), the setter's out-of-bounds areas / dangerous areas and boundaries closed whatever course shows them (worker op `forbid`,
+  `routechoice.forbidCells`, kept over a new reading), the heights from `terrain.loadGrid` when the event is georeferenced (flat otherwise,
+  said). Then: the costs from each control to its 8 nearest (worker op `tour`, `routechoice.costsFrom`: one Dijkstra a control over the whole
+  grid stopped once they are reached, its inner loop allocation-free — 7× faster than through `step`), the order by `tracer/tsp.js` (an
+  asymmetric TSP: exact Held-Karp up to 13 nodes, a dummy node for open or free ends; else nearest-neighbour starts, Or-opt and 2-opt with the
+  reversed stretch costed, double-bridge kicks for 0.2-3 s; checked against brute force on 360 small cases), a leg of the order only estimated
+  (straight line × the median cost a metre × 1.5) computed exactly (worker op `path`, `routechoice.bestPath`: A* in an ellipse, else the
+  whole grid, tightened) and the order searched again until every leg is real; each leg's route by `bestPath`. Optimised on the engine's cost
+  (with the caution), times shown without it × the pace, plus the stops. Shown in a panel over the map's top right (`.tr-tour`: the summary,
+  each row the visit's number, control, distance, climb, time, cumulated clock; hover lights the leg, a click frames it in the part the panel
+  leaves free; fold, ✕/Échap) and drawn over the map (`E.overlays` key « tour »: cased blue lines, an arrow mid-leg, numbered visits, a leg
+  with no way found dashed and flagged ⚠); kept for the visit only (`E.tour`), never in the event. Exports: GPX (numbered waypoints + the
+  track; with a georeference), PNG (`exports.courseImage` of all controls at 250 dpi with the tour drawn and a title), CSV. `E.fitBox` added to
+  the editor. Measured 2026-11-07 on the local « ent opa 8 nov26 deski P » (OCAD 2018, Lambert 93, 32 controls + start/finish): 6.4 km,
+  71 m climb, 2 h 13 at 10 min/km + 2 min a control, in ~9 s (costs 3.8 s, routes 3 s, IGN heights 0.7 s); « Sample Event » (JPEG, no
+  georeference) White's 7 controls with free ends in ~2 s, along its paths. Guide: « Le tracé › En équipe et sur le terrain »'s box. Not done:
+  several collectors sharing the controls, the tour in the field mode, the tour saved with the event.
 - **OCAD course files in the Tracer** (owner, 2026-11-04: « why can't an OCAD file be imported alone? »; every account, the essential
   level): an `.ocd` holding courses (OCAD's course-setting project) is an event file of its own on « Importer un événement », and on the
   start screen or « Nouvel événement » it goes to the import (`pages/tracer.js` `ocadCourses`); its map is the file itself when it holds

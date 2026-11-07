@@ -871,7 +871,7 @@ export function build(X) {
       "rep-cross": "Quels circuits passent à quel poste.", "rep-load": "Le nombre de concurrents attendus à chaque poste et sur chaque interposte.",
       "rep-audit": "Les vérifications : postes trop proches, définitions incomplètes, codes, interpostes qui traversent une zone interdite… (chapitre « Vérifier »).",
       "rep-climb": "La dénivelée de chaque circuit, sur le modèle de terrain de l'IGN.", "rep-times": "Le temps attendu du vainqueur de chaque circuit, et la longueur pour un temps visé.",
-      "rep-pickup": "Quand et dans quel ordre ramasser les postes.", "rep-after": "Après la course : temps, erreurs et itinéraires pris sur chaque interposte.",
+      "rep-pickup": "Quand et dans quel ordre ramasser les postes.", tour: "Le chemin le plus rapide par tous les postes choisis (par défaut, tous) : pour le contrôleur, et pour poser ou ramasser les postes.", "rep-after": "Après la course : temps, erreurs et itinéraires pris sur chaque interposte.",
       comments: "Les commentaires de l'équipe, épinglés sur la carte.", field: "Sur le téléphone : la carte avec sa position GPS, pour poser et vérifier les postes.",
       "view-course": "Cadrer tout le circuit.", "view-map": "Cadrer toute la carte.", "view-all": "Montrer en pâle les postes des autres circuits, pour les reprendre.",
       "view-printarea": "Montrer le cadre de la zone d'impression.", "view-others": "Montrer d'autres circuits en bleu pâle sous celui en cours.",
@@ -1307,7 +1307,13 @@ export function build(X) {
               il s'ouvre sans réseau, et les modifications partent quand le réseau revient.</p></div>
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Ramassage</h3><p>${W("rep-pickup")} : à quelle heure chaque poste peut être
               ramassé, et l'ordre de ramassage de chaque ramasseur.</p></div>
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("tour", 18)} Tournée des postes</h3><p>${W("tour")} : le chemin le plus rapide par les postes cochés (par défaut, tous), pour le contrôleur et pour qui les pose
+              ou les ramasse ; numéroté sur la carte, exporté en GPX, en image ou en CSV.</p></div>
           </div>
+          <p>La tournée des postes part du départ, d'un poste ou du mieux placé, et finit à l'arrivée, au point de départ ou n'importe où ; elle
+            compte l'allure choisie et le temps passé à chaque poste. La carte est lue comme pour les itinéraires calculés des analyses (une carte OCAD
+            ou Mapper par ses symboles, les autres par leurs couleurs), les zones interdites et limites du traceur fermées, le relief compté quand la
+            carte est géoréférencée ; l'ordre est le plus rapide trouvé (exact jusqu'à 10 postes).</p>
           <p>Aussi : ${W("import-course")} reprend les postes d'un circuit imprimé (un PDF ou une photo d'une course passée), à vérifier ensuite ;
             ${W("view-others")} montre d'autres circuits en pâle, pour éviter les croisements et les postes trop proches.</p>
         </section>`,

@@ -385,6 +385,7 @@ export async function openEditor(ctx) {
     draw();
   }
   E.fitMap = () => { fitBox([0, 0, E.ev.map.w || 210, E.ev.map.h || 297], 10); draw(); };
+  E.fitBox = (box, pad = 30) => { fitBox(box, pad); draw(); };
   function zoomAt(f, sx, sy) {
     const W = canvas.width / dpr(), H = canvas.height / dpr();
     if (sx == null) { sx = W / 2; sy = H / 2; }

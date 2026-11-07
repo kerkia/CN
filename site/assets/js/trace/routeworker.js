@@ -3,13 +3,17 @@
 // its size, the metres of a pixel step, the map's kind) or layers (a vector map's, drawn by trace/vectorroutes.js), dem (the
 // ground's heights), settings (the map read again when its kind changes: the thickness test's width), leg (two map points),
 // decision (the leg's decision map), line (a runner's route), picture (the terrain as read), controls (the course's controls:
-// the overprint near them is theirs).
+// the overprint near them is theirs); for a tour through many controls (the Tracer's): forbid (the setter's out-of-bounds areas
+// and boundaries, kept over a new reading), tour (the costs from each control to its nearest ones), path (one leg's best route).
 
-import { classify, cells, costs, context, legSearch, lineRoute, matchRoute, picture, decisionPicture, releaseAround, DEFAULTS } from "./routechoice.js";
+import { classify, cells, costs, context, legSearch, lineRoute, matchRoute, picture, decisionPicture, releaseAround, DEFAULTS,
+  freeCells, cellOf, costsFrom, bestPath, forbidCells } from "./routechoice.js";
 import { heightAt } from "./terrain.js";
 
 let G = null, h = null, em = null, mpc = 1, cs = 1, W = 0, H = 0, settings = { ...DEFAULTS }, X = null;
 let image = null, mppRead = 1, kindRead = "forest", facts = null, ctrlPts = [];
+let forbidden = null, tourCells = [];                // the setter's objects (map px of the image read), a tour's controls (cells)
+const scratch = {};                                  // costsFrom's arrays, kept between its calls
 const decisions = new Map();                         // the last legs' decision maps, by their points
 
 /** The grid's size and the metres of a pixel step (J's columns): the cell size, about 1.5 m, 4 million cells at most. */
@@ -26,6 +30,7 @@ function start(w, hh, J) {
 function finish(px) {
   const hOld = h;
   G = cells(px, W, H, cs);
+  if (forbidden) forbidCells(G, forbidden.areas, forbidden.lines);
   G.release = releaseAround(G, em, ctrlPts);
   h = hOld && hOld.length === G.nx * G.ny ? hOld : null;
   rebuild();
@@ -85,6 +90,37 @@ const ops = {
   line({ pts }) { return { route: X ? lineRoute(X, pts) : null }; },
   match({ a, b, pts, tol, routes }) { return { route: X ? matchRoute(X, a, b, pts, tol, routes) : null }; },
   picture() { return { rgba: picture(X), nx: G.nx, ny: G.ny, cs }; },
+  /** The setter's out-of-bounds areas and boundaries (map px), closed on the cells now and after any new reading. */
+  forbid({ areas, lines }) {
+    forbidden = { areas: areas || [], lines: lines || [] };
+    if (G) { forbidCells(G, forbidden.areas, forbidden.lines); rebuild(); }
+    return {};
+  },
+  /** The costs and times between controls (map px): from each, a search stopped once its k nearest (as the crow flies) are
+   *  reached. Flat arrays n × n, Infinity where not reached. */
+  tour({ id, pts, k }) {
+    if (!X) return { cost: null };
+    const n = pts.length, cost = new Float64Array(n * n).fill(Infinity), time = new Float64Array(n * n).fill(Infinity);
+    tourCells = pts.map((p) => cellOf(X, p));
+    const undo = freeCells(X, tourCells), ppm = cs / mpc;
+    try {
+      for (let i = 0; i < n; i++) {
+        const d = pts.map((p, j) => [Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]) / ppm, j]).filter(([, j]) => j !== i).sort((u, v) => u[0] - v[0]);
+        const want = d.slice(0, k).map(([, j]) => j), far = d.length ? d[Math.min(k, d.length) - 1][0] : 0;
+        const r = costsFrom(X, tourCells[i], tourCells, want, Math.max(900, 12 * far), scratch);
+        r.forEach(([c, t], j) => { cost[i * n + j] = c; time[i * n + j] = t; });
+        cost[i * n + i] = 0; time[i * n + i] = 0;
+        postMessage({ id, progress: (i + 1) / n });
+      }
+    } finally { undo(); }
+    return { cost, time };
+  },
+  /** One leg's best route (map px), the tour's controls passable as in « tour ». */
+  path({ a, b }) {
+    if (!X) return { route: null };
+    const undo = freeCells(X, tourCells.length ? tourCells : [cellOf(X, a), cellOf(X, b)]);
+    try { return { route: bestPath(X, a, b) }; } finally { undo(); }
+  },
   controls({ pts }) { ctrlPts = pts || []; if (G) { G.release = releaseAround(G, em, ctrlPts); rebuild(); } return {}; },
 };
 

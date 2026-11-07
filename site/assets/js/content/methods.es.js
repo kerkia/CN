@@ -871,7 +871,7 @@ export function build(X) {
       "rep-cross": "Qué recorridos pasan por qué control.", "rep-load": "El número de participantes esperados en cada control y en cada tramo.",
       "rep-audit": "Las verificaciones: controles demasiado cercanos, descripciones incompletas, códigos, tramos que cruzan una zona prohibida… (capítulo «Revisar»).",
       "rep-climb": "El desnivel de cada recorrido, sobre el modelo de terreno del IGN.", "rep-times": "El tiempo esperado del ganador de cada recorrido, y la longitud para un tiempo objetivo.",
-      "rep-pickup": "Cuándo y en qué orden recoger los controles.", "rep-after": "Después de la carrera: tiempos, errores e itinerarios tomados en cada tramo.",
+      "rep-pickup": "Cuándo y en qué orden recoger los controles.", tour: "El camino más rápido por todos los controles elegidos (por defecto, todos): para el controlador y para colocar o recoger los controles.", "rep-after": "Después de la carrera: tiempos, errores e itinerarios tomados en cada tramo.",
       comments: "Los comentarios del equipo, fijados en el mapa.", field: "En el móvil: el mapa con tu posición GPS, para colocar y comprobar los controles.",
       "view-course": "Encuadrar todo el recorrido.", "view-map": "Encuadrar todo el mapa.", "view-all": "Mostrar en pálido los controles de los demás recorridos, para reutilizarlos.",
       "view-printarea": "Mostrar el marco de la zona de impresión.", "view-others": "Mostrar otros recorridos en azul pálido bajo el actual.",
@@ -1307,7 +1307,13 @@ export function build(X) {
               se abre sin red, y los cambios se envían cuando vuelve la red.</p></div>
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Recogida</h3><p>${W("rep-pickup")}: a qué hora se puede recoger cada
               control, y el orden de recogida de cada recogedor.</p></div>
+            <div class="mx-box" style="--c:var(--s1)"><h3>${ic("tour", 18)} Ruta de controles</h3><p>${W("tour")}: el camino más rápido por los controles marcados (por defecto, todos), para el controlador y para quien los
+              coloca o los recoge; numerado en el mapa, exportado en GPX, como imagen o en CSV.</p></div>
           </div>
+          <p>La ruta de controles sale de la salida, de un control o del mejor situado, y termina en la meta, en su punto de salida o en cualquier
+            sitio; cuenta el ritmo elegido y el tiempo en cada control. El mapa se lee como para los itinerarios calculados de los análisis (un mapa OCAD
+            o Mapper por sus símbolos, cualquier otro por sus colores), con las zonas prohibidas y límites del trazador cerrados y el relieve contado
+            cuando el mapa está georreferenciado; el orden es el más rápido encontrado (exacto hasta 10 controles).</p>
           <p>Además: ${W("import-course")} toma los controles de un recorrido impreso (un PDF o una foto de una carrera pasada), para revisarlos después;
             ${W("view-others")} muestra otros recorridos en tono pálido, para evitar cruces y controles demasiado cercanos.</p>
         </section>`,

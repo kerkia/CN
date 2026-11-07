@@ -26,6 +26,9 @@
 //    stretches both trees agree on (« plateaus »: a track followed for long is one) and the separate valleys of that sum
 //    across the leg (« cuts »: where do the good routes cross it?), each kept when distinct from those kept and locally
 //    optimal; each pulled tight off the grid's 16 directions (`tighten`). The sum, against the best, is the decision map.
+// 6. A tour through many controls (the Tracer's « Tournée des postes », 2026-11-07): the costs from each control to its nearest
+//    ones by a Dijkstra stopped once they are reached (`costsFrom`), the best route of each leg alone (`bestPath`), the setter's
+//    out-of-bounds areas and boundaries closed on the cells (`forbidCells`).
 // Documented in content/guide.*.js « routes ».
 
 export const A = { WHITE: 0, OPEN: 1, ROUGH: 2, G1: 3, G2: 4, G3: 5, WATER: 6, SHALLOW: 7, PAVED: 8, OOB: 9, BUILDING: 10, GREY: 11, MARSH: 12 };
@@ -1264,6 +1267,129 @@ function around(X, path, r) {
   const k = path[path.length - 1], ci = k % nx, cj = (k - ci) / nx;
   for (let j = Math.max(reg.j0, cj - rr); j <= Math.min(reg.j1, cj + rr); j++) for (let i = Math.max(reg.i0, ci - rr); i <= Math.min(reg.i1, ci + rr); i++) if ((i - ci) ** 2 + (j - cj) ** 2 <= r * r) reg.inside[(j - reg.j0) * reg.rw + i - reg.i0] = 1;
   return reg;
+}
+
+// ---- 6. tours through many controls (the Tracer's controller's tour, 2026-11-07) -------------------------------------------
+/** The cells within 3 cells of each given cell made passable for a while (a control on a boulder, by a wall); returns the undo. */
+export function freeCells(X, list) {
+  const saved = [];
+  for (const k0 of list) near(X, [k0], 3, (k) => { if (!(X.C.f[k] < Infinity)) { saved.push([k, X.C.f[k]]); X.C.f[k] = 2; } });
+  return () => { for (let i = saved.length - 1; i >= 0; i--) X.C.f[saved[i][0]] = saved[i][1]; };
+}
+/** A map pixel's cell. */
+export function cellOf(X, p) {
+  const { nx, ny, cs } = X.G;
+  return Math.min(ny - 1, Math.max(0, Math.floor(p[1] / cs))) * nx + Math.min(nx - 1, Math.max(0, Math.floor(p[0] / cs)));
+}
+/**
+ * The costs from one cell to others over the whole grid: a Dijkstra stopped once the targets of `want` (their indexes) are all
+ * reached — those met on the way are kept too — or past `cap` (cost units: seconds at 1 s/m of white forest, the caution in).
+ * targets: cells. Returns per target [cost, time] (Infinity: not reached). S: scratch arrays kept between calls.
+ */
+export function costsFrom(X, src, targets, want, cap, S) {
+  const { nx, ny } = X.G, N = nx * ny;
+  if (!S.g || S.g.length !== N) { S.g = new Float64Array(N).fill(Infinity); S.tm = new Float64Array(N); S.done = new Uint8Array(N); S.touched = new Int32Array(1 << 16); }
+  const { g, tm, done } = S;
+  let nt = 0;
+  const at = new Map();
+  targets.forEach((k, i) => { if (!at.has(k)) at.set(k, []); at.get(k).push(i); });
+  const wanted = new Set(want), out = targets.map(() => [Infinity, Infinity]);
+  // the step's cost written out (no array a step, no destructuring: this loop runs millions of times)
+  const f = X.C.f, rk = X.C.r, h = X.h, len = X.len, climb = X.s.climb ?? DEFAULTS.climb;
+  const H = new Heap();
+  g[src] = 0; tm[src] = 0; S.touched[nt++] = src; H.push(0, src);
+  while (H.n) {
+    const k = H.pop();
+    if (done[k]) continue;
+    done[k] = 1;
+    const gk = g[k];
+    if (gk > cap) break;
+    const hits = at.get(k);
+    if (hits) for (const i of hits) { out[i] = [gk, tm[k]]; wanted.delete(i); }
+    if (!wanted.size) break;
+    const fa = f[k];
+    if (!(fa < Infinity)) continue;
+    const i = k % nx, j = (k - i) / nx;
+    for (let n = 0; n < 16; n++) {
+      const dx = DX[n], dy = DY[n], I = i + dx, J = j + dy;
+      if (I < 0 || J < 0 || I >= nx || J >= ny) continue;
+      const q = J * nx + I;
+      if (done[q]) continue;
+      const fb = f[q];
+      if (!(fb < Infinity)) continue;
+      // squeezing between blocked cells: a diagonal between two, a knight's move over one
+      if (n >= 4) {
+        if (n < 8) { if (!(f[k + dx] < Infinity) && !(f[k + dy * nx] < Infinity)) continue; }
+        else {
+          const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, m1 = dx === 2 || dx === -2 ? k + sx : k + sy * nx;
+          if (!(f[m1] < Infinity) || !(f[k + sy * nx + sx] < Infinity)) continue;
+        }
+      }
+      const L = len[n], t1 = L * ((fa + fb) / 2) * (h ? slopeFactor((h[q] - h[k]) / L, climb) : 1);
+      const v = gk + t1 * ((rk[k] + rk[q]) / 2);
+      if (v < g[q]) {
+        if (g[q] === Infinity) { if (nt === S.touched.length) { const t2 = new Int32Array(nt * 2); t2.set(S.touched); S.touched = t2; } S.touched[nt++] = q; }
+        g[q] = v; tm[q] = tm[k] + t1; H.push(v, q);
+      }
+    }
+  }
+  for (let m = 0; m < nt; m++) { const k = S.touched[m]; g[k] = Infinity; done[k] = 0; }
+  return out;
+}
+const DX = Int8Array.from(NB, (d) => d[0]), DY = Int8Array.from(NB, (d) => d[1]);
+/**
+ * The best route between two map pixels alone (no variants, no decision map: a tour has many legs): A* over an ellipse round
+ * the leg, else over the whole grid, pulled tight and measured as legSearch's routes. { pts (map px), time, cost, len, up, down,
+ * onPath } or null.
+ */
+export function bestPath(X, pa, pb) {
+  const { nx, ny, cs } = X.G, a = cellOf(X, pa), b = cellOf(X, pb);
+  if (a === b) return { pts: [pa, pb], time: 0, cost: 0, len: 0, up: 0, down: 0, onPath: 0 };
+  let q = astar(X, a, b, ellipse(X, a, b, 0.75 * cellMetres(X, a, b) + 150));
+  if (!q) {
+    const reg = { i0: 0, j0: 0, i1: nx - 1, j1: ny - 1, rw: nx, inside: new Uint8Array(nx * ny).fill(1) };
+    q = astar(X, a, b, reg);
+  }
+  if (!q) return null;
+  const P = tighten(X, q, measure(X, q).cum), m = polyline(X, P, 4);
+  if (!m) return null;
+  return { pts: P.map(([x, y]) => [x * cs, y * cs]), time: m.time, cost: m.cost, len: m.len, up: m.up, down: m.down, onPath: m.onPath };
+}
+/**
+ * The setter's own objects closed on the cells (map px): areas out of bounds (rings, filled even-odd) and lines not to be
+ * crossed — the Tracer keeps them apart from the map, which an image map's colours cannot say.
+ */
+export function forbidCells(G, areas = [], lines = []) {
+  const { nx, ny, cs } = G, M = nx * ny;
+  for (const ring of areas) {
+    if (!ring || ring.length < 3) continue;
+    const P = ring.map(([x, y]) => [x / cs, y / cs]);
+    const ys = P.map((p) => p[1]), j0 = Math.max(0, Math.floor(Math.min(...ys))), j1 = Math.min(ny - 1, Math.ceil(Math.max(...ys)));
+    for (let j = j0; j <= j1; j++) {
+      const y = j + 0.5, xs = [];
+      for (let m = 0; m < P.length; m++) {
+        const [x1, y1] = P[m], [x2, y2] = P[(m + 1) % P.length];
+        if ((y1 <= y && y2 > y) || (y2 <= y && y1 > y)) xs.push(x1 + ((y - y1) * (x2 - x1)) / (y2 - y1));
+      }
+      xs.sort((u, v) => u - v);
+      for (let m = 0; m + 1 < xs.length; m += 2) {
+        for (let i = Math.max(0, Math.ceil(xs[m] - 0.5)); i <= Math.min(nx - 1, Math.floor(xs[m + 1] - 0.5)); i++) {
+          const k = j * nx + i;
+          G.cls[k] = A.OOB; G.path[k] = 0; if (G.raw) G.raw[k] = 0;
+        }
+      }
+    }
+  }
+  if (lines.some((l) => l && l.length >= 2)) {
+    if (!G.block) G.block = new Uint8Array(M);
+    for (const l of lines) for (let m = 1; m < (l?.length || 0); m++) {
+      const [x0, y0] = l[m - 1].map((v) => v / cs), [x1, y1] = l[m].map((v) => v / cs), n = Math.max(1, Math.ceil(2 * Math.hypot(x1 - x0, y1 - y0)));
+      for (let s = 0; s <= n; s++) {
+        const i = Math.floor(x0 + ((x1 - x0) * s) / n), j = Math.floor(y0 + ((y1 - y0) * s) / n);
+        if (i >= 0 && j >= 0 && i < nx && j < ny) { const k = j * nx + i; G.block[k] = 1; G.path[k] = 0; if (G.raw) G.raw[k] = 0; }
+      }
+    }
+  }
 }
 
 /** The colours of the terrain as read, for a picture of the cells (RGBA, one pixel a cell): the areas, the three path kinds,

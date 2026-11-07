@@ -218,6 +218,7 @@ export async function action(E, act, btn, at = {}) {
     case "rep-climb": (await lazy.more()).climb(E); break;
     case "rep-times": (await lazy.more()).winningTimes(E); break;
     case "rep-pickup": (await lazy.more()).pickup(E); break;
+    case "tour": (await import("./tour.js")).tourDialog(E); break;
     case "rep-after": (await lazy.more()).afterRace(E); break;
     case "comments": (await lazy.more()).comments(E); break;
     case "field": (await lazy.more()).fieldMode(E); break;

@@ -35,8 +35,8 @@ export const isSprint = (race) => /sprint/i.test(`${race?.terrain || ""} ${race?
  * layers already drawn from one on the image's pixels: { layers: unpackLayers's, name }), whose symbols are read instead of the
  * image's colours; opts: { map (the map's kind), onProgress(f) (the reading's) }.
  * Returns { ready (Promise of the reading's facts), dem(grid), settings(s, onProgress) (the new facts when the map was read
- * again, else null), controls(pts) (the course's controls), leg(a, b), decision(a, b), line(pts), picture(), destroy() }; points in
- * the map's own pixels.
+ * again, else null), controls(pts) (the course's controls), leg(a, b), decision(a, b), line(pts), picture(), destroy(), and for a
+ * tour through many controls forbid(areas, lines), tour(pts, k), path(a, b) }; points in the map's own pixels.
  */
 export function planner(image, toM, vector = null, opts = {}) {
   const W0 = image.width, H0 = image.height, sc = W0 * H0 > MAX_PX ? Math.sqrt(MAX_PX / (W0 * H0)) : 1;
@@ -121,6 +121,21 @@ export function planner(image, toM, vector = null, opts = {}) {
     async match(a, b, pts, tol, routes) {
       await ready;
       const r = (await ask("match", { a: S(a), b: S(b), pts: pts.map(S), tol, routes: (routes || []).map((x) => x.pts.map(S)) })).route;
+      return r && { ...r, pts: r.pts.map(U) };
+    },
+    /** The setter's out-of-bounds areas (rings) and boundaries (lines), map px: closed whatever the map says (the Tracer). */
+    async forbid(areas, lines) {
+      await ready;
+      await ask("forbid", { areas: areas.map((r) => r.map(S)), lines: lines.map((l) => l.map(S)) });
+      cache.clear(); decs.clear();
+    },
+    /** A tour's costs between controls (map px): from each, its k nearest reached; { cost, time } flat n × n (Infinity: not
+     *  reached; time in s at 1 s/m, cost with the caution). */
+    async tour(pts, k, onProgress) { await ready; const r = await ask("tour", { pts: pts.map(S), k }, [], onProgress); return { cost: r.cost, time: r.time }; },
+    /** One leg's best route alone: { pts (map px), time, cost, len, up, down, onPath } or null. */
+    async path(a, b) {
+      await ready;
+      const r = (await ask("path", { a: S(a), b: S(b) })).route;
       return r && { ...r, pts: r.pts.map(U) };
     },
     /** The terrain as read, a canvas of one pixel a cell, and the cell's size in map pixels. */

@@ -157,6 +157,8 @@ export const TABS = [
         S("save", t("trc.rd.save"), "save", { key: "Ctrl+S", tip: t("trc.rd.saveTip") }))] },
     { id: "terrain", title: t("trc.rd.gTerrain"), items: [
       B("field", t("trc.rd.field"), "phone", { tip: t("trc.rd.fieldTip") }),
+      // the fastest way through the controls chosen (owner, 2026-11-07): the controller's tour, placing and collecting (tour.js)
+      B("tour", t("trc.rd.tour"), "tour", { tip: t("trc.rd.tourTip") }),
       stack(S("rep-pickup", t("trc.rd.repPickup"), "box", { tip: t("trc.rd.repPickupTip") }),
         S("offline", t("trc.rd.offline"), "offline", { tip: t("trc.rd.offlineTip") }),
         S("field-states", t("trc.rd.fieldStates"), "flag", { need: "edit", pro: true, tip: t("trc.rd.fieldStatesTip") }))] },
@@ -201,7 +203,7 @@ export const INFO = {
  *  (its ▾, or a right-click on any button of the ribbon), kept in ocn.tr.prefs « qat ». QAT_CHOICES: offered in its ▾ menu. */
 export const QAT_DEFAULT = ["undo", "redo", "pdf-course", "rep-audit", "course-props"];
 export const QAT_CHOICES = ["undo", "redo", "save", "pdf-course", "pdf-courses", "rep-audit", "course-props", "course-new", "print-area", "view-course",
-  "export-iof3", "versions", "comments", "field"];
+  "export-iof3", "versions", "comments", "field", "tour"];
 
 /** The contextual tabs, by the selection's kind (ribbon.js fills in titles and figures). */
 export const CONTEXT = {

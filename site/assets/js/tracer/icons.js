@@ -126,6 +126,7 @@ export const ICON = {
   colors: '<circle cx="8" cy="9" r="4.5"/><circle cx="16" cy="9" r="4.5"/><circle cx="12" cy="15.5" r="4.5"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   symbol: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M8 16l4-8 4 8M9.5 13h5"/>',
+  tour: '<circle cx="5" cy="6" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="19" cy="18" r="2"/><circle cx="6" cy="18" r="2"/><path d="M7 6.3l9-1M18.2 7l.6 9M17 18.2l-9-.2M5.8 16l-.6-8" stroke-dasharray="2.5 2"/>',
 };
 export const svg = (k, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ""}</svg>`;
 
@@ -142,7 +143,7 @@ export const ACT_ICON = {
   "course-new": "addcircle", "course-props": "pencil", "course-dup": "copy", "course-delete": "trash", "course-order": "sort",
   "var-fork": "fork", "var-loop": "loop", "var-delete": "removecircle", relay: "relay", "print-area": "frame", "part-options": "parts",
   "rep-summary": "list", "rep-legs": "ruler", "rep-cross": "table", "rep-load": "bars", "rep-audit": "shield", "rep-climb": "mountain",
-  "rep-times": "stopwatch", "rep-pickup": "box", "rep-after": "chart", comments: "comment", field: "phone",
+  "rep-times": "stopwatch", "rep-pickup": "box", "rep-after": "chart", comments: "comment", field: "phone", tour: "tour",
   "view-course": "fit", "view-map": "map", "view-all": "view", "view-printarea": "frame", "view-others": "layers", "import-course": "scan", "save-to": "folder",
   "ui-ribbon": "ribbon", "ui-classic": "menu", "pdf-course": "printer", "special-more": "special", "finish-draw": "check", "cancel-draw": "close",
   "route-draw": "route", "route-clear": "trash", undo: "undo", redo: "redo", overprint: "layers", "ribbon-full": "ribbon", "ribbon-line": "minus", "ribbon-folded": "fit", keytips: "hash", guide: "list",
