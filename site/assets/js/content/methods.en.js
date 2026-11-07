@@ -979,7 +979,7 @@ export function build(X) {
             <li><b>Open event</b>: one of those you created or whose team includes you, from the list.</li>
           </ul>
           <p>Files dropped on this screen choose for you: a map alone starts a new event, a .ozmt, a .ppen or an OCAD file holding courses an import. The
-            “Events” button, top left, and the File page (New, Open, Import) bring these three choices back at any time; Esc closes them. A link that names an event opens it
+            “Events” button, top left, and the File menu (New, Open, Import) bring these three choices back at any time; Esc closes them. A link that names an event opens it
             directly.</p>
           <h3>Creating an event</h3>
           <p>“New event” asks for:</p>
@@ -1356,11 +1356,11 @@ export function build(X) {
         <section class="mx-slide" id="tr-ruban">
           <p class="mx-kicker">${K}</p>
           <h2>The ribbon, tab by tab</h2>
-          <p>Every command of the ribbon, with the icon it carries in the course-setting tool: the tabs, those of the selected object, then the File page.</p>
+          <p>Every command of the ribbon, with the icon it carries in the course-setting tool: the tabs, those of the selected object, then the File menu: its lists (export formats, imports, sharing) open in a window where each file says what it is for.</p>
           ${TRD.TABS.filter((tb) => tb.groups).map((tb) => html`<h3 class="tr-doc-mh">${ic(tb.icon, 20)}<span>${tb.label}</span></h3>${groups(tb.groups)}`)}
           <h3 class="tr-doc-mh">${ic("select", 20)}<span>The selected object's tabs</span></h3>
           ${Object.values(TRD.CONTEXT).map((c) => html`<h4 class="tr-doc-gh">${c.label}</h4><dl class="tr-doc-menu">${c.groups.flatMap((g) => flat(g.items)).map(entry)}</dl>`)}
-          <h3 class="tr-doc-mh">${ic("file", 20)}<span>The File page</span></h3>
+          <h3 class="tr-doc-mh">${ic("file", 20)}<span>The File menu</span></h3>
           ${TRD.BACKSTAGE.map((sec) => html`<h4 class="tr-doc-gh">${sec.label}</h4><dl class="tr-doc-menu">${
             sec.act ? html`<dt>${raw(TR.actIcon(sec.act, 16))}<span>${sec.label}</span></dt><dd>${MENU_HELP[sec.act] || ""}</dd>`
               : sec.id === "info" ? html`<dt>${ic("sliders", 16)}<span>Info</span></dt><dd>The event: its map, its courses, your role, the encryption; its properties, its team.</dd>`

@@ -13,7 +13,7 @@ import { SPECIAL_NAME } from "./actions.js";
 import * as A from "./actions.js";
 import { mapPurple, mapColors, defaultLayer } from "./appear.js";
 import { where, isPro } from "./ribbon-data.js";
-import { actIcon } from "./icons.js";
+import { actIcon, svg } from "./icons.js";
 import { t, tn, lang, locale } from "./lang.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -101,7 +101,8 @@ const num = (v) => { const x = Number(String(v).replace(",", ".")); return Numbe
 export function popupMenu(E, cx, cy, items, onPick) {
   const pop = document.createElement("div");
   pop.className = "tr-pop tr-ctx";
-  pop.innerHTML = items.map((it) => (it === "-" ? "<hr>" : `<button type="button" data-a="${it[0]}">${actIcon(it[0])}<span>${esc(it[1])}</span></button>`)).join("");
+  // an item: [act, label, icon name (else the act's own)]
+  pop.innerHTML = items.map((it) => (it === "-" ? "<hr>" : `<button type="button" data-a="${it[0]}">${it[2] ? svg(it[2], 16) : actIcon(it[0])}<span>${esc(it[1])}</span></button>`)).join("");
   E.root.appendChild(pop);
   const W = window.innerWidth, H = window.innerHeight;
   pop.style.left = `${Math.min(cx, W - pop.offsetWidth - 8)}px`; pop.style.top = `${Math.min(cy, H - pop.offsetHeight - 8)}px`;
@@ -110,6 +111,64 @@ export function popupMenu(E, cx, cy, items, onPick) {
   setTimeout(() => document.addEventListener("pointerdown", off, true), 0);
   pop.querySelectorAll("[data-a]").forEach((b) => b.addEventListener("click", () => { close(); onPick(b.dataset.a); }));
 }
+// ---- « Fichier »'s dialogs (owner, 2026-11-07: the Tracer's « Fichier » page became a menu, as Cartographier's) --------------------
+const normTxt = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const lastOf = (key) => { try { return localStorage.getItem(`ocn.tr.pick.${key}`) || null; } catch (e) { return null; } };
+const keepLast = (key, act) => { try { localStorage.setItem(`ocn.tr.pick.${key}`, act); } catch (e) { /* this visit */ } };
+
+/** A dialog of the « Fichier » menu: a title, a close button, its body (html), an optional search field that filters the cards
+ *  (`[data-q]`: the text searched) and hides the groups left empty. onClick(event, api) gets every click in the body.
+ *  → { el, body, close, set(html) }; onClose() when it closes, whatever closes it. */
+export function fileDialog(E, { title, sub = "", body = "", search = false, onClick = null, onClose = null }) {
+  const m = document.createElement("div");
+  m.className = "tr-modal";
+  m.innerHTML = `<div class="tr-dialog wide tr-fdlg" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <div class="tr-fdlg-head"><h2>${esc(title)}</h2><button type="button" class="tr-start-x" data-fdlg-close title="${esc(t("trc.fdlg.closeEsc"))}" aria-label="${esc(t("trc.fdlg.close"))}">×</button></div>
+    ${sub ? `<p class="tr-bs-sub">${esc(sub)}</p>` : ""}
+    ${search ? `<input type="search" class="tr-fdlg-q" placeholder="${esc(t("trc.fdlg.search"))}" aria-label="${esc(t("trc.fdlg.search"))}">` : ""}
+    <div class="tr-fdlg-body"></div><p class="tr-fdlg-none muted" hidden>${esc(t("trc.fdlg.none"))}</p></div>`;
+  (E?.root || document.body).appendChild(m);
+  const bodyEl = m.querySelector(".tr-fdlg-body"), q = m.querySelector(".tr-fdlg-q"), none = m.querySelector(".tr-fdlg-none");
+  const api = { el: m, body: bodyEl, set: (h) => { bodyEl.innerHTML = h; filter(); }, close: () => { if (!m.isConnected) return; m.remove(); document.removeEventListener("keydown", onKey, true); onClose?.(); } };
+  function filter() {
+    if (!q) return;
+    const words = normTxt(q.value.trim()).split(/\s+/).filter(Boolean);
+    let shown = 0;
+    bodyEl.querySelectorAll("[data-q]").forEach((c) => { const on = words.every((w) => normTxt(c.dataset.q).includes(w)); c.hidden = !on; if (on) shown++; });
+    bodyEl.querySelectorAll(".tr-fdlg-group").forEach((g) => { g.hidden = !g.querySelector("[data-q]:not([hidden])"); });
+    none.hidden = shown > 0;
+  }
+  const onKey = (e) => {
+    if (e.key === "Escape" && m === [...document.querySelectorAll(".tr-modal")].pop()) { e.preventDefault(); e.stopPropagation(); api.close(); }
+    if (e.key === "Enter" && e.target === q) { e.preventDefault(); bodyEl.querySelector("[data-q]:not([hidden])")?.click(); }
+  };
+  document.addEventListener("keydown", onKey, true);
+  m.addEventListener("pointerdown", (e) => { if (e.target === m) api.close(); });
+  m.querySelector("[data-fdlg-close]").addEventListener("click", () => api.close());
+  bodyEl.addEventListener("click", (e) => onClick?.(e, api));
+  q?.addEventListener("input", filter);
+  api.set(body);
+  (q || bodyEl.querySelector("button") || m.querySelector("[data-fdlg-close]")).focus({ preventScroll: true });
+  return api;
+}
+
+/** One command among many, as cards — « Exporter… »'s formats, « Importer… »'s ways in: each card its icon, name, file extension
+ *  and what it is for, grouped by purpose; a search over them when asked; the last one chosen (`last`, a key) shown first.
+ *  groups: [{ title, items: [{ act, label, desc, ext, icon (a name, else the act's own) }] }] → the act chosen, or null. */
+export function chooser(E, { title, sub = "", groups, last = null, search = false }) {
+  return new Promise((resolve) => {
+    let picked = null;
+    const all = groups.flatMap((g) => g.items);
+    const prev = last ? all.find((it) => it.act === lastOf(last)) : null;
+    const card = (it) => `<button type="button" class="tr-bs-card" data-pick="${esc(it.act)}" data-q="${esc(`${it.label} ${it.desc || ""} ${it.ext || ""}`)}">${it.icon ? svg(it.icon, 22) : actIcon(it.act, 22)}
+      <b>${esc(it.label)}${it.ext ? ` <span class="tr-ext">${esc(it.ext)}</span>` : ""}</b><span>${esc(it.desc || "")}</span></button>`;
+    const group = (title, items) => (items.length ? `<section class="tr-fdlg-group">${title ? `<h4>${esc(title)}</h4>` : ""}<div class="tr-bs-cards">${items.map(card).join("")}</div></section>` : "");
+    const body = (prev ? group(t("trc.fdlg.last"), [prev]) : "") + groups.map((g) => group(g.title, g.items)).join("");
+    fileDialog(E, { title, sub, body, search, onClose: () => resolve(picked),
+      onClick: (e, api) => { const b = e.target.closest("[data-pick]"); if (!b) return; picked = b.dataset.pick; if (last) keepLast(last, picked); api.close(); } });
+  });
+}
+
 export function specialMenu(E, btn) {
   const r = btn.getBoundingClientRect();
   const groups = [[t("trc.dlg.grpPoints"), ["water", "first-aid", "optional-crossing-point", "forbidden-route", "registration-mark"]],

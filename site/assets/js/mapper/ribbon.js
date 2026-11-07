@@ -72,7 +72,7 @@ export const CONTEXT = {
   text: [{ id: "ctxText", items: [B("editText", "text", true), B("rotate", "rotate", true), { stack: [B("changeSymbol", "symbol"), B("delete", "trash")] }] }],
   draft: [{ id: "ctxDraft", items: [B("draft-accept", "check", true), B("draft-reject", "close", true)] }],
 };
-export const FILE = ["new", "open", "import", "save-now", "version-save", "versions", "export-ozmap", "export-ocd", "export-omap", "props", "close"];
+export const FILE = ["new", "open", "import", "save-now", "version-save", "versions", "export", "props", "close"];
 
 export function mountRibbon(E, host) {
   const R = { tab: "draw" };

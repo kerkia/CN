@@ -2842,30 +2842,28 @@ div.tr-field { position: absolute; left: 50%; bottom: 34px; transform: translate
 .tr-rkt { position: absolute; z-index: 90; transform: translate(-50%, 0); font: 700 10.5px ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--ink); color: var(--plane);
   border-radius: 4px; padding: 1px 4px; pointer-events: none; }
 /* the « Fichier » page over the editor, under its title bar */
-.tr-bs { position: absolute; left: 0; right: 0; bottom: 0; z-index: 55; display: grid; grid-template-columns: 210px minmax(0, 1fr); background: var(--surface); border-top: 1px solid var(--border); }
-.tr-bs-nav { background: #8e1384; padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; overflow: auto; }
-.tr-bs-nav button { display: flex; gap: 10px; align-items: center; text-align: left; font: inherit; font-size: 13.5px; color: #fff; background: transparent; border: 0; border-radius: 6px;
-  padding: 8px 12px; cursor: pointer; }
-.tr-bs-nav button:hover, .tr-bs-nav button[aria-current="true"] { background: rgba(255, 255, 255, .17); }
-.tr-bs-nav button:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
-.tr-bs-back { margin-bottom: 8px; }
-.tr-bs-main { padding: 18px 24px 24px; overflow: auto; }
-.tr-bs-main h3 { margin: 0 0 2px; font-size: 20px; }
-.tr-bs-main h4 { margin: 18px 0 6px; font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+/* « Fichier »'s dialogs (dialogs.js fileDialog, chooser; owner, 2026-11-07): the former page's cards in a dialog */
+.tr-fdlg { width: min(880px, 100%); }
+.tr-fdlg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+.tr-fdlg-head h2 { margin: 0; }
+.tr-fdlg-q { width: 100%; margin: 4px 0 6px; font: inherit; padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.tr-fdlg h3 { margin: 0 0 2px; font-size: 18px; }
+.tr-fdlg-group h4, .tr-fdlg h4 { margin: 18px 0 6px; font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
 .tr-bs-sub { margin: 0 0 12px; color: var(--ink-2); font-size: 13px; }
 .tr-bs-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
 .tr-bs-card { display: grid; grid-template-columns: 30px 1fr; gap: 3px 10px; align-items: start; text-align: left; border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px;
   background: var(--surface); color: var(--ink-2); font: inherit; font-size: 12.5px; line-height: 1.4; cursor: pointer; }
 .tr-bs-card svg { grid-row: span 2; color: #a7179b; }
 .tr-bs-card b { color: var(--ink); font-size: 13.5px; }
+.tr-ext { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 4px; font: 600 11px/1.5 ui-monospace, Consolas, monospace; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--border); white-space: nowrap; }
 .tr-bs-card:hover { border-color: #a7179b; background: color-mix(in srgb, #a7179b 5%, var(--surface)); }
 .tr-bs-card.on { border-color: #a7179b; box-shadow: inset 0 0 0 1px #a7179b; }
 .tr-bs-info { display: grid; grid-template-columns: 130px 1fr; gap: 5px 14px; font-size: 13px; margin: 0 0 14px; max-width: 760px; }
 .tr-bs-info dt { color: var(--ink-3); }
 .tr-bs-info dd { margin: 0; }
 @media (max-width: 760px) {
-  .tr-bs { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); }
-  .tr-bs-nav { flex-direction: row; flex-wrap: wrap; }
+  .tr-bs-info { grid-template-columns: 1fr; gap: 0 14px; }
+  .tr-bs-info dd { margin-bottom: 6px; }
   .tr-app .tr-top { flex-wrap: wrap; }
   .tr-search { margin-left: 0; order: 10; flex: 1 1 100%; }
   .tr-search input { width: 100%; }

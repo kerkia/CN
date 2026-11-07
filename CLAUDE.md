@@ -2178,7 +2178,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   and the tool bar — was retired with the Condes study's decision, `MENUS`, `E.ui`/`E.setUi`, `.tr-ui-*` and the guide's « Le mode
   Purple Pen » gone; an old `ocn.tr.prefs` `ui: "pp"` is ignored). The ribbon is data, `tracer/ribbon-data.js` (`TABS`: Fichier, Tracer, Circuits,
   Carte, Vérifier, Imprimer, Équipe et course; `CONTEXT`: Poste, Interposte, Objet, Tracé en cours, by the selection; `BACKSTAGE`: the
-  « Fichier » page; `INFO`: what its settings and figures are; `where(act)`: a command's place in the interface in use, which the
+  « Fichier » menu's sections — **a menu since 2026-11-07** (owner: Cartographier's plain menu felt cleaner than the Office-like page):
+  `ribbon.js` `openFileMenu` (Nouveau, Ouvrir…, Importer…, the saves, Exporter…, Partager…, Hors ligne, Informations…, Options…),
+  its lists in a dialog of cards (`dialogs.js` `chooser`: icon, name, file extension `EXT`, what it is for; grouped by purpose; a
+  search over the formats; the last choice first, `localStorage ocn.tr.pick.<key>`), « Informations » and « Options » in
+  `dialogs.fileDialog`; Cartographier's « Fichier › Exporter… » uses the same dialog (`editor.js` `EXPORTS`, texts `map.exp.*`); `INFO`: what its settings and figures are; `where(act)`: a command's place in the interface in use, which the
   messages naming a command use), drawn by `tracer/ribbon.js` (`mountRibbon`; `E.ribbon.update()` after each refresh, tool change and
   drawing step). Every button runs the editor's own action (`dialogs.action`) or tool; the ribbon's own acts: `pdf-course` (the PDF of
   the course in hand with the last choices, `pdf.coursesDialog({ only })`; also the quick-access printer), `special-more`, `route-draw`,

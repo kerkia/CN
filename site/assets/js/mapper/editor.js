@@ -12,7 +12,7 @@ import { View } from "./view.js";
 import { mountRibbon } from "./ribbon.js";
 import * as P from "./panels.js";
 import * as C from "./collab.js";
-import { modal, field, sel, num, popupMenu } from "../tracer/dialogs.js";
+import { modal, field, sel, num, popupMenu, chooser } from "../tracer/dialogs.js";
 import { svg } from "../tracer/icons.js";
 import * as FW from "../fullwin.js";
 import { t, tn, locale } from "./lang.js";
@@ -388,15 +388,23 @@ export async function openEditor(opts) {
     if (a === "close") { await E.close(); return; }
     if (a === "save-now") { await save(true); return; }
     if (a === "props") { await P.propsDialog(E); return; }
+    if (a === "export") { const act = await exportChooser(); if (act) await run(act); return; }
     await run(a === "version-save" ? "version-save" : a === "versions" ? "versions" : a);
   }
+  // « Fichier »: a menu, its formats in « Exporter… »'s dialog of cards, as the Tracer's (owner, 2026-11-07)
   E.fileMenu = (btn) => {
     const r = btn.getBoundingClientRect();
-    popupMenu(E, r.left, r.bottom + 2, [["new", t("map.file.new")], ["open", t("map.file.open")], ["import", t("map.file.import")], "-",
-      ["save-now", t("map.file.save")], ["version-save", t("map.rib.version-save")], ["versions", t("map.rib.versions")], "-",
-      ["export-ozmap", t("map.rib.export-ozmap")], ["export-ocd", t("map.rib.export-ocd")], ["export-omap", t("map.rib.export-omap")], ["export-pdf", t("map.rib.export-pdf")], "-",
-      ["props", t("map.file.props")], ["close", t("map.file.close")]], (k) => E.act(`file:${k}`));
+    popupMenu(E, r.left, r.bottom + 2, [["new", t("map.file.new"), "file"], ["open", t("map.file.open"), "folder"], ["import", t("map.file.import"), "import"], "-",
+      ["save-now", t("map.file.save"), "save"], ["version-save", t("map.rib.version-save"), "save"], ["versions", `${t("map.rib.versions")}…`, "history"], "-",
+      ["export", t("map.file.export"), "export"], "-",
+      ["props", t("map.file.props"), "sliders"], ["close", t("map.file.close"), "close"]], (k) => E.act(`file:${k}`));
   };
+  const EXPORTS = [["print", [["export-pdf", ".pdf", "printer"], ["export-sep", ".pdf", "colors"]]],
+    ["mapping", [["export-ocd", ".ocd", "export"], ["export-omap", ".omap", "export"], ["export-ozmap", ".ozmap", "save"]]],
+    ["geo", [["export-geotiff", ".png · .pgw · .prj", "map"], ["export-kmz", ".kmz", "globe"], ["export-png", ".png", "image"]]],
+    ["ozimut", [["to-tracer", "", "flag"], ["to-mymaps", "", "folder"]]]];
+  const exportChooser = () => chooser(E, { title: t("map.exp.title"), sub: t("map.exp.sub"), last: "mapper-export",
+    groups: EXPORTS.map(([g, list]) => ({ title: t(`map.exp.g.${g}`), items: list.map(([act, ext, icon]) => ({ act, ext, icon, label: t(`map.exp.${act}`), desc: t(`map.exp.${act}.d`) })) })) });
 
   // ---- the selection's box, records without their identity -----------------------------------------------------------------
   const selBox = () => { let b = null; for (const o of E.selected()) if (o.bb) b = D.union(b, o.bb); return b; };

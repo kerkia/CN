@@ -170,7 +170,7 @@ RIB = {
   "file_new": ("Nouvelle carte", "New map", "Neue Karte", "Mapa nuevo"), "file_open": ("Ouvrir", "Open", "Öffnen", "Abrir"), "file_import": ("Importer", "Import", "Importieren", "Importar"),
   "file_save-now": ("Enregistrer", "Save", "Speichern", "Guardar"), "file_version-save": ("Enregistrer une version", "Save a version", "Version speichern", "Guardar una versión"),
   "file_versions": ("Versions", "Versions", "Versionen", "Versiones"), "file_export-ozmap": ("Fichier Ozimut", "Ozimut file", "Ozimut-Datei", "Archivo Ozimut"),
-  "file_export-ocd": ("Exporter en OCAD", "Export as OCAD", "Als OCAD exportieren", "Exportar a OCAD"), "file_export-omap": ("Exporter en Mapper", "Export as Mapper", "Als Mapper exportieren", "Exportar a Mapper"),
+  "file_export": ("Exporter…", "Export…", "Exportieren…", "Exportar…"), "file_export-ocd": ("Exporter en OCAD", "Export as OCAD", "Als OCAD exportieren", "Exportar a OCAD"), "file_export-omap": ("Exporter en Mapper", "Export as Mapper", "Als Mapper exportieren", "Exportar a Mapper"),
   "file_props": ("Propriétés de la carte", "Map properties", "Karteneigenschaften", "Propiedades del mapa"), "file_close": ("Fermer", "Close", "Schließen", "Cerrar"),
 }
 for key, v in RIB.items(): k(f"map.rib.{key}", *v)
@@ -180,6 +180,64 @@ k("map.file.import", "Importer un fichier…", "Import a file…", "Datei import
 k("map.file.save", "Enregistrer maintenant", "Save now", "Jetzt speichern", "Guardar ahora")
 k("map.file.props", "Propriétés de la carte…", "Map properties…", "Karteneigenschaften…", "Propiedades del mapa…")
 k("map.file.close", "Fermer la carte", "Close the map", "Karte schließen", "Cerrar el mapa")
+k("map.file.export", "Exporter…", "Export…", "Exportieren…", "Exportar…")
+# « Exporter… »'s dialog (owner, 2026-11-07): each format a card, its name, extension and what it is for
+k("map.exp.title", "Exporter", "Export", "Exportieren", "Exportar")
+k("map.exp.sub", "Chaque fichier, et à quoi il sert.", "Each file, and what it is for.", "Jede Datei und wofür sie dient.", "Cada archivo y para qué sirve.")
+k("map.exp.g.print", "Pour imprimer", "For printing", "Zum Drucken", "Para imprimir")
+k("map.exp.g.mapping", "Pour un logiciel de cartographie", "For mapping software", "Für eine Kartensoftware", "Para un programa de cartografía")
+k("map.exp.g.geo", "Géoréférencé, pour un SIG ou un GPS", "Georeferenced, for a GIS or a GPS", "Georeferenziert, für ein GIS oder ein GPS", "Georreferenciado, para un SIG o un GPS")
+k("map.exp.g.ozimut", "Dans Ozimut", "In Ozimut", "In Ozimut", "En Ozimut")
+k("map.exp.export-pdf", "PDF de la carte", "Map PDF", "Karten-PDF", "PDF del mapa")
+k("map.exp.export-pdf.d", "La carte en vectoriel, prête à imprimer, avec sa mise en page (zone d'impression, échelle, légende, logos).",
+  "The map as vectors, ready to print, with its layout (print area, scale bar, legend, logos).",
+  "Die Karte als Vektoren, druckfertig, mit ihrem Layout (Druckbereich, Maßstab, Legende, Logos).",
+  "El mapa en vectorial, listo para imprimir, con su maquetación (zona de impresión, escala, leyenda, logotipos).")
+k("map.exp.export-sep", "Séparations", "Separations", "Farbauszüge", "Separaciones")
+k("map.exp.export-sep.d", "Pour l'imprimeur : une page par encre, en tons directs ou en CMJN, avec repères de calage.",
+  "For the printer: one page per ink, spot colours or CMYK, with registration marks.",
+  "Für die Druckerei: eine Seite pro Farbe, Sonderfarben oder CMYK, mit Passermarken.",
+  "Para la imprenta: una página por tinta, en tintas planas o CMYK, con marcas de registro.")
+k("map.exp.export-ocd", "Fichier OCAD", "OCAD file", "OCAD-Datei", "Archivo OCAD")
+k("map.exp.export-ocd.d", "Pour OCAD (versions 9 à 2018) ; ce que vous n'avez pas modifié reste à l'identique.",
+  "For OCAD (versions 9 to 2018); what you did not change stays exactly as it was.",
+  "Für OCAD (Versionen 9 bis 2018); was du nicht geändert hast, bleibt genau erhalten.",
+  "Para OCAD (versiones 9 a 2018); lo que no modificaste queda idéntico.")
+k("map.exp.export-omap", "Fichier OpenOrienteering Mapper", "OpenOrienteering Mapper file", "OpenOrienteering-Mapper-Datei", "Archivo de OpenOrienteering Mapper")
+k("map.exp.export-omap.d", "Pour OpenOrienteering Mapper, le logiciel libre ; ce que Mapper ne connaît pas est signalé.",
+  "For OpenOrienteering Mapper, the free software; what Mapper does not know is listed.",
+  "Für OpenOrienteering Mapper, die freie Software; was Mapper nicht kennt, wird aufgelistet.",
+  "Para OpenOrienteering Mapper, el programa libre; lo que Mapper no conoce se indica.")
+k("map.exp.export-ozmap", "Fichier Ozimut", "Ozimut file", "Ozimut-Datei", "Archivo Ozimut")
+k("map.exp.export-ozmap.d", "Toute la carte, ses fonds et son fichier d'origine : pour la garder ou la reprendre sur un autre compte.",
+  "The whole map, its backgrounds and its original file: to keep it or to pick it up on another account.",
+  "Die ganze Karte, ihre Hintergründe und ihre Ursprungsdatei: zum Aufbewahren oder für ein anderes Konto.",
+  "Todo el mapa, sus fondos y su archivo original: para guardarlo o retomarlo en otra cuenta.")
+k("map.exp.export-png", "Image", "Image", "Bild", "Imagen")
+k("map.exp.export-png.d", "La carte en image (150, 300 ou 600 dpi), pour un document ou un site.",
+  "The map as an image (150, 300 or 600 dpi), for a document or a website.",
+  "Die Karte als Bild (150, 300 oder 600 dpi), für ein Dokument oder eine Website.",
+  "El mapa como imagen (150, 300 o 600 ppp), para un documento o una web.")
+k("map.exp.export-geotiff", "Image géoréférencée", "Georeferenced image", "Georeferenziertes Bild", "Imagen georreferenciada")
+k("map.exp.export-geotiff.d", "L'image avec son fichier de calage (world file) et sa projection : elle se pose à sa place dans un SIG.",
+  "The image with its world file and projection: it lands in place in a GIS.",
+  "Das Bild mit World-File und Projektion: Es liegt in einem GIS an seinem Platz.",
+  "La imagen con su archivo de georreferencia (world file) y su proyección: se coloca en su sitio en un SIG.")
+k("map.exp.export-kmz", "KMZ", "KMZ", "KMZ", "KMZ")
+k("map.exp.export-kmz.d", "La carte posée sur le globe, pour Google Earth, un GPS ou une application de course.",
+  "The map laid on the globe, for Google Earth, a GPS or a running app.",
+  "Die Karte auf dem Globus, für Google Earth, ein GPS oder eine Lauf-App.",
+  "El mapa sobre el globo, para Google Earth, un GPS o una aplicación de carrera.")
+k("map.exp.to-tracer", "Vers le tracé", "To course setting", "Zur Bahnlegung", "Al trazado")
+k("map.exp.to-tracer.d", "Un nouvel événement du tracé sur cette carte, pour y tracer des circuits.",
+  "A new course-setting event on this map, to set courses on it.",
+  "Ein neues Bahnlegungs-Ereignis auf dieser Karte, um Bahnen zu legen.",
+  "Un nuevo evento de trazado sobre este mapa, para trazar recorridos.")
+k("map.exp.to-mymaps", "Vers Mes cartes", "To My maps", "Zu Meine Karten", "A Mis mapas")
+k("map.exp.to-mymaps.d", "Une image de la carte dans votre bibliothèque, pour y garder vos traces.",
+  "An image of the map in your library, to keep your tracks on it.",
+  "Ein Bild der Karte in deiner Bibliothek, um deine Spuren darauf zu sammeln.",
+  "Una imagen del mapa en tu biblioteca, para guardar tus trazas en él.")
 k("map.file.unknown", "Ce fichier n'est pas une carte qu'Ozimut sait lire (OCAD, OpenOrienteering Mapper, Ozimut).", "This file is not a map Ozimut can read (OCAD, OpenOrienteering Mapper, Ozimut).", "Diese Datei ist keine Karte, die Ozimut lesen kann (OCAD, OpenOrienteering Mapper, Ozimut).", "Este archivo no es un mapa que Ozimut sepa leer (OCAD, OpenOrienteering Mapper, Ozimut).")
 k("map.file.notOzmap", "Ce fichier n'est pas un fichier de carte Ozimut.", "This file is not an Ozimut map file.", "Diese Datei ist keine Ozimut-Kartendatei.", "Este archivo no es un archivo de mapa de Ozimut.")
 k("map.file.newer", "Ce fichier a été écrit par une version plus récente d'Ozimut : rechargez la page.", "This file was written by a newer version of Ozimut: reload the page.", "Diese Datei wurde von einer neueren Ozimut-Version geschrieben: Seite neu laden.", "Este archivo lo escribió una versión más reciente de Ozimut: recarga la página.")

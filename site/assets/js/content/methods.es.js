@@ -979,7 +979,7 @@ export function build(X) {
             <li><b>Abrir un evento</b>: uno de los que has creado o cuyo equipo te incluye, en la lista.</li>
           </ul>
           <p>Los archivos que sueltes en esta pantalla eligen por ti: un mapa solo empieza un evento nuevo, un .ozmt, un .ppen o un archivo OCAD con recorridos una importación. El botón
-            «Eventos», arriba a la izquierda, y la página Archivo (Nuevo, Abrir, Importar) vuelven a mostrar estas tres opciones en cualquier momento; Esc las cierra. Un enlace que nombra un evento lo abre
+            «Eventos», arriba a la izquierda, y el menú Archivo (Nuevo, Abrir, Importar) vuelven a mostrar estas tres opciones en cualquier momento; Esc las cierra. Un enlace que nombra un evento lo abre
             directamente.</p>
           <h3>Crear un evento</h3>
           <p>«Nuevo evento» pide:</p>
@@ -1358,11 +1358,11 @@ export function build(X) {
         <section class="mx-slide" id="tr-ruban">
           <p class="mx-kicker">${K}</p>
           <h2>La cinta de opciones, pestaña por pestaña</h2>
-          <p>Cada comando de la cinta, con el icono que lleva en el trazado: las pestañas, las del objeto elegido y, después, la página Archivo.</p>
+          <p>Cada comando de la cinta, con el icono que lleva en el trazado: las pestañas, las del objeto elegido y, después, el menú Archivo: sus listas (formatos de exportación, importaciones, compartir) se abren en una ventana donde cada archivo dice para qué sirve.</p>
           ${TRD.TABS.filter((tb) => tb.groups).map((tb) => html`<h3 class="tr-doc-mh">${ic(tb.icon, 20)}<span>${tb.label}</span></h3>${groups(tb.groups)}`)}
           <h3 class="tr-doc-mh">${ic("select", 20)}<span>Las pestañas del objeto elegido</span></h3>
           ${Object.values(TRD.CONTEXT).map((c) => html`<h4 class="tr-doc-gh">${c.label}</h4><dl class="tr-doc-menu">${c.groups.flatMap((g) => flat(g.items)).map(entry)}</dl>`)}
-          <h3 class="tr-doc-mh">${ic("file", 20)}<span>La página Archivo</span></h3>
+          <h3 class="tr-doc-mh">${ic("file", 20)}<span>El menú Archivo</span></h3>
           ${TRD.BACKSTAGE.map((sec) => html`<h4 class="tr-doc-gh">${sec.label}</h4><dl class="tr-doc-menu">${
             sec.act ? html`<dt>${raw(TR.actIcon(sec.act, 16))}<span>${sec.label}</span></dt><dd>${MENU_HELP[sec.act] || ""}</dd>`
               : sec.id === "info" ? html`<dt>${ic("sliders", 16)}<span>Información</span></dt><dd>El evento: su mapa, sus recorridos, tu rol, el cifrado; sus propiedades, su equipo.</dd>`

@@ -1,6 +1,6 @@
 // The Tracer's ribbon — its one interface (owner, 2026-10-17; the Purple Pen menus retired on 2026-10-24). Drawn from
 // ribbon-data.js: tabs in the order of the setter's work, contextual tabs that come with the selection (a control, a leg, an
-// object, a shape being drawn) and hold what applies to it, the « Fichier » page (backstage), a quick-access bar, a command
+// object, a shape being drawn) and hold what applies to it, the « Fichier » menu (its lists in dialogs), a quick-access bar, a command
 // search (Alt+Q), key hints (Alt), live figures (the event audit's problems, open comments, the course's length and climb),
 // settings in place (print scale, standards, sizes, the purple's blend, a leg's flagging), tooltips that say what a command
 // does and why it is greyed. The advanced level's items (ribbon-data.js isPro) are drawn for administrators only (E.pro). The ribbon shrinks with the window (groups fold into one
@@ -408,7 +408,7 @@ export function mountRibbon(E) {
       case "ribbon-full": case "ribbon-line": case "ribbon-folded": case "ribbon-auto": setDisplay(act.slice(7)); return;
       case "keytips": keytips(1); return;
       case "guide": window.open(GUIDE(curTab()?.guide || ""), "_blank"); return;
-      case "backstage": openBackstage(); return;
+      case "backstage": openFileMenu(btn); return;
       default:
     }
     if (PICK[act]) {
@@ -436,7 +436,7 @@ export function mountRibbon(E) {
     const t = e.target.closest("[data-rtab]");
     if (t) {
       const id = t.dataset.rtab;
-      if (id === "file") { openBackstage(); return; }
+      if (id === "file") { openFileMenu(t); return; }
       if (wanted() === "folded") R.floating = !(R.floating && R.tab === id);
       if (!id.startsWith("ctx:")) R.prevTab = id;
       R.tab = id; R.pulse = false; render();
@@ -657,42 +657,53 @@ export function mountRibbon(E) {
   }
   bindTips(host);
 
-  // ---- the « Fichier » page ---------------------------------------------------------------------------------------------------
-  function openBackstage(sec = "info") {
-    closePops(); hideTip();
-    E.$(".tr-bs")?.remove();
-    const bs = document.createElement("div");
-    bs.className = "tr-bs"; bs.setAttribute("role", "dialog"); bs.setAttribute("aria-label", TABS[0].label);
-    bs.style.top = `${E.$(".tr-top").offsetHeight}px`;
-    E.root.appendChild(bs);
-    const draw = (s) => {
-      bs.innerHTML = `<nav class="tr-bs-nav"><button type="button" class="tr-bs-back" data-bs-close>${esc(t("trc.rib.bsBack"))}</button>
-        ${BACKSTAGE.map((x) => `<button type="button" data-bs="${x.id}" ${x.act ? `data-bs-act="${x.act}"` : ""} aria-current="${x.id === s}">${svg(x.icon, 18)}<span>${esc(x.label)}</span></button>`).join("")}</nav>
-        <div class="tr-bs-main">${pageHtml(s)}</div>`;
-    };
-    const close = () => { bs.remove(); document.removeEventListener("keydown", onKey, true); };
-    const onKey = (e) => { if (e.key === "Escape" && !document.querySelector(".tr-modal")) { e.preventDefault(); e.stopPropagation(); close(); } };
-    document.addEventListener("keydown", onKey, true);
-    bs.addEventListener("click", (e) => {
-      if (e.target.closest("[data-bs-close]")) { close(); return; }
-      const nav = e.target.closest("[data-bs]");
-      if (nav) { if (nav.dataset.bsAct) { close(); run(nav.dataset.bsAct, null); } else draw(nav.dataset.bs); return; }
-      const a = e.target.closest("[data-bs-run]");
-      if (a?.dataset.bsRun === "qat-reset") { setQat(null); draw("options"); return; }
-      if (a) { close(); run(a.dataset.bsRun, null); return; }
-      const d = e.target.closest("[data-bs-disp]");
-      if (d) { const [where, k] = d.dataset.bsDisp.split(":"); setDisplay(k, where); draw("options"); }
-    });
-    R.closeBackstage = close;
-    draw(sec);
-    bs.querySelector("[aria-current='true']")?.focus({ preventScroll: true });
+  // ---- the « Fichier » menu (owner, 2026-11-07: a menu as Cartographier's; its long lists — the formats, the ways in, the
+  //      sharing — in dialogs of cards, each with its file extension and what it is for; « Informations » and « Options » dialogs too)
+  const ELL = "…";
+  const EXT = { "pdf-courses": ".pdf", "pdf-descriptions": ".pdf", "pdf-punch": ".pdf", "export-iof3": ".xml", "export-iof2": ".xml",
+    "export-iof2-sep": ".xml", "export-gpx": ".gpx", "export-kml": ".kml", "export-images": ".png · .jpg · .gif", "export-routegadget": ".zip",
+    "export-ocn": ".ozmt", "export-ocad": ".ocd · .omap", "export-ppen": ".ppen", "export-csv": ".csv", "export-geotiff": ".tif",
+    "export-svg": ".svg", "export-kmz": ".kmz", "export-maprun": ".kml", "export-ocadcsv": ".txt", "export-livelox": ".zip",
+    "start-import": ".ozmt · .ppen · .ocd", "import-courses": ".xml · .ocd" };
+  const sect = (id) => BACKSTAGE.find((x) => x.id === id);
+  const itemLabel = (id, act) => (sect(id).items || []).find((x) => x[0] === act)?.[1] || act;
+  function fileMenuItems() {
+    return [["start-new", t("trc.page.newEvent") + ELL], ["start-open", t("trc.page.openEvent") + ELL], ["bs:import", sect("import").label + ELL, "import"], "-",
+      ["save", itemLabel("save", "save")], ["version-save", itemLabel("save", "version-save")], ["versions", itemLabel("save", "versions") + ELL], "-",
+      ["bs:export", sect("export").label + ELL, "export"], ["bs:share", sect("share").label + ELL, "team"], ["offline", itemLabel("offline", "offline")], "-",
+      ["bs:info", sect("info").label + ELL, "sliders"], ["bs:options", sect("options").label + ELL, "sliders"]];
   }
-  R.openBackstage = openBackstage;
+  function openFileMenu(btn) {
+    closePops(); hideTip();
+    const r = (btn || host.querySelector('[data-rtab="file"]') || host).getBoundingClientRect();
+    D.popupMenu(E, r.left, r.bottom + 2, fileMenuItems(), (a) => (a.startsWith("bs:") ? openSection(a.slice(3)) : run(a, null)));
+  }
+  R.openFileMenu = openFileMenu;
+  const cardItem = ([act, label, desc]) => ({ act, label, desc, ext: EXT[act] || "", icon: ACT_ICON_OF(act) });
+  async function openSection(id) {
+    closePops(); hideTip();
+    const sec = sect(id);
+    if (!sec) return;
+    if (sec.items || sec.groups) {
+      const groups = sec.groups ? sec.groups.map(([title, items]) => ({ title, items: bsItems(items).map(cardItem) })) : [{ title: "", items: bsItems(sec.items).map(cardItem) }];
+      const act = await D.chooser(E, { title: sec.label, sub: sec.groups ? t("trc.rib.bsEachFile") : "", groups, last: id === "export" || id === "import" ? id : null, search: id === "export" });
+      if (act) run(act, null);
+      return;
+    }
+    // « Informations » and « Options »: their page in a dialog, its cards running a command or changing a setting in place
+    D.fileDialog(E, { title: sec.label, body: pageHtml(id), onClick: (e, dlg) => {
+      const a = e.target.closest("[data-bs-run]");
+      if (a?.dataset.bsRun === "qat-reset") { setQat(null); dlg.set(pageHtml(id)); return; }
+      if (a) { dlg.close(); run(a.dataset.bsRun, null); return; }
+      const d = e.target.closest("[data-bs-disp]");
+      if (d) { const [where, k] = d.dataset.bsDisp.split(":"); setDisplay(k, where); dlg.set(pageHtml(id)); }
+    } });
+  }
+  R.openSection = openSection;
   // the « Fichier » page's commands of the advanced level: for administrators only
   const bsItems = (list) => list.filter(([act]) => E.pro || !isPro({ act }));
   const card = ([act, t, d]) => `<button type="button" class="tr-bs-card" data-bs-run="${act}">${svg(ACT_ICON_OF(act), 22)}<b>${esc(t)}</b><span>${esc(d)}</span></button>`;
   function pageHtml(s) {
-    const sec = BACKSTAGE.find((x) => x.id === s);
     if (s === "info") {
       if (E.blank) return `<h3>${esc(t("trc.rib.bsNoEvent"))}</h3><p class="tr-bs-sub">${esc(t("trc.rib.bsNoEventSub"))}</p>
         <div class="tr-bs-cards">${card(["start-new", t("trc.rib.bsNewEvent"), t("trc.rib.bsNewEventDesc")])}${card(["start-open", t("trc.rib.bsOpenEvent"), t("trc.rib.bsOpenEventDesc")])}${card(["start-import", t("trc.rib.bsImportEvent"), t("trc.rib.bsImportEventDesc")])}</div>`;
@@ -709,7 +720,7 @@ export function mountRibbon(E) {
     if (s === "options") {
       const dp = (where, k, label, d) => { const on = (chosen(where) || "auto") === k; return `<button type="button" class="tr-bs-card${on ? " on" : ""}" data-bs-disp="${where}:${k}">${svg(k === "full" ? "ribbon" : k === "line" ? "minus" : k === "auto" ? "sliders" : "fit", 22)}<b>${esc(label)}${on ? " ✓" : ""}</b><span>${esc(d)}</span></button>`; };
       const qat = (loadPref("qat", null) || QAT_DEFAULT).map((k) => qatInfo(k).label).join(", ");
-      return `<h3>${esc(t("trc.rib.optOptions"))}</h3><p class="tr-bs-sub">${esc(t("trc.rib.optKept"))}</p>
+      return `<p class="tr-bs-sub">${esc(t("trc.rib.optKept"))}</p>
         <h4>${esc(t("trc.rib.optRibbonPage"))}</h4><div class="tr-bs-cards">${dp("ribbon", "auto", t("trc.rib.optAuto"), t("trc.rib.optAutoPageDesc"))}${dp("ribbon", "full", t("trc.rib.optFull"), t("trc.rib.optFullDesc"))}
           ${dp("ribbon", "line", t("trc.rib.optLine"), t("trc.rib.optLineDesc"))}${dp("ribbon", "folded", t("trc.rib.optFolded"), t("trc.rib.optFoldedDesc"))}</div>
         <h4>${esc(t("trc.rib.optRibbonFw"))}</h4><div class="tr-bs-cards">${dp("ribbonFw", "auto", t("trc.rib.optAuto"), t("trc.rib.optAutoFwDesc"))}${dp("ribbonFw", "full", t("trc.rib.optFull"), t("trc.rib.optFullFwDesc"))}${dp("ribbonFw", "line", t("trc.rib.optLine"), t("trc.rib.optLineFwDesc"))}</div>
@@ -717,8 +728,6 @@ export function mountRibbon(E) {
         <div class="tr-bs-cards">${card(["qat-reset", t("trc.rib.qatDefaults"), t("trc.rib.qatDefaultsDesc")])}</div>
         <h4>${esc(t("trc.rib.optFiles"))}</h4><div class="tr-bs-cards">${card(["save-to", t("trc.rib.optSeveralFiles"), t("trc.rib.optSeveralFilesDesc")])}</div>`;
     }
-    if (sec?.groups) return `<h3>${esc(sec.label)}</h3><p class="tr-bs-sub">${esc(t("trc.rib.bsEachFile"))}</p>${sec.groups.filter(([, items]) => bsItems(items).length).map(([title, items]) => `<h4>${esc(title)}</h4><div class="tr-bs-cards">${bsItems(items).map(card).join("")}</div>`).join("")}`;
-    if (sec?.items) return `<h3>${esc(sec.label)}</h3><div class="tr-bs-cards">${bsItems(sec.items).map(card).join("")}</div>`;
     return "";
   }
 
@@ -813,7 +822,7 @@ export function mountRibbon(E) {
     if (!k) return;
     if (R.keytips === 1) {
       if (k === "Q") { hideKeytips(); search?.focus(); return; }
-      if (k === "F") { hideKeytips(); openBackstage(); return; }
+      if (k === "F") { hideKeytips(); openFileMenu(); return; }
       const t = k === "Z" ? (R.ctx ? `ctx:${R.ctx}` : null) : tabs().find((x) => x.key === k && !x.backstage)?.id;
       if (!t) return;
       if (!t.startsWith("ctx:")) R.prevTab = t;
