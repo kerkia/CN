@@ -346,7 +346,7 @@ competition's race's country, a training's creator's site country sent at creati
 club as the results write it, `_lib/club.js clubLabel`), a search (`?q=`); columns date, event, type, club, circuits, runners (traces
 shared, test traces apart; an event open to its club's members only tagged « Membres du club »,
 `clubTag`; a training's club is its creator's, named from `meta.json`'s `names.clubs` — `_lib/club.js clubLabel`, whose runner rows
-give « 7707IF »; a training stored without it named again at the first list, 2026-11-05); the country's map beside it (`agendamap.js`, a computer only); **a thumbnail** of the first circuit's map
+give « 7707IF »; a training stored without it named again at the first list, 2026-11-05); **the organisers set the club shown** (owner, 2026-11-07: an analysis open by code need not name a club): « Club affiché » in the analysis's settings (`sh-s-org`, PUT `orgName`, `orgSet` kept with it and in the summary), changed or cleared — the catch-up then never names it again, and a competition's race no longer fills a cleared one; the country's map beside it (`agendamap.js`, a computer only); **a thumbnail** of the first circuit's map
 under the mouse (`.ma-pop`) and in the chosen event's card: `analyses/<id>/thumb-<n>` (~480 px, the course drawn, WebP ≤ 400 KB;
 `GET|PUT /api/analyses/<id>/thumb/<n>`, the visitors' `/v/<id>/thumb/<n>`), made by the organisers' browser — `shared.js
 courseThumb`, the organisers' page making those missing (`thumbsDue`, from the analysis's `thumbs`) — and dropped by the server when a

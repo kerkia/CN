@@ -771,6 +771,7 @@ async function managePage(main, id, data, race) {
       <div class="filters sh-m-fields" style="align-items:flex-start">
         <label class="field"><span>${t("sh.col.title")}</span><input id="sh-s-title" value="${A.title}" maxlength="120"></label>
         <label class="field"><span>${t("f.date")}</span><input type="date" id="sh-s-date" value="${A.date}"></label>
+        <label class="field" title="${t("sh.s.org.tip")}"><span>${t("sh.s.org")}</span><input id="sh-s-org" value="${A.orgName || ""}" maxlength="80" placeholder="${t("sh.s.org.ph")}"></label>
         <div class="field sh-s-access"><span>${t("sh.col.access")}</span><select id="sh-s-vis" aria-label="${t("sh.col.access")}">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select>
           <!-- what the access chosen may add, just below it (owner, 2026-11-07): the club's code for its invitees on one line -->
           <div class="sh-s-sub sh-s-code" ${raw(A.vis === "club" ? "" : "hidden")}><label class="an-opt" title="${t("sh.code.tip")}"><input type="checkbox" id="sh-s-code" ${raw(A.vis === "club" && A.code ? "checked" : "")}> ${t("sh.code")}</label>
@@ -786,6 +787,8 @@ async function managePage(main, id, data, race) {
     $("#sh-m-unpublish")?.addEventListener("click", () => { if (confirm(t("sh.m.unpublish.confirm"))) put({ draft: true }); });
     $("#sh-s-save").addEventListener("click", () => {
       const body = { title: $("#sh-s-title").value, date: $("#sh-s-date").value, vis: $("#sh-s-vis").value, visitors: $("#sh-s-vis").value === "public" && $("#sh-s-visitors").checked };
+      const org = $("#sh-s-org").value.trim();
+      if (org !== (A.orgName || "")) body.orgName = org;                                // the club shown, changed or cleared
       if (body.vis === "password" && $("#sh-s-pw").value) body.password = $("#sh-s-pw").value;
       // the club's code for its invitees: a new one typed, else the one set kept
       if (body.vis === "club") {

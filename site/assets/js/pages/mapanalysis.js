@@ -77,7 +77,8 @@ export async function render(main, r) {
   const all = data.analyses.filter((a) => a.courses > 0).map((a) => {
     const rc = raceOf(a.race);
     return { key: a.id, a, name: a.title, date: a.date, kind: a.kind, place: rc?.place || "", pos: a.pos || rc?.pos || null,
-      cc: a.cc || (rc ? country.of(rc) : ""), org: a.orgName || rc?.org || "", courses: a.courses, runners: a.runners || 0,
+      cc: a.cc || (rc ? country.of(rc) : ""), org: a.orgSet ? a.orgName || "" : a.orgName || rc?.org || "",       // (as the organisers set it, none included)
+      courses: a.courses, runners: a.runners || 0,
       locked: a.access === "locked", clubOnly: a.vis === "club", draft: !!a.draft, organiser: !!a.organiser, thumb: a.thumb ?? null,
       // a club's analysis this account is not a member of (owner, 2026-11-07: listed to all, its code asked of its organiser)
       shut: a.access === "club", code: !!a.code };

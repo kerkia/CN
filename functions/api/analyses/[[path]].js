@@ -99,7 +99,7 @@ const named = new Set(), BARE = /^\d{4}[A-Z]{0,2}$/;
 const hasCode = (m) => m.vis === "club" && !!m.code && !!m.pw;
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", club: m.club || "", orgClub: m.orgClub || "", vis: m.vis,
   code: hasCode(m) ? "1" : "",
-  created: m.created || "", via: m.via || "", cc: m.cc || "", orgName: m.orgName || "", up: optsOf(m).upload ? "1" : "0",
+  created: m.created || "", via: m.via || "", cc: m.cc || "", orgName: m.orgName || "", orgSet: m.orgSet ? "1" : "", up: optsOf(m).upload ? "1" : "0",
   visitors: m.visitors && m.vis === "public" && !m.draft ? "1" : "", draft: m.draft ? "1" : "", solo: optsOf(m).solo ? "1" : "0",
   owner: m.owner, ownerName: m.ownerName || "", courses: (m.courses || []).length, updated: m.updated, pos: centreOf(m) });
 /** The middle of the first circuit's map, "lat,lon" (« Analyse de carte » places the event on its map), or "". */
@@ -261,7 +261,7 @@ async function visitors(ctx, parts) {
     const metas = (await listAll(env, META)).map((o) => o.customMetadata || {}).filter((m) => m.vis === "public" && m.visitors === "1" && m.draft !== "1");
     const counts = await dataCounts(env);
     return json({ analyses: metas.map((m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, courses: Number(m.courses) || 0,
-      pos: m.pos ? m.pos.split(",").map(Number) : null, access: "open", organiser: false, visitors: true, cc: m.cc || "", orgName: m.orgName || "",
+      pos: m.pos ? m.pos.split(",").map(Number) : null, access: "open", organiser: false, visitors: true, cc: m.cc || "", orgName: m.orgName || "", orgSet: m.orgSet === "1",
       runners: counts(m.id).visible.size, thumb: firstThumb(counts(m.id)), upload: false, solo: false })) },
       200, { "Cache-Control": "private, max-age=60" });
   }
@@ -349,7 +349,7 @@ const forUsers = withUser(async (ctx, user) => {
         // an analysis saved before its summary had a position, or its creation's date: its summary written again once (its date of
         // change kept)
         // a training opened before its summary named its club (2026-11-05: Desquinemarre's, of the 4th): once an isolate
-        const noName = m.kind === "club" && (!m.orgName || BARE.test(m.orgName)) && m.club && !named.has(m.id);
+        const noName = m.kind === "club" && m.orgSet !== "1" && (!m.orgName || BARE.test(m.orgName)) && m.club && !named.has(m.id);
         if ((m.pos === undefined && Number(m.courses) > 0) || m.created === undefined || m.cc === undefined || noName) {
           if (noName) named.add(m.id);
           const full = await loadMeta(env, m.id);
@@ -359,7 +359,7 @@ const forUsers = withUser(async (ctx, user) => {
             full.cc = r ? r.country || "FR" : ""; full.orgName = r ? clean(r.org, 80) : full.orgName || "";
           }
           // a training's club: its creator's as the results write it (the club it was opened for is a French club number)
-          if (full && full.kind === "club" && (!full.orgName || BARE.test(full.orgName)) && full.club) {
+          if (full && full.kind === "club" && !full.orgSet && (!full.orgName || BARE.test(full.orgName)) && full.club) {
             const u = full.owner ? await env.DB.prepare("SELECT licence FROM users WHERE id = ?").bind(full.owner).first().catch(() => null) : null;
             const label = u?.licence ? await clubLabel(env, request, u.licence) : null;
             if (label && label.startsWith(full.club)) { full.orgName = clean(label, 80); if (!full.cc) full.cc = "FR"; }
@@ -378,7 +378,7 @@ const forUsers = withUser(async (ctx, user) => {
         out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, code: m.code === "1", ownerName: m.ownerName,
           courses: Number(m.courses) || 0, updated: m.updated, mine: meta.owner === user.id, organiser: org, access: acc,
           draft: m.draft === "1", solo: m.solo !== "0", upload: m.up !== "0", pos: m.pos ? m.pos.split(",").map(Number) : null,
-          cc: m.cc || "", orgName: m.orgName || "", runners: counts(m.id).runners.size, thumb: firstThumb(counts(m.id)),
+          cc: m.cc || "", orgName: m.orgName || "", orgSet: m.orgSet === "1", runners: counts(m.id).runners.size, thumb: firstThumb(counts(m.id)),
           // who opened it (owner, 2026-11-04: « I need a way for an admin to see which organisers own and opened which map
           // analyses »): shown to its organisers; the account's e-mail to the administrators only (below)
           ...(org ? { owner: meta.owner, created: m.created || "", via: m.via || "" } : {}) });
@@ -477,6 +477,8 @@ const forUsers = withUser(async (ctx, user) => {
       if (!b) return json({ error: "bad request" }, 400);
       if (b.title != null) { const tt = clean(b.title, 120); if (tt.length < 3) return json({ error: "fields" }, 400); meta.title = tt; }
       if (b.date != null) { if (!DAY.test(String(b.date))) return json({ error: "fields" }, 400); meta.date = String(b.date); }
+      // the club written under the analysis's name in the lists, as the organisers want it, or none (owner, 2026-11-07)
+      if (b.orgName != null) { meta.orgName = clean(b.orgName, 80); meta.orgSet = true; }
       if (b.vis != null) {
         if (!VIS.includes(b.vis)) return json({ error: "fields" }, 400);
         if (b.vis === "club" && !meta.club) { meta.club = (await lazyClub()) || ""; if (!meta.club) return json({ error: "noclub" }, 400); }
