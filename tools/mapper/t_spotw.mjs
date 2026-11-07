@@ -2,7 +2,7 @@
 import { readFileSync } from "node:fs";
 import * as D from "../../site/assets/js/mapper/doc.js";
 import { writeOcadDoc } from "../../site/assets/js/mapper/ocadout.js";
-const src = new Uint8Array(readFileSync("C:/kerkia/cn-data/Test files/deski 8 nov 26 F.ocd"));
+const src = new Uint8Array(readFileSync("C:/kerkia/Ozimut/work/Test files/deski 8 nov 26 F.ocd"));
 const doc = D.fromOcad(src, "d");
 console.log("spots", doc.spots.map((s) => s.name).join(", "));
 const c = doc.colors.find((x) => x.spot?.length);

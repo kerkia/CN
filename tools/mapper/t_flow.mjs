@@ -28,7 +28,7 @@ for (const [name, scale] of [["isom2017-2", 10000], ["issprom2019-2", 4000]]) {
   ok(Math.abs(b0[0] - b1[0]) < 0.1 && Math.abs(b0[3] - b1[3]) < 0.1, `${name}: same extent ${b0.map((v) => v.toFixed(1))} / ${b1.map((v) => v.toFixed(1))}`);
 }
 // an OCAD map: one object moved, written back, the others byte for byte
-const src = new Uint8Array(readFileSync("C:/kerkia/cn-data/Test files/deski 8 nov 26 F.ocd"));
+const src = new Uint8Array(readFileSync("C:/kerkia/Ozimut/work/Test files/deski 8 nov 26 F.ocd"));
 const doc = D.fromOcad(src, "deski");
 const L = new D.Live(doc);
 const o = doc.objects.find((x) => x.otp === 2);

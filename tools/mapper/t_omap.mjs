@@ -17,7 +17,7 @@ const ROOT = new URL("../../", import.meta.url).pathname.replace(/^\/([A-Z]:)/, 
 const OMAPS = [
   ...["complete map.omap", "forest sample.omap", "overprinting.omap"].map((f) => `${ROOT}site/data/_trtest/omap/${f}`),
   ...readdirSync(`${ROOT}site/data/_trtest/ocad/oom`).filter((f) => /\.(omap|xmap)$/.test(f)).map((f) => `${ROOT}site/data/_trtest/ocad/oom/${f}`),
-  "C:/kerkia/cn-data/Test files/GifTest.omap",
+  "C:/kerkia/Ozimut/work/Test files/GifTest.omap",
 ].filter(existsSync);
 const OCADS = readdirSync(`${ROOT}site/data/_trtest/ocad`).filter((f) => /\.ocd$/.test(f)).map((f) => `${ROOT}site/data/_trtest/ocad/${f}`);
 const args = process.argv.slice(2);

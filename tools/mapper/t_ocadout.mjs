@@ -15,7 +15,7 @@ import { writeOcadDoc } from "../../site/assets/js/mapper/ocadout.js";
 
 const OUT = process.env.OCADOUT_DIR || "C:/Users/YANN~1.LEH/AppData/Local/Temp/claude/701b9676897871f9/fb0778f4-a6c5-4a19-991d-11187bb51e7d/scratchpad/ocadout";
 mkdirSync(OUT, { recursive: true });
-const DIR = "site/data/_trtest/ocad", TEST = "C:/kerkia/cn-data/Test files";
+const DIR = "site/data/_trtest/ocad", TEST = "C:/kerkia/Ozimut/work/Test files";
 let files = process.argv.slice(2);
 if (!files.length) {
   files = readdirSync(DIR).filter((f) => f.toLowerCase().endsWith(".ocd")).map((f) => join(DIR, f));

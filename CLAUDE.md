@@ -25,8 +25,12 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `run_cn.py`, `query_cn.py`, `merge_methods.py` | Developer tools (recompute one method, inspect a runner, merge DBs) |
 | `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct »), MeOSDjango, O'Live or SPORTident Center race, or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's, MeOSDjango's and O'Live's lists, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js`, `mop.js` (MeOS's online results) and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
 
-The project lives in `C:\kerkia\CO` on the PC (moved out of OneDrive on 2026-10-08: syncing rewrote files mid-edit).
-Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\cn-data` on the PC, `paths.py`, env `CN_DATA_DIR`),
+On the PC everything is under `C:\kerkia\Ozimut` (one folder since 2026-11-07; `C:\kerkia\CO` and `C:\kerkia\cn-data` before):
+`code\` this repository, `data\` what the code reads outside git (the database, the HTTP cache, geonames, naturalearth, relays,
+lidarmap, the secrets and pending files; `paths.DATA_DIR`), `work\` studies and test material the code never reads (`synth`,
+`study`, `scratch-scripts`, `Test files`). The whole of `C:\kerkia` is synced by Proton Drive (moved out of OneDrive on
+2026-10-08: syncing rewrote files mid-edit).
+Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\Ozimut\data` on the PC, `paths.py`, env `CN_DATA_DIR`),
 `site/data/` and `site/auth/` (generated), `.dev.vars` (local secrets), exports. **The repository is public:** never
 commit results, personal data, secrets or credentials.
 
@@ -74,7 +78,7 @@ commit results, personal data, secrets or credentials.
 - Site data for the dev server comes from `site/data/`, built locally: `python -c "import build_site;
   build_site.main(['--out','site/data/fr','--db', <db>, '--auth', <a folder>])"` (France's folder; `--auth` keeps a test
   build's login index away from `site/auth`), then `python -c "import countries; countries.write_index()"`. Test engine changes on a **copy** of
-  `C:\kerkia\cn-data\ffco_results.sqlite3`, never on the original.
+  `C:\kerkia\Ozimut\data\ffco_results.sqlite3`, never on the original.
 - To stop the dev server on Windows, kill `workerd` and the `node` processes running wrangler. wrangler 4.157.0 (2026-11-03)
   crashed workerd on the PC (« access violation »): launch config `pages-dev-admin-4156` (8796) pins 4.156.2.
 - After a JS change, check the page in a browser (console errors!) before pushing; the browser may cache
@@ -135,7 +139,7 @@ columns and chart axes use `col.cn` / `chart.cn`; never « CN » written in the 
    FFCO's arithmetic mean of usual level × time over the fastest **90 % in forest, ⌈2N/3⌉ in sprint, 75 % in VTT and ski**
    (all four when only four, FFCO's exception kept; `build_methods` `fair.by_terrain`). Recalage: the geometric pair's
    (`norm3`: anchored on the Top's cohort, the drift corrected, calendar months, carried 10 months). **Study of 2026-10-15/16**
-   (copies of the migrated DB of 2026-10-15, `C:\kerkia\cn-data\study`: variants F50…F100, F90, E50…E100 by the scratch
+   (copies of the migrated DB of 2026-10-15, `C:\kerkia\Ozimut\work\study`: variants F50…F100, F90, E50…E100 by the scratch
    `run_variant.py`/`worker*.sh`, evaluations `eval_frac*_n.json`, `eval_elig_n.json`, `eval_switch_n.json`; the public numbers
    in `site/assets/study.json` key `lineaire`, built by the scratch `switch_json.py`; the database copies and variant exports
    of every CN study were deleted on 2026-10-17, the evaluations — `eval_*.json` and the logs — kept in the study folder): one criterion per discipline — the best
@@ -216,7 +220,7 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
   every result's index read on its day, 2012-2024, the results with an index +7 % forest, +71 % sprint (+35 % since July
   2025), +13 % VTT, the newly ranked still called better than by their official CN (Ozimut − official forest +2.47 against
   +2.31, sprint +2.73 against +2.28), on the runners ranked either way forest +0.05 [0.04, 0.07], sprint −0.09 ns (since July
-  2025 −0.23 [−0.43, −0.07]), VTT −0.14 (−0.43); the scratch `fr_min2.py`, `C:\kerkia\cn-data\study\min2\eval_min2.json`),
+  2025 −0.23 [−0.43, −0.07]), VTT −0.14 (−0.43); the scratch `fr_min2.py`, `C:\kerkia\Ozimut\work\study\min2\eval_min2.json`),
   feedback on the
   recalage (oscillates), distance-pooled sprint circuit values (pace not comparable across circuits).
   **Leaving out the runners far from the circuit's line** (study of 2026-10-18, private artifact
@@ -445,7 +449,7 @@ images du site »).
 Its pictures were all retaken on 2026-10-30 (the old ones showed the menus of before) on the scrambled copy rebuilt with that day's
 code — `synth/oz2` (`synth-oz2.sqlite3`, `data/` in today's layout), by `build_oz2.py` / `build_oz2b.py`, then `tour2.mjs fr|en`
 (Orga's pages on the administrators' dev server, 8790, so that their lists are full), `convert.py`, `sheet.py` for contact
-sheets — kept in `C:\kerkia\cn-data\scratch-scripts\C--kerkia-CO\7c7246a6-efbb-46e6-a267-01b8966734a0\scratchpad\shots`
+sheets — kept in `C:\kerkia\Ozimut\work\scratch-scripts\C--kerkia-CO\7c7246a6-efbb-46e6-a267-01b8966734a0\scratchpad\shots`
 (`npm install` there for puppeteer-core; run from PowerShell). New ones: `hub`, `past`, `descriptions`, `orga-direct`, `phone-hub`.
 Retaken the same evening with the modules' bar, plus `multi` and `multi-gaps`: the local test analysis « Test UI club » (circuit
 « Bleu », the reel's invented map; `multi` at 23:00, nobody followed, every runner's whole route in thick lines — `ocn.sh.prefs` tail 0, width 2.4 — so that the four routes and their variants show, owner 2026-10-31), whose title, organiser and runners `lib.mjs` replaces with invented ones
@@ -739,7 +743,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   clubs, training, organisers, phones; a phone among screenshots kept to a phone's size, `.tour-g-3 .tour-phone`), the finish (privacy pledges, « Créer mon compte », the demo-account
   offer) —, screenshots that enlarge on click, two drawn mockups (« En direct », the phone's notifications), the live counts of
   `meta.json`. **Its screenshots show nobody's real results** (the page is public): `site/assets/tour/<fr|en>/*.webp` were taken
-  on a **scrambled copy of the data** — the R2 database copied to `C:\kerkia\cn-data\synth`, scrambled by the scratch `synth.py`
+  on a **scrambled copy of the data** — the R2 database copied to `C:\kerkia\Ozimut\work\synth`, scrambled by the scratch `synth.py`
   (invented names and licences, each club code given another club's members, every time multiplied by the runner's own factor
   0.90-1.10 and a per-race noise, official CN and points scaled back, places recounted, the organisers' files likewise), then
   `update.migrate` + the provisional build on it (scratch `build_synth.py`, into `synth/out/data`), and the screenshots by
@@ -750,7 +754,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   solo » on a phone, full window, 280 × 606 at 2×, dark theme, by headless Edge (scripts kept with the session's scratch).
   **Keep `synth/`** (owner, 2026-10-20: the data to redo the docs, slides and pictures stays). The sessions' scratch folders
   were emptied on 2026-10-20; their scripts (`synth.py`, `build_synth.py`, `shots/`, `reelgps/`, `shot_tracer2.mjs`, the
-  studies' scripts…) were kept in `C:\kerkia\cn-data\scratch-scripts\<project>\<session>\scratchpad\`. Study database
+  studies' scripts…) were kept in `C:\kerkia\Ozimut\work\scratch-scripts\<project>\<session>\scratchpad\`. Study database
   copies and variant outputs are deleted once a study is over; the evaluations and logs stay.
 - **Coupe de France des clubs** (2026-10-10): `site_extras.cfc` -> `cfc.json`, FFCO's « Classement National des Clubs »
   rule of 2026 (annexe 2: each runner's 5 best official CN race scores of the year in foot + 5 best in VTT or ski, women
@@ -765,7 +769,7 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   rankings were gathered by hand from the archives on 2026-10-26 (LIFCO, archives.ffcorientation.fr, CO Mulhouse's former
   site, the organisers' files, O'Live; ~12 000 team rows): two CSVs (`year;division|category;place;team;club_code;time;status;
   source`), **results, so never in the repository**: in R2 `relays/cfc.csv` and `relays/cne.csv` (`npx wrangler r2 object put
-  cn-state/relays/<file> --file <csv> --remote`; a copy in `C:\kerkia\cn-data\relays`), synced by the workflow to
+  cn-state/relays/<file> --file <csv> --remote`; a copy in `C:\kerkia\Ozimut\data\relays`), synced by the workflow to
   `$CN_DATA_DIR/relays/`; `relays.py build` (every run, from `update.main`) writes `fr/relays.json` when they changed. A new
   edition = its rows appended to the CSV, uploaded again. Gaps: CFC 1999-2003 the champion only (`KNOWN`), 2002 nothing,
   2004-2005 extracts; CNE 2015 a few places, 2019 ECHO 73's extract (both on Helga only, which refuses robots). Teams are tied
@@ -1770,7 +1774,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   the measure, the base choices, the score and its mean, the circuit's value, the recalage, the results, the alternatives
   discarded, the conclusion) with the figures that support each decision, drawn as SVG from `site/assets/study.json` (the
   study of 2026-10-13's aggregate numbers, built by the scratch `study_json.py` from the evaluations under
-  `C:\kerkia\cn-data\study`; public, nothing personal) and from the live `evaluation.json`; « Les calculs du site » (clubs,
+  `C:\kerkia\Ozimut\work\study`; public, nothing personal) and from the live `evaluation.json`; « Les calculs du site » (clubs,
   coureurs, réseau, résultats et temps intermédiaires, relais, limites). Chapters are a second row of tabs (`?voir=`); the old
   tab names (`essentiel`, `detail`, `analyses`, `autres`) still open the right tab. The page's texts are in the module (French), written for orienteers who are not mathematicians (owner, 2026-10-14): plain sentences, both sides of every comparison, each term explained with numbers, one worked circuit of six runners (`RACE6`, F got lost) used on every tab, the dated exploratory tables folded away (`more`).
   The PDF white paper (`site/assets/ozimut-methode.pdf` / `.en.pdf`, « La méthode Ozimut », public, linked from the study;
@@ -1885,7 +1889,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   registration, password — apart; without it the e-mail box is not offered; the Resend quota); push is open to everyone; one list of regions for both. **Web Push** without a library (`functions/_lib/push.js`: RFC 8291 aes128gcm encryption and RFC 8292 VAPID ES256 on
   WebCrypto — checked against Mozilla's `http_ece` and FCM, which answers 410 to an unknown token and 403 to a wrong key; only
   the browsers' push services are posted to, `validSubscription`). Keys: `VAPID_PUBLIC_KEY` in wrangler.toml, `VAPID_PRIVATE_KEY`
-  a Pages secret (and `.dev.vars`), made by `tools/vapid.mjs` (the private key kept in `C:\kerkia\cn-data\vapid-private.txt`,
+  a Pages secret (and `.dev.vars`), made by `tools/vapid.mjs` (the private key kept in `C:\kerkia\Ozimut\data\vapid-private.txt`,
   never in the repository); without them push is off (`pushReady`) and Réglages says so. D1 (migration 0010): `users.push_*`,
   `push_subs` (one per device: endpoint, keys, label), `push_queue` (sent a few per call by `flushPush`, 8, the Functions' CPU
   budget; expired rows dropped), `push_sent` (the start time last sent per account and race: sent again only when it changes).
@@ -2310,7 +2314,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   map objects (`map.mapObjects`: objects outside 700-799), else the OCAD/Mapper template OCAD shows under the courses (`map.templates`),
   which the dialog asks for by name (a PDF or image of it: aligned in two clicks). Both files share the OCAD frame: the controls keep
   their file mm (`iofin.importInto` `fileMm: false`, then `transformAll(-ox, -oy)` as for an IOF XML). **What OCAD 12+ writes**
-  (checked on an OCAD 2018 file, `C:\kerkia\cn-data\Test files\ent opa 8 nov26 deski P.ocd` on `deski 8 nov 26 F.ocd`): no type-1
+  (checked on an OCAD 2018 file, `C:\kerkia\Ozimut\work\Test files\ent opa 8 nov26 deski P.ocd` on `deski 8 nov 26 F.ocd`): no type-1
   parameter strings; each control is an object of view type 1 and object-string type 1 whose own string is « <sort key> → Y<kind> →
   a<code> → c/d/e/f/g/h<symbol> » (`ocad.js` collects them in `ctx.csObjs`, and never draws view types 1-4: the Tracer draws the
   courses); « Yd » is the description sheet's box. **Description symbols** (`iofin.ocadSymbol`): ISCD 2018 numbers with three
@@ -2419,7 +2423,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   `{ test: k }`, uid 1e9 + account × 1000 + k, no licence, `test` in the record; labelled #k on the map, tagged « test »),
   « Retirer mes traces de test » removes them (DELETE `…/trace/<n>/tests`); account deletion removes them too. Invented tracks
   for the « Entrainement Gif » test event (scanned map, invented georeferencing, routes over the map's colours, variants and
-  mistakes): `C:\kerkia\cn-data\Test files\fake-tracks\gen_tracks.py`.
+  mistakes): `C:\kerkia\Ozimut\work\Test files\fake-tracks\gen_tracks.py`.
   **Runners shown**: a click on a name shows or hides that trace (any number; « Toutes », « Aucune », « Inverser », « La
   mienne »); the « Suivre » column (⌖) says who is followed — the list's first row « Tous les coureurs affichés » the group, a runner that runner, one always lit — and the bar's push button, a crosshair (`pan`, `PAN_ICON`, pressed in the flag's orange, its tooltip « Activer / Arrêter le suivi de la carte ») whether the map pans with them: a hand on the map or ⤢ ▭ releases it, one click resumes it (owner, 2026-11-05: who and whether apart; `followMarks`, `?p=0`); the bar holds the start mode — « Attente aux postes » by default, « Attente et pause aux postes » stopping the replay where everyone sets off from each control, « Départ en masse depuis le poste » followed by its control —, then the transport, speed and « Suivre », then the time line — over the map's column only, so that it follows the side panels, the mode an icon button opening a menu of icon and name (`MODE_ICON`), the start control's first entry « ▷ », the time line wrapping to a line of its own when the map is narrow (owner, 2026-11-05); the pace strip folds under a bar « ▾ Allure » (`setStrip`, the same as « Affichage »'s box); the top line in three parts (`.sh-top3`), the view switch in the middle, ⤢ ↗ at the right end after the access; the timeline spans the runners shown; kept for the visit (`sessionStorage ocn.an.vis.*`).
   **Display** (owner, 2026-10-14: no curves per runner here, the map is what is compared): the right panel's « Affichage »
@@ -2535,7 +2539,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   Gif scan (0.635 m/px): read in 3.3-4.7 s, six north lines, the dashed paths as a network. Synthetic legs (scratch `synth_new.mjs`):
   16 of 19 expected choices, no arc offered in uniform forest; a straight way far from any handrail beside a track is not locally
   optimal under the caution (the caution pulls toward the track), so it is not offered. Scratch: `rc/` in that session's scratchpad
-  (`fnew.mjs`, `synth_new.mjs`, `gpic.mjs`), copied to `C:\kerkia\cn-data\scratch-scripts`. Not done: the line network as a graph
+  (`fnew.mjs`, `synth_new.mjs`, `gpic.mjs`), copied to `C:\kerkia\Ozimut\work\scratch-scripts`. Not done: the line network as a graph
   of its own for the search (the raster's path cells carry it), form lines, dashed contours.
   **A runner's route** (owner, 2026-11-01: on leg 1 the runner took A along the track, yet « Choix » said +0:43 — the GPS line, a
   few metres beside the track, was measured in the forest): `matchRoute` lays the trace on the map — the model's fastest way from
@@ -2911,7 +2915,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`groupe`: Campeonato de España 2, Liga Española / nacional 1.5). **Spain's own parameters** (`Country.method_params`,
   `cn_engine.build_methods(overrides)`, also used by `build_site`): forest circuits valued on the fastest two-thirds; 2 races
   for an index, measured here first, France's rule too since 2026-10-23. The measure (2026-10-22, July 2025 - October 2026, the same runners, the scratch `es_eval.py` / `es_cmp.py` /
-  `es_prior.py` kept in `C:\kerkia\cn-data\scratch-scripts\C--kerkia-CO\4475af57-627e-4f46-9da2-48f0d9da2385\scratchpad`): two-thirds +0.41 forest, 2 races
+  `es_prior.py` kept in `C:\kerkia\Ozimut\work\scratch-scripts\C--kerkia-CO\4475af57-627e-4f46-9da2-48f0d9da2385\scratchpad`): two-thirds +0.41 forest, 2 races
   +0.67 sprint, both with the category start +0.52 forest [0.32, 0.71] and +1.70 sprint [1.04, 2.38] over France's settings; the
   category start costs nothing (forest +0.35, sprint −0.55 ns); a 24-month window −1.1 to −1.6; against FEDO's rule on the day
   (winner / time × 100 within the category, the best 6 of 12 months) +3.8 forest [3.4, 4.3], +4.0 sprint [2.9, 4.9] on the

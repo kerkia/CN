@@ -4,7 +4,7 @@ import * as D from "../../site/assets/js/mapper/doc.js";
 import * as G from "../../site/assets/js/mapper/geom.js";
 import { merge3 } from "../../site/assets/js/mapper/collab.js";
 const ok = (c, m) => { console.log(c ? "ok  " : "FAIL", m); if (!c) process.exitCode = 1; };
-const src = new Uint8Array(readFileSync("C:/kerkia/cn-data/Test files/deski 8 nov 26 F.ocd"));
+const src = new Uint8Array(readFileSync("C:/kerkia/Ozimut/work/Test files/deski 8 nov 26 F.ocd"));
 const base = new D.Live(D.fromOcad(src, "d")).toJSON();
 const A = new D.Live(JSON.parse(JSON.stringify(base))), B = new D.Live(JSON.parse(JSON.stringify(base)));
 const lines = A.doc.objects.filter((o) => o.otp === 2);

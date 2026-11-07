@@ -5,7 +5,7 @@ import * as GZ from "../../site/assets/js/mapper/generalise.js";
 import { createRequire } from "node:module";
 globalThis.window ??= { polygonClipping: createRequire(import.meta.url)("../../site/assets/vendor/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js") };
 const ok = (c, m) => { console.log(c ? "ok  " : "FAIL", m); if (!c) process.exitCode = 1; };
-const live = new D.Live(D.fromOcad(new Uint8Array(readFileSync("C:/kerkia/cn-data/Test files/deski 8 nov 26 F.ocd")), "d"));
+const live = new D.Live(D.fromOcad(new Uint8Array(readFileSync("C:/kerkia/Ozimut/work/Test files/deski 8 nov 26 F.ocd")), "d"));
 const E = { live, get doc() { return live.doc; }, strip: (o) => { const r = { ...o }; for (const k of ["id", "inst", "bb", "cellKeys", "ord", "rawAt", "dirty", "e", "__rec"]) delete r[k]; return r; },
   view: { setLive() {}, fit() {} } };
 let t0 = Date.now();
