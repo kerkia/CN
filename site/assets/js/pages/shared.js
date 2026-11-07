@@ -1980,10 +1980,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   }
   function right() {
     const fromOpts = ctrls.map((p, i) => [i, i ? ctrlLabel(i) : "▷"]).slice(0, legsN);
-    const modeHint = t(`sh.mode.${leg ? "leg" : mode}.hint`);
+    // a leg's name and « Tout le parcours » in the bar on a computer; on a phone (owner, 2026-11-07: as « Analyse solo ») the bar
+    // stays the whole course's, the time line on the leg, a start mode chosen going back to the whole course
+    const legBar = leg && !drawers();
+    const modeHint = t(`sh.mode.${legBar ? "leg" : mode}.hint`);
     $("#sh-bar").innerHTML = html`
       <div class="an-bar-row">
-        <span class="sh-bar-opts">${leg ? html`<span class="sh-bar-leg" title="${modeHint}"><b>${legName(leg)}</b> <button type="button" class="btn btn-sm" id="sh-leg-all">← ${t("sh.leg.all")}</button></span>`
+        <span class="sh-bar-opts">${legBar ? html`<span class="sh-bar-leg" title="${modeHint}"><b>${legName(leg)}</b> <button type="button" class="btn btn-sm" id="sh-leg-all">← ${t("sh.leg.all")}</button></span>`
           : html`<span class="sh-mode-pick"><button type="button" class="btn btn-sm sh-mode-btn" id="sh-mode-btn" aria-haspopup="menu" aria-expanded="false" aria-label="${t("sh.mode")}" title="${t(`sh.mode.${mode}`)} — ${modeHint}">${raw(MODE_ICON[mode])}<span class="sh-caret">▾</span></button>
             <span class="sh-mode-menu" id="sh-mode-menu" role="menu" hidden>${modes.map((m) => html`<button type="button" role="menuitemradio" aria-checked="${m === mode}" data-mode="${m}" title="${t(`sh.mode.${m}.hint`)}">${raw(MODE_ICON[m])}<span>${t(`sh.mode.${m}`)}</span></button>`)}</span></span>
           ${mode === "from" ? html`<select id="sh-from" aria-label="${t("sh.from")}" title="${t("lg.from")}">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select>` : ""}`}</span>
@@ -2031,9 +2034,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         (menu.querySelector('[aria-checked="true"]') || menu.querySelector("button"))?.focus();
       });
       menu.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); mb.focus(); } });
-      menu.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => { close(); mode = b.dataset.mode; reset(); }));
+      menu.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => { close(); mode = b.dataset.mode; if (leg) setLeg(0); else reset(); }));
     }
-    $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); reset(); });
+    $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); if (leg) setLeg(0); else reset(); });
     $("#sh-tail")?.addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-future").addEventListener("change", (e) => { future = e.target.value; savePrefs(); mv.draw(); });
@@ -2140,7 +2143,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const sl = $("#sh-time"); if (sl) sl.value = String(Math.round(T));
     const label = mode === "clock" && !leg ? hms(T) : T < 0 ? `−${clock(-T)}` : clock(T);
     const tt = $("#sh-t"); if (tt) tt.textContent = label;
-    const sub = $("#sh-t-sub"); if (sub) sub.textContent = !leg && (mode === "wait" || mode === "waitpause") ? (() => { let j = 1; while (j < legsN && T >= waits[j]) j++; return legName(j); })() : "";
+    // the leg shown beside the time on a phone, where the bar does not name it (right())
+    const sub = $("#sh-t-sub"); if (sub) sub.textContent = leg && drawers() ? legName(leg) : !leg && (mode === "wait" || mode === "waitpause") ? (() => { let j = 1; while (j < legsN && T >= waits[j]) j++; return legName(j); })() : "";
     stats();
   }
   /** The runner followed, at the replay's time: their race time, leg, pace over the last 30 s and distance run (owner, 2026-11-05:
