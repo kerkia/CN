@@ -1556,7 +1556,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     if ((!early && !HEIGHT_BY.includes(cmode())) || hts !== undefined) return;
     hts = "loading";
     heights3d((f) => { hFrac = f; setBar($("#sh-legend .wait-bar"), f); }).then((g) => { hts = g?.z ? g : "failed"; }, (e) => { console.warn(e); hts = "failed"; })
-      .then(() => { heightScale(); legend(); mv.draw(); sync3d(); });
+      .then(() => { if (!box.isConnected) return; heightScale(); legend(); mv.draw(); sync3d(); });
   }
   /** The colours in use: a leg's colours only in a leg's view. */
   const cmode = () => (!leg && LEG_ONLY.includes(colourBy) ? "runner" : colourBy);
@@ -2427,13 +2427,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     rcm.demP = (async () => {
       if (rcm.grid === undefined) {
         rcmStatus(t("rc.st.relief"), 0);
-        try {
-          const W = image.width, H = image.height, plan = gridPlan(W, H, (a, b) => toM(rcmFrame, a, b));
-          const ll = (x, y) => { const [lon, lat] = geoInv(x, y); return [lat, lon]; };
-          const gkey = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => ll(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
-          rcm.grid = await loadGrid({ key: gkey, ...plan, node: (i, j) => ll((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H),
-            onProgress: (f) => rcmStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) }), f) });
-        } catch (e) { console.warn(e); rcm.grid = null; }
+        try { rcm.grid = await heights3d((f) => rcmStatus(t("rc.st.reliefPct", { p: Math.round(100 * f) }), f)); }
+        catch (e) { console.warn(e); rcm.grid = null; }
       }
       if (!rcm.grid) { rcm.dem = "none"; return; }
       rcm.dem = rcm.grid.source;
@@ -2597,14 +2592,20 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   // shown on it, on the replay's own clock. The heights are the model's grid the computed routes use (one IGN or tiles request,
   // kept in IndexedDB); the runners' metres in one frame (rcmFrame), through the map's pixels.
   const v3note = (text) => { const el = $("#sh-3d-credit"); el.hidden = !text; el.innerHTML = text || ""; };
-  async function heights3d(onProgress) {
-    if (rcm.grid) return rcm.grid;
-    const W = image.width, H = image.height, plan = gridPlan(W, H, (a, b) => toM(rcmFrame, a, b));
-    const ll = (x, y) => { const [lon, lat] = geoInv(x, y); return [lat, lon]; };
-    const gkey = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => ll(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
-    const g = await loadGrid({ key: gkey, ...plan, node: (i, j) => ll((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H), onProgress });
-    if (rcm.grid === undefined) rcm.grid = g;                     // the computed routes take it too
-    return g;
+  // the map's heights, loaded once whoever asks first — the colours by relief (and their preload), the 3D view, the computed
+  // routes —, each asker told of the progress
+  const gridWatch = new Set();
+  function heights3d(onProgress) {
+    if (rcm.grid) return Promise.resolve(rcm.grid);
+    if (onProgress) gridWatch.add(onProgress);
+    if (!rcm.gridP) {
+      const W = image.width, H = image.height, plan = gridPlan(W, H, (a, b) => toM(rcmFrame, a, b));
+      const ll = (x, y) => { const [lon, lat] = geoInv(x, y); return [lat, lon]; };
+      const gkey = `${W}x${H}:${[[0, 0], [W, 0], [W, H], [0, H]].map(([a, b]) => ll(a, b).map((v) => v.toFixed(5)).join(",")).join(";")}`;
+      rcm.gridP = loadGrid({ key: gkey, ...plan, node: (i, j) => ll((i / (plan.nx - 1)) * W, (j / (plan.ny - 1)) * H), onProgress: (f) => gridWatch.forEach((fn) => fn(f)) })
+        .then((g) => { if (!rcm.grid) rcm.grid = g; gridWatch.clear(); return g; }, (e) => { rcm.gridP = null; gridWatch.clear(); throw e; });
+    }
+    return rcm.gridP;
   }
   /** Runner r's trace in the 3D view's frame (its points through the map's pixels), made once. */
   function track3d(r) {
@@ -2787,5 +2788,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   wholeRo.observe($("#sh-canvas"));
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, pan, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); barFloat.destroy(); handleClear.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  // the heights loaded in the background a moment after the opening (owner, 2026-11-07): altitude, slope and slope-corrected pace
+  // then colour at once, and the 3D view and the computed routes find them ready (IGN's the first time, then this browser's copy)
+  const preload = setTimeout(() => { if (box.isConnected) needHeights(true); }, 1500);
+  return { pause() { stop(); }, destroy() { clearTimeout(preload); measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); barFloat.destroy(); handleClear.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }
