@@ -1368,7 +1368,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <div class="an-tools">${view3dOn ? html`<button type="button" class="btn btn-sm an-3d-btn" id="sh-3d" aria-pressed="false" title="${t("an.v3.hint")}">3D</button>` : ""}<button type="button" class="btn btn-sm" id="sh-zin" title="${t("lg.zin.t")}" aria-label="${t("lg.zin.t")}">+</button><button type="button" class="btn btn-sm" id="sh-zout" title="${t("lg.zout.t")}" aria-label="${t("lg.zout.t")}">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
           <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button>${videoOn ? html`<button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden>` : ""}</div>
-        <div class="an-hud" id="sh-hud"></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
+        <div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
         <div class="sh-bottom"><div class="sh-stripbar"><button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${stripArrow(showStrip)} ${t("sh.strip.title")}</button><span class="an-bar-stats" id="sh-stats"></span></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
@@ -2141,7 +2141,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const label = mode === "clock" && !leg ? hms(T) : T < 0 ? `−${clock(-T)}` : clock(T);
     const tt = $("#sh-t"); if (tt) tt.textContent = label;
     const sub = $("#sh-t-sub"); if (sub) sub.textContent = !leg && (mode === "wait" || mode === "waitpause") ? (() => { let j = 1; while (j < legsN && T >= waits[j]) j++; return legName(j); })() : "";
-    $("#sh-hud").textContent = label;
     stats();
   }
   /** The runner followed, at the replay's time: their race time, leg, pace over the last 30 s and distance run (owner, 2026-11-05:

@@ -227,7 +227,7 @@ export async function render(main, { query = {}, route } = {}) {
           <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="${t("lg.zin.t")}" aria-label="${t("lg.zin.t")}">+</button><button type="button" class="btn btn-sm" id="an-zout" title="${t("lg.zout.t")}" aria-label="${t("lg.zout.t")}">−</button>
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button>
             <button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-video-btn" title="${t("sh.video.add")}" hidden>🎥</button><input type="file" id="an-video-file" accept="video/*" hidden></div>
-          <div class="an-hud" id="an-hud"></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
+          <div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="sh-bottom"><div class="sh-stripbar" id="an-stripbar" hidden><button type="button" class="sh-strip-tog" id="an-ps-tog" aria-expanded="true" title="${t("an.strip.fold")}">▾ ${t("sh.strip.title")}</button><span class="an-bar-stats" id="an-stats"></span></div>
         <canvas class="sh-strip" id="an-ps" hidden></canvas></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
@@ -930,7 +930,7 @@ export async function render(main, { query = {}, route } = {}) {
     close3d(); $("#an-3d").hidden = true; rcReset(); measure.stop(); $("#an-measure").hidden = true;
     $("#an-legs").innerHTML = ""; $("#an-left").hidden = true; $("#an-right").hidden = true; $("#an-bar").hidden = true; $("#an-side").hidden = false;
     $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
-    $("#an-hud").textContent = ""; $("#an-legend").hidden = true; $("#an-top").hidden = true; $("#an-stripbar").hidden = true; $("#an-ps").hidden = true;
+    $("#an-legend").hidden = true; $("#an-top").hidden = true; $("#an-stripbar").hidden = true; $("#an-ps").hidden = true;
     showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
   };
   /** The playback's layout as set: the panels' widths (a rail when folded), the height. */
@@ -2120,7 +2120,6 @@ export async function render(main, { query = {}, route } = {}) {
     const len = klass()?.length_m;
     set("#an-dist-sub", len ? `${t("an.course.len")} ${fmt(len / 1000, 1)} km` : "");
     for (const c of Object.keys(track.ch)) { const v = valueAt(track, c, s); set(`#an-ch-${c}`, v == null || Number.isNaN(v) ? "—" : fmt(v, c === "temp" ? 1 : 0)); }
-    $("#an-hud").textContent = `${clock(tNow)}${leg ? ` · ${leg.n}` : ""}`;
     paceStrip(); video?.sync();
     if (rcs.on) rcCurrent();
   }
