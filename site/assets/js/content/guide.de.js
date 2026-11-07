@@ -222,7 +222,7 @@ export function build(X) {
             html`<b>Die Wiedergabe</b>, wie bei Livelox: echte Uhrzeit, Massenstart, Warten an den Posten, eine Teilstrecke nach der anderen.`,
             html`<b>Links der Karte</b> zeigt der Reiter „Teilstrecken“ (gleich zu Beginn geöffnet) die Teilstrecken eines Läufers, der Reiter „Analysen“ die Zwischenzeiten (bei einem Wettkampf die veröffentlichten), die Rückstände, die Routenvarianten und
               bei einem Training die Übungen des Veranstalters (Korridor, Kompassstrecke).`,
-            html`<b>Der Zugang</b>: alle Konten, die Mitglieder eines Vereins oder ein Passwort. Deine eigene Datei zeigt zudem deine Kurven neben der Karte,
+            html`<b>Der Zugang</b>: alle Konten, die Mitglieder eines Vereins (und seine Gäste, mit dem Code, den ihnen der Veranstalter gibt) oder ein Passwort. Deine eigene Datei zeigt zudem deine Kurven neben der Karte,
               nur für dich.`,
             html`Jeder kann seinen Lauf <b>kommentieren</b> (« Mein Kommentar »), lesbar für alle,
               die die Tracks sehen. Der Veranstalter kann die Analyse <b>für Besucher ohne Konto</b> öffnen: sie sehen nur die Tracks der Läufer, die
@@ -474,7 +474,7 @@ export function build(X) {
             html`<b>Die Karte</b>: ein Bild, ein PDF oder ein KMZ, unverändert gespeichert, ohne Qualitätsverlust.`,
             html`<b>Ihre Kalibrierung</b>: aus einem KMZ, einer Georeferenzierungsdatei, einem IOF XML mit Koordinaten oder deinem eigenen Track.`,
             html`<b>Die Bahn</b>: auf der Karte gelesen, die Reihenfolge der Posten aus dem IOF XML der Bahnen, aus deinem Track oder aus deinen Klicks.`,
-            html`<b>Der Zugang</b>: alle Konten, die Mitglieder des Vereins oder ein Passwort. „Aus Läufersicht ansehen“ zeigt die Seite so, wie sie sie
+            html`<b>Der Zugang</b>: alle Konten, die Mitglieder des Vereins – und, wenn du willst, deine Gäste aus anderen Vereinen oder ohne Verein, mit einem Code; die übrigen Konten sehen die Analyse in der Liste, mit der Bitte, dich nach dem Code zu fragen – oder ein Passwort. „Aus Läufersicht ansehen“ zeigt die Seite so, wie sie sie
               sehen werden.`,
           ])}
           <p>Die Seite der Analyse dient dazu, sie zu verwalten, nicht zu analysieren: die Liste der Bahnen, die Karte der gewählten Bahn mit ihrem

@@ -221,7 +221,7 @@ export function build(X) {
             html`<b>Le rejeu</b>, comme sur Livelox : heure réelle, départ en masse, attente aux postes, un inter-poste à la fois.`,
             html`<b>À gauche de la carte</b>, l'onglet « Inter-postes » (ouvert d'emblée) détaille les inter-postes d'un coureur, et l'onglet « Analyses » les temps intermédiaires (ceux publiés pour une compétition), les écarts, les variantes d'itinéraire, et
               pour un entraînement les exercices de l'organisateur (couloir, azimut).`,
-            html`<b>L'accès</b> : tous les comptes, les membres d'un club, ou un mot de passe. Votre propre fichier affiche aussi vos courbes à côté de la carte,
+            html`<b>L'accès</b> : tous les comptes, les membres d'un club (et ses invités, avec le code que l'organisateur leur donne), ou un mot de passe. Votre propre fichier affiche aussi vos courbes à côté de la carte,
               pour vous seul.`,
             html`Chacun peut <b>commenter</b> sa course (« Mon commentaire »), lu par tous ceux qui voient les traces.
               L'organisateur peut ouvrir l'analyse <b>aux visiteurs sans compte</b> : ils ne voient que les traces des coureurs qui l'ont accepté. Un circuit
@@ -471,7 +471,7 @@ export function build(X) {
             html`<b>La carte</b> : une image, un PDF ou un KMZ, gardée telle quelle, sans perte de qualité.`,
             html`<b>Son calage</b> : d'un KMZ, d'un fichier de géoréférencement, d'un IOF XML avec coordonnées, ou de votre propre trace.`,
             html`<b>Le parcours</b> : lu sur la carte, l'ordre des postes venant de l'IOF XML des circuits, de votre trace, ou de vos clics.`,
-            html`<b>L'accès</b> : tous les comptes, les membres du club, ou un mot de passe. « Voir comme les coureurs » montre la page telle qu'ils la
+            html`<b>L'accès</b> : tous les comptes, les membres du club — et, si vous le voulez, vos invités d'autres clubs ou sans club, avec un code ; les autres comptes voient l'analyse dans la liste, avec l'invitation à vous demander ce code —, ou un mot de passe. « Voir comme les coureurs » montre la page telle qu'ils la
               verront.`,
           ])}
           <p>La page de l'analyse sert à la gérer, pas à analyser : la liste des circuits, la carte de celui qu'on choisit avec son parcours pour le

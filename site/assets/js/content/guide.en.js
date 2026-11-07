@@ -216,7 +216,7 @@ export function build(X) {
             html`<b>The replay</b>, as on Livelox: real time, mass start, waiting at controls, one leg at a time.`,
             html`<b>Left of the map</b>, the “Legs” tab (open from the start) details one runner's legs, and the “Analyses” tab the split times (those published for a competition), the gaps, the route variants, and for a training
               session the organiser's exercises (corridor, compass leg).`,
-            html`<b>Access</b>: every account, a club's members, or a password. Your own file also shows your curves beside the map, for you alone.`,
+            html`<b>Access</b>: every account, a club's members (and its invitees, with the code the organiser gives them), or a password. Your own file also shows your curves beside the map, for you alone.`,
             html`Everyone can <b>comment</b> on their race (« My comment »), read by all who see the
               traces. The organiser can open the analysis <b>to visitors without an account</b>: they see only the traces of the runners who agreed. A
               <b>score</b> course (controls in any order) shows everyone's order.`,
@@ -455,7 +455,7 @@ export function build(X) {
             html`<b>The map</b>: an image, a PDF or a KMZ, kept as it is, with no loss of quality.`,
             html`<b>Its placing</b>: from a KMZ, a world file, an IOF XML with coordinates, or your own track.`,
             html`<b>The course</b>: read on the map, the controls' order from the courses' IOF XML, your track, or your clicks.`,
-            html`<b>Access</b>: every account, the club's members, or a password. “View as runners see it” shows the page as they will.`,
+            html`<b>Access</b>: every account, the club's members — and, if you wish, your invitees from other clubs or from none, with a code; the other accounts see the analysis in the list, with an invitation to ask you for that code —, or a password. “View as runners see it” shows the page as they will.`,
           ])}
           <p>The analysis's page is for managing it, not for analysing: the list of courses, the map of the one chosen with its course drawn to check
             it, the publication (a new analysis stays a draft only the organisers see, until “Publish”), what the runners can do (add their track,

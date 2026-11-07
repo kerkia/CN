@@ -570,6 +570,10 @@ export async function publish(E) {
     f.vis.dispatchEvent(new Event("change"));
     f.visitors.checked = !!(a?.visitors && f.vis.value === "public");
     f.pw.value = "";
+    // a club's analysis: a code for its invitees too (owner, 2026-11-07)
+    f.code.checked = !!(a?.code && f.vis.value === "club"); f.cv.value = "";
+    f.cv.placeholder = t(a?.code ? "sh.pw.keep" : "sh.pw.ph");
+    form.querySelector("[data-cv]").hidden = !f.code.checked;
     for (const k of OPT_KEYS) f[`o_${k}`].checked = (a?.opts || {})[k] !== false;
     const pwOld = a?.vis === "password";
     form.querySelector("[data-pw] .tr-field > span").textContent = t(pwOld ? "sh.pw.new" : "trc.race.pubPw");
@@ -589,6 +593,8 @@ export async function publish(E) {
     ${field(t("f.date"), '<input name="date" type="date">')}
     ${field(t("sh.col.access"), `<select name="vis">${["public", "club", "password"].map((x) => `<option value="${x}">${esc(t(`sh.vis.${x}.long`))}</option>`).join("")}</select>`)}
     <div data-pw hidden>${field(t("trc.race.pubPw"), '<input name="pw" type="text" autocomplete="off">')}</div>
+    <div data-code hidden><label class="tr-check" title="${esc(t("sh.code.tip"))}"><input type="checkbox" name="code"> ${esc(t("sh.code"))}</label>
+      <div data-cv hidden>${field(t("ma.code"), '<input name="cv" type="text" autocomplete="off">')}</div></div>
     <label class="tr-check" data-visitors hidden title="${esc(t("sh.visitors.hint"))}"><input type="checkbox" name="visitors"> ${esc(t("sh.visitors"))}</label>
     <h3 class="tr-h3">${t("sh.m.opts")}</h3>
     <ul class="tr-pub-opts">${OPT_KEYS.map((k) => `<li><label class="tr-check"><input type="checkbox" name="o_${k}">
@@ -599,8 +605,10 @@ export async function publish(E) {
     vis.addEventListener("change", () => {
       form.querySelector("[data-pw]").hidden = vis.value !== "password";
       form.querySelector("[data-visitors]").hidden = vis.value !== "public";
+      form.querySelector("[data-code]").hidden = vis.value !== "club";
       if (vis.value !== "public") form.elements.visitors.checked = false;
     });
+    form.elements.code.addEventListener("change", () => { form.querySelector("[data-cv]").hidden = !form.elements.code.checked; });
     form.elements.target?.addEventListener("change", () => fill(form, targetOf({ target: form.elements.target.value })));
     fill(form, targetOf({ target: "" }));
   },
@@ -611,10 +619,11 @@ export async function publish(E) {
     if ((o.title || "").trim().length < 3) return t("trc.race.pubTitleShort");
     // a password: needed when there is none yet, else kept when left empty
     if (o.vis === "password" && (o.pw || "").length < (targetOf(o)?.vis === "password" && !o.pw ? 0 : 2)) return t("trc.race.pubPwShort");
+    if (o.vis === "club" && o.code && (o.cv || "").length < (targetOf(o)?.code && !o.cv ? 0 : 2)) return t("ma.code.short");
     return null;
   } });
   if (!v) return;
-  const prev = targetOf(v);
+  const prev = targetOf(v), clubCode = v.vis === "club" && !!v.code;
   const pick = des.map((d, i) => ({ ...d, i })).filter((d) => v[`p${d.i}`]), live = v._submit !== "draft";
   // the window opens at once (owner, 2026-11-05: the wait came before any sign): each circuit is printed with its course, then sent
   const box = progressBox(E, t(live ? "trc.race.pubTitle" : "trc.race.saveDraft"));
@@ -626,8 +635,8 @@ export async function publish(E) {
     step(t("trc.race.pubCreating"));
     let aid = prev?.id || null, kind = prev?.kind || (isRace ? "race" : "club");
     if (!aid) {
-      const created = await call("", { method: "POST", body: isRace ? { kind: "race", race: info.provKey, title: v.title, date: v.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined, via: "tracer" }
-        : { kind: "club", title: v.title, date: v.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : undefined, via: "tracer", country: siteCountry() } });
+      const created = await call("", { method: "POST", body: isRace ? { kind: "race", race: info.provKey, title: v.title, date: v.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : clubCode ? v.cv : undefined, code: clubCode, via: "tracer" }
+        : { kind: "club", title: v.title, date: v.date || today, vis: v.vis, password: v.vis === "password" ? v.pw : clubCode ? v.cv : undefined, code: clubCode, via: "tracer", country: siteCountry() } });
       aid = created.id;
     }
     step(t("trc.race.pubCreating"));
@@ -657,6 +666,7 @@ export async function publish(E) {
     const set = { title: v.title, date: v.date || today, vis: v.vis, visitors: v.vis === "public" && !!v.visitors, draft: !live,
       opts: Object.fromEntries(OPT_KEYS.map((k) => [k, !!v[`o_${k}`]])) };
     if (v.vis === "password" && v.pw) set.password = v.pw;
+    if (v.vis === "club") { set.code = clubCode; if (clubCode && v.cv) set.password = v.cv; }
     step(t("trc.race.pubSaving"));
     await call(`/${aid}`, { method: "PUT", body: set });
     // the event's card remembers its analysis: « Bilan après la course » reads its shared traces, a new publication updates it

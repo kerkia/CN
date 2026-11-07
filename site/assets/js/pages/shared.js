@@ -52,6 +52,7 @@ import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "..
 import { bar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import { replaceQuery } from "../app.js";
+import { clubAsk } from "./mapanalysis.js";
 import { takeInbox } from "../pwa.js";
 
 const ORG_ROUTE = "#/orga-analyses";                     // the organisers' page: competitions and trainings in one list
@@ -111,7 +112,7 @@ async function api(path, { method = "GET", body, type, key } = {}) {
   const r = await fetch(`api/analyses${path}`, { method, headers, body: payload, credentials: "same-origin" });
   const ct = r.headers.get("content-type") || "";
   const data = ct.includes("json") ? await r.json().catch(() => null) : r.ok ? await r.blob() : null;
-  if (!r.ok) { const e = new Error(data?.error || `http ${r.status}`); e.status = r.status; e.code = data?.error; throw e; }
+  if (!r.ok) { const e = new Error(data?.error || `http ${r.status}`); e.status = r.status; e.code = data?.error; e.data = data; throw e; }
   return data;
 }
 const errText = (e) => t(`sh.err.${e?.code}`) !== `sh.err.${e?.code}` ? t(`sh.err.${e.code}`) : `${t("sh.err.other")} (${e?.code || e?.message || ""})`;
@@ -335,12 +336,19 @@ function createForm(box, club) {
     <fieldset class="sh-vis"><legend>${t("sh.col.access")}</legend>
       <label><input type="radio" name="sh-vis" value="public" checked> ${t("sh.vis.public.long")}</label>
       <label><input type="radio" name="sh-vis" value="club" ${raw(club ? "" : "disabled")}> ${t("sh.vis.club.long")}${club ? "" : html` <span class="muted">(${t("sh.noclub")})</span>`}</label>
+      <label class="sh-code-row" hidden title="${t("sh.code.tip")}" style="margin-left:24px"><input type="checkbox" id="sh-code"> ${t("sh.code")} <input type="text" id="sh-code-v" placeholder="${t("sh.pw.ph")}" style="width:160px" autocomplete="off"></label>
       <label><input type="radio" name="sh-vis" value="password"> ${t("sh.vis.password.long")} <input type="text" id="sh-pw" placeholder="${t("sh.pw.ph")}" style="width:180px" autocomplete="off"></label></fieldset>
     <div class="row" style="gap:8px;margin-top:10px"><button type="button" class="btn btn-primary" id="sh-create-go">${t("sh.org.createTraining")}</button><span class="muted" id="sh-create-note"></span></div></div>`;
   $("#sh-title").value = t("sh.club.default", { d: fmtDate(today()) });
+  // the club's access may also take a code for its invitees (owner, 2026-11-07)
+  const codeRow = () => { $(".sh-code-row").hidden = $("input[name=sh-vis]:checked").value !== "club"; };
+  $$("input[name=sh-vis]").forEach((r) => r.addEventListener("change", codeRow));
+  $("#sh-code-v").addEventListener("input", (e) => { if (e.target.value) $("#sh-code").checked = true; });
   $("#sh-create-go").addEventListener("click", async () => {
-    const vis = $("input[name=sh-vis]:checked").value;
-    const body = { kind: "club", title: $("#sh-title").value, date: $("#sh-date").value, vis, password: $("#sh-pw").value, country: country.current() };
+    const vis = $("input[name=sh-vis]:checked").value, code = vis === "club" && $("#sh-code").checked;
+    const body = { kind: "club", title: $("#sh-title").value, date: $("#sh-date").value, vis, code,
+      password: code ? $("#sh-code-v").value : $("#sh-pw").value, country: country.current() };
+    if (code && body.password.length < 2) { $("#sh-create-note").textContent = t("ma.code.short"); return; }
     try { const r = await api("", { method: "POST", body: { ...body, via: "form" } }); if (vis === "password") setKey(r.id, ""); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
     catch (e) { $("#sh-create-note").textContent = errText(e); }
   });
@@ -354,6 +362,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   try { data = await api(`/${id}`, { key: keyOf(id) }); }
   catch (e) {
     if (e.code === "locked") return unlockPage(main, kind, id);
+    if (e.code === "club") return unlockPage(main, kind, id, e.data);
     main.innerHTML = html`<div class="card"><div class="empty">${errText(e)}</div></div>`;
     return { title: homeTitle };
   }
@@ -374,7 +383,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       </span><span class="sh-tabs" id="sh-tabs"></span><span class="sh-top-r">
       ${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}
       <span class="sh-top-add" id="sh-top-add"></span>
-      <span class="muted sh-access">${t(`sh.access.${A.vis === "public" && A.visitors ? "all" : A.vis}`)}</span>
+      <span class="muted sh-access">${t(`sh.access.${A.vis === "public" && A.visitors ? "all" : A.vis === "club" && A.code ? "clubCode" : A.vis}`)}</span>
       <span class="fw-btns">${raw(fwButtons({ tab: false }))}</span></span></div>
     <div id="sh-viewer"></div>
     <div id="sh-splits" class="sh-splits" hidden></div>`;
@@ -638,17 +647,21 @@ function offerTrack({ A, id, onDone, initial = null }) {
   if (initial) take(initial);
 }
 
-function unlockPage(main, kind, id) {
+/** A password's analysis, or a club's to a non-member (`club`: the server's answer — the club, its organiser, whether a code
+ *  for invitees opens it; owner, 2026-11-07). */
+function unlockPage(main, kind, id, club = null) {
+  const clubName = (s) => String(s || "").replace(/^\s*\d{3,4}\s*-\s*/, "").trim();
+  const entry = !club || club.code;
   main.innerHTML = html`<section class="card account-card" style="max-width:460px"><div class="card-body">
-      <p>${t("sh.locked")}</p>
-      <label class="field"><span>${t("sh.pw")}</span><input type="password" id="sh-unlock-pw" autocomplete="off"></label>
-      <div class="row" style="gap:8px;margin-top:10px"><button type="button" class="btn btn-primary" id="sh-unlock">${t("sh.unlock")}</button><span class="muted" id="sh-unlock-note"></span></div></div></section>`;
+      <p>${club ? clubAsk(club.code, clubName(club.org), club.owner) : t("sh.locked")}</p>
+      ${entry ? html`<label class="field"><span>${t(club ? "ma.code" : "sh.pw")}</span><input type="password" id="sh-unlock-pw" autocomplete="off"></label>
+      <div class="row" style="gap:8px;margin-top:10px"><button type="button" class="btn btn-primary" id="sh-unlock">${t("sh.unlock")}</button><span class="muted" id="sh-unlock-note"></span></div>` : ""}</div></section>`;
   const go = async () => {
     try { const r = await api(`/${id}/unlock`, { method: "POST", body: { password: $("#sh-unlock-pw").value } }); setKey(id, r.key); eventPage(main, kind, id); }
-    catch (e) { $("#sh-unlock-note").textContent = errText(e); }
+    catch (e) { $("#sh-unlock-note").textContent = club && e.code === "invalid" ? t("ma.code.wrong") : errText(e); }
   };
-  $("#sh-unlock").addEventListener("click", go);
-  $("#sh-unlock-pw").addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+  $("#sh-unlock")?.addEventListener("click", go);
+  $("#sh-unlock-pw")?.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
   return { title: t(kind ? `sh.${kind}.title` : "sh.org.title") };
 }
 
@@ -752,7 +765,7 @@ async function managePage(main, id, data, race) {
     box.innerHTML = html`<div class="card-body">
       <h2 class="sh-m-h">${t("sh.m.pub")}</h2>
       <div class="sh-m-status ${A.draft ? "draft" : "live"}">
-        <p>${t(A.draft ? (ready ? "sh.m.draft.ready" : "sh.m.draft.empty") : `sh.m.live.${A.vis}`, { where: t("sh.m.where") })}</p>
+        <p>${t(A.draft ? (ready ? "sh.m.draft.ready" : "sh.m.draft.empty") : `sh.m.live.${A.vis === "club" && A.code ? "clubCode" : A.vis}`, { where: t("sh.m.where") })}</p>
         ${A.draft ? html`<button type="button" class="btn btn-primary" id="sh-m-publish" ${raw(ready ? "" : "disabled")}>${t("sh.m.publish")}</button>`
           : html`<button type="button" class="btn btn-sm" id="sh-m-unpublish">${t("sh.m.unpublish")}</button>`}</div>
       <div class="filters sh-m-fields" style="align-items:flex-end">
@@ -760,6 +773,8 @@ async function managePage(main, id, data, race) {
         <label class="field"><span>${t("f.date")}</span><input type="date" id="sh-s-date" value="${A.date}"></label>
         <label class="field"><span>${t("sh.col.access")}</span><select id="sh-s-vis">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select></label>
         <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label>
+        <label class="an-opt sh-s-code" ${raw(A.vis === "club" ? "" : "hidden")} title="${t("sh.code.tip")}"><input type="checkbox" id="sh-s-code" ${raw(A.vis === "club" && A.code ? "checked" : "")}> ${t("sh.code")}</label>
+        <label class="field" id="sh-s-codef" ${raw(A.vis === "club" && A.code ? "" : "hidden")}><span>${t(A.code ? "sh.code.new" : "ma.code")}</span><input type="text" id="sh-s-codev" style="width:160px" autocomplete="off" placeholder="${A.code ? t("sh.pw.keep") : t("sh.pw.ph")}"></label>
         <label class="an-opt sh-s-visitors" ${raw(A.vis === "public" ? "" : "hidden")} title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")}> ${t("sh.visitors")}</label>
         <button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div></div>`;
     const put = async (body, note) => {
@@ -771,13 +786,22 @@ async function managePage(main, id, data, race) {
     $("#sh-s-save").addEventListener("click", () => {
       const body = { title: $("#sh-s-title").value, date: $("#sh-s-date").value, vis: $("#sh-s-vis").value, visitors: $("#sh-s-vis").value === "public" && $("#sh-s-visitors").checked };
       if (body.vis === "password" && $("#sh-s-pw").value) body.password = $("#sh-s-pw").value;
+      // the club's code for its invitees: a new one typed, else the one set kept
+      if (body.vis === "club") {
+        body.code = $("#sh-s-code").checked;
+        if (body.code && $("#sh-s-codev").value) body.password = $("#sh-s-codev").value;
+        if (body.code && ((!A.code && !body.password) || (body.password && body.password.length < 2))) { $("#sh-s-note").textContent = t("ma.code.short"); return; }
+      }
       put(body, "#sh-s-note");
     });
+    const showCode = () => { const v = $("#sh-s-vis").value; $(".sh-s-code").hidden = v !== "club"; $("#sh-s-codef").hidden = v !== "club" || !$("#sh-s-code").checked; };
     $("#sh-s-vis").addEventListener("change", (e) => {
       const v = e.target.value;
       $(".sh-s-visitors").hidden = v !== "public"; if (v !== "public") $("#sh-s-visitors").checked = false;
       $("#sh-s-pwf").hidden = v !== "password";
+      showCode();
     });
+    $("#sh-s-code").addEventListener("change", showCode);
   }
 
   // ---- the circuits: a row chosen shows its map; one drop zone for every way in (owner, 2026-11-04): an OCAD course-setting

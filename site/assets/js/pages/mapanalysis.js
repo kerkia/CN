@@ -21,6 +21,10 @@ const HOME = "#/analyse-carte";
 /** Where a published event opens: its analysis with every runner (`add`: its track drop at once), or « Analyse solo » on its map. */
 export const multiHref = (a, add = false) => `${a.kind === "race" ? "#/analyse-competition" : "#/analyse-club"}?id=${a.id}${add ? "&ajout=1" : ""}`;
 export const orgaHref = (id) => `#/analyse-orga?id=${id}`;
+/** A club's analysis to a non-member (owner, 2026-11-07): whose it is, and to ask its organiser for the code (`code`: one is
+ *  set, to be typed below), else to ask them for one. `club` the club's name, `name` the organiser's. */
+export const clubAsk = (code, club, name) => t(code ? "ma.club.code" : "ma.club.nocode",
+  { club: club || t("ma.club.club0"), who: name ? t("ma.club.who", { name }) : t("ma.club.who0") });
 /** The line back to this page, at the top of every analysis it leads to. */
 export const backLine = () => html`<p class="ma-crumb"><a href="${HOME}">‹ ${t("ma.title")}</a></p>`;
 
@@ -74,7 +78,9 @@ export async function render(main, r) {
     const rc = raceOf(a.race);
     return { key: a.id, a, name: a.title, date: a.date, kind: a.kind, place: rc?.place || "", pos: a.pos || rc?.pos || null,
       cc: a.cc || (rc ? country.of(rc) : ""), org: a.orgName || rc?.org || "", courses: a.courses, runners: a.runners || 0,
-      locked: a.access === "locked", clubOnly: a.vis === "club", draft: !!a.draft, organiser: !!a.organiser, thumb: a.thumb ?? null };
+      locked: a.access === "locked", clubOnly: a.vis === "club", draft: !!a.draft, organiser: !!a.organiser, thumb: a.thumb ?? null,
+      // a club's analysis this account is not a member of (owner, 2026-11-07: listed to all, its code asked of its organiser)
+      shut: a.access === "club", code: !!a.code };
   });
   // the account's kept solo analyses (owner, 2026-11-05: « Analyse solo »'s « Enregistrer l'analyse », trace/solokeep.js), seen
   // by their owner alone, replayed or deleted here — in every country's list
@@ -162,7 +168,7 @@ export async function render(main, r) {
   const thumbs = new Map();
   const thumbOf = (e) => {
     if (e.solo) return Promise.resolve(SK.thumbUrl(e.solo.sha));
-    if (e.thumb == null || (e.locked && !keyOf(e.key))) return Promise.resolve(null);
+    if (e.thumb == null || ((e.locked || e.shut) && !keyOf(e.key))) return Promise.resolve(null);
     if (!thumbs.has(e.key)) thumbs.set(e.key, api(`/${e.key}/thumb/${e.thumb}`, { blob: true, key: keyOf(e.key) }).then((b) => URL.createObjectURL(b)).catch(() => null));
     return thumbs.get(e.key);
   };
@@ -172,15 +178,16 @@ export async function render(main, r) {
     const e = byKey.get(selected), box = $("#ma-detail");
     if (!e) { box.innerHTML = html`<div class="card-body"><p class="muted">${t("ma.pick.hint")}</p></div>`; return; }
     if (e.solo) { soloDetail(e, box); return; }
-    const a = e.a, locked = e.locked && !keyOf(e.key);
+    const a = e.a, locked = e.locked && !keyOf(e.key), shut = e.shut && !keyOf(e.key);
     const facts = [fmtDate(e.date), e.place, clubName(e.org)].filter(Boolean);
     const way = (href, label, hint, primary = false) => html`<a class="btn ${primary ? "btn-primary" : ""} ma-go" href="${href}"><b>${label}</b><span>${hint}</span></a>`;
+    const codeRow = (ph) => html`<div class="row" style="gap:8px"><input type="password" id="ma-pw" placeholder="${ph}" autocomplete="off" style="width:180px">
+        <button type="button" class="btn btn-primary" id="ma-unlock">${t("ma.unlock")}</button></div><p class="muted" id="ma-pw-note"></p>`;
     box.innerHTML = html`<div class="card-body">
       <h2 class="ma-d-title">${e.name}</h2><p class="muted">${facts.join(" · ")}</p>
       <p><span class="tag">${t(`ma.kind.${e.kind}`)}</span>${clubTag(e)} ${tn("ma.courses", e.courses)} · ${tn("ma.runners", e.runners)}</p>
-      ${locked ? html`<p class="muted">${t("ma.locked.ask")}</p>
-        <div class="row" style="gap:8px"><input type="password" id="ma-pw" placeholder="${t("sh.pw")}" autocomplete="off" style="width:180px">
-        <button type="button" class="btn btn-primary" id="ma-unlock">${t("ma.unlock")}</button></div><p class="muted" id="ma-pw-note"></p>`
+      ${shut ? html`<p class="ma-club-ask">${clubAsk(e.code, clubName(e.org), a.ownerName)}</p>${e.code ? codeRow(t("ma.code")) : ""}`
+      : locked ? html`<p class="muted">${t("ma.locked.ask")}</p>${codeRow(t("sh.pw"))}`
       : html`<div class="ma-ways">
         ${way(multiHref(a), t("ma.go.view"), t("ma.go.view.hint"), !me)}
         ${me && a.upload !== false ? way(multiHref(a, true), t("ma.go.add"), t("ma.go.add.hint"), true) : ""}
@@ -195,7 +202,7 @@ export async function render(main, r) {
         const d = await r.json().catch(() => null);
         if (!r.ok) throw new Error(d?.error);
         setKey(e.key, d.key); thumbs.delete(e.key); detail();
-      } catch (err) { $("#ma-pw-note").textContent = t("ma.pw.wrong"); }
+      } catch (err) { $("#ma-pw-note").textContent = t(shut ? "ma.code.wrong" : "ma.pw.wrong"); }
     };
     $("#ma-unlock")?.addEventListener("click", go);
     $("#ma-pw")?.addEventListener("keydown", (ev) => { if (ev.key === "Enter") go(); });

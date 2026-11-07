@@ -178,7 +178,7 @@ export async function render(main, { query = {}, route } = {}) {
       // `for=solo`: this read is not counted as a visit of the multi analysis (the replay counts itself: soloSeen)
       const r = /^[a-z0-9-]{4,64}$/i.test(id) ? await fetch(`api/analyses/${id}?for=solo`, { credentials: "same-origin", headers: k ? { "X-Analysis-Key": k } : {} }) : null;
       const d = r ? await r.json().catch(() => null) : null;
-      if (!r || !r.ok) orgaErr = d?.error === "locked" ? "an.orga.locked" : d?.error === "draft" ? "an.orga.draft" : "an.orga.err";
+      if (!r || !r.ok) orgaErr = d?.error === "locked" ? "an.orga.locked" : d?.error === "club" ? "an.orga.club" : d?.error === "draft" ? "an.orga.draft" : "an.orga.err";
       else if (!(d.analysis.courses || []).length) orgaErr = "an.orga.noCourse";
       // the organisers may close « Analyse solo » on their map (owner, 2026-11-04); they still open it themselves
       else if (d.analysis.opts?.solo === false && !d.you?.organiser) orgaErr = "an.orga.closed";
@@ -1798,7 +1798,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-top").innerHTML = html`<span class="sh-top-l">${orgaMode ? html`<b class="sh-title">${orga.A.title}</b><span class="muted">${[orga.A.date ? fmtDate(orga.A.date) : "", t(orga.A.kind === "race" ? "ma.kind.race" : "sh.kind.club")].filter(Boolean).join(" · ")}</span>`
         : perso ? html`<b class="sh-title">${openedKept?.title || t("an.perso.title")}</b><span class="muted">${fmtDate(day0)}</span>`
         : html`<b class="sh-title">${rc0?.name || race?.name || ""}</b><span class="muted">${[fmtDate(day0), klass()?.name, withTimes ? runner()?.name : ""].filter(Boolean).join(" · ")}</span>`}</span>
-      <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis}`)}</span>` : ""}<span class="muted an-kept" id="an-kept"></span><span class="fw-btns">${raw(fwButtons({ tab: false }))}</span></span>`;
+      <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis === "club" && orga.A.code ? "clubCode" : orga.A.vis}`)}</span>` : ""}<span class="muted an-kept" id="an-kept"></span><span class="fw-btns">${raw(fwButtons({ tab: false }))}</span></span>`;
     $("#an-top").hidden = false;
     // the controls over the map's column, as « Analyse de carte »'s: follow, the transport, the speed, the time
     $("#an-bar").innerHTML = html`

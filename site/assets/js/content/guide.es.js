@@ -220,7 +220,7 @@ export function build(X) {
             html`<b>La reproducción</b>, como en Livelox: hora real, salida en masa, espera en los controles, un tramo cada vez.`,
             html`<b>A la izquierda del mapa</b>, la pestaña «Tramos» (abierta desde el principio) detalla los tramos de un corredor, y la pestaña «Análisis» los tiempos parciales (los publicados en una competición), las diferencias, las variantes de ruta y, en un
               entrenamiento, los ejercicios del organizador (pasillo, rumbo).`,
-            html`<b>El acceso</b>: todas las cuentas, los miembros de un club o una contraseña. Tu propio archivo muestra además tus gráficas junto al mapa,
+            html`<b>El acceso</b>: todas las cuentas, los miembros de un club (y sus invitados, con el código que les da el organizador) o una contraseña. Tu propio archivo muestra además tus gráficas junto al mapa,
               solo para ti.`,
             html`Cada uno puede <b>comentar</b> su carrera (« Mi comentario »), que leen todos los que ven
               los tracks. El organizador puede abrir el análisis <b>a los visitantes sin cuenta</b>: solo ven los tracks de los corredores que lo aceptaron.
@@ -468,7 +468,7 @@ export function build(X) {
             html`<b>El mapa</b>: una imagen, un PDF o un KMZ, guardado tal cual, sin pérdida de calidad.`,
             html`<b>Su calibración</b>: a partir de un KMZ, de un archivo de georreferenciación, de un IOF XML con coordenadas o de tu propio track.`,
             html`<b>El recorrido</b>: leído en el mapa, con el orden de los controles tomado del IOF XML de los recorridos, de tu track o de tus clics.`,
-            html`<b>El acceso</b>: todas las cuentas, los miembros del club o una contraseña. «Ver como los corredores» muestra la página tal como ellos la
+            html`<b>El acceso</b>: todas las cuentas, los miembros del club —y, si quieres, tus invitados de otros clubes o sin club, con un código; las demás cuentas ven el análisis en la lista, con la invitación a pedirte ese código— o una contraseña. «Ver como los corredores» muestra la página tal como ellos la
               verán.`,
           ])}
           <p>La página del análisis sirve para gestionarlo, no para analizar: la lista de recorridos, el mapa del elegido con su trazado para

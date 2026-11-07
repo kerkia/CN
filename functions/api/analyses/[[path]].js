@@ -23,13 +23,16 @@
 // password ("password": checked once by /unlock, which returns a key — an HMAC of the analysis, the account and the
 // password's salt — sent back in X-Analysis-Key). Each account adds, replaces or removes only its own trace; the
 // organiser and the administrators may remove any.
+// A club's analysis may also have a code (owner, 2026-11-07: a club's trainings have invitees from other clubs or from
+// none): `code` true, the code kept as `pw` and given to /unlock as a password's. Every account lists the club's analyses;
+// a non-member is told it is the club's (error "club", with `code`, the club and the organiser's name to ask).
 //
-//   GET    /api/analyses?kind=club|race[&race=<key>]   the analyses one may open (or unlock)
-//   POST   /api/analyses                               create { kind, title, date, race?, vis, password?, via? } -> { id }
+//   GET    /api/analyses?kind=club|race[&race=<key>]   the analyses one may open, unlock or ask the club's organiser about
+//   POST   /api/analyses                               create { kind, title, date, race?, vis, password?, code?, via? } -> { id }
 //                                                      (`via`: where it was opened — "list" Orga's list, "form" a new training,
 //                                                      "tracer" the Tracer's publication; kept since 2026-11-04 with `created`)
 //   GET    /api/analyses/<id>                          the analysis and its traces' list
-//   PUT    /api/analyses/<id>                          the organiser: { title?, vis?, password?, courses?, draft?, opts? }
+//   PUT    /api/analyses/<id>                          the organiser: { title?, vis?, password?, code?, courses?, draft?, opts? }
 //   GET    /api/analyses/<id>/stats                    the organiser: views, traces, solo replays, per circuit
 //   POST   /api/analyses/<id>/solo/<n>                 an account replays circuit n in « Analyse solo » (counted)
 //   DELETE /api/analyses/<id>                          the organiser: the analysis, its maps and traces
@@ -93,7 +96,9 @@ const VIA = ["list", "form", "tracer"];
 const named = new Set(), BARE = /^\d{4}[A-Z]{0,2}$/;
 // `cc` the event's country (a competition's, else its creator's site country), `orgName` its organising club as written
 // (« 0109 - O'BUGEY »), `up` whether the runners may add their trace: « Analyse de carte »'s filters and actions (2026-11-04)
+const hasCode = (m) => m.vis === "club" && !!m.code && !!m.pw;
 const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", club: m.club || "", orgClub: m.orgClub || "", vis: m.vis,
+  code: hasCode(m) ? "1" : "",
   created: m.created || "", via: m.via || "", cc: m.cc || "", orgName: m.orgName || "", up: optsOf(m).upload ? "1" : "0",
   visitors: m.visitors && m.vis === "public" && !m.draft ? "1" : "", draft: m.draft ? "1" : "", solo: optsOf(m).solo ? "1" : "0",
   owner: m.owner, ownerName: m.ownerName || "", courses: (m.courses || []).length, updated: m.updated, pos: centreOf(m) });
@@ -108,7 +113,7 @@ function centreOf(m) {
   return Math.abs(lat) <= 90 && Math.abs(lon) <= 180 ? `${lat.toFixed(5)},${lon.toFixed(5)}` : "";
 }
 const custom = (m) => Object.fromEntries(Object.entries(summary(m)).map(([k, v]) => [k, String(v ?? "")]));
-const publicMeta = (m) => { const { pw, ...rest } = m; return { ...rest, draft: !!m.draft, opts: optsOf(m) }; };
+const publicMeta = (m) => { const { pw, ...rest } = m; return { ...rest, code: hasCode(m), draft: !!m.draft, opts: optsOf(m) }; };
 
 async function loadMeta(env, id) {
   const o = await env.BUCKET.get(`${META}${id}.json`);
@@ -145,16 +150,18 @@ async function dataCounts(env) {
 }
 const firstThumb = (c) => (c.thumbs.length ? Math.min(...c.thumbs) : null);
 
-/** "open", "locked" (a password to give) or null (not for this account). */
+/** "open", "locked" (a password to give), "club" (its club's, with or without a code for invitees) or null (not for this
+ *  account). */
 async function access(ctx, user, meta, lazyClub) {
   const { env, request } = ctx;
   if (await isOrganiser(env, user, meta, lazyClub)) return "open";
   if (meta.vis === "public") return "open";
-  if (meta.vis === "club") return meta.club && (await lazyClub()) === meta.club ? "open" : null;
-  if (meta.vis === "password") {
-    const k = request.headers.get("X-Analysis-Key");
-    return k && k === await unlockKey(env, meta, user.id) ? "open" : "locked";
+  const keyOk = async () => { const k = request.headers.get("X-Analysis-Key"); return !!k && k === await unlockKey(env, meta, user.id); };
+  if (meta.vis === "club") {
+    if (meta.club && (await lazyClub()) === meta.club) return "open";
+    return hasCode(meta) && (await keyOk()) ? "open" : "club";
   }
+  if (meta.vis === "password") return (await keyOk()) ? "open" : "locked";
   return null;
 }
 /** The analysis's organisers: its creator, the administrators, and for a competition the organising club's members. */
@@ -362,12 +369,13 @@ const forUsers = withUser(async (ctx, user) => {
         const meta = { ...m, owner: Number(m.owner), courses: [] };
         const org = await isOrganiser(env, user, meta, lazyClub);
         if (m.draft === "1" && !org) continue;                              // a draft: its organisers' alone
+        // a club's analysis is listed to everyone (owner, 2026-11-07): a non-member is told it is the club's, and may have its code
         let acc;
         if (org || m.vis === "public") acc = "open";
-        else if (m.vis === "club") acc = m.club && (await lazyClub()) === m.club ? "open" : null;
+        else if (m.vis === "club") acc = m.club && (await lazyClub()) === m.club ? "open" : "club";
         else if (m.vis === "password") acc = "locked";
         if (!acc) continue;
-        out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, ownerName: m.ownerName,
+        out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, vis: m.vis, code: m.code === "1", ownerName: m.ownerName,
           courses: Number(m.courses) || 0, updated: m.updated, mine: meta.owner === user.id, organiser: org, access: acc,
           draft: m.draft === "1", solo: m.solo !== "0", upload: m.up !== "0", pos: m.pos ? m.pos.split(",").map(Number) : null,
           cc: m.cc || "", orgName: m.orgName || "", runners: counts(m.id).runners.size, thumb: firstThumb(counts(m.id)),
@@ -410,7 +418,16 @@ const forUsers = withUser(async (ctx, user) => {
         const h = await hashPassword(p, env);
         pw = { pw_hash: h.hash, pw_salt: h.salt, pw_iter: h.iter };
       }
-      const meta = { id: newId(), kind, title, date, race, club: club || "", orgClub, cc, orgName, vis, pw, owner: user.id, ownerName: user.display_name || "",
+      // a club's analysis with a code for its invitees
+      let code = false;
+      if (vis === "club" && b.code) {
+        const p = String(b.password || "");
+        if (p.length < 2 || p.length > 100) return json({ error: "password" }, 400);
+        const h = await hashPassword(p, env);
+        pw = { pw_hash: h.hash, pw_salt: h.salt, pw_iter: h.iter };
+        code = true;
+      }
+      const meta = { id: newId(), kind, title, date, race, club: club || "", orgClub, cc, orgName, vis, pw, ...(code ? { code } : {}), owner: user.id, ownerName: user.display_name || "",
         created: nowIso(), updated: nowIso(), courses: [], draft: true, ...(VIA.includes(b.via) ? { via: b.via } : {}) };
       await saveMeta(env, meta);
       return json({ id: meta.id });
@@ -427,7 +444,7 @@ const forUsers = withUser(async (ctx, user) => {
   const organiser = await isOrganiser(env, user, meta, lazyClub);
 
   if (sub === "unlock" && method === "POST") {
-    if (meta.vis !== "password" || !meta.pw) return json({ error: "bad request" }, 400);
+    if (!(meta.vis === "password" || hasCode(meta)) || !meta.pw) return json({ error: "bad request" }, 400);
     if (!(await allow(env, `anunlock:${user.id}`, 20, 3600))) return json({ error: "too many" }, 429);
     const b = await readBody(request);
     if (!(await checkPassword(String(b?.password || ""), meta.pw, env))) return json({ error: "invalid" }, 401);
@@ -436,6 +453,8 @@ const forUsers = withUser(async (ctx, user) => {
 
   if (meta.draft && !organiser) return json({ error: "draft" }, 403);
   const acc = await access(ctx, user, meta, lazyClub);
+  // a club's analysis to a non-member: whose it is and whom to ask, and whether a code opens it
+  if (acc === "club") return json({ error: "club", code: hasCode(meta), org: meta.orgName || "", owner: meta.ownerName || "" }, 403);
   if (acc !== "open") return json({ error: acc === "locked" ? "locked" : "forbidden" }, 403);
   const opts = optsOf(meta);
 
@@ -478,7 +497,12 @@ const forUsers = withUser(async (ctx, user) => {
         const h = await hashPassword(p, env);
         meta.pw = { pw_hash: h.hash, pw_salt: h.salt, pw_iter: h.iter };
       }
-      if (meta.vis === "password" && !meta.pw) return json({ error: "password" }, 400);
+      // the club's code for its invitees: a club's analysis only
+      if (b.code != null) { if (b.code && meta.vis === "club") meta.code = true; else delete meta.code; }
+      if (meta.vis !== "club") delete meta.code;
+      if ((meta.vis === "password" || meta.code) && !meta.pw) return json({ error: "password" }, 400);
+      // a password or code no longer used goes (its keys with it): ticking the code again asks for a new one
+      if (meta.vis !== "password" && !meta.code) delete meta.pw;
       if (b.courses != null) {
         const cs = cleanCourses(b.courses);
         if (!cs) return json({ error: "courses" }, 400);

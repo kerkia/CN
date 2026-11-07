@@ -2379,7 +2379,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   `uploads/`). Access: organiser and admins always; else `public` (every logged-in account), `club` (the organiser's club =
   the club of one's latest race in `site/data/r/<lic/10>.json`, read through `env.ASSETS`), or `password` (PBKDF2 as for
   accounts, checked once by `/unlock`, which returns an HMAC key of analysis + account + salt, sent as `X-Analysis-Key`;
-  the browser keeps it in sessionStorage). Each account adds, replaces or removes **only its own** trace (the server sets
+  the browser keeps it in sessionStorage). **A club's analysis is listed to every account and may have a code** (owner,
+  2026-11-07: a club's trainings have invitees from other clubs or from none): `meta.code` with the code as `pw`, opened by
+  `/unlock` as a password's; a non-member gets access "club" in the list and 403 `{ error: "club", code, org, owner }` on the
+  analysis, and « Analyse »'s card / the analysis page say it is the club's and invite to ask its organiser (named) for the code
+  (`mapanalysis.clubAsk`; the code's field only when one is set); the organisers set it under « Publication et accès », the new
+  training's form and the Tracer's publication (« et les invités qui ont le code »); a code or password no longer used is dropped
+  (ticking it again asks for a new one, old keys stop working). Visitors without an account still see the public ones only.
+  Each account adds, replaces or removes **only its own** trace (the server sets
   name and licence from the account); the organiser may remove any. A shared trace keeps positions and times only
   (`trace/share.js`: whole seconds and 1e-6° deltas, ~20 KB for 40 min), cropped to the map's area + 300 m, consent asked;
   account deletion removes one's traces (`api/account/delete.js`); the privacy page says so. The organiser's circuit editor
