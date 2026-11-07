@@ -745,4 +745,6 @@ export default {
   "map.support.what.vectors": "national data (buildings, roads, water)",
   "map.support.what.lidar": "LiDAR (contours, cliffs, vegetation)",
   "map.support.what.backgrounds": "national backgrounds (aerial photos, map)",
+  "map.data.lidar.fetching": "Reading the tiles: {done} of {total} ({mb} MB)…",
+  "map.data.lidar.reading": "Contours, cliffs and points of the {total} tiles turned into objects…",
 };

@@ -7,7 +7,7 @@
 // edges joined again, the cliffs' short strokes gathered into lines. The vegetation stays a raster: a background per tile
 // (its image's address and its world file in Lambert 93, its corners in map mm).
 
-import { areaOfPoints, ask, poll, MAX_TILES, CREDIT_LIDAR, CREDITS, gridOfName } from "../../trace/lidarmap.js";
+import { areaOfPoints, ask, waitFor, MAX_TILES, CREDIT_LIDAR, CREDITS, gridOfName } from "../../trace/lidarmap.js";
 import { ocad, simplify, clipLine } from "./frame.js";
 
 export { CREDIT_LIDAR };
@@ -36,21 +36,12 @@ export function toMm(frame, grid) {
  * putting an image together). say(key, vars, frac) as make's (keys an.gen.*); stop() true gives up. Resolves
  * { ready: [ids], none: [ids], failed: [ids] } or null when stopped.
  */
-export async function ensureTiles(ids, style, say = () => {}, stop = () => false) {
+export async function ensureTiles(ids, style, say = () => {}, stop = () => false, share = 1) {
   say("an.gen.asking", {}, null);
-  const r = await ask(ids, style), tiles = { ...r.tiles };
-  if (r.req) {
-    const n = Object.values(tiles).filter((v) => v === "queued").length;
-    let p = null;
-    for (;;) {
-      say(p?.progress?.stage ? `an.gen.stage.${p.progress.stage}` : r.started ? "an.gen.queued" : "an.gen.notStarted", { n, t: "" }, p?.progress?.frac ?? null);
-      await new Promise((res) => setTimeout(res, 10000));
-      if (stop()) return null;
-      p = await poll(r.req).catch(() => p);
-      if (p && p.status !== "queued") break;
-    }
-    for (const [id, v] of Object.entries(p.result || {})) tiles[id] = v === "done" ? "ready" : v === "none" ? "none" : "failed";
-  }
+  const r = await ask(ids, style);
+  const w = await waitFor(r, { ...r.tiles }, say, stop, share);
+  if (!w) return null;
+  const tiles = w.tiles;
   const of = (s) => ids.filter((id) => tiles[id] === s);
   return { ready: of("ready"), none: of("none"), failed: ids.filter((id) => !["ready", "none"].includes(tiles[id])) };
 }
@@ -60,11 +51,26 @@ async function getJson(url, f) {
   if (!r.ok) return null;
   return r.json().catch(() => null);
 }
-/** Each tile's record and vectors in a style: [{ id, record, vec | null }] (vec null: a tile made before the vectors). */
-export async function fetchTiles(ids, style, f = fetch) {
+/** A JSON file read with its bytes counted as they come (onBytes(n) for each piece; a fetch without a body stream: at the end). */
+async function getJsonCounted(url, f, onBytes) {
+  const r = await f(url, { credentials: "same-origin" });
+  if (!r.ok) return null;
+  if (!r.body?.getReader) { const txt = await r.text(); onBytes(txt.length); return JSON.parse(txt); }
+  const rd = r.body.getReader(), parts = [];
+  for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); onBytes(value.length); }
+  try { return JSON.parse(await new Blob(parts).text()); } catch (e) { return null; }
+}
+/**
+ * Each tile's record and vectors in a style: [{ id, record, vec | null }] (vec null: a tile made before the vectors).
+ * onProgress(done, total, bytes): the tiles read and the bytes received (a tile's vectors weigh up to tens of MB abroad).
+ */
+export async function fetchTiles(ids, style, f = fetch, onProgress = () => {}) {
+  let done = 0, bytes = 0;
+  onProgress(0, ids.length, 0);
   return Promise.all(ids.map(async (id) => {
     const record = await getJson(`${API}/t/${id}.json`, f);
-    const vec = record?.vec?.[style] ? await getJson(`${API}/t/${id}.${style}.vec.json`, f) : null;
+    const vec = record?.vec?.[style] ? await getJsonCounted(`${API}/t/${id}.${style}.vec.json`, f, (n) => { bytes += n; onProgress(done, ids.length, bytes); }) : null;
+    onProgress(++done, ids.length, bytes);
     return { id, record, vec };
   }));
 }
@@ -289,14 +295,18 @@ export function backgrounds(tiles, style, frame) {
  * (at most MAX_TILES), waited for, read. Resolves { objects, counts, backgrounds, tiles: { ready, none, failed, noVectors },
  * credit } or null when stopped. Throws Error("tooLarge") past MAX_TILES tiles, Error("nogeo") without a georeference.
  */
-export async function loadLidar(frame, rect, style = "forest", { say, stop, fetch: f = fetch } = {}) {
+export async function loadLidar(frame, rect, style = "forest", { say, stop, fetch: f = fetch, progress = () => {} } = {}) {
   if (!frame.geo) throw new Error("nogeo");
   const area = tilesOf(frame, rect);
   if (area.ids.length > MAX_TILES) throw new Error("tooLarge");
-  const st = await ensureTiles(area.ids, style, say, stop);
+  // the bar: the workflow 80 %, the tiles' files 15 %, reading their vectors the rest (progress(key, vars, frac))
+  const st = await ensureTiles(area.ids, style, say, stop, 0.8);
   if (!st) return null;
-  const tiles = await fetchTiles(st.ready, style, f);
+  const tiles = await fetchTiles(st.ready, style, f, (done, total, bytes) =>
+    progress("map.data.lidar.fetching", { done, total, mb: (bytes / 1048576).toFixed(1) }, 0.8 + 0.15 * (total ? done / total : 1)));
   const vecs = tiles.filter((t) => t.vec).map((t) => t.vec);
+  progress("map.data.lidar.reading", { total: vecs.length }, 0.95);
+  await new Promise((res) => setTimeout(res, 30));          // the toast drawn before the vectors are read (a few seconds abroad)
   const r = vectorObjects(vecs, frame, rect);
   return { ...r, backgrounds: backgrounds(tiles, style, frame), credit: CREDITS[area.country] || CREDIT_LIDAR,
     tiles: { ...st, noVectors: tiles.filter((t) => !t.vec).map((t) => t.id) } };

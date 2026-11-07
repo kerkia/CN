@@ -15,6 +15,7 @@
 // the map), and its name its tiles (`gridOfName`): `lidarGrid` and `creditOf` read the grid from it.
 
 import { elapsed } from "../waitbar.js";
+import { t as tr, tn } from "../i18n.js";
 import { LAMBERT93, projector } from "./georef.js";
 
 export const PX = 0.4233333333333334;      // a tile's pixel, m: karttapullautin's 600 dpi at 1:10 000
@@ -26,6 +27,8 @@ export const PREFIX = "ozimut-lidar-";
 export const isGenerated = (name) => typeof name === "string" && name.startsWith(PREFIX);
 /** The credit of France's point clouds (kept for the pages that show it; `creditOf` gives any country's). */
 export const CREDIT_LIDAR = { text: "IGN – LiDAR HD®", url: "https://geoservices.ign.fr/lidarhd" };
+/** Each country's point clouds in a word, for the progress shown while they are read (mapgen/grids.py SOURCES). */
+export const SOURCE_SHORT = { fr: "IGN", ch: "swisstopo", us: "USGS 3DEP", ca: "NRCan", nz: "LINZ" };
 /** Each country's point clouds, to be credited wherever a generated map or its relief shows (mapgen/grids.py SOURCES). */
 export const CREDITS = {
   fr: { text: "IGN – LiDAR HD® (Licence Ouverte 2.0)", url: CREDIT_LIDAR.url },
@@ -289,38 +292,52 @@ export async function compose(area, ids, style = "forest", onProgress) {
 const composed = new Map();
 
 /**
- * The whole way to a map, for the pages: the tiles asked for, waited for (the request's state every 10 s) and put together.
- * say(key, vars, frac) reports each step by its catalogue key (an.gen.asking, queued, notStarted, waiting, stage.<lidar | kp |
- * osm | draw>, composing; vars.t the time waited, « m:ss ») and the share done (null while unknown: the bar then shows an
- * hourglass), again every 2 s so that the time waited moves; the workflow's progress (mapgen/run.py Progress) is 92 % of the
- * bar, putting the tiles together the rest. stop() true gives up (another request or a page left). Resolves
- * { ...compose(), partial } or null when stopped; throws Error("none") when IGN has no LiDAR anywhere in the area,
- * Error("failed") when no tile could be made.
+ * The wait for a request (ask()'s answer r) shown to the user (owner, 2026-11-01, then 2026-11-07: « a progress bar with
+ * relevant information »): say(key, vars, frac) every 2 s with the catalogue key of what happens and its figures — while it
+ * waits unstarted, the requests before it (an.gen.ahead) or the next run (notStarted, waiting); while the workflow makes it
+ * (mapgen/run.py Progress, read every 10 s), the stage with the country's source, the tiles done of the tiles, the part of a
+ * run over several grids — and vars.t, the time waited (« m:ss »); frac the share done × share (null while unknown: the bar
+ * then shows an hourglass). Resolves { tiles: { id: "ready" | "none" | "failed" } } or null when stop() is true.
+ */
+export async function waitFor(r, tiles, say, stop = () => false, share = 1) {
+  if (!r.req) return { tiles };
+  const n = Object.values(tiles).filter((v) => v === "queued").length, t0 = performance.now();
+  let p = null, lastPoll = performance.now();
+  const show = () => {
+    const t = elapsed((performance.now() - t0) / 1000), g = p?.progress;
+    if (g?.stage) {
+      const part = g.part ? ` · ${tr("an.gen.part", { i: g.part[0], k: g.part[1] })}` : "";
+      say(`an.gen.stage.${g.stage}`, { n, t, part, src: SOURCE_SHORT[g.country] || "", tiles: g.tiles || n, done: g.done ?? 0, total: g.total ?? n }, share * (g.frac || 0));
+    } else if (p?.ahead) say("an.gen.behind", { t, ahead: tn("an.gen.ahead", p.ahead) }, null);
+    else say(!r.started ? "an.gen.notStarted" : performance.now() - t0 < 20000 ? "an.gen.queued" : "an.gen.waiting", { n, t }, null);
+  };
+  show();
+  for (;;) {
+    await new Promise((res) => setTimeout(res, 2000));
+    if (stop()) return null;
+    if (performance.now() - lastPoll >= 10000) {
+      lastPoll = performance.now();
+      p = await poll(r.req).catch(() => p);
+      if (p && p.status !== "queued") break;
+    }
+    show();
+  }
+  for (const [id, v] of Object.entries(p.result || {})) tiles[id] = v === "done" ? "ready" : v === "none" ? "none" : "failed";
+  return { tiles };
+}
+
+/**
+ * The whole way to a map, for the pages: the tiles asked for, waited for (waitFor: 92 % of the bar) and put together (the
+ * rest, an.gen.composing). stop() true gives up (another request or a page left). Resolves { ...compose(), partial } or null
+ * when stopped; throws Error("none") when there is no open LiDAR anywhere in the area, Error("failed") when no tile could be
+ * made.
  */
 export async function make(area, style, say, stop = () => false) {
   say("an.gen.asking", {}, null);
-  const r = await ask(area.ids, style), tiles = { ...r.tiles };
-  if (r.req) {
-    const n = Object.values(tiles).filter((v) => v === "queued").length, t0 = performance.now();
-    let p = null, lastPoll = performance.now();
-    const show = () => {
-      const t = elapsed((performance.now() - t0) / 1000);
-      if (p?.progress?.stage) say(`an.gen.stage.${p.progress.stage}`, { n, t }, 0.92 * (p.progress.frac || 0));
-      else say(!r.started ? "an.gen.notStarted" : performance.now() - t0 < 20000 ? "an.gen.queued" : "an.gen.waiting", { n, t }, null);
-    };
-    show();
-    for (;;) {
-      await new Promise((res) => setTimeout(res, 2000));
-      if (stop()) return null;
-      if (performance.now() - lastPoll >= 10000) {
-        lastPoll = performance.now();
-        p = await poll(r.req).catch(() => p);
-        if (p && p.status !== "queued") break;
-      }
-      show();
-    }
-    for (const [id, v] of Object.entries(p.result || {})) tiles[id] = v === "done" ? "ready" : v === "none" ? "none" : "failed";
-  }
+  const r = await ask(area.ids, style);
+  const w = await waitFor(r, { ...r.tiles }, say, stop, 0.92);
+  if (!w) return null;
+  const tiles = w.tiles;
   const ready = area.ids.filter((id) => tiles[id] === "ready");
   if (!ready.length) throw new Error(Object.values(tiles).every((v) => v === "none") ? "none" : "failed");
   say("an.gen.composing", { p: 0 }, 0.92);

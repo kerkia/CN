@@ -132,7 +132,7 @@ async function lidar(E) {
   const say = progress(E);
   const L = await import("./data/lidar.js");
   let r;
-  try { r = await L.loadLidar(f, areaOf(E), v.s, { say: (key, vars, frac) => say(t(key, { n: "", t: "", ...vars }), frac), stop: () => E._stopData }); }
+  try { r = await L.loadLidar(f, areaOf(E), v.s, { say: (key, vars, frac) => say(t(key, { n: "", t: "", ...vars }), frac), progress: (key, vars, frac) => say(t(key, vars), frac), stop: () => E._stopData }); }
   catch (e) { E.say(e.message === "tooLarge" ? t("map.data.tooLarge") : e.message === "nogeo" ? t("map.data.nogeo") : e.message, "bad"); return; }
   if (!r) { E.say(""); return; }
   const n = bring(E, r.objects, t("map.undo.data"));

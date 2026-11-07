@@ -745,4 +745,6 @@ export default {
   "map.support.what.vectors": "données nationales (bâtiments, routes, eau)",
   "map.support.what.lidar": "LiDAR (courbes, falaises, végétation)",
   "map.support.what.backgrounds": "fonds nationaux (photos aériennes, carte)",
+  "map.data.lidar.fetching": "Lecture des dalles : {done} sur {total} ({mb} Mo)…",
+  "map.data.lidar.reading": "Courbes, falaises et points des {total} dalles mis en objets…",
 };

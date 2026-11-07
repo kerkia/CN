@@ -89,13 +89,16 @@ class Progress:
     """The run's progress, for the page that waits (owner, 2026-11-01: « progress bars wherever IGN, OpenStreetMap or
     karttapullautin take time »): four stages weighted by their usual share of the time; within a stage the share of its
     files or tiles done, or, for the two that cannot tell (karttapullautin, Overpass), 1 − e^(−elapsed / the usual time),
-    which never claims to be done. report(stage, frac) is called every TICK seconds by a thread of its own and at each
-    stage's start."""
+    which never claims to be done. report(stage, frac, info) is called every TICK seconds by a thread of its own and at each
+    stage's start; info (2026-11-07, owner: « a progress bar with relevant information ») says what the page shows beside the
+    bar: the country whose point clouds are read, the tiles of the run, a counted stage's done / total, the seconds spent in the
+    stage, and, when the run holds tiles of several grids (one karttapullautin run each), which part it is at."""
     STAGES = (("lidar", 0.30), ("kp", 0.35), ("osm", 0.20), ("draw", 0.15))
     TICK = 10.0
 
     def __init__(self, report=None):
         self.report, self.stage, self.t0, self.est, self.done, self.total = report, None, 0.0, None, 0, 1
+        self.country, self.tiles, self.part = None, 0, (0, 1)          # set by generate for each grid's tiles
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._tick, daemon=True) if report else None
         if self._thread:
@@ -109,18 +112,27 @@ class Progress:
         self.done += n
 
     def frac(self) -> float:
-        base = 0.0
+        """The share of the whole run done: the parts (grids) one after the other, each its four stages."""
+        base, (k, n) = 0.0, self.part
         for name, w in self.STAGES:
             if name == self.stage:
                 inside = (1 - math.exp(-(time.monotonic() - self.t0) / self.est)) if self.est else self.done / self.total
-                return base + w * min(1.0, inside)
+                return (k + base + w * min(1.0, inside)) / max(1, n)
             base += w
-        return 0.0
+        return k / max(1, n)
+
+    def info(self) -> dict:
+        d = {"country": self.country, "tiles": self.tiles, "s": round(time.monotonic() - self.t0)}
+        if not self.est:
+            d.update(done=min(self.done, self.total), total=self.total)
+        if self.part[1] > 1:
+            d["part"] = [self.part[0] + 1, self.part[1]]
+        return d
 
     def send(self) -> None:
         if self.report and self.stage:
             try:
-                self.report(self.stage, self.frac())
+                self.report(self.stage, self.frac(), self.info())
             except Exception as ex:                      # a progress not sent never stops the maps
                 print(f"progress: {ex}")
 
@@ -273,7 +285,10 @@ def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 
     there yet) or an error. France's tiles in work/ as before, each other grid's in work/<grid>/ (one karttapullautin run
     per coordinate system: its batch mode reads every file of its folder as neighbours)."""
     res: dict[str, str] = {}
-    for g, ids in grids.groups(tids).items():
+    groups = grids.groups(tids)
+    for k, (g, ids) in enumerate(groups.items()):
+        if progress:
+            progress.part, progress.tiles, progress.country = (k, len(groups)), len(ids), grids.parse(ids[0]).country
         if g == "fr":
             res.update(_generate(ids, out, work, kp, processes, log, style, known, progress))
             continue
@@ -439,11 +454,12 @@ def progress_to(dest: str | None, reqs: list[dict], out: Path):
     done, when), copied to R2 at dest (the workflow's aws CLI and endpoint, env R2) — the page reads it there."""
     pdir = out / "prog"
 
-    def report(stage: str, frac: float) -> None:
+    def report(stage: str, frac: float, info: dict | None = None) -> None:
         pdir.mkdir(parents=True, exist_ok=True)
         for r in reqs:
             f = pdir / f"{r['id']}.json"
-            f.write_text(json.dumps({**r, "progress": {"stage": stage, "frac": round(frac, 3), "at": _now()}}), encoding="utf-8")
+            f.write_text(json.dumps({**r, "progress": {"stage": stage, "frac": round(frac, 3), "at": _now(), **(info or {})}}),
+                         encoding="utf-8")
             if dest:
                 subprocess.run(["aws", "s3", "cp", str(f), f"{dest}{r['id']}.json", "--endpoint-url", os.environ.get("R2", ""),
                                 "--only-show-errors"], timeout=30, capture_output=True)

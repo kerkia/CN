@@ -44,6 +44,24 @@ const validTile = (id) => {
   return String(+m[7]) === m[7] && inRange(ZONES[m[6]], +m[7]) && inRange(RANGE[m[6]][0], +m[8]) && inRange(RANGE[m[6]][1], +m[9]);
 };
 
+/** The requests still queued before one (ids begin with their time in base 36, so they sort by time; only those of the last
+ *  six hours are read: an older one still queued has been given up). */
+async function aheadOf(env, id) {
+  const t = parseInt(id.slice(0, 8), 36), since = (t - 6 * 3600e3).toString(36);
+  let n = 0, cursor;
+  do {
+    const page = await env.BUCKET.list({ prefix: Q, startAfter: `${Q}${since}`, cursor, limit: 100 });
+    for (const o of page.objects) {
+      const k = o.key.slice(Q.length, -5);
+      if (k >= id) continue;
+      const v = await env.BUCKET.get(o.key).then((x) => x?.json()).catch(() => null);
+      if (v?.status === "queued") n++;
+    }
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+  return n;
+}
+
 /** A tile's state in a style: "ready", "none" (no LiDAR there yet) or "missing". */
 async function tileState(env, id, style) {
   const o = await env.BUCKET.get(`${T}${id}.json`);
@@ -91,7 +109,7 @@ export const onRequestGet = withUser(async ({ request, env, params }) => {
     if (!FILE.test(path[1])) return json({ error: "not found" }, 404);
     const o = await env.BUCKET.get(T + path[1]);
     if (!o) return json({ error: "not found" }, 404);
-    return new Response(o.body, { headers: { "Content-Type": o.httpMetadata?.contentType || (path[1].endsWith(".json") ? "application/json" : "image/png"),
+    return new Response(o.body, { headers: { "Content-Length": String(o.size), "Content-Type": o.httpMetadata?.contentType || (path[1].endsWith(".json") ? "application/json" : "image/png"),
       "Cache-Control": path[1].endsWith(".json") && !path[1].endsWith(".vec.json") ? "private, no-cache" : "private, max-age=604800" } });
   }
   const req = new URL(request.url).searchParams.get("req") || "";
@@ -99,6 +117,9 @@ export const onRequestGet = withUser(async ({ request, env, params }) => {
   const o = await env.BUCKET.get(`${Q}${req}.json`);
   if (!o) return json({ error: "not found" }, 404);
   const r = await o.json();
-  // progress: the workflow's stage and share done while it makes the tiles (mapgen/run.py Progress), else null
-  return json({ req: r.id, status: r.status, at: r.at, done: r.done || null, result: r.result || null, progress: r.status === "queued" ? r.progress || null : null });
+  // progress: the workflow's stage and share done while it makes the tiles (mapgen/run.py Progress: stage, frac, country,
+  // tiles, done / total, s, part), else null; ahead: while it waits unstarted, the requests still queued before it
+  const waiting = r.status === "queued" && !r.progress;
+  return json({ req: r.id, status: r.status, at: r.at, done: r.done || null, result: r.result || null, progress: r.status === "queued" ? r.progress || null : null,
+    ahead: waiting ? await aheadOf(env, r.id) : 0 });
 }, { admin: true });

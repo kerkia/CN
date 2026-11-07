@@ -745,4 +745,6 @@ export default {
   "map.support.what.vectors": "datos nacionales (edificios, carreteras, agua)",
   "map.support.what.lidar": "LiDAR (curvas, cortados, vegetación)",
   "map.support.what.backgrounds": "fondos nacionales (fotos aéreas, mapa)",
+  "map.data.lidar.fetching": "Leyendo las teselas: {done} de {total} ({mb} MB)…",
+  "map.data.lidar.reading": "Curvas, cortados y puntos de las {total} teselas convertidos en objetos…",
 };

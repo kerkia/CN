@@ -646,6 +646,9 @@ k("map.support.what.vectors", "données nationales (bâtiments, routes, eau)", "
 k("map.support.what.lidar", "LiDAR (courbes, falaises, végétation)", "LiDAR (contours, cliffs, vegetation)", "LiDAR (Höhenlinien, Felsen, Vegetation)", "LiDAR (curvas, cortados, vegetación)")
 k("map.support.what.backgrounds", "fonds nationaux (photos aériennes, carte)", "national backgrounds (aerial photos, map)", "nationale Hintergründe (Luftbilder, Karte)", "fondos nacionales (fotos aéreas, mapa)")
 
+k("map.data.lidar.fetching", "Lecture des dalles : {done} sur {total} ({mb} Mo)…", "Reading the tiles: {done} of {total} ({mb} MB)…", "Kacheln werden gelesen: {done} von {total} ({mb} MB)…", "Leyendo las teselas: {done} de {total} ({mb} MB)…")
+k("map.data.lidar.reading", "Courbes, falaises et points des {total} dalles mis en objets…", "Contours, cliffs and points of the {total} tiles turned into objects…", "Höhenlinien, Felsen und Punkte der {total} Kacheln werden zu Objekten…", "Curvas, cortados y puntos de las {total} teselas convertidos en objetos…")
+
 # ---- the site's own catalogues (nav, tiles, beta) are written by `site_keys` below -----------------------------------------------
 SITE = {
   "nav.orgMapper": ("Cartographier", "Mapping", "Kartieren", "Cartografiar"),

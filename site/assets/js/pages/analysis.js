@@ -1909,7 +1909,7 @@ export async function render(main, { query = {}, route } = {}) {
     soloSeen();
     const gc = $("#an-gen-credit");
     gc.hidden = !LM.isGenerated(files.map?.name);
-    if (!gc.hidden) gc.innerHTML = t("an.gen.short", { osm: html`<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t("an.gen.osm")}</a>` });
+    if (!gc.hidden) gc.innerHTML = t("an.gen.short", { src: LM.SOURCE_SHORT[LM.gridOfName(files.map?.name).country] || "", osm: html`<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">${t("an.gen.osm")}</a>` });
     if (autoV3) { autoV3 = false; if (orgaOpt("view3d", true)) toggle3d(); }
     rcPanel();
     if (rcs.on) rcStart();

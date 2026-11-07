@@ -2018,6 +2018,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   and streets in the LiDAR's gaps, Gatineau's lakes); the same four in sprint style in ~24 min (paved streets, grey houses, olive
   gardens and 2.5 m contours as in France; steep hills come out dark brown); a full 12-tile request (us_13_0478..0481 ×
   4426..4428, Denver's suburbs) in ~10-14 min, no seam at the tiles' corners; vector files up to 56 MB (New Zealand sprint).
+  **The wait shown** (owner, 2026-11-07: « a progress bar with relevant information »): `run.Progress` reports with each stage
+  the country, the run's tiles, a counted stage's done / total, the seconds in the stage and the part of a run over several grids
+  (the bar over all parts); the API's `?req=` adds `ahead`, the requests still queued before an unstarted one (`aheadOf`, the
+  last six hours) and sends the tiles' files with their length; `lidarmap.waitFor` (shared by Analyse solo's `make` and
+  Cartographier's `ensureTiles`) shows every 2 s the stage with its source (`SOURCE_SHORT`), « 3 dalles sur 12 », « partie 1
+  sur 2 », the queue (« 1 demande avant la vôtre ») and the time waited; Cartographier then counts the tiles' files read with
+  their MB (`fetchTiles` onProgress) and says while their vectors become objects.
   **Where a place has no specific support** (owner, 2026-11-06: « mappers work across countries », so this follows the place
   mapped, never the account's countries or Ozimut's rankings): `mapper/support.js` (`at(lat, lon)`: national terrain model,
   national data, LiDAR, national backgrounds) says what is missing and invites to ask Ozimut for that country (« Demander la prise

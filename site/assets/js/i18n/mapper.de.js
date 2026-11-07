@@ -745,4 +745,6 @@ export default {
   "map.support.what.vectors": "nationale Daten (Gebäude, Straßen, Gewässer)",
   "map.support.what.lidar": "LiDAR (Höhenlinien, Felsen, Vegetation)",
   "map.support.what.backgrounds": "nationale Hintergründe (Luftbilder, Karte)",
+  "map.data.lidar.fetching": "Kacheln werden gelesen: {done} von {total} ({mb} MB)…",
+  "map.data.lidar.reading": "Höhenlinien, Felsen und Punkte der {total} Kacheln werden zu Objekten…",
 };
