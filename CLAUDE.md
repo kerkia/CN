@@ -2024,7 +2024,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   last six hours) and sends the tiles' files with their length; `lidarmap.waitFor` (shared by Analyse solo's `make` and
   Cartographier's `ensureTiles`) shows every 2 s the stage with its source (`SOURCE_SHORT`), « 3 dalles sur 12 », « partie 1
   sur 2 », the queue (« 1 demande avant la vôtre ») and the time waited; Cartographier then counts the tiles' files read with
-  their MB (`fetchTiles` onProgress) and says while their vectors become objects.
+  their MB (`fetchTiles` onProgress) and says while their vectors become objects. OpenStreetMap's Overpass, which answered in ~10 min on the first
+  real run (2026-11-07, Magglingen: the bar sat at 0.68 for 7 min), is said as such: after 2 min « répond lentement : m:ss pour
+  l'instant », on a retry « essai k sur 6, serveur … » (`osm.query` `on_attempt`, `Progress.note`); `OSM_EST` 240 s.
   **Where a place has no specific support** (owner, 2026-11-06: « mappers work across countries », so this follows the place
   mapped, never the account's countries or Ozimut's rankings): `mapper/support.js` (`at(lat, lon)`: national terrain model,
   national data, LiDAR, national backgrounds) says what is missing and invites to ask Ozimut for that country (« Demander la prise

@@ -99,6 +99,7 @@ class Progress:
     def __init__(self, report=None):
         self.report, self.stage, self.t0, self.est, self.done, self.total = report, None, 0.0, None, 0, 1
         self.country, self.tiles, self.part = None, 0, (0, 1)          # set by generate for each grid's tiles
+        self.note: dict = {}                                            # the stage's own facts (Overpass: try, server)
         self._stop = threading.Event()
         self._thread = threading.Thread(target=self._tick, daemon=True) if report else None
         if self._thread:
@@ -106,6 +107,7 @@ class Progress:
 
     def start(self, stage: str, total: int = 1, est: float | None = None) -> None:
         self.stage, self.t0, self.est, self.done, self.total = stage, time.monotonic(), est, 0, max(1, total)
+        self.note = {}
         self.send()
 
     def step(self, n: int = 1) -> None:
@@ -127,7 +129,7 @@ class Progress:
             d.update(done=min(self.done, self.total), total=self.total)
         if self.part[1] > 1:
             d["part"] = [self.part[0] + 1, self.part[1]]
-        return d
+        return {**d, **self.note}
 
     def send(self) -> None:
         if self.report and self.stage:
@@ -275,7 +277,7 @@ def dem(tif: Path) -> Image.Image:
 # karttapullautin's usual time (s): a start, then each tile (measured on the PC, 2026-11-01: forest ~17 s a tile in batch,
 # sprint's render at 1:4000 ~40 s); Overpass's usual answer
 KP_EST = {"forest": (15, 18), "sprint": (15, 40)}
-OSM_EST = 60
+OSM_EST = 240                 # Overpass answered in 1-10 min on 2026-11-06/07 (60 s made the bar stop short of it)
 
 
 def generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int = 4, log=print, style: str = "forest",
@@ -353,7 +355,11 @@ def _generate(tids: list[str], out: Path, work: Path, kp: Path, processes: int =
         if os.environ.get("MAPGEN_OSM_CACHE") == "1" and cache.exists():
             data = json.loads(cache.read_text(encoding="utf-8"))
         else:
-            data = osm.query(min(s, s2), min(w, w2), max(n, n2), max(e, e2), http)
+            def tried(k: int, server: str) -> None:
+                prog.note = {"try": k, "server": server}
+                if k > 1:
+                    prog.send()
+            data = osm.query(min(s, s2), min(w, w2), max(n, n2), max(e, e2), http, on_attempt=tried)
             cache.write_text(json.dumps(data), encoding="utf-8")
         feats = osm.project(osm.features(data), None if country == "fr" else lambda a, b: grids.from_latlon(epsg, a, b))
         osm_at = _now()

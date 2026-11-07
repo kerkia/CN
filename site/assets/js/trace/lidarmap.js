@@ -307,7 +307,10 @@ export async function waitFor(r, tiles, say, stop = () => false, share = 1) {
     const t = elapsed((performance.now() - t0) / 1000), g = p?.progress;
     if (g?.stage) {
       const part = g.part ? ` · ${tr("an.gen.part", { i: g.part[0], k: g.part[1] })}` : "";
-      say(`an.gen.stage.${g.stage}`, { n, t, part, src: SOURCE_SHORT[g.country] || "", tiles: g.tiles || n, done: g.done ?? 0, total: g.total ?? n }, share * (g.frac || 0));
+      // OpenStreetMap's Overpass can take minutes or fail and be tried again: said as such, the bar crawling meanwhile
+      const key = g.stage === "osm" && g.try > 1 ? "osmRetry" : g.stage === "osm" && g.s > 120 ? "osmSlow" : g.stage;
+      say(`an.gen.stage.${key}`, { n, t, part, src: SOURCE_SHORT[g.country] || "", tiles: tn("an.gen.tiles", g.tiles || n), done: g.done ?? 0,
+        total: g.total ?? n, try: g.try || 1, server: g.server || "", st: elapsed(g.s || 0) }, share * (g.frac || 0));
     } else if (p?.ahead) say("an.gen.behind", { t, ahead: tn("an.gen.ahead", p.ahead) }, null);
     else say(!r.started ? "an.gen.notStarted" : performance.now() - t0 < 20000 ? "an.gen.queued" : "an.gen.waiting", { n, t }, null);
   };

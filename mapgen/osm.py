@@ -31,7 +31,7 @@ FAINT = {"bad", "horrible", "no"}
 WATER_LINE = {"river": 0.5, "canal": 0.5, "stream": 0.25, "ditch": 0.18, "drain": 0.18}
 
 
-def query(s: float, w: float, n: float, e: float, http: httpx.Client | None = None) -> dict:
+def query(s: float, w: float, n: float, e: float, http: httpx.Client | None = None, on_attempt=None) -> dict:
     """The area's features, with their geometry (Overpass `out geom`)."""
     b = f"{s:.6f},{w:.6f},{n:.6f},{e:.6f}"
     q = f"""[out:json][timeout:90];
@@ -60,6 +60,8 @@ out geom;"""
     try:
         for attempt in range(6):
             try:
+                if on_attempt:                           # the page waiting is told which try and which server (run.Progress)
+                    on_attempt(attempt + 1, OVERPASS[attempt % len(OVERPASS)].split("/")[2])
                 r = http.post(OVERPASS[attempt % len(OVERPASS)], data={"data": q}, timeout=120)
                 r.raise_for_status()
                 return r.json()
