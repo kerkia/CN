@@ -227,7 +227,7 @@ export async function render(main, { query = {}, route } = {}) {
           <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="${t("lg.zin.t")}" aria-label="${t("lg.zin.t")}">+</button><button type="button" class="btn btn-sm" id="an-zout" title="${t("lg.zout.t")}" aria-label="${t("lg.zout.t")}">−</button>
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}" aria-label="${t("an.fitTrace")}">${raw(ICONS.fit)}</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button>
             <button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-video-btn" title="${t("sh.video.add")}" hidden>🎥</button><input type="file" id="an-video-file" accept="video/*" hidden></div>
-          <div class="an-legchip" id="an-legchip" hidden></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
+          <div class="an-legchip" id="an-legchip" hidden><span id="an-legchip-t"></span><button type="button" class="btn btn-sm ico-btn" id="an-leg-all" hidden title="${t("lg.whole")}" aria-label="${t("lg.whole")}">${raw(ICONS.course)}</button></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="sh-bottom"><div class="sh-stripbar" id="an-stripbar" hidden><button type="button" class="sh-strip-tog" id="an-ps-tog" aria-expanded="true" title="${t("an.strip.fold")}">▾ ${t("sh.strip.title")}</button><span class="an-bar-stats" id="an-stats"></span></div>
         <canvas class="sh-strip" id="an-ps" hidden></canvas></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
@@ -313,6 +313,9 @@ export async function render(main, { query = {}, route } = {}) {
   // the map (course.js `order`, since 2026-11-01; owner 2026-11-04: « Inter-postes » for the trainings read on their map too)
   const sequenceKnown = () => !!officialTaus() || !!(files.iof?.data?.courses[iofIndex]) || !!files.orga || drawnHere() || mapOrdered;
   let legs = [], total = 0, raf = 0, last = 0, pxs = null, pys = null, fullPath = null, scrubbing = false;
+  // a leg opened from « Inter-postes » (owner, 2026-11-07: as « Analyse de carte »): the time line and the playback on it alone,
+  // ⏮ ⏭ from leg to leg, the way back to the whole course beside the leg's name on the map; -1 = the whole course
+  let legSel = -1;
   let vLo = 0, vHi = 1, vSet = false;                 // the colours' range (rangeOf: the pace's 10-90 %, the other channels' 5-95 %)
   const canvas = $("#an-canvas"), ctx = canvas.getContext("2d");
   const layoutEl = $("#an-layout");
@@ -1367,7 +1370,7 @@ export async function render(main, { query = {}, route } = {}) {
         if (i) fullPath.lineTo(px, py); else fullPath.moveTo(px, py);
       }
       computeLegs();
-    } else { pxs = pys = fullPath = null; legs = []; total = 0; }
+    } else { pxs = pys = fullPath = null; legs = []; total = 0; legSel = -1; }
     cutEnds();
   }
   /** The race in legs: times and ranks from the class's splits when published, else the trace's; lengths from the trace. */
@@ -1391,7 +1394,7 @@ export async function render(main, { query = {}, route } = {}) {
       ref = refLegs(all, n);                // (the time lost: trace/legs.js, as « Analyse de course »)
       mine = legsOf(r);
     } else mine = times.slice(1).map((v, i) => (v != null && times[i] != null ? v - times[i] : null));     // per leg
-    legs = [];
+    legs = []; legSel = -1;
     const loss = taus ? legLoss(mine, ref) : [];
     for (let i = 0; i < n; i++) {
       const from = targets[i], to = targets[i + 1], t0 = times[i], t1 = times[i + 1];
@@ -1845,6 +1848,7 @@ export async function render(main, { query = {}, route } = {}) {
         <label><span>${t("an.shot.legend")}</span><input type="checkbox" id="an-shot-legend" ${raw(shot.legend ? "checked" : "")}></label>
         <button type="button" class="btn btn-sm btn-primary" id="an-shot">⤓ ${t("an.shot.save")}</button><span class="muted an-shot-state" id="an-shot-state"></span></div><div id="an-mymaps"></div>`;
     if (routesOk) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
+    sliderSpan();
     $("#an-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#an-prev").addEventListener("click", () => jumpLeg(-1));
     $("#an-next").addEventListener("click", () => jumpLeg(1));
@@ -2068,14 +2072,40 @@ export async function render(main, { query = {}, route } = {}) {
   const legAt = (s) => { let j = -1; for (let i = 0; i < legs.length; i++) if (legs[i].t0 != null && s >= legs[i].t0) j = i; return j; };
   /** The reader moved the race's time: the runner followed from now on. */
   function moved() { still = false; opening = false; }
+  /** The race's time span shown: the leg opened, else the whole race. */
+  function span() {
+    const l = legs[legSel];
+    if (!l || l.t0 == null) return [0, total];
+    return [l.t0, Math.max(l.t0 + 1, l.t1 ?? legs[legSel + 1]?.t0 ?? total)];
+  }
+  function sliderSpan() {
+    const s = $("#an-time"); if (!s) return;
+    const [a, b] = span(); s.min = String(Math.floor(a)); s.max = String(Math.ceil(b)); s.value = String(tNow);
+  }
+  /** A leg opened (j) or the whole course again (-1): the map framed on it, the time at its start, the time line on it alone. */
+  function setLegView(j) {
+    stop(); moved();
+    const l = legs[j];
+    if (j >= 0 && (!l || l.t0 == null)) return;
+    legSel = j;
+    if (l) { zoomTo(l); tNow = l.t0; } else if (fit) { fitTrace(); still = true; }
+    sliderSpan(); legsTable(); seek(tNow);
+  }
   function jumpLeg(dir) {
     moved();
+    if (legSel >= 0) {                                     // a leg opened: the next or previous one
+      let k = legSel + dir;
+      while (legs[k] && legs[k].t0 == null) k += dir;
+      if (legs[k]) setLegView(k);
+      return;
+    }
     const j = legAt(tNow);
     const target = dir < 0 ? (j >= 0 && tNow - legs[j].t0 > 2 ? legs[j].t0 : legs[Math.max(0, j - 1)]?.t0 ?? 0) : legs[j + 1]?.t0 ?? total;
     seek(target ?? 0);
   }
   function seek(s) {
-    tNow = Math.max(0, Math.min(total, s));
+    const [a, b] = span();
+    tNow = Math.max(a, Math.min(b, s));
     hud();
     draw();
     drawStrip();
@@ -2084,7 +2114,8 @@ export async function render(main, { query = {}, route } = {}) {
   // pane, which left the runner frozen (owner, 2026-10-14); a throttled timer still advances by the time elapsed
   function play() {
     moved();
-    if (tNow >= total - 0.01) tNow = 0;
+    const [a, b] = span();
+    if (tNow >= b - 0.01 || tNow < a) tNow = a;
     playing = true; last = performance.now();
     $("#an-play").textContent = "⏸";
     if (raf) clearInterval(raf);
@@ -2092,10 +2123,10 @@ export async function render(main, { query = {}, route } = {}) {
       if (!playing) return;
       if (!main.isConnected) { stop(); return; }
       const now = performance.now();
-      tNow = Math.min(total, tNow + ((now - last) / 1000) * speed);
+      tNow = Math.min(b, tNow + ((now - last) / 1000) * speed);
       last = now;
       hud(); draw(); drawStrip();
-      if (tNow >= total) stop();
+      if (tNow >= b) stop();
     }, 40);
   }
   function stop() {
@@ -2113,8 +2144,8 @@ export async function render(main, { query = {}, route } = {}) {
     set("#an-t", clock(tNow)); set("#an-t-sub", total ? `${t("an.of")} ${clock(total)}` : "");
     set("#an-leg", leg ? `${leg.n}${leg.code ? ` (${leg.code})` : ""}` : "—");
     // the leg the runner is on, at the map's bottom left (owner, 2026-11-07)
-    const chip = $("#an-legchip");
-    if (chip) { chip.textContent = leg?.label ? `${j ? legs[j - 1].label : t("an.start")} → ${leg.label}` : ""; chip.hidden = !leg?.label; }
+    const chip = $("#an-legchip"), cj = legSel >= 0 ? legSel : j, cl = legs[cj];
+    if (chip) { $("#an-legchip-t").textContent = cl?.label ? `${cj ? legs[cj - 1].label : t("an.start")} → ${cl.label}` : ""; chip.hidden = !cl?.label; $("#an-leg-all").hidden = legSel < 0; }
     set("#an-leg-sub", leg ? `${leg.time != null ? `${leg.estimated ? "~" : ""}${clock(leg.time)}` : ""}${leg.dist != null ? ` · ${fmt(leg.dist)} m` : ""}${leg.rank ? ` · ${t("an.rankShort")} ${leg.rank}` : ""}`.replace(/^ · /, "") : "");
     const win = Math.min(30, tNow);
     set("#an-pace", win >= 5 ? pace((cumAt(track, s) - cumAt(track, s - win)) / win) : "—");
@@ -2133,7 +2164,8 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-legs").innerHTML = html`<div class="table-wrap" title="${t(est ? "an.legs.hint.est" : "an.legs.hint")}"><table class="data compact"><thead><tr><th>${t("an.col.leg")}</th><th class="r">${t("an.col.time")}${est ? html`<div class="th-sub">${t("an.col.est")}</div>` : ""}</th>${est ? "" : html`<th class="r">${t("an.col.best")}</th>
         <th class="r">${t("an.col.rank")}</th><th class="r">${t("an.col.lost")}</th>`}<th class="r">${t("an.col.trace")}</th><th class="r">${t("an.col.straight")}</th><th class="r">${t("an.col.detour")}</th><th class="r">${t("an.col.pace")}</th>
         ${hasHr ? html`<th class="r">${t("an.col.hr")}</th>` : ""}${hasCad ? html`<th class="r" title="${unitOf("cad")}">${t("an.col.cad")} <span class="muted">${unitOf("cad")}</span></th>` : ""}</tr></thead>
-      <tbody>${legs.map((l, i) => html`<tr data-leg="${i}" class="${l.mistake ? "an-mistake" : ""}" style="cursor:pointer">
+      <tbody><tr data-leg="-1" class="an-legs-all${legSel < 0 ? " cur" : ""}" style="cursor:pointer"><td colspan="${(est ? 6 : 9) + (hasHr ? 1 : 0) + (hasCad ? 1 : 0)}">${t("sh.leg.all")}</td></tr>
+      ${legs.map((l, i) => html`<tr data-leg="${i}" class="${l.mistake ? "an-mistake" : ""}${i === legSel ? " cur" : ""}" style="cursor:pointer">
         <td>${l.label}${l.code ? html` <span class="muted">${l.code}</span>` : ""}</td>
         <td class="r num">${l.time != null ? clock(l.time) : "—"}</td>${est ? "" : html`<td class="r num">${l.best != null ? clock(l.best) : "—"}</td>
         <td class="r num">${l.rank ?? "—"}</td><td class="r num${l.mistake ? " an-lost" : ""}">${l.lost != null ? signed(Math.round(l.lost)) : "—"}</td>`}
@@ -2147,13 +2179,7 @@ export async function render(main, { query = {}, route } = {}) {
         <td class="r num">${sum.straight ? detour(sum.dist, sum.straight) : "—"}</td>
         <td class="r num">${total && sum.dist ? pace(sum.dist / total) : "—"}</td>
         ${hasHr ? html`<td class="r num">${fmt(meanBetween(track, "hr", offset, offset + total))}</td>` : ""}${hasCad ? html`<td class="r num">${fmt(meanBetween(track, "cad", offset, offset + total))}</td>` : ""}</tr></tbody></table></div>`;
-    $$("#an-legs tr[data-leg]").forEach((tr) => tr.addEventListener("click", () => {
-      const l = legs[Number(tr.dataset.leg)];
-      if (l.t0 == null) return;
-      stop();
-      zoomTo(l);
-      seek(l.t0);
-    }));
+    $$("#an-legs tr[data-leg]").forEach((tr) => tr.addEventListener("click", () => setLegView(Number(tr.dataset.leg))));
   }
   /** The view on one leg: its trace, with a margin. */
   function zoomTo(l, margin = 1.3, pad = 40) {
@@ -2268,6 +2294,8 @@ export async function render(main, { query = {}, route } = {}) {
   });
   ro.observe(canvas); ro.observe(strip);
   // the control bar over the map's top edge on a computer: the whole map fitted again under it while the panels settle
+  // the leg chip's way back to the whole course (the map's markup may be laid out again: one listener on the page)
+  main.addEventListener("click", (e) => { if (e.target.closest?.("#an-leg-all")) setLegView(-1); });
   const handleClear = clearHandle(() => $("#an-layout"), () => $(".an-map .an-tools"));     // on a phone, the right drawer's handle under the map's tools
   const barFloat = floatBar($("#an-bar").parentElement, $("#an-bar"), (h) => { barInset = h; if (map && opening && calibrated) { fitView(); draw(); } });
   let redrawChips = null;

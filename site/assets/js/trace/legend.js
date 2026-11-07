@@ -41,7 +41,7 @@ export function keyHtml(o = {}) {
     ...(o.video ? [[btn("🎥"), t("sh.video.title"), t("lg.video.d")]] : []),
     // the leg at the map's bottom left (owner, 2026-11-07), and the map analysis's way back to the whole course beside it
     [btn("2 → 3"), t("lg.legchip"), t(o.multi ? "lg.legchip.d.multi" : "lg.legchip.d.solo")],
-    ...(o.multi ? [[btn(ICONS.course), t("lg.whole"), t("lg.whole.d")]] : []),
+    [btn(ICONS.course), t("lg.whole"), t("lg.whole.d")],
   ]]);
   groups.push([t("lg.h.panels"), [
     phone ? [`${btn("›")}${btn("‹")}`, t("lg.handle"), t("lg.handle.d.phone")] : [`${btn("‹")}${btn("›")}`, t("lg.fold"), t("lg.fold.d")],
