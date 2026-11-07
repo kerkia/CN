@@ -1640,6 +1640,7 @@ body.an-theatre .an-right { grid-area: side; }
 .an-map canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
 .an-tools { position: absolute; top: 8px; right: 6px; display: flex; flex-direction: column; gap: 4px; }
 .an-tools .btn { min-width: 32px; padding: 4px 8px; background: var(--surface); }
+.an-tools .btn .ico { display: block; margin: 0 auto; }
 /* the leg at the map's bottom left (owner, 2026-11-07), the map analysis's way back to the whole course beside it */
 .an-legchip { position: absolute; left: 8px; bottom: 8px; z-index: 3; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 650;
   padding: 3px 8px; border-radius: 8px; background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--ink); font-variant-numeric: tabular-nums; }

@@ -5157,8 +5157,7 @@ export default {
   "ma.solo.mine": "Nur für dich sichtbar",
   "ma.solo.replay": "Abspielen",
   "ma.solo.replay.hint": "Die Karte und dein Lauf, wie kalibriert",
-  "ma.solo.err": "Die Analyse konnte nicht wieder geöffnet werden.",
-
+  "ma.solo.err": "Die Analyse konnte nicht wieder geöffnet werden.",
   "an.opening": "Analyse wird geöffnet…",
   "ma.solo.delete": "Löschen",
   "ma.solo.delete.hint": "Sie wird aus deinem Konto entfernt",

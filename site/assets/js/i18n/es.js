@@ -5157,8 +5157,7 @@ export default {
   "ma.solo.mine": "Visible solo para ti",
   "ma.solo.replay": "Reproducir",
   "ma.solo.replay.hint": "El mapa y tu carrera, tal como se calibraron",
-  "ma.solo.err": "No se ha podido volver a abrir el análisis.",
-
+  "ma.solo.err": "No se ha podido volver a abrir el análisis.",
   "an.opening": "Abriendo el análisis…",
   "ma.solo.delete": "Borrar",
   "ma.solo.delete.hint": "Se elimina de tu cuenta",

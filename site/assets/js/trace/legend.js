@@ -35,7 +35,7 @@ export function keyHtml(o = {}) {
   groups.push([t("lg.h.map"), [
     [btn("3D"), t("an.v3.title"), t("an.v3.hint")],
     [`${btn("+")}${btn("−")}`, t("lg.zoom"), t("lg.zoom.d")],
-    [btn("⤢"), t(o.multi ? "sh.fit" : "an.fitTrace"), t(o.multi ? "lg.fitc.d" : "lg.fitt.d")],
+    [btn(ICONS.fit), t(o.multi ? "sh.fit" : "an.fitTrace"), t(o.multi ? "lg.fitc.d" : "lg.fitt.d")],
     [btn("▭"), t("an.fitMap"), t("lg.fitm.d")],
     [btn("📏"), t("lg.measure"), t("an.measure.hint")],
     ...(o.video ? [[btn("🎥"), t("sh.video.title"), t("lg.video.d")]] : []),

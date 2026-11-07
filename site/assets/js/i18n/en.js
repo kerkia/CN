@@ -4939,8 +4939,7 @@ export default {
   "ma.solo.mine": "Seen by you alone",
   "ma.solo.replay": "Replay",
   "ma.solo.replay.hint": "The map and your race, as calibrated",
-  "ma.solo.err": "The analysis could not be reopened.",
-
+  "ma.solo.err": "The analysis could not be reopened.",
   "an.opening": "Opening the analysis…",
   "ma.solo.delete": "Delete",
   "ma.solo.delete.hint": "It is removed from your account",

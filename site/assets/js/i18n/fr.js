@@ -4108,8 +4108,7 @@ export default {
   "ma.solo.mine": "Visible par vous seul",
   "ma.solo.replay": "Rejouer",
   "ma.solo.replay.hint": "La carte et votre course, telles que calées",
-  "ma.solo.err": "L'analyse n'a pas pu être rouverte.",
-
+  "ma.solo.err": "L'analyse n'a pas pu être rouverte.",
   "an.opening": "Ouverture de l'analyse…",
   "ma.solo.delete": "Supprimer",
   "ma.solo.delete.hint": "Elle disparaît de votre compte",

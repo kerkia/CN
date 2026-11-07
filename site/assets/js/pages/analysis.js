@@ -46,7 +46,7 @@ import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle, ICONS } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
@@ -225,7 +225,7 @@ export async function render(main, { query = {}, route } = {}) {
         <div class="an-mapcol"><div class="an-bar sh-bar" id="an-bar" hidden></div>
         <div class="an-map"><div class="an-3d" id="an-3d-host" hidden></div><canvas id="an-canvas"></canvas>
           <div class="an-tools"><button type="button" class="btn btn-sm an-3d-btn" id="an-3d" aria-pressed="false" title="${t("an.v3.hint")}" hidden>3D</button><button type="button" class="btn btn-sm" id="an-zin" title="${t("lg.zin.t")}" aria-label="${t("lg.zin.t")}">+</button><button type="button" class="btn btn-sm" id="an-zout" title="${t("lg.zout.t")}" aria-label="${t("lg.zout.t")}">−</button>
-            <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}">⤢</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button>
+            <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}" aria-label="${t("an.fitTrace")}">${raw(ICONS.fit)}</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button>
             <button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-video-btn" title="${t("sh.video.add")}" hidden>🎥</button><input type="file" id="an-video-file" accept="video/*" hidden></div>
           <div class="an-legchip" id="an-legchip" hidden></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
         <div class="sh-bottom"><div class="sh-stripbar" id="an-stripbar" hidden><button type="button" class="sh-strip-tog" id="an-ps-tog" aria-expanded="true" title="${t("an.strip.fold")}">▾ ${t("sh.strip.title")}</button><span class="an-bar-stats" id="an-stats"></span></div>
