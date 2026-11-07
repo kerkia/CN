@@ -1639,7 +1639,12 @@ body.an-theatre .an-right { grid-area: side; }
 .an-map { position: relative; height: min(76vh, 780px); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #e9e6dc; }
 .an-map canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
 .an-tools { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; }
-.an-tools .btn { min-width: 32px; padding: 4px 8px; background: var(--surface); }
+/* the map's tools light on dark in every theme (owner, 2026-11-07: the light themes' dark-on-white buttons were harder to see on a
+   map, mostly white and yellow): Sous-bois's colours, whatever the theme */
+.an-tools .btn { min-width: 32px; padding: 4px 8px; background: #112818; color: #f1f5ea; border-color: rgba(190, 255, 200, 0.22);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+.an-tools .btn:hover { background: #1e3f27; }
+.an-tools .btn[aria-pressed="true"] { background: #3f2415; border-color: #ff8f4a; color: #f1f5ea; }
 .an-hud { position: absolute; left: 8px; bottom: 8px; font-size: 13px; font-weight: 650; padding: 3px 8px; border-radius: 8px; background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--ink); pointer-events: none; font-variant-numeric: tabular-nums; }
 .an-hud:empty { display: none; }
 /* the legend of the trace coloured by pace, in the map's bottom right corner */
@@ -1657,7 +1662,6 @@ body.an-theatre .an-right { grid-area: side; }
 .an-map .an-3d-canvas { cursor: grab; }
 .an-map .an-3d-canvas:active { cursor: grabbing; }
 .an-tools .an-3d-btn { font-weight: 700; font-size: 12px; }
-.an-tools .an-3d-btn[aria-pressed="true"] { background: var(--flag-wash); border-color: var(--flag); color: var(--ink); }
 .an-3d-credit { position: absolute; left: 50%; transform: translateX(-50%); bottom: 8px; z-index: 2; max-width: calc(100% - 200px); font-size: 11px; padding: 2px 8px; border-radius: 8px;
   background: color-mix(in srgb, var(--surface) 85%, transparent); color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .an-3d-credit[hidden] { display: none; }
