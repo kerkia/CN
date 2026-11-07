@@ -49,7 +49,7 @@ import { views as bottomViews, legsPanel, TABS } from "./sharedviews.js";
 import { videoPanel } from "./sharedvideo.js";
 import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
 import { buttons as fwButtons, bindFull, setFull, leaveFull, inOwnTab } from "../fullwin.js";
-import { bar } from "../waitbar.js";
+import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import { replaceQuery } from "../app.js";
 import { clubAsk } from "./mapanalysis.js";
@@ -71,6 +71,8 @@ const ownGet = (k) => idb("readonly", (s) => s.get(k)).catch(() => null);
 const ownPut = (k, v) => idb("readwrite", (s) => s.put(v, k)).catch(() => null);
 const ownDel = (k) => idb("readwrite", (s) => s.delete(k)).catch(() => null);
 const COLOURS = ["#e6194b", "#1f77b4", "#2ca02c", "#ff7f0e", "#17becf", "#8c564b", "#d62728", "#bcbd22", "#0b3d91", "#f032e6", "#008080", "#7f7f7f"];
+// the trace colours offered for one runner shown, as Solo's (analysis.js TRACE_PRESETS)
+const TRACE_PRESETS = ["#3b0764", "#c8102e", "#0b3d91", "#111111", "#ff6a00"];
 const SPEEDS = [1, 2, 5, 10, 20, 40, 60, 80, 100];        // every x20 past x20 (owner, 2026-10-15)
 const TAILS = [30, 60, 120, 300, 0];
 const COURSE = "#a626a4";
@@ -1468,7 +1470,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   sel = runners.find((r) => r.uid === Number(init.sel)) || null;
   if (sel) sel.visible = true;
   runners.sort((a, b) => (total(a) ?? 1e9) - (total(b) ?? 1e9));
-  runners.forEach((r, i) => { r.colour = COLOURS[i % COLOURS.length]; r.rank = total(r) != null ? i + 1 : null; });
+  // a runner's colour: the palette's by rank, else the one chosen for them in this browser (« Couleur de la trace » when one
+  // runner is shown; owner, 2026-11-07, as Solo's), kept per analysis
+  const colKey = `ocn.sh.col.${id}`;
+  let colours = {};
+  try { colours = JSON.parse(localStorage.getItem(colKey) || "{}") || {}; } catch (e) { /* none chosen */ }
+  runners.forEach((r, i) => { r.colour = colours[r.uid] || COLOURS[i % COLOURS.length]; r.rank = total(r) != null ? i + 1 : null; });
 
   // ---- the clock of each mode: trace seconds of runner r at the display time T (null: not shown)
   const legTime = (r, j) => (r.passes[j - 1] != null && r.passes[j] != null ? r.passes[j] - r.passes[j - 1] : null);
@@ -1541,10 +1548,14 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     if (m === "slope") { const k = Math.max(Math.abs(lo), Math.abs(hi), 2); lo = -k; hi = k; }
     [hLo, hHi] = hi > lo ? [lo, hi] : [lo - 1, hi + 1];
   }
-  function needHeights() {
-    if (!HEIGHT_BY.includes(cmode()) || hts !== undefined) return;
+  // the heights a colouring by altitude, slope or slope-corrected pace needs: IGN's (else the tiles'), a few seconds the first time
+  // — their progress in the legend, and asked for as soon as the « Trace » list is opened (owner, 2026-11-07: « par allure
+  // corrigée par la pente » took a while to show, the routes keeping their runner colours meanwhile)
+  let hFrac = null;
+  function needHeights(early = false) {
+    if ((!early && !HEIGHT_BY.includes(cmode())) || hts !== undefined) return;
     hts = "loading";
-    heights3d().then((g) => { hts = g?.z ? g : "failed"; }, (e) => { console.warn(e); hts = "failed"; })
+    heights3d((f) => { hFrac = f; setBar($("#sh-legend .wait-bar"), f); }).then((g) => { hts = g?.z ? g : "failed"; }, (e) => { console.warn(e); hts = "failed"; })
       .then(() => { heightScale(); legend(); mv.draw(); sync3d(); });
   }
   /** The colours in use: a leg's colours only in a leg's view. */
@@ -1558,7 +1569,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     if (m === "pace") el.innerHTML = paceLegend(vLo, vHi);
     else if (HEIGHT_BY.includes(m)) {
       if (hts?.z) { heightScale(); el.innerHTML = `${legendHtml(m, hLo, hHi)}<div class="muted sh-legend-note">${html`${t("sh.legend.model")}`}</div>`; }
-      else el.innerHTML = html`<div class="an-legend-title">${t(hts === "failed" ? "sh.legend.noHeights" : "sh.legend.heightsLoading")}</div>`.toString();
+      else el.innerHTML = `${html`<div class="an-legend-title">${t(hts === "failed" ? "sh.legend.noHeights" : "sh.legend.heightsLoading")}</div>`}${hts === "failed" ? "" : bar(hFrac)}`;
     }
     else if (m === "legtime") {
       const ts = legRanks().times;
@@ -2005,16 +2016,19 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const topAdd = $("#sh-top-add");
     if (topAdd) topAdd.innerHTML = you.visitor ? "" : html`${!canAdd ? "" : runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm ico-btn" id="sh-bar-add" title="${t("sh.trace.replace")}" aria-label="${t("sh.trace.replace")}">${raw(iconLabel("add", t("sh.trace.replace")))}</button>`
       : html`<button type="button" class="btn btn-sm btn-primary ico-btn" id="sh-bar-add" title="${t("sh.trace.add")}" aria-label="${t("sh.trace.add")}">${raw(iconLabel("add", t("sh.trace.add")))}</button>`}`;
+    // the one runner shown, coloured by runner: their colour can be chosen (owner, 2026-11-07)
+    const shownNow = runners.filter((r) => r.visible), one = cmode() === "runner" && shownNow.length === 1 ? shownNow[0] : null;
     rightP.pane("display").innerHTML = html`
         <div class="an-opts">
           <label><span>${t("an.width")}</span><select id="sh-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
+          <label><span>${t("an.colour")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => (leg || !LEG_ONLY.includes(c)) && (c !== "variant" || variantsOn)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")} title="${c === "gap" ? t("an.colour.gap.tip") : ""}">${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
+          ${one ? html`<label id="sh-colour-row"><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === one.colour}" title="${c}"></button>`)}<input type="color" id="sh-colour-pick" value="${one.colour}" title="${t("an.traceColour.any")}"></span></label>` : ""}
           <label><span>${t("an.orient")}</span><select id="sh-orient"><option value="north" ${raw(orient === "north" ? "selected" : "")}>${t("an.orient.north")}</option><option value="leg" ${raw(orient === "leg" ? "selected" : "")}>${t("sh.orient.leg")}</option></select></label>
           <label><span>${t("an.future")}</span><select id="sh-future"><option value="hide" ${raw(future === "hide" ? "selected" : "")}>${t("an.future.hide")}</option><option value="faint" ${raw(future === "faint" ? "selected" : "")}>${t("an.future.faint")}</option></select></label>
           ${leg ? "" : html`<label><span>${t("an.tail")}</span><select id="sh-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>`}
           <label><span>${t("an.mapAlpha")}</span><input type="range" id="sh-map-alpha" min="10" max="100" step="5" value="${mapAlpha}"></label>
           <label><span>${t("sh.traceAlpha")}</span><input type="range" id="sh-trace-alpha" min="10" max="100" step="5" value="${traceAlpha}"></label>
-          <label><span>${t("an.colour")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => (leg || !LEG_ONLY.includes(c)) && (c !== "variant" || variantsOn)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")} title="${c === "gap" ? t("an.colour.gap.tip") : ""}">${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
-          <label><input type="checkbox" id="sh-course-on" ${raw(showCourse ? "checked" : "")}> ${t("sh.course.show")}</label></div>
+          <label><span>${t("sh.course.show")}</span><input type="checkbox" id="sh-course-on" ${raw(showCourse ? "checked" : "")}></label></div>
         <div id="sh-3d-opts" hidden></div>`;
     if (routesOn) rightP.pane("compute").innerHTML = html`<div id="rc-host"></div>`;
     if (!rightP.pane("export").childElementCount) exportPane();
@@ -2046,7 +2060,19 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); mv.setAlpha(mapAlpha / 100); savePrefs(); mv.draw(); });
     $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-course-on").addEventListener("change", (e) => { showCourse = e.target.checked; if (printed) courseOver = showCourse; else courseOn = showCourse; savePrefs(); mv.draw(); });
-    $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); mv.draw(); });
+    for (const ev of ["pointerdown", "focus"]) $("#sh-colour-by").addEventListener(ev, () => needHeights(true), { once: true });
+    $("#sh-colour-by").addEventListener("change", (e) => { colourBy = e.target.value; savePrefs(); legend(); right(); mv.draw(); });
+    if (one) {
+      const setColour = (c) => {
+        one.colour = c; colours[one.uid] = c;
+        try { localStorage.setItem(colKey, JSON.stringify(colours)); } catch (e) { /* this visit only */ }
+        $$("#sh-colour-row .an-swatch").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.colour === c)));
+        $("#sh-colour-pick").value = c;
+        left(); legend(); mv.draw(); bottom.draw();
+      };
+      $$("#sh-colour-row .an-swatch").forEach((b) => b.addEventListener("click", () => setColour(b.dataset.colour)));
+      $("#sh-colour-pick").addEventListener("input", (e) => setColour(e.target.value));
+    }
     rcmPanel(); opts3d();
   }
   /** « Export » (owner, 2026-11-05): an image of the map with what it shows, and one's own run with the map into « Mes cartes ». */
@@ -2594,7 +2620,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   function sync3d() {
     if (!v3) return;
     const list = runners.filter((r) => r.visible && range3d(r).every((v) => v != null));
-    const sig = `${leg}|${list.map((r) => r.uid).join(",")}`;
+    const sig = `${leg}|${list.map((r) => `${r.uid}:${r.colour}`).join(",")}`;
     if (sig !== v3sig) {
       v3sig = sig; v3list = list;
       v3.setTraces(list.map((r) => { const [a, b] = range3d(r); return { track: track3d(r), i0: indexAt(r.tr, a), i1: indexAt(r.tr, b), colour: r.colour, label: initials(r) }; }));
