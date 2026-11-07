@@ -1638,7 +1638,7 @@ body.an-theatre .an-right { grid-area: side; }
 .an-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; align-items: start; margin-top: 14px; }
 .an-map { position: relative; height: min(76vh, 780px); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: #e9e6dc; }
 .an-map canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
-.an-tools { position: absolute; top: 8px; right: 8px; display: flex; flex-direction: column; gap: 4px; }
+.an-tools { position: absolute; top: 8px; right: 6px; display: flex; flex-direction: column; gap: 4px; }
 /* the map's tools light on dark in every theme (owner, 2026-11-07: the light themes' dark-on-white buttons were harder to see on a
    map, mostly white and yellow): Sous-bois's colours, whatever the theme */
 .an-tools .btn { min-width: 32px; padding: 4px 8px; background: #112818; color: #f1f5ea; border-color: rgba(190, 255, 200, 0.22);
@@ -1859,7 +1859,9 @@ label.an-pick { display: flex; justify-content: center; padding: 12px; font-size
   .sp-handle-label { writing-mode: vertical-rl; font-size: 12px; font-weight: 600; max-height: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sp-left .sp-handle-label { transform: rotate(180deg); }
   .sp[data-collapsed="0"] .sp-handle { background: var(--flag-wash); }
-  .sh-layout .an-tools, body.an-theatre .an-layout .an-tools { right: 36px; }   /* clear of the right drawer's handle */
+  /* at the map's right edge (owner, 2026-11-07), the right drawer's handle lower down; a phone held sideways, too short for both,
+     keeps them clear of the handle */
+  @media (max-height: 560px) { .sh-layout .an-tools, body.an-theatre .an-layout .an-tools { right: 36px; } }
 }
 /* the analyses' top line (owner, 2026-11-06): its right part on one line, « ⤢ » always in the top right corner, who may open it cut
    short when the room runs out; the views and « Ajouter ma trace » an icon beside their words, the icon alone on a phone, where the
