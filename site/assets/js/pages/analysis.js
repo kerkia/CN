@@ -46,7 +46,7 @@ import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
@@ -2266,6 +2266,7 @@ export async function render(main, { query = {}, route } = {}) {
   });
   ro.observe(canvas); ro.observe(strip);
   // the control bar over the map's top edge on a computer: the whole map fitted again under it while the panels settle
+  const handleClear = clearHandle(() => $("#an-layout"), () => $(".an-map .an-tools"));     // on a phone, the right drawer's handle under the map's tools
   const barFloat = floatBar($("#an-bar").parentElement, $("#an-bar"), (h) => { barInset = h; if (map && opening && calibrated) { fitView(); draw(); } });
   let redrawChips = null;
   const themeWatch = new MutationObserver(() => { redrawChips?.(); drawStrip(); v3?.theme(); });
@@ -2895,7 +2896,7 @@ export async function render(main, { query = {}, route } = {}) {
     window.removeEventListener("ocn:inbox", onInbox);
     document.removeEventListener("keydown", onDrawKey); measure.destroy(); video?.close();
     themeWatch.disconnect();
-    stop(); ro.disconnect(); barFloat.destroy(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
+    stop(); ro.disconnect(); barFloat.destroy(); handleClear.destroy(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files }, orgaKey: orgaMode ? key : null };
   } };
 }

@@ -31,6 +31,34 @@ export function floatBar(col, bar, onChange = () => {}) {
   return { inset, update, destroy() { ro.disconnect(); wide.removeEventListener("change", update); } };
 }
 
+/** On a phone (drawers), the right drawer's handle kept below the map's tools, which stand at the map's right edge (owner,
+ *  2026-11-07): at 58 % of the height when that is clear of them, else just under them; when the layout is too short for both (a
+ *  phone held sideways, a small screen), the handle back in its place and the tools moved clear of it (`.tools-in`, app.css). */
+export function clearHandle(getLayout, getTools) {
+  const phone = matchMedia("(max-width: 900px)");
+  const ro = new ResizeObserver(() => place());
+  let seen = [], retry = 0;                                          // the elements observed (the page may lay its map out again)
+  function place() {
+    const layout = getLayout(), tools = getTools(), h = layout?.querySelector(".sp-right .sp-handle");
+    const els = [layout, tools, h];
+    if (els.some((e, k) => e !== seen[k])) { ro.disconnect(); els.forEach((e) => e && ro.observe(e)); seen = els; }
+    if (!h || !tools) { clearTimeout(retry); retry = setTimeout(place, 500); return; }         // laid out again: looked for once more
+    h.classList.remove("sp-handle-short");
+    const reset = () => { h.style.top = ""; h.style.transform = ""; };
+    if (!phone.matches || !tools.offsetParent) { reset(); layout.classList.remove("tools-in"); return; }
+    const L = layout.getBoundingClientRect(), T = tools.getBoundingClientRect(), room = L.height - 52, end = T.bottom - L.top + 8;
+    const fit = (hh) => Math.max(0.58 * L.height - hh / 2, end);
+    let hh = h.offsetHeight;
+    // too short for the handle with its tab's name: its arrow alone (owner, 2026-11-07: the tools at the edge, an iPhone's height)
+    if (fit(hh) + hh > room) { h.classList.add("sp-handle-short"); hh = h.offsetHeight; }
+    if (fit(hh) + hh <= room) { h.style.top = `${fit(hh)}px`; h.style.transform = "none"; layout.classList.remove("tools-in"); }
+    else { h.classList.remove("sp-handle-short"); reset(); layout.classList.add("tools-in"); }
+  }
+  phone.addEventListener("change", place);
+  place();
+  return { place, destroy() { clearTimeout(retry); ro.disconnect(); phone.removeEventListener("change", place); place = () => {}; } };
+}
+
 /** The panel's markup: id, side ("left" | "right"), tabs [{ key, label }]; each tab's pane is a div[data-pane=key] the page
  *  fills (inner: the panes' markup by key, optional). */
 export function panelHtml({ id, side, tabs, inner = {}, cls = "" }) {

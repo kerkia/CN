@@ -29,7 +29,7 @@ import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar, clearHandle } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
@@ -1392,6 +1392,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   // the control bar over the map's top edge on a computer (owner, 2026-11-07): the views fitted keep below it
   let onBarChange = () => {};
   const barFloat = floatBar($("#sh-bar").parentElement, $("#sh-bar"), (h) => { mv.setInset(h); onBarChange(h); });
+  const handleClear = clearHandle(() => $("#sh-layout"), () => $(".sh-map .an-tools"));      // on a phone, the right drawer's handle under the map's tools
   // « Mesurer »: a line clicked on the map, its length by the circuit's georeference (trace/measure.js)
   const RAD = Math.PI / 180;
   const measure = measureTool($("#sh-measure"), { redraw: () => mv.draw(), out: $("#sh-measure-out"), metres: (a, b) => {
@@ -2752,5 +2753,5 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   wholeRo.observe($("#sh-canvas"));
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, pan, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); barFloat.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); barFloat.destroy(); handleClear.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }
