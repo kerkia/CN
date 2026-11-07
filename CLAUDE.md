@@ -1914,8 +1914,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   ocn.kerkia.com stays on that origin (the bridge then moves its visitor to ozimut.com in a browser tab).
 - **Orga › Cartographier** (`#/orga-carto`, route `orgMapper`, `pages/mapper.js` + `site/assets/js/mapper/`; owner, 2026-11-06, after the
   study of OCAD and OpenOrienteering Mapper, private artifact https://claude.ai/artifact/2MiaTY5wo677yPPaPJ8Fey): drawing and updating
-  orienteering maps in the browser with the Tracer's ribbon. **The administrators' for now** (`app.js`: the menu entry and the route
-  gate; on a phone too, for the field mode — the one Orga page a phone opens), a beta notice (`beta.js` `mapper`). Owner's decisions:
+  orienteering maps in the browser with the Tracer's ribbon. **Every account's since 2026-11-07** (owner; the administrators' the day
+  before; an Orga page, and on a phone too, for the field mode — the one Orga page a phone opens), a beta notice (`beta.js` `mapper`).
+  **It opens as the Tracer does** (owner, 2026-11-07): the editor at once, empty (`openEditor({ blank: true })`: read-only, nothing
+  saved, no team; a command says « Ouvrez, créez ou importez d'abord une carte » and leads to the start screen, a map file dropped is
+  imported), and over it the start screen in the Tracer's look (`pages/mapper.js` `startScreen`, `.tr-start`: Nouvelle carte, Importer
+  une carte, Ouvrir une carte — one's maps, the open one tagged, one's own deletable); the editor's folder button and Fichier › Nouvelle /
+  Ouvrir / Importer bring it back, Fichier › Fermer leaves the empty editor; texts `map.start.*`, `map.ed.*`. The LiDAR maps
+  (`/api/lidarmap`) are every account's with it: 5 requests a day an account, the administrators 20. Owner's decisions:
   `.ozmap` is Ozimut's own format and holds everything needed to write the map back to OCAD; the Tracer's « Générer une carte »
   moved here (the Tracer's new-event dialog now only points to Cartographier, `trc.gen.toMapper`); all phases built at once.
   **The document** (`docs/mapper/model.md`): OCAD's own records as `tracer/vmap/ocad.js` reads them (OCAD 9+ numbering, 0.01 mm,
@@ -2342,7 +2348,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   OCAD's view setting « hide layout » says (`map.hideLayout` read, not used); PDFs print them (`PdfTarget.image`: PNG/JPEG embedded
   as they are, BMP/GIF as a PNG — before, « layout bitmaps are not printed »). Templates (other files a map refers to) are still not
   drawn: a logo kept outside the .ocd cannot be shown.
-- **Beta notices** (`beta.js`; owner, 2026-10-16; the map analyses — runners' and organisers' pages — out of beta since 2026-11-05, owner: no notice, tag or menu mark; `beta.js` keeps the entry unused): the tools just made and little tested — « Tracer », « Analyse multi » (the runners'
+- **Beta notices** (`beta.js`; owner, 2026-10-16; Orga's « Résultats » and « Horaires » marked « bêta » on 2026-11-07, owner — the
+  menu's mark, the title's label and a note, `results` / `starts`, no notice to acknowledge; the map analyses — runners' and organisers' pages — out of beta since 2026-11-05, owner: no notice, tag or menu mark; `beta.js` keeps the entry unused): the tools just made and little tested — « Tracer », « Analyse multi » (the runners'
   and the organisers' pages, one notice for all) and « Organisation › Direct » — open with a notice to acknowledge (`betaNotice(tool)`:
   just made, little tested, a beta to try and to report on; Tracer: not yet for real competitions, fine for training maps; Analyse
   multi: errors may remain in calibrations, traces and times; Direct: not yet alone for a competition's live results, try it at a

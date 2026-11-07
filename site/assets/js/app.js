@@ -103,7 +103,8 @@ const ownerOnly = auth.owner;
 // « Nutrition » and its authors' « Rédaction » (owner, 2026-11-01): those given the right on the admin page, its authors and
 // the administrators; nobody else sees them in the menus, and their addresses lead the others to the modules page
 const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites };
-const BETA_ROUTES = new Set(["orgDirect", "orgTracer", "orgMapper"]);   // the map analyses out of beta on 2026-11-05 (owner)
+// the map analyses out of beta on 2026-11-05; « Résultats » and « Horaires » marked beta on 2026-11-07 (owner)
+const BETA_ROUTES = new Set(["orgDirect", "orgTracer", "orgMapper", "orgResults", "orgStarts"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "vma"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
@@ -428,8 +429,8 @@ export function moduleMenus() {
     orga: [["orgAnalyses", "#/orga-analyses", t("nav.orgAnalyses")],
       ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
       ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")],
-      // « Cartographier » (owner, 2026-11-06): the administrators' while it is tried on real maps
-      ...(auth.session()?.admin ? [["orgMapper", "#/orga-carto", t("nav.orgMapper")]] : [])],
+      // « Cartographier » (owner, 2026-11-06; every account's since 2026-11-07)
+      ["orgMapper", "#/orga-carto", t("nav.orgMapper")]],
   };
 }
 // the routes outside the menus, by module (a view of a page in the menu, an address of before)
@@ -949,8 +950,7 @@ async function route_() {
     r = parseHash();
   }
   // the Orga module: an account that turned it on, on a computer (owner, 2026-10-30); else a page that says how
-  // « Cartographier » for the administrators for now; on a phone too (its field mode: owner, 2026-11-06)
-  if (r.route === "orgMapper" && !auth.session()?.admin) { history.replaceState(null, "", "#/modules"); r = parseHash(); }
+  // « Cartographier » on a phone too (its field mode: owner, 2026-11-06); every account's since 2026-11-07 (owner)
   if (r.route !== "methods" && moduleOf(r) === "orga" && !orgaOpen() && !(r.route === "orgMapper" && auth.session()?.orga)) r = { ...r, route: "orgaOff", from: r.route };
   // every page for every account (owner, 2026-10-15): « En direct », « Entrainement », the analyses and « Organisation »
   // were for the administrators (or the « live » right) until then

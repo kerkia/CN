@@ -7,7 +7,8 @@
 // used as it is. An organiser is a member of the race's organising club, from the account's latest race; outside France,
 // the account that declared the competition (declare.js, owner 2026-10-20), its declared competitions listed with the club's.
 
-import { html, $, fmtDate } from "../util.js";
+import { html, raw, $, fmtDate } from "../util.js";
+import { betaTag, betaNote } from "../beta.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import { getProv } from "./provisional.js";
@@ -40,7 +41,8 @@ export async function render(main, { query = {} } = {}) {
     return dep.render(main, { query: { ...query, orga: "1" }, organiser: race });
   }
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("or.title")}</h1><p class="lede">${t("or.lede")}</p></div></div>
+    <div class="page-head"><div><h1>${t("or.title")} ${raw(betaTag())}</h1><p class="lede">${t("or.lede")}</p></div></div>
+    ${raw(betaNote("results"))}
     <div id="dc-card"></div>
     ${me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="or-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
     <section class="card"><div class="table-wrap" id="or-list"></div></section>

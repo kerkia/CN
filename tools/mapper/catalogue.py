@@ -37,6 +37,30 @@ k("map.start.shared", "partagée par {name}", "shared by {name}", "geteilt von {
 k("map.start.offline", "hors ligne", "offline", "offline", "sin conexión")
 k("map.start.delete", "Supprimer la carte", "Delete the map", "Karte löschen", "Eliminar el mapa")
 k("map.start.deleteQ", "Supprimer cette carte, ses versions et ses fonds pour toute l'équipe ? Cette action est définitive.", "Delete this map, its versions and its backgrounds for the whole team? This cannot be undone.", "Diese Karte mit ihren Versionen und Hintergründen für das ganze Team löschen? Das kann nicht rückgängig gemacht werden.", "¿Eliminar este mapa, sus versiones y sus fondos para todo el equipo? No se puede deshacer.")
+k("map.start.q", "Que voulez-vous faire ?", "What would you like to do?", "Was möchtest du tun?", "¿Qué quieres hacer?")
+k("map.start.close", "Fermer", "Close", "Schließen", "Cerrar")
+k("map.start.closeEsc", "Fermer (Échap)", "Close (Esc)", "Schließen (Esc)", "Cerrar (Esc)")
+k("map.start.newNeed", "<b>Il vous faut</b> seulement l'endroit de la carte (des coordonnées ou votre position) ; le reste est facultatif.",
+  "<b>You need</b> only the map's place (coordinates or your position); the rest is optional.",
+  "<b>Du brauchst</b> nur den Ort der Karte (Koordinaten oder deinen Standort); der Rest ist freiwillig.",
+  "<b>Solo necesitas</b> el lugar del mapa (coordenadas o tu posición); lo demás es opcional.")
+k("map.start.importNeed", "<b>Il vous faut</b> le fichier de la carte : OCAD (.ocd), OpenOrienteering Mapper (.omap, .xmap) ou Ozimut (.ozmap).",
+  "<b>You need</b> the map's file: OCAD (.ocd), OpenOrienteering Mapper (.omap, .xmap) or Ozimut (.ozmap).",
+  "<b>Du brauchst</b> die Datei der Karte: OCAD (.ocd), OpenOrienteering Mapper (.omap, .xmap) oder Ozimut (.ozmap).",
+  "<b>Necesitas</b> el archivo del mapa: OCAD (.ocd), OpenOrienteering Mapper (.omap, .xmap) u Ozimut (.ozmap).")
+k("map.start.importBtn", "Importer…", "Import…", "Importieren…", "Importar…")
+k("map.start.open", "Ouvrir une carte", "Open a map", "Karte öffnen", "Abrir un mapa")
+k("map.start.openDesc", "Reprendre une de vos cartes : celles que vous avez créées ou importées et celles dont l'équipe vous compte.",
+  "Pick up one of your maps: those you created or imported and those whose team you are on.",
+  "Eine deiner Karten wieder aufnehmen: die, die du angelegt oder importiert hast, und die, in deren Team du bist.",
+  "Retomar uno de tus mapas: los que creaste o importaste y aquellos de cuyo equipo formas parte.")
+k("map.start.foot", "Vous pouvez aussi déposer le fichier d'une carte sur cette fenêtre pour l'importer. Une carte n'est ouverte que par son équipe : celui qui l'a créée et les personnes qui la rejoignent par un lien d'invitation.",
+  "You can also drop a map's file on this window to import it. A map is opened only by its team: whoever created it and the people who join it by an invitation link.",
+  "Du kannst die Datei einer Karte auch auf dieses Fenster ziehen, um sie zu importieren. Eine Karte öffnet nur ihr Team: wer sie angelegt hat und wer ihm über einen Einladungslink beitritt.",
+  "También puedes soltar el archivo de un mapa en esta ventana para importarlo. Un mapa solo lo abre su equipo: quien lo creó y las personas que se unen con un enlace de invitación.")
+k("map.start.tagOpen", "ouverte", "open", "geöffnet", "abierto")
+k("map.ed.noMap", "Aucune carte ouverte", "No map open", "Keine Karte geöffnet", "Ningún mapa abierto")
+k("map.ed.needMap", "Ouvrez, créez ou importez d'abord une carte.", "Open, create or import a map first.", "Öffne, erstelle oder importiere zuerst eine Karte.", "Primero abre, crea o importa un mapa.")
 k("map.untitled", "Carte sans titre", "Untitled map", "Unbenannte Karte", "Mapa sin título")
 
 # ---- new map ---------------------------------------------------------------------------------------------------------------

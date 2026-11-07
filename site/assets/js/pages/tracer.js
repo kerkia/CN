@@ -289,7 +289,7 @@ async function newEvent(main, files = null) {
     ${dropHtml("tr-new-drop", t("trc.page.newDrop"), MAP_ACCEPT, false)}
     <p class="tr-hint" id="tr-new-map">${escA(t("trc.page.newMapHint"))}</p>
     ${privField()}
-    ${auth.session()?.admin ? `<p class="tr-hint">${t("trc.gen.toMapper")}</p>` : ""}
+    <p class="tr-hint">${t("trc.gen.toMapper")}</p>
     <div class="tr-grid2">${field(escA(t("trc.page.scaleLabel")), '<input name="scale" value="10000" inputmode="numeric">')}
     ${field(escA(t("trc.page.dpiLabel")), `<input name="dpi" inputmode="numeric" placeholder="${escA(t("trc.page.dpiPh"))}">`, escA(t("trc.page.dpiHint")))}
     ${field(escA(t("trc.page.stdLabel")), `<select name="std"><option value="2017">${escA(t("trc.page.stdForest"))}</option><option value="Spr2019">${escA(t("trc.page.stdSprint"))}</option></select>`)}</div>`,

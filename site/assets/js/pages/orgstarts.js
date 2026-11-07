@@ -16,6 +16,7 @@ import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { getProv } from "./provisional.js";
 import * as declare from "../declare.js";
+import { betaTag, betaNote } from "../beta.js";
 import { parse as readStarts } from "../localstart.js";
 import { check as drawChecks, oChecklist, saveOChecklist } from "../startchecks.js";
 import { sheetTabs } from "../sheettabs.js";
@@ -54,7 +55,8 @@ export async function render(main, { query = {} } = {}) {
     return deposit(main, race);
   }
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("os.title")}</h1><p class="lede">${t("os.lede", { n: ORG_DAYS })}</p></div></div>
+    <div class="page-head"><div><h1>${t("os.title")} ${raw(betaTag())}</h1><p class="lede">${t("os.lede", { n: ORG_DAYS })}</p></div></div>
+    ${raw(betaNote("starts"))}
     <div id="dc-card"></div>
     ${me?.admin ? html`<div class="filters"><label class="field"><span>${t("sh.org.filter")}</span><input id="os-filter" placeholder="${t("sh.org.filter.ph")}" style="width:240px"></label></div>` : ""}
     <section class="card"><div class="table-wrap" id="os-list"></div></section>

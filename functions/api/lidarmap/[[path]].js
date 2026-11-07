@@ -1,4 +1,5 @@
-// /api/lidarmap — generated orienteering maps (a prototype, 2026-11-01; administrators only): 1 km tiles of a map made
+// /api/lidarmap — generated orienteering maps (a prototype, 2026-11-01; every account since 2026-11-07 with Cartographier, the
+// administrators 20 requests a day, the others 5): 1 km tiles of a map made
 // from IGN's LiDAR HD by karttapullautin, with OpenStreetMap's roads, paths, buildings and water over it, and the
 // ground's heights every 2 m. They are made by the GitHub workflow lidarmap.yml (mapgen/run.py), kept in R2 (cn-state):
 //   lidarmap/t/<id>.png       the map, 2362 px a side, 0.42333 m a pixel, from the tile's north-west corner, in a forest
@@ -18,7 +19,7 @@
 //   GET ?req=<id>             a request's state (the page asks every ~15 s while it waits)
 //   GET /t/<file>             a tile's file
 // Nothing of the trace is sent: the page asks for the tiles its trace's area touches.
-import { allow, json, nowIso, readBody, withUser } from "../../_lib/api.js";
+import { allow, isAdmin, json, nowIso, readBody, withUser } from "../../_lib/api.js";
 
 const T = "lidarmap/t/", Q = "lidarmap/req/";
 // the tile ids (mapgen/grids.py ID; keep the two in step)
@@ -94,13 +95,13 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   for (const id of ids) tiles[id] = await tileState(env, id, style);
   const missing = ids.filter((id) => tiles[id] === "missing");
   if (!missing.length) return json({ tiles });
-  if (!(await allow(env, `lidarmap:${user.id}`, 20, 86400))) return json({ error: "too many requests" }, 429);
+  if (!(await allow(env, `lidarmap:${user.id}`, isAdmin(env, user) ? 20 : 5, 86400))) return json({ error: "too many requests" }, 429);
   const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
   await env.BUCKET.put(`${Q}${id}.json`, JSON.stringify({ id, tiles: missing, style, by: user.id, at: nowIso(), status: "queued" }),
     { httpMetadata: { contentType: "application/json" } });
   for (const t of missing) tiles[t] = "queued";
   return json({ req: id, tiles, started: await startMaps(env) });
-}, { admin: true });
+});
 
 export const onRequestGet = withUser(async ({ request, env, params }) => {
   if (!env.BUCKET) return json({ error: "server not configured" }, 500);
@@ -122,4 +123,4 @@ export const onRequestGet = withUser(async ({ request, env, params }) => {
   const waiting = r.status === "queued" && !r.progress;
   return json({ req: r.id, status: r.status, at: r.at, done: r.done || null, result: r.result || null, progress: r.status === "queued" ? r.progress || null : null,
     ahead: waiting ? await aheadOf(env, r.id) : 0 });
-}, { admin: true });
+});

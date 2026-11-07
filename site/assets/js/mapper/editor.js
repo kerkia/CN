@@ -26,16 +26,18 @@ const KEYS = { "tool:select": "S", "tool:vertex": "V", "tool:draw": "D", "tool:f
 
 /**
  * Open the editor in `container`. opts: { id (the map on the server, null for a file opened locally), card, role, doc (map.json),
- * version, source (the OCAD bytes or null), files ({ sha: { bytes, type } } when opened from a .ozmap), onClose, onStart }.
+ * version, source (the OCAD bytes or null), files ({ sha: { bytes, type } } when opened from a .ozmap), onClose, onStart, blank }.
+ * blank: no map yet (the page opens the editor at once, its start screen over it, as the Tracer does — owner, 2026-11-07): nothing
+ * saved, no team, every change and most commands lead to the start screen. onStart(kind, files): the start screen (pages/mapper.js).
  */
 export async function openEditor(opts) {
   const { container } = opts;
   const E = { id: opts.id || null, card: opts.card || null, role: opts.role || "owner", version: opts.version || 0, source: opts.source || null,
     files: opts.files || {}, sel: new Set(), snapping: pref("snap", true), drawMode: pref("mode", "straight"), part: "p1", toolName: "select",
-    readOnly: opts.role === "viewer", dirty: false, saving: false, gps: null, onStart: opts.onStart || (() => {}) };
+    readOnly: opts.role === "viewer" || !!opts.blank, blank: !!opts.blank, dirty: false, saving: false, gps: null, onStart: opts.onStart || (() => {}) };
   window.__mapper = E;
   const root = document.createElement("div");
-  root.className = "tr-app mp-app";
+  root.className = `tr-app mp-app${E.blank ? " mp-blank" : ""}`;
   root.innerHTML = `
     <div class="tr-top">
       <button type="button" class="tr-icon" data-top="maps" title="${esc(t("map.top.maps"))}">${svg("folder", 18)}</button>
@@ -222,6 +224,7 @@ export async function openEditor(opts) {
   const needsSel = new Set(["delete", "duplicate", "changeSymbol", "rotate", "reverse", "smooth", "simplify", "toggleCurves", "toFront", "toBack", "toPart", "rotatePattern", "editText"]);
   E.why = (act) => {
     if (!act) return "";
+    if (E.blank && !/^(zoom|file:(new|open|import))/.test(act)) return t("map.ed.needMap");
     if (E.readOnly && !/^(tool:select|tool:measure|zoom|export|gps|stats|check|versions|comments|members|bg-toggle|map-fade|file:)/.test(act)) return t("map.why.readOnly");
     if (needsSel.has(act) && !E.sel.size) return t("map.why.noSel");
     if (["union", "intersection", "difference"].includes(act) && E.selected().filter((o) => o.otp === 3).length < 2) return t("map.why.twoAreas");
@@ -262,6 +265,7 @@ export async function openEditor(opts) {
     E.ribbon?.draw();
   };
   async function run(act, arg) {
+    if (E.blank && !/^(zoom|file:(new|open|import))/.test(act)) { E.say(t("map.ed.needMap")); E.onStart(); return; }
     if (act.startsWith("tool:")) { E.setTool(act.slice(5)); return; }
     if (act.startsWith("mode:")) { E.drawMode = act.slice(5); setPref("mode", E.drawMode); if (E.toolName !== "draw") E.setTool("draw"); return; }
     if (act.startsWith("file:")) { await fileAct(act.slice(5)); return; }
@@ -427,6 +431,7 @@ export async function openEditor(opts) {
     return G.coordsOf([{ pts: acc, hole: false }]);
   }
   function guard() {
+    if (E.blank) { E.say(t("map.ed.needMap")); E.onStart(); return false; }
     if (E.readOnly) { E.say(t("map.why.readOnly")); return false; }
     return true;
   }
@@ -522,7 +527,12 @@ export async function openEditor(opts) {
   // files dropped on the map: backgrounds, or another map to open
   const wrap = E.$(".mp-mapwrap");
   wrap.addEventListener("dragover", (ev) => { if ([...(ev.dataTransfer?.types || [])].includes("Files")) ev.preventDefault(); });
-  wrap.addEventListener("drop", (ev) => { const f = [...(ev.dataTransfer?.files || [])]; if (!f.length) return; ev.preventDefault(); import("./backgrounds.js").then((m) => m.addFiles(E, f)); });
+  wrap.addEventListener("drop", (ev) => {
+    const f = [...(ev.dataTransfer?.files || [])]; if (!f.length) return;
+    ev.preventDefault();
+    if (E.blank) { E.onStart(f.some((x) => /\.(ocd|omap|xmap|ozmap)$/i.test(x.name)) ? "import" : "", f); return; }
+    import("./backgrounds.js").then((m) => m.addFiles(E, f));
+  });
   E.$("#mp-fw").innerHTML = FW.buttons ? FW.buttons({ tab: false }) : "";
   FW.bindFull?.();
 
@@ -535,7 +545,7 @@ export async function openEditor(opts) {
     el.textContent = s;
   }
   function status() {
-    E.$("#mp-title").textContent = E.doc.title || t("map.untitled");
+    E.$("#mp-title").textContent = E.blank ? t("map.ed.noMap") : E.doc.title || t("map.untitled");
     E.$("#mp-scale").textContent = t("map.status.scale", { scale: nf(E.doc.scale), view: nf(E.view.k / E.view.dpr * 25.4 / 96 * 100, 0) });
     const hint = E.toolName === "draw" ? t(`map.hint.draw.${E.drawMode}`) : t(`map.hint.${E.toolName}`);
     if (!E._measuring) E.$("#mp-hint").textContent = (E.sel.size ? tn("map.status.sel", E.sel.size) + " · " : "") + hint;
@@ -618,7 +628,7 @@ export async function openEditor(opts) {
   E._unfit = () => window.removeEventListener("resize", fit);
   await takeLock();
   if (E.id) S.comments(E.id).then((c) => { E.comments = c; E.view.overlay(); }).catch(() => {});
-  status(); saveState(E.id ? "saved" : "local");
+  status(); if (E.blank) saveState(""); else saveState(E.id ? "saved" : "local");
   if (opts.isNew && E.id) { E.dirty = true; save(); }
   return E;
 }
