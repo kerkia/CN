@@ -29,7 +29,7 @@ import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar, clearHandle } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar, clearHandle, ICONS } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
@@ -1368,7 +1368,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <div class="an-tools">${view3dOn ? html`<button type="button" class="btn btn-sm an-3d-btn" id="sh-3d" aria-pressed="false" title="${t("an.v3.hint")}">3D</button>` : ""}<button type="button" class="btn btn-sm" id="sh-zin" title="${t("lg.zin.t")}" aria-label="${t("lg.zin.t")}">+</button><button type="button" class="btn btn-sm" id="sh-zout" title="${t("lg.zout.t")}" aria-label="${t("lg.zout.t")}">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}">⤢</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
           <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button>${videoOn ? html`<button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden>` : ""}</div>
-        <div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
+        <div class="an-legchip" id="sh-legchip" hidden><span id="sh-legchip-t"></span><button type="button" class="btn btn-sm ico-btn" id="sh-leg-all" hidden title="${t("lg.whole")}" aria-label="${t("lg.whole")}">${raw(ICONS.course)}</button></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
         <div class="sh-bottom"><div class="sh-stripbar"><button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${stripArrow(showStrip)} ${t("sh.strip.title")}</button><span class="an-bar-stats" id="sh-stats"></span></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
@@ -1392,6 +1392,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   // the control bar over the map's top edge on a computer (owner, 2026-11-07): the views fitted keep below it
   let onBarChange = () => {};
   const barFloat = floatBar($("#sh-bar").parentElement, $("#sh-bar"), (h) => { mv.setInset(h); onBarChange(h); });
+  $("#sh-leg-all").addEventListener("click", () => setLeg(0));                 // the leg chip's way back to the whole course
   const handleClear = clearHandle(() => $("#sh-layout"), () => $(".sh-map .an-tools"));      // on a phone, the right drawer's handle under the map's tools
   // « Mesurer »: a line clicked on the map, its length by the circuit's georeference (trace/measure.js)
   const RAD = Math.PI / 180;
@@ -1980,14 +1981,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   }
   function right() {
     const fromOpts = ctrls.map((p, i) => [i, i ? ctrlLabel(i) : "▷"]).slice(0, legsN);
-    // a leg's name and « Tout le parcours » in the bar on a computer; on a phone (owner, 2026-11-07: as « Analyse solo ») the bar
-    // stays the whole course's, the time line on the leg, a start mode chosen going back to the whole course
-    const legBar = leg && !drawers();
-    const modeHint = t(`sh.mode.${legBar ? "leg" : mode}.hint`);
+    // the bar stays the whole course's in a leg's view (owner, 2026-11-07: as « Analyse solo »): the time line on the leg, the leg
+    // and the way back to the whole course on the map's bottom left (hud), a start mode chosen going back to the whole course too
+    const modeHint = t(`sh.mode.${mode}.hint`);
     $("#sh-bar").innerHTML = html`
       <div class="an-bar-row">
-        <span class="sh-bar-opts">${legBar ? html`<span class="sh-bar-leg" title="${modeHint}"><b>${legName(leg)}</b> <button type="button" class="btn btn-sm" id="sh-leg-all">← ${t("sh.leg.all")}</button></span>`
-          : html`<span class="sh-mode-pick"><button type="button" class="btn btn-sm sh-mode-btn" id="sh-mode-btn" aria-haspopup="menu" aria-expanded="false" aria-label="${t("sh.mode")}" title="${t(`sh.mode.${mode}`)} — ${modeHint}">${raw(MODE_ICON[mode])}<span class="sh-caret">▾</span></button>
+        <span class="sh-bar-opts">${html`<span class="sh-mode-pick"><button type="button" class="btn btn-sm sh-mode-btn" id="sh-mode-btn" aria-haspopup="menu" aria-expanded="false" aria-label="${t("sh.mode")}" title="${t(`sh.mode.${mode}`)} — ${modeHint}">${raw(MODE_ICON[mode])}<span class="sh-caret">▾</span></button>
             <span class="sh-mode-menu" id="sh-mode-menu" role="menu" hidden>${modes.map((m) => html`<button type="button" role="menuitemradio" aria-checked="${m === mode}" data-mode="${m}" title="${t(`sh.mode.${m}.hint`)}">${raw(MODE_ICON[m])}<span>${t(`sh.mode.${m}`)}</span></button>`)}</span></span>
           ${mode === "from" ? html`<select id="sh-from" aria-label="${t("sh.from")}" title="${t("lg.from")}">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select>` : ""}`}</span>
         <span class="an-transport">
@@ -2023,7 +2022,6 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
     $("#sh-speed").addEventListener("change", (e) => { speed = Number(e.target.value); });
     $("#sh-time").addEventListener("input", (e) => { T = Number(e.target.value); still = false; frame(); });
-    $("#sh-leg-all")?.addEventListener("click", () => setLeg(0));
     const mb = $("#sh-mode-btn"), menu = $("#sh-mode-menu");
     if (mb && menu) {
       const off = (e) => { if (!menu.contains(e.target) && !mb.contains(e.target)) close(); };
@@ -2143,8 +2141,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const sl = $("#sh-time"); if (sl) sl.value = String(Math.round(T));
     const label = mode === "clock" && !leg ? hms(T) : T < 0 ? `−${clock(-T)}` : clock(T);
     const tt = $("#sh-t"); if (tt) tt.textContent = label;
-    // the leg shown beside the time on a phone, where the bar does not name it (right())
-    const sub = $("#sh-t-sub"); if (sub) sub.textContent = leg && drawers() ? legName(leg) : !leg && (mode === "wait" || mode === "waitpause") ? (() => { let j = 1; while (j < legsN && T >= waits[j]) j++; return legName(j); })() : "";
+    // the leg at the map's bottom left (owner, 2026-11-07): the leg shown, with the way back to the whole course, or the leg the
+    // runners wait at the end of; it was beside the time
+    const legNow = leg ? legName(leg) : mode === "wait" || mode === "waitpause" ? (() => { let j = 1; while (j < legsN && T >= waits[j]) j++; return legName(j); })() : "";
+    const chip = $("#sh-legchip");
+    if (chip) { $("#sh-legchip-t").textContent = legNow; chip.hidden = !legNow; $("#sh-leg-all").hidden = !leg; }
     stats();
   }
   /** The runner followed, at the replay's time: their race time, leg, pace over the last 30 s and distance run (owner, 2026-11-05:

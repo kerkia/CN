@@ -83,6 +83,8 @@ export const ICONS = {
   map: svg('<path d="M2.5 5 7 3l6 2 4.5-2v12L13 17l-6-2-4.5 2z"/><path d="M7 3v12M13 5v12"/>'),
   times: svg('<circle cx="10" cy="11" r="6.5"/><path d="M10 11V7.5M8 1.8h4M10 1.8v2.7M15.2 4.6l1.3-1.3"/>'),
   add: svg('<path d="M2.5 16.5c2-4 4-.5 6-4s3.5-6 6.5-6"/><circle cx="15" cy="6.5" r="1.4" fill="currentColor"/><path d="M5 3v5M2.5 5.5h5"/>'),
+  // the whole course (owner, 2026-11-07: back from a leg's view): its start triangle, a control, its finish, joined
+  course: svg('<path d="M3 16.5 5.6 12 8.2 16.5z"/><circle cx="10" cy="5" r="2.2"/><circle cx="15.5" cy="14" r="2.4"/><circle cx="15.5" cy="14" r="1.1"/><path d="M6.3 11.2 8.9 6.9M11.2 6.9l3.1 5"/>'),
 };
 /** A button's content: its icon and its words (the words hidden on a phone, the button's title saying them). */
 export const iconLabel = (icon, text) => `${ICONS[icon]}<span class="ico-lbl">${text}</span>`;
