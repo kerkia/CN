@@ -768,15 +768,16 @@ async function managePage(main, id, data, race) {
         <p>${t(A.draft ? (ready ? "sh.m.draft.ready" : "sh.m.draft.empty") : `sh.m.live.${A.vis === "club" && A.code ? "clubCode" : A.vis}`, { where: t("sh.m.where") })}</p>
         ${A.draft ? html`<button type="button" class="btn btn-primary" id="sh-m-publish" ${raw(ready ? "" : "disabled")}>${t("sh.m.publish")}</button>`
           : html`<button type="button" class="btn btn-sm" id="sh-m-unpublish">${t("sh.m.unpublish")}</button>`}</div>
-      <div class="filters sh-m-fields" style="align-items:flex-end">
+      <div class="filters sh-m-fields" style="align-items:flex-start">
         <label class="field"><span>${t("sh.col.title")}</span><input id="sh-s-title" value="${A.title}" maxlength="120"></label>
         <label class="field"><span>${t("f.date")}</span><input type="date" id="sh-s-date" value="${A.date}"></label>
-        <label class="field"><span>${t("sh.col.access")}</span><select id="sh-s-vis">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select></label>
-        <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label>
-        <label class="an-opt sh-s-code" ${raw(A.vis === "club" ? "" : "hidden")} title="${t("sh.code.tip")}"><input type="checkbox" id="sh-s-code" ${raw(A.vis === "club" && A.code ? "checked" : "")}> ${t("sh.code")}</label>
-        <label class="field" id="sh-s-codef" ${raw(A.vis === "club" && A.code ? "" : "hidden")}><span>${t(A.code ? "sh.code.new" : "ma.code")}</span><input type="text" id="sh-s-codev" style="width:160px" autocomplete="off" placeholder="${A.code ? t("sh.pw.keep") : t("sh.pw.ph")}"></label>
-        <label class="an-opt sh-s-visitors" ${raw(A.vis === "public" ? "" : "hidden")} title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")}> ${t("sh.visitors")}</label>
-        <button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div></div>`;
+        <div class="field sh-s-access"><span>${t("sh.col.access")}</span><select id="sh-s-vis" aria-label="${t("sh.col.access")}">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select>
+          <!-- what the access chosen may add, just below it (owner, 2026-11-07): the club's code for its invitees on one line -->
+          <div class="sh-s-sub sh-s-code" ${raw(A.vis === "club" ? "" : "hidden")}><label class="an-opt" title="${t("sh.code.tip")}"><input type="checkbox" id="sh-s-code" ${raw(A.vis === "club" && A.code ? "checked" : "")}> ${t("sh.code")}</label>
+            <input type="text" id="sh-s-codev" style="width:160px" autocomplete="off" aria-label="${t("ma.code")}" placeholder="${A.code ? t("sh.pw.keep") : t("sh.pw.ph")}"></div>
+          <div class="sh-s-sub sh-s-visitors" ${raw(A.vis === "public" ? "" : "hidden")}><label class="an-opt" title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")}> ${t("sh.visitors")}</label></div></div>
+        <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label></div>
+      <div class="row sh-s-saverow"><button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div></div>`;
     const put = async (body, note) => {
       try { const r = await api(`/${id}`, { method: "PUT", body, key: keyOf(id) }); Object.assign(A, r.analysis); if (note) $(note).textContent = t("sh.saved"); head(); pubCard(); optsCard(); statsCard(); }
       catch (e) { const el = note ? $(note) : null; if (el) el.textContent = errText(e); else alert(errText(e)); }
@@ -794,14 +795,14 @@ async function managePage(main, id, data, race) {
       }
       put(body, "#sh-s-note");
     });
-    const showCode = () => { const v = $("#sh-s-vis").value; $(".sh-s-code").hidden = v !== "club"; $("#sh-s-codef").hidden = v !== "club" || !$("#sh-s-code").checked; };
     $("#sh-s-vis").addEventListener("change", (e) => {
       const v = e.target.value;
       $(".sh-s-visitors").hidden = v !== "public"; if (v !== "public") $("#sh-s-visitors").checked = false;
       $("#sh-s-pwf").hidden = v !== "password";
-      showCode();
+      $(".sh-s-code").hidden = v !== "club";
     });
-    $("#sh-s-code").addEventListener("change", showCode);
+    // a code typed ticks its box
+    $("#sh-s-codev").addEventListener("input", (e) => { if (e.target.value) $("#sh-s-code").checked = true; });
   }
 
   // ---- the circuits: a row chosen shows its map; one drop zone for every way in (owner, 2026-11-04): an OCAD course-setting

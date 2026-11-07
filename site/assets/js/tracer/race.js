@@ -573,7 +573,6 @@ export async function publish(E) {
     // a club's analysis: a code for its invitees too (owner, 2026-11-07)
     f.code.checked = !!(a?.code && f.vis.value === "club"); f.cv.value = "";
     f.cv.placeholder = t(a?.code ? "sh.pw.keep" : "sh.pw.ph");
-    form.querySelector("[data-cv]").hidden = !f.code.checked;
     for (const k of OPT_KEYS) f[`o_${k}`].checked = (a?.opts || {})[k] !== false;
     const pwOld = a?.vis === "password";
     form.querySelector("[data-pw] .tr-field > span").textContent = t(pwOld ? "sh.pw.new" : "trc.race.pubPw");
@@ -593,8 +592,8 @@ export async function publish(E) {
     ${field(t("f.date"), '<input name="date" type="date">')}
     ${field(t("sh.col.access"), `<select name="vis">${["public", "club", "password"].map((x) => `<option value="${x}">${esc(t(`sh.vis.${x}.long`))}</option>`).join("")}</select>`)}
     <div data-pw hidden>${field(t("trc.race.pubPw"), '<input name="pw" type="text" autocomplete="off">')}</div>
-    <div data-code hidden><label class="tr-check" title="${esc(t("sh.code.tip"))}"><input type="checkbox" name="code"> ${esc(t("sh.code"))}</label>
-      <div data-cv hidden>${field(t("ma.code"), '<input name="cv" type="text" autocomplete="off">')}</div></div>
+    <div data-code hidden class="tr-codeline"><label class="tr-check" title="${esc(t("sh.code.tip"))}"><input type="checkbox" name="code"> ${esc(t("sh.code"))}</label>
+      <input name="cv" type="text" autocomplete="off" aria-label="${esc(t("ma.code"))}"></div>
     <label class="tr-check" data-visitors hidden title="${esc(t("sh.visitors.hint"))}"><input type="checkbox" name="visitors"> ${esc(t("sh.visitors"))}</label>
     <h3 class="tr-h3">${t("sh.m.opts")}</h3>
     <ul class="tr-pub-opts">${OPT_KEYS.map((k) => `<li><label class="tr-check"><input type="checkbox" name="o_${k}">
@@ -608,7 +607,7 @@ export async function publish(E) {
       form.querySelector("[data-code]").hidden = vis.value !== "club";
       if (vis.value !== "public") form.elements.visitors.checked = false;
     });
-    form.elements.code.addEventListener("change", () => { form.querySelector("[data-cv]").hidden = !form.elements.code.checked; });
+    form.elements.cv.addEventListener("input", () => { if (form.elements.cv.value) form.elements.code.checked = true; });   // a code typed ticks its box
     form.elements.target?.addEventListener("change", () => fill(form, targetOf({ target: form.elements.target.value })));
     fill(form, targetOf({ target: "" }));
   },

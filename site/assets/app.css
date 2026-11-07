@@ -1967,6 +1967,11 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
 .sh-m-status.live { background: color-mix(in srgb, var(--forest) 12%, var(--surface)); border-color: color-mix(in srgb, var(--forest) 40%, var(--border)); }
 .sh-m-status p { margin: 0; flex: 1 1 260px; font-size: 13.5px; }
 .sh-m-fields input#sh-s-title { width: 260px; max-width: 100%; }
+/* what the access chosen adds, under its drop-down: a box and, for the club's code, its field on the same line */
+.sh-s-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.sh-s-sub[hidden] { display: none; }
+.sh-s-sub .an-opt { white-space: nowrap; }
+.sh-s-saverow { gap: 8px; align-items: center; margin-top: 10px; }
 .tag.sh-m-draft { background: color-mix(in srgb, var(--flag) 18%, var(--surface)); color: var(--ink); }
 .tag.sh-m-live { background: color-mix(in srgb, var(--forest) 18%, var(--surface)); color: var(--ink); }
 .sh-m-table tbody tr { cursor: pointer; }
@@ -2568,6 +2573,9 @@ body.full-win .tr-app { border: 0; }
   border-radius: 6px; background: var(--plane); color: var(--ink); }
 .tr-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 14px; align-items: end; }
 .tr-check { display: flex; gap: 7px; align-items: center; font-size: 13px; }
+.tr-codeline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: -4px 0 8px; }
+.tr-codeline[hidden] { display: none; }
+.tr-codeline input[name=cv] { width: 160px; }
 /* the Tracer's publication to the map analysis: every setting of the analysis in one dialog (owner, 2026-11-05) */
 .tr-h3 { margin: 14px 0 6px; font-size: 14px; }
 .tr-pub-opts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 6px 14px; }
