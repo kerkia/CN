@@ -151,7 +151,7 @@ function parseHash(hash = location.hash) {
     : head === "analyse-solo" || head === "analyse-perso" ? "analysisPerso"     // « Analyse solo » (« Analyse perso » until 2026-10-15)
     : head === "mes-cartes" ? "myMaps"
     : head === "envoi" ? "phoneSend"
-    : head === "analyse-carte" ? "mapAnalysis" : head === "analyse-orga" ? "analysisOrga"
+    : head === "analyses" || head === "analyse-carte" ? "mapAnalysis" : head === "analyse-orga" ? "analysisOrga"     // #/analyse-carte: the address until 2026-11-07
     : head === "orga-analyses" || head === "orga-competitions" || head === "orga-entrainements" ? "orgAnalyses"     // one list since 2026-11-04 (old addresses)
     : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer" : head === "orga-carto" || head === "cartographier" ? "orgMapper"
     : head === "analyse-club" ? "analysisClub"
@@ -418,7 +418,7 @@ export function moduleMenus() {
       ].filter(([k]) => auth.sees(country.current()) || PUBLIC_STATS.has(k)),
     ],
     // the GPS analyses behind one page of four tiles (owner, 2026-11-01: « Analyse de carte », pages/mapanalysis.js)
-    coach: [["mapAnalysis", "#/analyse-carte", t("nav.mapAnalysis")],
+    coach: [["mapAnalysis", "#/analyses", t("nav.mapAnalysis")],
       // « Mes cartes » (owner, 2026-11-01): an account's own archive (a link shared opens it to anyone: GUEST_ROUTES)
       ...(me ? [["myMaps", "#/mes-cartes", t("nav.myMaps")]] : []),
       ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],

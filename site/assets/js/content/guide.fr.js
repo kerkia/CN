@@ -180,7 +180,7 @@ export function build(X) {
     return chapters(COACH, {
       carte: () => html`
         ${slide("Coach", "Analyse", html`
-          <p>L'${P("#/analyse-carte", "Analyse")} s'ouvre sur la liste des compétitions et des entraînements dont l'organisateur a publié la carte et les circuits.</p>
+          <p>L'${P("#/analyses", "Analyse")} s'ouvre sur la liste des compétitions et des entraînements dont l'organisateur a publié la carte et les circuits.</p>
           ${list([
             html`<b>La liste</b> se filtre par période, par pays (au-dessus de la liste), par type (compétitions ou entraînements), par club organisateur et par nom ;
               sur un ordinateur, la carte du pays est à côté, et la carte de l'événement apparaît en vignette sous la souris.`,
@@ -193,7 +193,7 @@ export function build(X) {
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Analyse solo", html`
-          <p>L'${P("#/analyse-solo", "Analyse solo")} rejoue votre course sur votre carte avec votre trace GPS. On y entre par l'${P("#/analyse-carte", "Analyse")} :
+          <p>L'${P("#/analyse-solo", "Analyse solo")} rejoue votre course sur votre carte avec votre trace GPS. On y entre par l'${P("#/analyses", "Analyse")} :
             « Ajouter mon propre événement » (un entraînement, n'importe quelle sortie, ou une compétition dont vous avez la carte : la page propose ses temps
             intermédiaires publiés quand la trace en est), ou la carte publiée par l'organisateur, sans carte à fournir ni calage à faire.</p>
           ${list([
@@ -214,7 +214,7 @@ export function build(X) {
             qu'on l'a laissée.</p>`)}`,
       multi: () => html`
         ${slide("Coach", "Comparer avec les autres coureurs", html`
-          <p>« ${P("#/analyse-carte", "Comparer avec les autres coureurs")} » met côte à côte les traces de tous ceux qui ont couru une compétition ou un entraînement, sur la carte
+          <p>« ${P("#/analyses", "Comparer avec les autres coureurs")} » met côte à côte les traces de tous ceux qui ont couru une compétition ou un entraînement, sur la carte
             que l'organisateur a préparée (voir la documentation d'${M("orga", "Orga")}). Choisissez la course, ajoutez votre trace — elle ne garde que les
             positions et les heures —, et comparez. Il faut un compte.</p>
           ${list([

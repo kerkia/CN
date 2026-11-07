@@ -242,7 +242,7 @@ export async function render(main, { query = {}, route } = {}) {
     return { title: t("an.title") };
   }
   if (orgaMode && !orga) {
-    $("#an-pick").innerHTML = html`<div class="empty">${t(orgaErr)} <a href="#/analyse-carte">${t("an.orga.back")}</a></div>`;
+    $("#an-pick").innerHTML = html`<div class="empty">${t(orgaErr)} <a href="#/analyses">${t("an.orga.back")}</a></div>`;
     $("#an-files").hidden = true;
     return { title: t(titleKey) };
   }

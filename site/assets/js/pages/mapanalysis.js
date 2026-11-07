@@ -17,7 +17,8 @@ import { getProv, clock } from "./provisional.js";
 import { replaceQuery } from "../app.js";
 import * as SK from "../trace/solokeep.js";
 
-const HOME = "#/analyse-carte";
+// the page's address since 2026-11-07 (owner: « Analyse » has been its name since the 5th); #/analyse-carte still opens it
+const HOME = "#/analyses";
 /** Where a published event opens: its analysis with every runner (`add`: its track drop at once), or « Analyse solo » on its map. */
 export const multiHref = (a, add = false) => `${a.kind === "race" ? "#/analyse-competition" : "#/analyse-club"}?id=${a.id}${add ? "&ajout=1" : ""}`;
 export const orgaHref = (id) => `#/analyse-orga?id=${id}`;
@@ -58,6 +59,8 @@ function centreOf(m) {
 
 export async function render(main, r) {
   const me = auth.session(), q0 = r.query;
+  // an address of before: written as today's, its query kept
+  if (location.hash.startsWith("#/analyse-carte")) history.replaceState(history.state, "", location.hash.replace("#/analyse-carte", HOME));
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ma.title")}</h1><p class="lede">${t("ma.lede")}</p></div>
       <div class="page-actions"><a class="btn" href="#/analyse-solo" title="${t("ma.own.tip")}">＋ ${t("ma.own")}</a></div></div>

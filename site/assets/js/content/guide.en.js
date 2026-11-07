@@ -176,7 +176,7 @@ export function build(X) {
     return chapters(COACH, {
       carte: () => html`
         ${slide("Coach", "Analysis", html`
-          <p>${P("#/analyse-carte", "Analysis")} opens on the list of the competitions and training sessions whose organiser has published the map and courses.</p>
+          <p>${P("#/analyses", "Analysis")} opens on the list of the competitions and training sessions whose organiser has published the map and courses.</p>
           ${list([
             html`<b>The list</b> is filtered by period, by country (above the list), by type (competitions or training sessions), by organising club and by name;
               on a computer, the country's map is beside it, and the event's map shows as a thumbnail under the mouse.`,
@@ -188,7 +188,7 @@ export function build(X) {
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Solo analysis", html`
-          <p>${P("#/analyse-solo", "Solo analysis")} replays your race on your map with your GPS track. You reach it from ${P("#/analyse-carte", "Analysis")}:
+          <p>${P("#/analyse-solo", "Solo analysis")} replays your race on your map with your GPS track. You reach it from ${P("#/analyses", "Analysis")}:
             “Add my own event” (a training session, any outing, or a competition whose map you have: the page offers its published split times when the track is
             from it), or the map the organiser has published, with no map to provide and no calibration to do.</p>
           ${list([
@@ -209,7 +209,7 @@ export function build(X) {
             it.</p>`)}`,
       multi: () => html`
         ${slide("Coach", "Compare with the other runners", html`
-          <p>“${P("#/analyse-carte", "Compare with the other runners")}” shows side by side the tracks of everyone who ran a competition or a training session, on the
+          <p>“${P("#/analyses", "Compare with the other runners")}” shows side by side the tracks of everyone who ran a competition or a training session, on the
             map its organiser prepared (see ${M("orga", "Orga")}'s documentation). Choose the race, add your track — it keeps only positions and times —,
             and compare. It needs an account.</p>
           ${list([

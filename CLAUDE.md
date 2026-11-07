@@ -337,7 +337,7 @@ there offers (`hub.js ARENA_STEPS`: agenda, results, live, split analysis — th
 has split times — every view of the analysis (`raceTabs`; `splits.js` draws the same bar with the results as a link,
 `SPLIT_VIEWS`); `#/analyse-course` without a race leads to « Passées ». An event under way shows, beside « En direct », « Résultats
 provisoires et analyse »: the organiser's list once there, else the live times when `livesplits.probe` finds split times.
-**Coach**: **« Analyse de carte »** (`#/analyse-carte`, route `mapAnalysis`, `pages/mapanalysis.js`) is Coach's one menu entry for
+**Coach**: **« Analyse de carte »** (`#/analyses` since 2026-11-07, owner — `#/analyse` being Arena's race analysis; `#/analyse-carte` before, still opened and written as the new one by `mapanalysis.render`; route `mapAnalysis`, `pages/mapanalysis.js`) is Coach's one menu entry for
 the GPS analyses. **Since 2026-11-04 (owner, second design: « the first thing the page must show is the list of open events »)** it
 opens on the events whose organisers opened a map analysis (a circuit at least; competitions and trainings, `/api/analyses`, `/v` for
 visitors): filters Période (3 mois | 12 mois, the default | Tout; `?per=`), the site's country (`country.hint`; an analysis's `cc` — a

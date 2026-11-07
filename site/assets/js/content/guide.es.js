@@ -179,7 +179,7 @@ export function build(X) {
     return chapters(COACH, {
       carte: () => html`
         ${slide("Coach", "Análisis", html`
-          <p>El ${P("#/analyse-carte", "Análisis")} se abre con la lista de las competiciones y entrenamientos cuyo organizador ha publicado el mapa y los recorridos.</p>
+          <p>El ${P("#/analyses", "Análisis")} se abre con la lista de las competiciones y entrenamientos cuyo organizador ha publicado el mapa y los recorridos.</p>
           ${list([
             html`<b>La lista</b> se filtra por periodo, por país (encima de la lista), por tipo (competiciones o entrenamientos), por club organizador y por nombre;
               en un ordenador, el mapa del país está al lado, y el mapa del evento aparece en miniatura bajo el ratón.`,
@@ -192,7 +192,7 @@ export function build(X) {
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Análisis individual", html`
-          <p>El ${P("#/analyse-solo", "Análisis individual")} reproduce tu carrera sobre tu mapa con tu track GPS. Se entra desde el ${P("#/analyse-carte", "Análisis")}:
+          <p>El ${P("#/analyse-solo", "Análisis individual")} reproduce tu carrera sobre tu mapa con tu track GPS. Se entra desde el ${P("#/analyses", "Análisis")}:
             «Añadir mi propio evento» (un entrenamiento, cualquier salida, o una competición cuyo mapa tienes: la página propone sus tiempos parciales
             publicados cuando el track es de ella), o el mapa que publicó el organizador, sin mapa que aportar ni calibración que hacer.</p>
           ${list([
@@ -213,7 +213,7 @@ export function build(X) {
             lo dejaste.</p>`)}`,
       multi: () => html`
         ${slide("Coach", "Comparar con los demás corredores", html`
-          <p>«${P("#/analyse-carte", "Comparar con los demás corredores")}» muestra lado a lado los tracks de todos los que corrieron una competición o un entrenamiento,
+          <p>«${P("#/analyses", "Comparar con los demás corredores")}» muestra lado a lado los tracks de todos los que corrieron una competición o un entrenamiento,
             sobre el mapa que preparó el organizador (consulta la documentación de ${M("orga", "Orga")}). Elige la carrera, añade tu track —solo guarda las
             posiciones y las horas— y compara. Necesitas una cuenta.</p>
           ${list([

@@ -181,7 +181,7 @@ export function build(X) {
     return chapters(COACH, {
       carte: () => html`
         ${slide("Coach", "Analyse", html`
-          <p>Die ${P("#/analyse-carte", "Analyse")} öffnet mit der Liste der Wettkämpfe und Trainings, deren Veranstalter Karte und Bahnen veröffentlicht hat.</p>
+          <p>Die ${P("#/analyses", "Analyse")} öffnet mit der Liste der Wettkämpfe und Trainings, deren Veranstalter Karte und Bahnen veröffentlicht hat.</p>
           ${list([
             html`<b>Die Liste</b> lässt sich nach Zeitraum, Land (über der Liste), Art (Wettkämpfe oder Trainings), veranstaltendem Verein und Namen filtern;
               am Computer steht die Karte des Landes daneben, und die Karte des Events erscheint unter der Maus als Vorschaubild.`,
@@ -194,7 +194,7 @@ export function build(X) {
           ])}`)}`,
       solo: () => html`
         ${slide("Coach", "Einzelanalyse", html`
-          <p>Die ${P("#/analyse-solo", "Solo-Analyse")} spielt deinen Lauf mit deinem GPS-Track auf deiner Karte ab. Du erreichst sie über die ${P("#/analyse-carte", "Analyse")}:
+          <p>Die ${P("#/analyse-solo", "Solo-Analyse")} spielt deinen Lauf mit deinem GPS-Track auf deiner Karte ab. Du erreichst sie über die ${P("#/analyses", "Analyse")}:
             „Eigenes Event hinzufügen“ (ein Training, jeder Ausflug oder ein Wettkampf, dessen Karte du hast: Die Seite bietet seine veröffentlichten Zwischenzeiten
             an, wenn der Track davon stammt), oder die vom Veranstalter veröffentlichte Karte, ohne eigene Karte und ohne Kalibrierung.</p>
           ${list([
@@ -215,7 +215,7 @@ export function build(X) {
             so wiederfindest, wie du sie verlassen hast.</p>`)}`,
       multi: () => html`
         ${slide("Coach", "Mit den anderen vergleichen", html`
-          <p>„${P("#/analyse-carte", "Mit den anderen vergleichen")}“ zeigt nebeneinander die Tracks aller, die einen Wettkampf oder ein Training gelaufen sind, auf der Karte,
+          <p>„${P("#/analyses", "Mit den anderen vergleichen")}“ zeigt nebeneinander die Tracks aller, die einen Wettkampf oder ein Training gelaufen sind, auf der Karte,
             die der Veranstalter vorbereitet hat (siehe die Dokumentation von ${M("orga", "Orga")}). Wähle den Lauf, füge deinen Track hinzu – er behält nur die
             Positionen und Uhrzeiten – und vergleiche. Du brauchst dafür ein Konto.</p>
           ${list([

@@ -127,7 +127,7 @@ export async function render(main, r) {
   if (org) return r.query.id ? eventPage(main, null, r.query.id, true, r.query) : orgListPage(main, r.query);
   // the runners' lists are « Analyse de carte »'s since 2026-11-01 (pages/mapanalysis.js: competitions and trainings in one
   // list, a map beside it); an address of before without an event goes there
-  if (!r.query.id) { location.replace("#/analyse-carte"); return { title: t("ma.title") }; }
+  if (!r.query.id) { location.replace("#/analyses"); return { title: t("ma.title") }; }
   return eventPage(main, kind, r.query.id, false, r.query);
 }
 
