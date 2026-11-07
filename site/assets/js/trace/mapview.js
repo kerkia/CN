@@ -8,6 +8,11 @@ export function mapView(canvas, { onDraw = null, onClick = null, onUserMove = nu
   // the map turned (radians, clockwise on the screen) about the canvas's centre, after the view: the view itself stays north up,
   // so that zooming, centring and fitting need not know (owner, 2026-11-02: the map turned to the leg)
   let rot = 0;
+  // a band at the canvas's top the page's control bar covers (owner, 2026-11-07: the bar laid over the map): the views fitted and
+  // centred keep their content in the part below it
+  let inset = 0;
+  /** Where the view puts image point (X, Y) of the map north up so that it shows at the middle of the free part. */
+  const place = (X, Y, k) => { const { w, h } = box(), [px, py] = un(w / 2, inset + (h - inset) / 2); return { k, ox: px - X * k, oy: py - Y * k }; };
   /** A point of the canvas as it would be with the map north up. */
   const un = (sx, sy) => { if (!rot) return [sx, sy]; const { w, h } = box(), c = Math.cos(rot), s = Math.sin(rot), x = sx - w / 2, y = sy - h / 2; return [c * x + s * y + w / 2, -s * x + c * y + h / 2]; };
   const box = () => ({ w: canvas.clientWidth, h: canvas.clientHeight });
@@ -33,8 +38,8 @@ export function mapView(canvas, { onDraw = null, onClick = null, onUserMove = nu
   function fitBox(x0, y0, x1, y1, pad = 30, maxK = 5) {
     const { w, h } = box();
     if (!w || !h) return;
-    const k = Math.min((w - 2 * pad) / Math.max(20, x1 - x0), (h - 2 * pad) / Math.max(20, y1 - y0), maxK);
-    view = { k, ox: w / 2 - ((x0 + x1) / 2) * k, oy: h / 2 - ((y0 + y1) / 2) * k };
+    const k = Math.min((w - 2 * pad) / Math.max(20, x1 - x0), (h - inset - 2 * pad) / Math.max(20, y1 - y0), maxK);
+    view = place((x0 + x1) / 2, (y0 + y1) / 2, k);
     lastBox = { w, h };
   }
   /** The view on points of the image (its pixels) as the turned map shows them, with a margin in screen pixels. */
@@ -44,9 +49,9 @@ export function mapView(canvas, { onDraw = null, onClick = null, onUserMove = nu
     const c = Math.cos(rot), s = Math.sin(rot);
     let u0 = Infinity, v0 = Infinity, u1 = -Infinity, v1 = -Infinity;
     for (let i = 0; i < xs.length; i++) { const u = c * xs[i] - s * ys[i], v = s * xs[i] + c * ys[i]; u0 = Math.min(u0, u); v0 = Math.min(v0, v); u1 = Math.max(u1, u); v1 = Math.max(v1, v); }
-    const k = Math.min((w - 2 * pad) / Math.max(20, u1 - u0), (h - 2 * pad) / Math.max(20, v1 - v0), maxK);
+    const k = Math.min((w - 2 * pad) / Math.max(20, u1 - u0), (h - inset - 2 * pad) / Math.max(20, v1 - v0), maxK);
     const uc = (u0 + u1) / 2, vc = (v0 + v1) / 2;
-    view = { k, ox: w / 2 - (c * uc + s * vc) * k, oy: h / 2 - (-s * uc + c * vc) * k };
+    view = place(c * uc + s * vc, -s * uc + c * vc, k);
     lastBox = { w, h };
   }
   const fitAll = () => { if (image) fitBox(0, 0, image.width, image.height, 4, 8); };
@@ -57,7 +62,7 @@ export function mapView(canvas, { onDraw = null, onClick = null, onUserMove = nu
     view = { k, ox: cx - ((cx - view.ox) / view.k) * k, oy: cy - ((cy - view.oy) / view.k) * k };
     draw();
   }
-  function centerOn(x, y) { const { w, h } = box(); view = { ...view, ox: w / 2 - x * view.k, oy: h / 2 - y * view.k }; }
+  function centerOn(x, y) { view = place(x, y, view.k); }
   const toImg = (sx0, sy0) => { const [sx, sy] = un(sx0, sy0); return [(sx - view.ox) / view.k, (sy - view.oy) / view.k]; };
 
   let drag = null, pinch = null;
@@ -108,6 +113,9 @@ export function mapView(canvas, { onDraw = null, onClick = null, onUserMove = nu
     setAlpha(a) { alpha = a; },
     /** The map turned by r radians (clockwise on the screen), 0: north up. */
     setRotation(r) { rot = Number.isFinite(r) ? r : 0; },
+    /** The band (screen pixels) at the canvas's top that the page's controls cover. */
+    setInset(px) { inset = Math.max(0, px || 0); },
+    get inset() { return inset; },
     get rotation() { return rot; },
     box, draw, fitBox, fitPoints, fitAll, zoomBy, centerOn, toImg,
     destroy() { ro.disconnect(); },

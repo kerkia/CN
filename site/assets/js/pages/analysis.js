@@ -46,7 +46,7 @@ import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
@@ -2176,16 +2176,19 @@ export async function render(main, { query = {}, route } = {}) {
   // ---- the map canvas: pan, zoom, click
   const box = () => ({ w: canvas.clientWidth, h: canvas.clientHeight });
   let pendingFit = null;                                // the view to set once the map has a size
-  /** The map's top band the race's line covers during the playback: the views fitted keep the trace below it. */
-  const topReserved = () => { const b = $("#an-brief"); return b && !b.hidden && b.closest(".an-map") ? b.offsetHeight + 8 : 0; };
+  /** The map's top band the control bar (laid over the map on a computer, owner 2026-11-07) or the race's line covers during the
+   *  playback: the views fitted and the runner followed keep below it. */
+  let barInset = 0;                                      // that bar's height (floatBar, below), 0 on a phone
+  const topReserved = () => { const b = $("#an-brief"); return barInset + (b && !b.hidden && b.closest(".an-map") ? b.offsetHeight + 8 : 0); };
   function size() {
     const dpr = window.devicePixelRatio || 1, { w, h } = box();
     canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
   }
   function fitView() {
     const { w, h } = box();
-    const k = w && h ? Math.min(w / map.width, h / map.height) : 1;       // a hidden box has no size
-    view = { k, ox: (w - map.width * k) / 2, oy: (h - map.height * k) / 2 };
+    const top = topReserved(), hh = Math.max(60, h - top);
+    const k = w && h ? Math.min(w / map.width, hh / map.height) : 1;      // a hidden box has no size
+    view = { k, ox: (w - map.width * k) / 2, oy: top + (hh - map.height * k) / 2 };
     lastBox = { w, h };
   }
   function zoomBy(f, cx, cy) {
@@ -2262,6 +2265,8 @@ export async function render(main, { query = {}, route } = {}) {
     size(); sizeStrip(); draw(); drawStrip();
   });
   ro.observe(canvas); ro.observe(strip);
+  // the control bar over the map's top edge on a computer: the whole map fitted again under it while the panels settle
+  const barFloat = floatBar($("#an-bar").parentElement, $("#an-bar"), (h) => { barInset = h; if (map && opening && calibrated) { fitView(); draw(); } });
   let redrawChips = null;
   const themeWatch = new MutationObserver(() => { redrawChips?.(); drawStrip(); v3?.theme(); });
   themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
@@ -2386,7 +2391,8 @@ export async function render(main, { query = {}, route } = {}) {
     const dpr = window.devicePixelRatio || 1, { w, h } = box();
     if (calibrated && follow && fit && !still) {     // the runner kept at the centre, once played
       const [px, py] = toPx(fit, ...posAt(track, offset + tNow));
-      view = { ...view, ox: w / 2 - px * view.k, oy: h / 2 - py * view.k };
+      const top = topReserved();
+      view = { ...view, ox: w / 2 - px * view.k, oy: top + (h - top) / 2 - py * view.k };
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#e9e6dc"; ctx.fillRect(0, 0, w, h);
@@ -2889,7 +2895,7 @@ export async function render(main, { query = {}, route } = {}) {
     window.removeEventListener("ocn:inbox", onInbox);
     document.removeEventListener("keydown", onDrawKey); measure.destroy(); video?.close();
     themeWatch.disconnect();
-    stop(); ro.disconnect(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
+    stop(); ro.disconnect(); barFloat.destroy(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files }, orgaKey: orgaMode ? key : null };
   } };
 }

@@ -29,7 +29,7 @@ import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
@@ -1388,6 +1388,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   bindSplitter($("#sh-split-l"), layEl, "left", (w, rect) => { lw = Math.round(Math.min(rect.width - (rp.collapsed ? 34 : rw) - 300, Math.max(180, w))); if (lp.collapsed) leftP.fold(false, true); applyLayout(); }, savePrefs);
   bindSplitter($("#sh-split-r"), layEl, "right", (w, rect) => { rw = Math.round(Math.min(rect.width - (lp.collapsed ? 34 : lw) - 300, Math.max(200, w))); if (rp.collapsed) rightP.fold(false, true); applyLayout(); }, savePrefs);
   const mv = mapView($("#sh-canvas"), { onDraw: drawOver, onClick: (x, y, e) => { if (measure?.click(x, y)) return; if (draft?.kind === "corridor") { draft.pts.push([x, y]); mv.draw(); bottom.draw(); } }, onUserMove: () => { if (playing && pan) { pan = false; followMarks(); } } });
+  // the control bar over the map's top edge on a computer (owner, 2026-11-07): the views fitted keep below it
+  let onBarChange = () => {};
+  const barFloat = floatBar($("#sh-bar").parentElement, $("#sh-bar"), (h) => { mv.setInset(h); onBarChange(h); });
   // « Mesurer »: a line clicked on the map, its length by the circuit's georeference (trace/measure.js)
   const RAD = Math.PI / 180;
   const measure = measureTool($("#sh-measure"), { redraw: () => mv.draw(), out: $("#sh-measure-out"), metres: (a, b) => {
@@ -2744,8 +2747,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   $("#sh-canvas").addEventListener("pointerdown", () => { moved = true; });
   $("#sh-canvas").addEventListener("wheel", () => { moved = true; }, { passive: true });
   const wholeRo = new ResizeObserver(() => { if (still && !moved && !leg) { mv.fitAll(); mv.draw(); } });
+  onBarChange = () => { if (still && !moved && !leg) mv.fitAll(); mv.draw(); };
   wholeRo.observe($("#sh-canvas"));
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, pan, view: mv.view });   // for support, in the console
   curvesPanel();
-  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  return { pause() { stop(); }, destroy() { measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); barFloat.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

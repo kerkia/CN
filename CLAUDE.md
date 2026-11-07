@@ -1346,7 +1346,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   not known — `sequenceKnown` also counts the course's order read on the map, `mapOrdered`, since that day —, `sidepanel.bindPanel`
   showing the tab asked for as soon as it is offered); **a map analysis opens on its whole map, filling the map's area** (owner, 2026-11-05: it opened on the runners gathered at the start), fitted again as the panels settle until the reader moves it, the runners followed once the replay is played or its time moved (`still`; an address naming a time or a leg keeps its view); the widths are kept in the pages' prefs (`gw`, `sw`; Multi `lw`, `rw`), the
   folds and tabs only for the visit; the layout fills the window below its top (`fitHeight` / `fit`), the panels scroll on their own. Solo's
-  « courbes sous la carte » choice is gone. **Under 900 px the panels are drawers over the map** (owner, 2026-11-06: they were
+  « courbes sous la carte » choice is gone. **The control bar lies over the map's top edge on a computer** (owner, 2026-11-07: the
+  map a strip taller; from 901 px, app.css): across the map's whole width, half-opaque, the map's tools, the measure's box and the
+  north arrow lowered under it (`--bar-h`, kept by `sidepanel.floatBar` as the bar wraps); the views fitted and the runner followed
+  keep below it (`mapView.setInset`, Solo's `topReserved`); a phone keeps it above the map. **Under 900 px the panels are drawers over the map** (owner, 2026-11-06: they were
   stacked under it): the map's column fills the window below the top line, each panel slides in from its side over the map
   (`sidepanel.drawers()`, app.css; width the layout's less 64 px, 380 at most), both slid away at the opening; a handle on the map's
   edge (`.sp-handle`: an arrow and the tab shown) slides it in and back, as does the panel's ‹ / ›; one open at a time (`sp:close`);
