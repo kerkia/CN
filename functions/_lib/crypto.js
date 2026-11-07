@@ -4,7 +4,8 @@
 // SESSION_SECRET), then PBKDF2-SHA256. The iteration count is deliberately modest
 // (the free Workers plan allows ~10 ms of CPU per request); the pepper means a leaked
 // database alone cannot be attacked offline. The count is stored per user so it can
-// be raised later (and users are re-hashed at their next login).
+// be raised later (and users are re-hashed at their next login). Changing SESSION_SECRET
+// therefore makes every stored password fail, locally too (.dev.vars and the local D1 go together).
 
 const enc = new TextEncoder();
 
