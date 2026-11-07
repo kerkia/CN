@@ -1308,12 +1308,13 @@ export function build(X) {
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Ramassage</h3><p>${W("rep-pickup")} : à quelle heure chaque poste peut être
               ramassé, et l'ordre de ramassage de chaque ramasseur.</p></div>
             <div class="mx-box" style="--c:var(--s1)"><h3>${ic("tour", 18)} Tournée des postes</h3><p>${W("tour")} : le chemin le plus rapide par les postes cochés (par défaut, tous), pour le contrôleur et pour qui les pose
-              ou les ramasse ; numéroté sur la carte, exporté en GPX, en image ou en CSV.</p></div>
+              ou les ramasse ; numéroté sur la carte, exporté en GPX, en image ou en CSV, ou fait circuit avec ses définitions et son carton de contrôle.</p></div>
           </div>
           <p>La tournée des postes part du départ, d'un poste ou du mieux placé, et finit à l'arrivée, au point de départ ou n'importe où ; elle
             compte l'allure choisie et le temps passé à chaque poste. La carte est lue comme pour les itinéraires calculés des analyses (une carte OCAD
             ou Mapper par ses symboles, les autres par leurs couleurs), les zones interdites et limites du traceur fermées, le relief compté quand la
-            carte est géoréférencée ; l'ordre est le plus rapide trouvé (exact jusqu'à 10 postes).</p>
+            carte est géoréférencée ; l'ordre est le plus rapide trouvé (exact jusqu'à 10 postes). « Créer le circuit » en fait un circuit de l'événement, ses postes dans l'ordre de la tournée (un circuit d'essai, hors des
+            rapports) : le panneau imprime alors sa carte, ses définitions et son carton de contrôle.</p>
           <p>Aussi : ${W("import-course")} reprend les postes d'un circuit imprimé (un PDF ou une photo d'une course passée), à vérifier ensuite ;
             ${W("view-others")} montre d'autres circuits en pâle, pour éviter les croisements et les postes trop proches.</p>
         </section>`,

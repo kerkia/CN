@@ -1308,12 +1308,13 @@ export function build(X) {
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Einsammeln</h3><p>${W("rep-pickup")}: ab wann jeder Posten
               eingesammelt werden kann, und die Reihenfolge jedes Einsammlers.</p></div>
             <div class="mx-box" style="--c:var(--s1)"><h3>${ic("tour", 18)} Postenrunde</h3><p>${W("tour")}: der schnellste Weg über die angekreuzten Posten (standardmäßig alle), für den Bahnkontrolleur und alle,
-              die sie setzen oder einsammeln; nummeriert auf der Karte, als GPX, Bild oder CSV exportierbar.</p></div>
+              die sie setzen oder einsammeln; nummeriert auf der Karte, als GPX, Bild oder CSV exportierbar, oder als Bahn mit Postenbeschreibung und Kontrollkarte.</p></div>
           </div>
           <p>Die Postenrunde beginnt am Start, an einem Posten oder am günstigsten, und endet im Ziel, am Ausgangspunkt oder irgendwo; sie rechnet
             mit dem gewählten Tempo und der Zeit an jedem Posten. Die Karte wird gelesen wie für die berechneten Routen der Analysen (eine OCAD- oder
             Mapper-Karte über ihre Symbole, jede andere über ihre Farben), die Sperrgebiete und Begrenzungen des Bahnlegers sind geschlossen, das Relief
-            zählt, wenn die Karte georeferenziert ist; die Reihenfolge ist die schnellste gefundene (exakt bis 10 Posten).</p>
+            zählt, wenn die Karte georeferenziert ist; die Reihenfolge ist die schnellste gefundene (exakt bis 10 Posten). „Bahn erstellen“ macht daraus eine Bahn der Veranstaltung, ihre Posten in der Reihenfolge der Runde (eine Testbahn, nicht in den
+            Berichten): Das Feld druckt dann ihre Karte, ihre Postenbeschreibung und ihre Kontrollkarte.</p>
           <p>Außerdem: ${W("import-course")} übernimmt die Posten einer gedruckten Bahn (ein PDF oder ein Foto eines vergangenen Laufs), danach zu prüfen;
             ${W("view-others")} zeigt andere Bahnen blass an, um Kreuzungen und zu nahe Posten zu vermeiden.</p>
         </section>`,

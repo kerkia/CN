@@ -1307,12 +1307,13 @@ export function build(X) {
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Collection</h3><p>${W("rep-pickup")}: when each control can be
               collected, and each collector's order of collection.</p></div>
             <div class="mx-box" style="--c:var(--s1)"><h3>${ic("tour", 18)} Control tour</h3><p>${W("tour")}: the fastest way through the controls ticked (all by default), for the controller and for those who put
-              them out or collect them; numbered on the map, exported as GPX, image or CSV.</p></div>
+              them out or collect them; numbered on the map, exported as GPX, image or CSV, or made a course with its description sheet and punch card.</p></div>
           </div>
           <p>The control tour starts at the start, a control or the best-placed one, and ends at the finish, back at its starting point or
             anywhere; it counts the pace chosen and the time spent at each control. The map is read as for the analyses' computed routes (an OCAD or
             Mapper map by its symbols, any other by its colours), the setter's out-of-bounds areas and boundaries closed, the relief counted when the
-            map is georeferenced; the order is the fastest found (exact up to 10 controls).</p>
+            map is georeferenced; the order is the fastest found (exact up to 10 controls). “Create the course” makes it a course of the event, its controls in the tour's order (a test course, out of the reports):
+            the panel then prints its map, description sheet and punch card.</p>
           <p>Also: ${W("import-course")} takes the controls of a printed course (a PDF or a photo of a past race), to be checked afterwards;
             ${W("view-others")} shows other courses faintly, to avoid crossings and controls too close together.</p>
         </section>`,

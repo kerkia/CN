@@ -434,10 +434,10 @@ export async function coursesDialog(E, { only = null } = {}) {
 }
 
 // ---- description sheets ----------------------------------------------------------------------------------------------------------
-export async function descriptionsDialog(E) {
+export async function descriptionsDialog(E, { only = null } = {}) {
   const ev = E.ev, ids = M.courseIds(ev);
   const v = await modal(E, { title: t("trc.pdf.descTitle"), wide: true, ok: t("trc.pdf.create"), remember: "pdfDescriptions", body: `
-    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : esc(t("trc.pdf.allControls"))}</label>`).join("")}</div>
+    <div class="tr-checks">${[0, ...ids].map((id) => `<label class="tr-check"><input type="checkbox" name="c${id}" ${only ? (id === only ? "checked" : "") : id ? "checked" : ""}> ${id ? esc(ev.courses[id].name) : esc(t("trc.pdf.allControls"))}</label>`).join("")}</div>
     <div class="tr-grid2">${field(t("trc.pdf.copies"), sel("copies", [["one", t("trc.pdf.copiesOne")], ["page", t("trc.pdf.copiesPage")], ["n", t("trc.pdf.copiesN")]], "page"))}
     ${field(t("trc.pdf.count"), '<input name="n" value="50" inputmode="numeric">')}
     ${field(t("trc.pdf.cell"), '<input name="cell" value="6" inputmode="decimal">', t("trc.pdf.cellHint"))}
@@ -489,8 +489,8 @@ export async function descriptionsDialog(E) {
 }
 
 // ---- punch cards ---------------------------------------------------------------------------------------------------------------
-export async function punchDialog(E) {
-  const ev = E.ev, ids = M.courseIds(ev, false);
+export async function punchDialog(E, { only = null } = {}) {
+  const ev = E.ev, ids = only ? [only] : M.courseIds(ev, false);
   // the advanced level: blank backup cards (Condes's Emit/SI backup cards: the boxes numbered, no punch pattern)
   let blank = false;
   if (E.pro) { const v = await modal(E, { title: t("trc.pdf.punchTitle"), body: `<label class="tr-check"><input type="radio" name="k" value="" checked> ${esc(t("trc.pdf.punchPatterns"))}</label>

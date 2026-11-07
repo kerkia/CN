@@ -2265,7 +2265,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   best-placed control) and « Finir à » (back to the starting point, any control, a start/finish/control), the pace (min/km in ordinary
   forest on the flat; 10 forest, 8 sprint) and the minutes at each control (2), the last two kept in `localStorage ocn.tr.tour`. The
   computation reuses the analyses' route engine in its worker (`routeplan.planner`): a frame round the points (300 m or 15 % margin, 1.5 m a
-  pixel, 9 Mpx at most), an OCAD/Mapper map by its symbols (`vectorroutes.layers`), any other by its colours (a PDF rendered at the frame's
+  pixel, 4 Mpx at most), an OCAD/Mapper map by its symbols (`vectorroutes.layers`), any other by its colours (a PDF rendered at the frame's
   resolution), the setter's out-of-bounds areas / dangerous areas and boundaries closed whatever course shows them (worker op `forbid`,
   `routechoice.forbidCells`, kept over a new reading), the heights from `terrain.loadGrid` when the event is georeferenced (flat otherwise,
   said). Then: the costs from each control to its 8 nearest (worker op `tour`, `routechoice.costsFrom`: one Dijkstra a control over the whole
@@ -2281,8 +2281,16 @@ Every multiple-choice game was played through to its score page at phone size, w
   track; with a georeference), PNG (`exports.courseImage` of all controls at 250 dpi with the tour drawn and a title), CSV. `E.fitBox` added to
   the editor. Measured 2026-11-07 on the local « ent opa 8 nov26 deski P » (OCAD 2018, Lambert 93, 32 controls + start/finish): 6.4 km,
   71 m climb, 2 h 13 at 10 min/km + 2 min a control, in ~9 s (costs 3.8 s, routes 3 s, IGN heights 0.7 s); « Sample Event » (JPEG, no
-  georeference) White's 7 controls with free ends in ~2 s, along its paths. Guide: « Le tracé › En équipe et sur le terrain »'s box. Not done:
-  several collectors sharing the controls, the tour in the field mode, the tour saved with the event.
+  georeference) White's 7 controls with free ends in ~2 s, along its paths. Guide: « Le tracé › En équipe et sur le terrain »'s box. **« Créer le circuit »** (owner, the same day: « a specific circuit for it, with
+  control card accordingly »): the panel makes the tour a course of the event (`makeCourse`, one change, undone as any other): its controls
+  in the tour's order — the start when it leaves from one, the finish when it ends at one; back to its start, the finish within 100 m of it
+  if any, else it ends at the last control; back to a control, that control again —, named « Tournée des postes » (« 2 », « 3 »… when
+  taken), a test course (`hideFromReports`: out of the reports; the IOF export still takes it, the toast says to remove it before sending
+  the courses to the timing software), its length and climb the tour's (climb unknown without relief), its print area automatic. The panel
+  then shows it, prints its course map (`pdf.coursesDialog({ only })`), description sheet (`descriptionsDialog({ only })`, new option) and
+  punch card (`punchDialog({ only })`, new option: a hidden course included); a course undone or deleted brings « Créer le circuit » back.
+  Its legs are drawn straight like any course's (the tour's routes stay the overlay's). Guide: « Le tracé › En équipe et sur le terrain »'s
+  box and paragraph. Not done: several collectors sharing the controls, the tour in the field mode, the tour saved with the event.
 - **OCAD course files in the Tracer** (owner, 2026-11-04: « why can't an OCAD file be imported alone? »; every account, the essential
   level): an `.ocd` holding courses (OCAD's course-setting project) is an event file of its own on « Importer un événement », and on the
   start screen or « Nouvel événement » it goes to the import (`pages/tracer.js` `ocadCourses`); its map is the file itself when it holds

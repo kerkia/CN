@@ -9,7 +9,8 @@
 //     order searched again, until every leg of it is a real one;
 //  3. each leg's best route, its length, climb and time at the pace chosen, plus the time spent at each control.
 // The tour is drawn over the map (numbered, a leg lit from the list) for the visit, and exported as GPX (with a georeference),
-// a PNG of the map with the tour, or CSV. Nothing is sent anywhere but the heights' coordinates (as the 3D view).
+// a PNG of the map with the tour, or CSV. « Créer le circuit » makes it a course of the event (a test course, out of the reports)
+// with its controls in the tour's order, whose course map, description sheet and punch card the panel then prints. Nothing is sent anywhere but the heights' coordinates (as the 3D view).
 
 import * as M from "./model.js";
 import { hasGeo, toLatLon } from "./geo.js";
@@ -27,7 +28,7 @@ const num = (v) => { const x = Number(String(v ?? "").replace(",", ".")); return
 const hm = (s) => { const m = Math.round(s / 60); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`; };
 const COLOUR = "#0a6cff", LIT = "#ff7a00";
 const OOB_AREAS = ["out-of-bounds", "dangerous-area"], NO_CROSS = ["boundary", "mtbo-forbidden-route"];
-const MAX_PX = 9e6;                                      // the grid read: 1.5 m a pixel, fewer on a large area
+const MAX_PX = 4e6;                                      // the grid read: 1.5 m a pixel, coarser beyond 4 Mpx (a whole map at 1:15 000)
 const NEAREST = 8;                                       // the costs from each control to its 8 nearest (the others when the order needs them)
 const PREFS = "ocn.tr.tour";                             // the pace and the time at each control, kept on the device
 const keptPrefs = () => { try { return JSON.parse(localStorage.getItem(PREFS) || "{}") || {}; } catch (e) { return {}; } };
@@ -306,6 +307,7 @@ function drawBody(E, body) {
     <div class="tr-tour-btns"><button type="button" class="btn btn-sm" data-t="again">${esc(t("trc.tour.again"))}</button>
       ${hasGeo(ev) ? '<button type="button" class="btn btn-sm" data-t="gpx">GPX</button>' : ""}
       <button type="button" class="btn btn-sm" data-t="png">${esc(t("trc.tour.image"))}</button><button type="button" class="btn btn-sm" data-t="csv">CSV</button></div>
+    ${courseBlock(E)}
     <div class="tr-tour-list"><table class="tr-table"><thead><tr><th class="r">#</th><th>${esc(t("trc.tour.thControl"))}</th><th class="r">${esc(t("trc.tour.thDist"))}</th><th class="r">${esc(t("trc.tour.thUp"))}</th><th class="r">${esc(t("trc.tour.thTime"))}</th><th class="r">${esc(t("trc.tour.thClock"))}</th></tr></thead>
     <tbody>${F.rows.map((r) => `<tr data-leg="${r.leg}" tabindex="0"${r.missing ? ' class="tr-tour-miss"' : ""}><td class="r">${mark(r)}</td>
       <td>${esc(ctrlName(ev, r.id))}${r.missing ? ` <span title="${esc(t("trc.tour.missTip"))}">⚠</span>` : ""}</td>
@@ -315,6 +317,12 @@ function drawBody(E, body) {
   body.querySelector('[data-t="gpx"]')?.addEventListener("click", () => exportGpx(E));
   body.querySelector('[data-t="png"]').addEventListener("click", () => exportPng(E));
   body.querySelector('[data-t="csv"]').addEventListener("click", () => exportCsv(E));
+  body.querySelector('[data-t="course"]')?.addEventListener("click", () => { if (makeCourse(E)) drawBody(E, body); });
+  const made = () => { const id = E.tour.courseId; if (!E.ev.courses[id]) { drawBody(E, body); return 0; } return id; };
+  body.querySelector('[data-t="pdf"]')?.addEventListener("click", async () => { const id = made(); if (id) (await import("./pdf.js")).coursesDialog(E, { only: id }); });
+  body.querySelector('[data-t="descr"]')?.addEventListener("click", async () => { const id = made(); if (id) (await import("./pdf.js")).descriptionsDialog(E, { only: id }); });
+  body.querySelector('[data-t="punch"]')?.addEventListener("click", async () => { const id = made(); if (id) (await import("./pdf.js")).punchDialog(E, { only: id }); });
+  body.querySelector('[data-t="show"]')?.addEventListener("click", () => { const id = made(); if (id) { E.setCourse(id); E.fitCourse(); } });
   body.querySelectorAll("tr[data-leg]").forEach((tr) => {
     const leg = Number(tr.dataset.leg);
     const lit = (on) => { E.tour.lit = on ? leg : null; E.redraw(); };
@@ -392,6 +400,53 @@ function addOverlay(E) {
 function removeOverlay(E) {
   const i = E.overlays.findIndex((f) => f.key === "tour");
   if (i >= 0) { E.overlays.splice(i, 1); E.redraw(); }
+}
+
+// ---- the tour as a course ---------------------------------------------------------------------------------------------------------
+/** The panel's block: « Créer le circuit », or the course made and its prints (course map, description sheet, punch card). */
+function courseBlock(E) {
+  const id = E.tour.courseId, c = id ? E.ev.courses[id] : null;
+  if (!c) return `<div class="tr-tour-course-box"><button type="button" class="btn btn-sm btn-primary" data-t="course"${E.readOnly ? " disabled" : ""}>${esc(t("trc.tour.makeCourse"))}</button>
+    <small>${esc(E.readOnly ? t("trc.tour.makeReadOnly") : t("trc.tour.makeHint"))}</small></div>`;
+  return `<div class="tr-tour-course-box"><p>${esc(t("trc.tour.made", { name: c.name }))}</p>
+    <div class="tr-tour-btns"><button type="button" class="btn btn-sm" data-t="show">${esc(t("trc.tour.showCourse"))}</button><button type="button" class="btn btn-sm" data-t="pdf">${esc(t("trc.tour.pdfCourse"))}</button>
+      <button type="button" class="btn btn-sm" data-t="descr">${esc(t("trc.tour.pdfDescr"))}</button><button type="button" class="btn btn-sm" data-t="punch">${esc(t("trc.tour.pdfPunch"))}</button></div></div>`;
+}
+/**
+ * A course in the event with the tour's controls in its order (owner, 2026-11-07: a circuit of its own, with its description sheet and
+ * punch card): the start when the tour leaves from one, the finish when it ends at one — a tour back to its start ends at the finish
+ * within 100 m of it, if any; back to a control, at that control again —, its length and climb the tour's (the climb unknown without
+ * relief), a test course (out of the
+ * reports), its print area automatic. One change: undone as any other. Returns the course's id, or 0.
+ */
+function makeCourse(E) {
+  const ev = E.ev, R = E.tour.result, F = rows(E), mPerMm = (ev.map.scale || 10000) / 1000;
+  const near = (id, kind) => {
+    const c = ev.controls[id];
+    let best = 0, bd = 100 / mPerMm;
+    for (const [k, x] of Object.entries(ev.controls)) { const d = Math.hypot(x.x - c.x, x.y - c.y); if (x.kind === kind && d <= bd) { best = Number(k); bd = d; } }
+    return best;
+  };
+  const seq = [...R.order];
+  if (R.loop && seq.length > 1) seq.push(R.order[0]);
+  if (seq.length > 1 && ev.controls[seq[seq.length - 1]].kind === "start") { const f = near(seq[seq.length - 1], "finish"); if (f) seq[seq.length - 1] = f; else seq.pop(); }
+  const list = seq.filter((id, i) => { const k = ev.controls[id]?.kind; return k === "normal" || (k === "start" && i === 0) || (k === "finish" && i === seq.length - 1); });
+  if (!list.some((id) => ev.controls[id].kind === "normal")) { E.toast(t("trc.tour.noControls")); return 0; }
+  const names = new Set(Object.values(ev.courses).map((c) => c.name));
+  let name = t("trc.tour.courseName"), n = 1;
+  while (names.has(name)) name = `${t("trc.tour.courseName")} ${++n}`;
+  let id = 0;
+  const ok = E.change((x) => {
+    id = M.createCourse(x, { name, addStartFinish: false, hideFromReports: true, climb: ["flat", "failed"].includes(R.relief) ? -1 : Math.round(F.up), length: Math.round(F.len / 10) / 100 });
+    x.courses[id].printArea = { ...x.courses[id].printArea, auto: true, rect: null };
+    let prev = 0;
+    for (const c of list) prev = M.addCourseControl(x, c, id, prev, 0);
+  }, t("trc.tour.makeUndo"));
+  if (ok === false || !id) return 0;
+  E.tour.courseId = id;
+  E.setCourse(id);
+  E.toast(t("trc.tour.madeToast", { name, where: where("course-delete") }), 8000);
+  return id;
 }
 
 // ---- exports ------------------------------------------------------------------------------------------------------------------

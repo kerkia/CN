@@ -1308,12 +1308,13 @@ export function build(X) {
             <div class="mx-box" style="--c:var(--s6)"><h3>${ic("box", 18)} Recogida</h3><p>${W("rep-pickup")}: a qué hora se puede recoger cada
               control, y el orden de recogida de cada recogedor.</p></div>
             <div class="mx-box" style="--c:var(--s1)"><h3>${ic("tour", 18)} Ruta de controles</h3><p>${W("tour")}: el camino más rápido por los controles marcados (por defecto, todos), para el controlador y para quien los
-              coloca o los recoge; numerado en el mapa, exportado en GPX, como imagen o en CSV.</p></div>
+              coloca o los recoge; numerado en el mapa, exportado en GPX, como imagen o en CSV, o convertido en recorrido con su descripción y su tarjeta de control.</p></div>
           </div>
           <p>La ruta de controles sale de la salida, de un control o del mejor situado, y termina en la meta, en su punto de salida o en cualquier
             sitio; cuenta el ritmo elegido y el tiempo en cada control. El mapa se lee como para los itinerarios calculados de los análisis (un mapa OCAD
             o Mapper por sus símbolos, cualquier otro por sus colores), con las zonas prohibidas y límites del trazador cerrados y el relieve contado
-            cuando el mapa está georreferenciado; el orden es el más rápido encontrado (exacto hasta 10 controles).</p>
+            cuando el mapa está georreferenciado; el orden es el más rápido encontrado (exacto hasta 10 controles). «Crear el recorrido» la convierte en un recorrido del evento, con sus controles en el orden de la ruta (un recorrido de prueba,
+            fuera de los informes): el panel imprime entonces su mapa, su descripción de controles y su tarjeta de control.</p>
           <p>Además: ${W("import-course")} toma los controles de un recorrido impreso (un PDF o una foto de una carrera pasada), para revisarlos después;
             ${W("view-others")} muestra otros recorridos en tono pálido, para evitar cruces y controles demasiado cercanos.</p>
         </section>`,
