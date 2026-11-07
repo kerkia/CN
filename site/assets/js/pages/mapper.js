@@ -87,7 +87,6 @@ function startScreen(focus = "") {
   const E = window.__mapper;
   if (!E || leaving) return;
   closeStart();
-  if (focus === "new") { newMap(); return; }
   const el = document.createElement("div");
   el.className = "tr-start mp-start";
   el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "mp-start-h");
@@ -138,8 +137,8 @@ function startScreen(focus = "") {
     if (f) { closeStart(); importFile(f); } else el.querySelector('[data-k="import"]')?.classList.add("focus");
   });
   if (focus) el.querySelector(`[data-k="${focus}"]`)?.classList.add("focus");
+  // as the Tracer's: the card asked for (Fichier › Nouvelle carte / Importer) marked and focused, nothing opened before a click
   (el.querySelector(`[data-k="${focus}"] button`) || el.querySelector("[data-start='new']"))?.focus({ preventScroll: true });
-  if (focus === "import") input.click();
   fillList(el);
 }
 async function fillList(el) {
