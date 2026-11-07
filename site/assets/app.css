@@ -1973,7 +1973,15 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
   background: color-mix(in srgb, var(--flag) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--flag) 35%, var(--border)); }
 .sh-m-status.live { background: color-mix(in srgb, var(--forest) 12%, var(--surface)); border-color: color-mix(in srgb, var(--forest) 40%, var(--border)); }
 .sh-m-status p { margin: 0; flex: 1 1 260px; font-size: 13.5px; }
-.sh-m-fields input#sh-s-title { width: 260px; max-width: 100%; }
+/* the analysis's settings in rows: the title and the date, the club shown, the access (owner, 2026-11-07) */
+.filters.sh-m-fields { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+.sh-s-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; }
+.sh-s-row.sh-s-accrow { align-items: flex-start; }
+.sh-s-row #sh-s-pwf[hidden] { display: none; }
+.sh-s-row.sh-s-titlerow { flex-wrap: nowrap; }
+.sh-s-titlef { flex: 1 1 auto; min-width: 0; } .sh-s-titlef input, .sh-s-orgf input { width: 100%; min-width: 0; }
+.sh-s-titlerow > .field:last-child { flex: none; }
+.sh-s-orgf { flex: 1 1 260px; max-width: 420px; }
 /* what the access chosen adds, under its drop-down: a box and, for the club's code, its field on the same line */
 .sh-s-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
 .sh-s-sub[hidden] { display: none; }

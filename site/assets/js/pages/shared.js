@@ -768,16 +768,17 @@ async function managePage(main, id, data, race) {
         <p>${t(A.draft ? (ready ? "sh.m.draft.ready" : "sh.m.draft.empty") : `sh.m.live.${A.vis === "club" && A.code ? "clubCode" : A.vis}`, { where: t("sh.m.where") })}</p>
         ${A.draft ? html`<button type="button" class="btn btn-primary" id="sh-m-publish" ${raw(ready ? "" : "disabled")}>${t("sh.m.publish")}</button>`
           : html`<button type="button" class="btn btn-sm" id="sh-m-unpublish">${t("sh.m.unpublish")}</button>`}</div>
-      <div class="filters sh-m-fields" style="align-items:flex-start">
-        <label class="field"><span>${t("sh.col.title")}</span><input id="sh-s-title" value="${A.title}" maxlength="120"></label>
-        <label class="field"><span>${t("f.date")}</span><input type="date" id="sh-s-date" value="${A.date}"></label>
-        <label class="field" title="${t("sh.s.org.tip")}"><span>${t("sh.s.org")}</span><input id="sh-s-org" value="${A.orgName || ""}" maxlength="80" placeholder="${t("sh.s.org.ph")}"></label>
-        <div class="field sh-s-access"><span>${t("sh.col.access")}</span><select id="sh-s-vis" aria-label="${t("sh.col.access")}">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select>
+      <!-- three rows (owner, 2026-11-07): the title and the date, the club shown under them, the access and what it adds -->
+      <div class="filters sh-m-fields">
+        <div class="sh-s-row sh-s-titlerow"><label class="field sh-s-titlef"><span>${t("sh.col.title")}</span><input type="text" id="sh-s-title" value="${A.title}" maxlength="120"></label>
+        <label class="field"><span>${t("f.date")}</span><input type="date" id="sh-s-date" value="${A.date}"></label></div>
+        <div class="sh-s-row"><label class="field sh-s-orgf" title="${t("sh.s.org.tip")}"><span>${t("sh.s.org")}</span><input type="text" id="sh-s-org" value="${A.orgName || ""}" maxlength="80" placeholder="${t("sh.s.org.ph")}"></label></div>
+        <div class="sh-s-row sh-s-accrow"><div class="field sh-s-access"><span>${t("sh.col.access")}</span><select id="sh-s-vis" aria-label="${t("sh.col.access")}">${["public", "club", "password"].map((v) => html`<option value="${v}" ${raw(v === A.vis ? "selected" : "")}>${t(`sh.vis.${v}.long`)}</option>`)}</select>
           <!-- what the access chosen may add, just below it (owner, 2026-11-07): the club's code for its invitees on one line -->
           <div class="sh-s-sub sh-s-code" ${raw(A.vis === "club" ? "" : "hidden")}><label class="an-opt" title="${t("sh.code.tip")}"><input type="checkbox" id="sh-s-code" ${raw(A.vis === "club" && A.code ? "checked" : "")}> ${t("sh.code")}</label>
             <input type="text" id="sh-s-codev" style="width:160px" autocomplete="off" aria-label="${t("ma.code")}" placeholder="${A.code ? t("sh.pw.keep") : t("sh.pw.ph")}"></div>
           <div class="sh-s-sub sh-s-visitors" ${raw(A.vis === "public" ? "" : "hidden")}><label class="an-opt" title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")}> ${t("sh.visitors")}</label></div></div>
-        <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label></div>
+        <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label></div></div>
       <div class="row sh-s-saverow"><button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div></div>`;
     const put = async (body, note) => {
       try { const r = await api(`/${id}`, { method: "PUT", body, key: keyOf(id) }); Object.assign(A, r.analysis); if (note) $(note).textContent = t("sh.saved"); head(); pubCard(); optsCard(); statsCard(); }
