@@ -2094,12 +2094,19 @@ export async function render(main, { query = {}, route } = {}) {
     const [a, b] = span(); s.min = String(Math.floor(a)); s.max = String(Math.ceil(b)); s.value = String(tNow);
   }
   /** A leg opened (j) or the whole course again (-1): the map framed on it, the time at its start, the time line on it alone. */
+  // the whole course as it was left when a leg was opened — its view, time and whether it was still —, found again on the way back
+  // (owner, 2026-11-08: « when back to the whole parcours, settings go back »)
+  let wholeWas = null;
   function setLegView(j) {
-    stop(); moved();
     const l = legs[j];
     if (j >= 0 && (!l || l.t0 == null)) return;
+    if (j >= 0 && legSel < 0) wholeWas = { view: { ...view }, t: tNow, still };
+    const back = j < 0 && legSel >= 0 ? wholeWas : null;
+    stop(); moved();
     legSel = j;
-    if (l) { zoomTo(l); tNow = l.t0; } else if (fit) { fitTrace(); still = true; }
+    if (l) { zoomTo(l); tNow = l.t0; }
+    else if (back) { wholeWas = null; view = back.view; tNow = back.t; still = back.still; }
+    else if (fit) { fitTrace(); still = true; }
     sliderSpan(); legsTable(); seek(tNow);
   }
   function jumpLeg(dir) {
@@ -2213,13 +2220,23 @@ export async function render(main, { query = {}, route } = {}) {
     $$("#an-legs tr[data-leg]").forEach((tr) => tr.addEventListener("click", () => setLegView(Number(tr.dataset.leg))));
   }
   /** The view on one leg: its trace, with a margin. */
+  /** The control circles' radius on the map (px): the organiser's, else the median of those read, else a share of the map. */
+  function circleR() {
+    const rs = (course?.controls || []).map((q) => q.r).sort((p, q) => p - q);
+    return orgaMode ? files.orga?.r || 20 : rs.length ? rs[rs.length >> 1] : Math.max(12, Math.min(map.width, map.height) / 120);
+  }
   function zoomTo(l, margin = 1.3, pad = 40) {
-    if (!fit || l.t1 == null) return;
-    const a = indexAt(track, offset + l.t0), b = indexAt(track, offset + l.t1);
+    const j = legs.indexOf(l), end = l.t1 ?? legs[j + 1]?.t0 ?? total;
+    if (!fit || l.t0 == null || end == null) return;
+    const a = indexAt(track, offset + l.t0), b = indexAt(track, offset + end);
     // the map turned to this leg: its extent measured as it will be on the screen, its centre turned back
     const r = orient === "leg" ? turnOf(legs.indexOf(l)) ?? lastTurn : 0, rc = Math.cos(r), rs = Math.sin(r);
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-    for (let i = a; i <= b; i++) { const u = rc * pxs[i] - rs * pys[i], v = rs * pxs[i] + rc * pys[i]; x0 = Math.min(x0, u); y0 = Math.min(y0, v); x1 = Math.max(x1, u); y1 = Math.max(y1, v); }
+    const add = (x, y) => { const u = rc * x - rs * y, v = rs * x + rc * y; x0 = Math.min(x0, u); y0 = Math.min(y0, v); x1 = Math.max(x1, u); y1 = Math.max(y1, v); };
+    for (let i = a; i <= b; i++) add(pxs[i], pys[i]);
+    // the leg's two controls whole, their circles included (owner, 2026-11-08: « the full leg in view »)
+    const R = circleR() * 1.3;
+    for (const g of [targets[j], targets[j + 1]]) if (g?.pos) { add(g.pos[0] - R, g.pos[1] - R); add(g.pos[0] + R, g.pos[1] + R); add(g.pos[0] - R, g.pos[1] + R); add(g.pos[0] + R, g.pos[1] - R); }
     const { w, h } = box();
     // a map without a size yet (being laid out) would give a zoom of 0, which no zooming could undo: done once it has one
     if (!w || !h || !(x1 >= x0)) { pendingFit = () => zoomTo(l, margin, pad); return; }
@@ -2478,18 +2495,22 @@ export async function render(main, { query = {}, route } = {}) {
     }
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     if (fit && fullPath && offset != null && !drawing) {
-      const s = offset + (calibrated ? tNow : total), iNow = indexAt(track, s), i0 = Math.max(0, indexAt(track, offset));
+      // a leg opened: its route drawn whole at once, the runner's dot moving along it, nothing else of the race (owner,
+      // 2026-11-08: « the full trace shown right away »); the tail and the trace to come apply again on the whole course
+      const legOn = calibrated && legSel >= 0, ls = legOn ? span() : null;
+      const s = offset + (calibrated ? tNow : total), iNow = indexAt(track, s), i0 = Math.max(0, indexAt(track, offset + (legOn ? ls[0] : 0)));
+      const iDraw = legOn ? indexAt(track, offset + ls[1]) : iNow;
       // the whole trace, faint; the part run so far, full; the tail, thicker
       const bySpeed = calibrated && !!colourBy(), series = bySpeed ? seriesOf(track, colourBy()) : null;
-      if (!bySpeed && (!calibrated || future === "faint")) { ctx.globalAlpha = (calibrated ? 0.45 : 0.85) * ta; ctx.strokeStyle = traceColour; ctx.lineWidth = lw(2.5 * width); ctx.stroke(fullPath); }
+      if (!bySpeed && !legOn && (!calibrated || future === "faint")) { ctx.globalAlpha = (calibrated ? 0.45 : 0.85) * ta; ctx.strokeStyle = traceColour; ctx.lineWidth = lw(2.5 * width); ctx.stroke(fullPath); }
       ctx.globalAlpha = ta;
       if (calibrated) {
-        const iTail = tail ? Math.max(i0, indexAt(track, s - tail)) : i0;
+        const iTail = tail && !legOn ? Math.max(i0, indexAt(track, s - tail)) : i0;
         if (bySpeed) {                                   // the whole race coloured by pace (or a measure), the part to come faint
           if (!vSet) paceScale();
-          const iEnd = future === "faint" ? indexAt(track, offset + total) : iNow;
+          const iEnd = legOn ? iDraw : future === "faint" ? indexAt(track, offset + total) : iNow;
           for (let i = i0 + 1; i <= iEnd; i++) {
-            ctx.globalAlpha = (i <= iNow ? 1 : 0.45) * ta;
+            ctx.globalAlpha = (i <= iNow || legOn ? 1 : 0.45) * ta;
             ctx.strokeStyle = pointColour(i, series); ctx.lineWidth = lw((i > iTail && i <= iNow ? 5 : 3) * width);
             ctx.beginPath(); ctx.moveTo(pxs[i - 1], pys[i - 1]); ctx.lineTo(pxs[i], pys[i]); ctx.stroke();
           }
@@ -2498,8 +2519,8 @@ export async function render(main, { query = {}, route } = {}) {
           const part = (from, to, width) => { if (to <= from) return; ctx.lineWidth = lw(width); ctx.beginPath(); ctx.moveTo(pxs[from], pys[from]);
             for (let i = from + 1; i <= to; i++) ctx.lineTo(pxs[i], pys[i]); ctx.stroke(); };
           ctx.strokeStyle = traceColour;
-          part(i0, Math.min(iNow, iTail), 3 * width);
-          part(iTail, iNow, 5 * width);
+          if (legOn) part(i0, iDraw, 3 * width);
+          else { part(i0, Math.min(iNow, iTail), 3 * width); part(iTail, iNow, 5 * width); }
         }
         const [px, py] = toPx(fit, ...posAt(track, s));
         ctx.globalAlpha = 1;
@@ -2511,9 +2532,7 @@ export async function render(main, { query = {}, route } = {}) {
     // the course over the map, its controls as placed (the start's triangle, the circles numbered, the finish), as « Analyse de carte »
     if (calibrated && showCourse && sequenceKnown()) {
       const pts = targets.filter((g) => g.pos).map((g) => ({ x: g.pos[0], y: g.pos[1], kind: g.kind === "start" || g.kind === "finish" ? g.kind : "control" }));
-      const rs = (course?.controls || []).map((q) => q.r).sort((p, q) => p - q);
-      const r = orgaMode ? files.orga?.r || 20 : rs.length ? rs[rs.length >> 1] : Math.max(12, Math.min(map.width, map.height) / 120);
-      ctx.globalAlpha = 1; drawCourse(ctx, pts, r, lw, 0.75);
+      ctx.globalAlpha = 1; drawCourse(ctx, pts, circleR(), lw, 0.75);
     }
     measure.paint(ctx, lw);
     if (drawing) paintDrawing(lw);
@@ -2830,7 +2849,7 @@ export async function render(main, { query = {}, route } = {}) {
     if (!v3) return;
     if (!vSet) paceScale();
     const by = colourBy(), series = by ? seriesOf(track, by) : null;
-    v3.setStyle({ colourOf: (i) => (by ? pointColour(i, series) : traceColour), colourKey: by ? `${by}:${vLo}:${vHi}` : traceColour, width, future, tail, mapAlpha });
+    v3.setStyle({ colourOf: (i) => (by ? pointColour(i, series) : traceColour), colourKey: by ? `${by}:${vLo}:${vHi}` : traceColour, width, future, tail: legSel >= 0 ? 0 : tail, mapAlpha });
     v3.setFollow(follow);
   }
   /** The 3D view's own settings, under « Affichage »: the vertical exaggeration, the relief's source. */

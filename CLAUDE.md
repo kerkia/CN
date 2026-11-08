@@ -2359,7 +2359,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   the new runners shown. **The leg shown** (owner, 2026-11-08), in both analyses: a menu at the control bar's left
   (`sidepanel.legPickHtml` / `bindLegPick`: the course icon, the leg's « 3 → 4 » when one is open, « Tout le parcours » then
   each leg), drawn again on every change of leg, so it, « Inter-postes » and ⏮ ⏭ always agree; in Solo ⏮ ⏭ from the whole
-  course open the leg run now / the next (they only moved the time), as the map analysis's open a leg; « Aide » has it. **The graph under the map** (owner, 2026-11-08): « Affichage › Graphique » chooses what
+  course open the leg run now / the next (they only moved the time), as the map analysis's open a leg; « Aide » has it. **A leg opened, however** (owner, 2026-11-08: « the full leg in view, the full
+  trace of the selected runners shown right away »): framed with its two control circles whole (`fitLeg`, Solo's `zoomTo` with
+  `circleR`, the last leg too), each shown runner's route on it drawn whole at once, the dot moving along it (the tail and « Trace
+  à venir » ignored there; the 3D view's style `future: "whole"`), refitted while the bar settles; back on the whole course its view,
+  time and stillness as left (`wholeWas`), the display's settings applying again — a start mode changed starts afresh. **The graph under the map** (owner, 2026-11-08): « Affichage › Graphique » chooses what
   the strip draws — the pace by default, or a measure of the Trace menu (Solo: the file's channels, slope, corrected pace; the
   map analysis: corrected pace, altitude, slope from the terrain) —, its bar named after it (`pacestrip.graphName`; prefs
   `graph`); `drawPaceStrip`'s `by` / `unit`. The « Allure » bar's figures end with « ↑ » the climb so far (`track.cumClimb`). Each circuit's length follows its name in the selector and stands at the map's top left (`courseLenText`:

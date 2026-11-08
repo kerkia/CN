@@ -1731,12 +1731,13 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     for (const r of shown) {
       const s = sAt(r, T);
       if (s == null) continue;
-      // coloured by variant or by leg time, a leg's routes are compared whole: drawn to the leg's end whatever the replay's time
-      // (owner, 2026-11-05: at the leg's start nothing was drawn but the legend)
-      const whole = leg && LEG_ONLY.includes(cmode()) && r.passes[leg] != null;
+      // a leg's routes are drawn whole, whatever the replay's time, the runner's dot moving along them (owner, 2026-11-08: « the
+      // full trace of the selected runners shown right away »; before, only when coloured by variant or leg time) — the display's
+      // own settings (tail, the trace to come) apply again on the whole course
+      const whole = leg && r.passes[leg] != null;
       const lo = leg ? r.passes[leg - 1] : Math.max(r.start, tail && !leg ? s - tail : r.start), from = indexAt(r.tr, lo), to = indexAt(r.tr, whole ? Math.max(s, r.passes[leg]) : s);
       // the route still to run, faint, to its finish (or the leg's end) — hidden by default
-      if (future === "faint") {
+      if (future === "faint" && !whole) {
         const a = indexAt(r.tr, leg ? r.passes[leg - 1] : r.start), b = indexAt(r.tr, leg ? r.passes[leg] ?? r.tr.dur : r.finish ?? r.tr.dur);
         stroke(g, r, a, b, lw(2 * width), 0.3 * ta);
       }
@@ -2170,9 +2171,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         (menu.querySelector('[aria-checked="true"]') || menu.querySelector("button"))?.focus();
       });
       menu.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); close(); mb.focus(); } });
-      menu.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => { close(); mode = b.dataset.mode; if (leg) setLeg(0); else reset(); }));
+      menu.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => { close(); mode = b.dataset.mode; if (leg) setLeg(0, true); else reset(); }));
     }
-    $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); if (leg) setLeg(0); else reset(); });
+    $("#sh-from")?.addEventListener("change", (e) => { fromK = Number(e.target.value); if (leg) setLeg(0, true); else reset(); });
     $("#sh-tail")?.addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-future").addEventListener("change", (e) => { future = e.target.value; savePrefs(); mv.draw(); });
@@ -2332,20 +2333,36 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       ${html`<span class="an-stat" title="${t("an.climbSo.tip")}"><span class="muted">${t("an.climbSo")}</span> <b>${climbSo(r, at)}</b> <span class="muted">m</span></span>`}`.toString();
   }
   function reset() { stop(); [T0, T1] = range(); T = T0; right(); frame(); }
-  function setLeg(j) {
+  // the whole course as it was left when a leg was opened — its view, time and whether it was still —, found again on the way back
+  // (owner, 2026-11-08: « when back to the whole parcours, settings go back »); a change of start mode starts afresh
+  let wholeWas = null;
+  function setLeg(j, fresh = false) {
+    if (j && !leg) wholeWas = { view: { ...mv.view }, T, still };
+    const back = !j && leg && !fresh ? wholeWas : null;
+    if (!j) wholeWas = null;
     leg = j; stop(); [T0, T1] = range(); T = T0;
     turn();                                                   // the map turned to the leg before it is fitted
+    if (back) {
+      mv.view = back.view; T = Math.min(T1, Math.max(T0, back.T)); still = back.still;
+      legend(); left(); right(); frame(); bottom.draw();
+      if (rcm.on) rcmLeg();
+      return;
+    }
     if (leg) {
-      // the view on the leg: its two controls and the runners' routes on it
-      const xs = [ctrls[leg - 1].x, ctrls[leg].x], ys = [ctrls[leg - 1].y, ctrls[leg].y];
-      for (const r of runners) { if (!r.visible || legTime(r, leg) == null) continue; const a = indexAt(r.tr, r.passes[leg - 1]), b = indexAt(r.tr, r.passes[leg]); for (let i = a; i <= b; i++) { xs.push(r.pxs[i]); ys.push(r.pys[i]); } }
-      mv.fitPoints(xs, ys, 60, 4);
+      fitLeg();
     } else fitRoutes();
     // the view fitted stays until the replay is played or its time moved (owner, 2026-11-05: following, the map was centred on the
     // runners, all at the leg's first control)
     still = true;
     legend(); left(); right(); frame(); bottom.draw();
     if (rcm.on) rcmLeg();
+  }
+  /** The view on the leg shown: its two controls, their circles whole, and the shown runners' routes on it. */
+  function fitLeg() {
+    const R = (course.r || 20) * 1.3, xs = [], ys = [];
+    for (const p of [ctrls[leg - 1], ctrls[leg]]) { xs.push(p.x - R, p.x + R); ys.push(p.y - R, p.y + R); }
+    for (const r of runners) { if (!r.visible || legTime(r, leg) == null) continue; const a = indexAt(r.tr, r.passes[leg - 1]), b = indexAt(r.tr, r.passes[leg]); for (let i = a; i <= b; i++) { xs.push(r.pxs[i]); ys.push(r.pys[i]); } }
+    mv.fitPoints(xs, ys, 60, 4);
   }
   function fitRoutes() {
     const xs = ctrls.map((p) => p.x), ys = ctrls.map((p) => p.y);
@@ -2766,7 +2783,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const hs = HEIGHT_BY.includes(m) && hts?.z;
     const key = `${sig}|${m}|${vLo}|${vHi}|${hs ? `${hLo}|${hHi}` : ""}|${m === "runner" || m === "pace" || hs ? "" : v3list.map(routeColour).join(",")}`;
     v3.setStyle({ colourOf: (i, k) => (m === "pace" ? paceColour(v3list[k].tr.v[i], vLo, vHi) : hs ? colourOf(m, hseries(v3list[k], m)[i], hLo, hHi) : routeColour(v3list[k])), colourKey: key,
-      width, future, tail: leg ? 0 : tail, mapAlpha, traceAlpha });
+      width, future: leg ? "whole" : future, tail: leg ? 0 : tail, mapAlpha, traceAlpha });
     const k = sel ? v3list.indexOf(sel) : -1;
     v3.setFollow(!pan ? false : follow === "sel" && k >= 0 ? "chase" : "group", Math.max(0, k));
   }
@@ -2917,8 +2934,10 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   let moved = false;
   $("#sh-canvas").addEventListener("pointerdown", () => { moved = true; });
   $("#sh-canvas").addEventListener("wheel", () => { moved = true; }, { passive: true });
-  const wholeRo = new ResizeObserver(() => { if (still && !moved && !leg) { mv.fitAll(); mv.draw(); } });
-  onBarChange = () => { if (still && !moved && !leg) mv.fitAll(); mv.draw(); };
+  // the view fitted again while the panels and the bar settle, until the reader moves it: the whole map, or the leg opened
+  const refit = () => (leg ? fitLeg() : mv.fitAll());
+  const wholeRo = new ResizeObserver(() => { if (still && !moved) { refit(); mv.draw(); } });
+  onBarChange = () => { if (still && !moved) refit(); mv.draw(); };
   wholeRo.observe($("#sh-canvas"));
   window.anShared = () => ({ runners, mode, leg, T, T0, T1, follow, pan, view: mv.view });   // for support, in the console
   curvesPanel();

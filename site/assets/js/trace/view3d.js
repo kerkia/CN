@@ -285,7 +285,7 @@ export async function open3d(host, o) {
       const { track, i0, i1, np } = T;
       const iNow = Math.max(i0, Math.min(i1, indexAt(track, s))), kNow = iNow - i0;
       const kTail = tailS ? Math.max(0, indexAt(track, s - tailS) - i0) : 0;
-      T.run.geometry.setDrawRange(0, 6 * kNow);
+      T.run.geometry.setDrawRange(0, 6 * (style.future === "whole" ? np - 1 : kNow));   // « whole »: a leg's view, the leg drawn whole
       T.tail.geometry.setDrawRange(6 * kTail, 6 * Math.max(0, kNow - kTail));
       T.future.geometry.setDrawRange(6 * kNow, 6 * Math.max(0, np - 1 - kNow));
       const [mx, my] = posAt(track, Math.max(track.t[i0], Math.min(track.t[i1], s))), y = groundH(mx, my) * ex;
