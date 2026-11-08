@@ -1646,6 +1646,13 @@ body.an-theatre .an-right { grid-area: side; }
   padding: 3px 8px; border-radius: 8px; background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--ink); font-variant-numeric: tabular-nums; }
 .an-legchip[hidden] { display: none; }
 .an-legchip .btn { height: 26px; min-width: 30px; padding: 0 5px; margin-right: -4px; }
+/* the other runners' new traces (owner, 2026-11-08): a notice at the window's bottom, « Actualiser » beside it */
+.sh-fresh { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px;
+  max-width: calc(100% - 32px); padding: 6px 6px 6px 14px; border-radius: 10px; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--border-strong); box-shadow: 0 4px 16px rgba(0, 0, 0, .25); font-size: 13.5px; font-weight: 600; }
+.sh-fresh[hidden] { display: none; }
+.sh-fresh-x { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 6px; cursor: pointer; }
+.sh-fresh-x:hover { color: var(--ink); }
 /* the circuit at the map's top left, under the bar (owner, 2026-11-08): its name, length and controls; beside the north arrow when
    the map is turned */
 .an-courseinfo { position: absolute; left: 8px; top: 8px; z-index: 3; max-width: calc(100% - 120px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;

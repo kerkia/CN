@@ -275,6 +275,8 @@ async function visitors(ctx, parts) {
       const m = o.customMetadata || {};
       return { course: Number(m.course), uid: Number(m.uid), name: m.name || "", lic: "", updated: m.updated || "", size: o.size };
     });
+    // the page's check for new traces (owner, 2026-11-08): the list alone, no visit counted
+    if (new URL(request.url).searchParams.get("poll") === "1") return json({ traces });
     const { owner, ownerName, pw, ...rest } = meta;
     ctx.waitUntil?.(countGuest(env, id));
     return json({ analysis: { ...rest, opts: optsOf(meta) }, traces, you: { uid: 0, organiser: false, visitor: true } });
@@ -464,6 +466,8 @@ const forUsers = withUser(async (ctx, user) => {
         const m = o.customMetadata || {};
         return { course: Number(m.course), uid: Number(m.uid), name: m.name || "", lic: m.lic || "", updated: m.updated || "", size: o.size };
       });
+      // the page's check for new traces (owner, 2026-11-08): the list alone, no visit counted
+      if (new URL(request.url).searchParams.get("poll") === "1") return json({ traces });
       const thumbs = organiser ? (await listAll(env, `${DATA}${id}/thumb-`, false)).map((o) => Number(o.key.slice(o.key.lastIndexOf("-") + 1))) : undefined;
       // a runner's visit counted (not the organisers', nor « Analyse solo »'s own read: it counts itself, POST …/solo/<n>)
       if (!organiser && new URL(request.url).searchParams.get("for") !== "solo") ctx.waitUntil?.(countUse(env, id, "view", user.id));

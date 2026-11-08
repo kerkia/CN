@@ -388,7 +388,10 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       <span class="muted sh-access">${t(`sh.access.${A.vis === "public" && A.visitors ? "all" : A.vis === "club" && A.code ? "clubCode" : A.vis}`)}</span>
       <span class="fw-btns">${raw(fwButtons({ tab: false }))}</span></span></div>
     <div id="sh-viewer"></div>
-    <div id="sh-splits" class="sh-splits" hidden></div>`;
+    <div id="sh-splits" class="sh-splits" hidden></div>
+    <div class="sh-fresh" id="sh-fresh" role="status" hidden><span id="sh-fresh-t"></span>
+      <button type="button" class="btn btn-sm btn-primary" id="sh-fresh-go">${t("sh.fresh.go")}</button>
+      <button type="button" class="sh-fresh-x" id="sh-fresh-x" title="${t("sh.fresh.close")}" aria-label="${t("sh.fresh.close")}">×</button></div>`;
   // two views of the analysis (owner, 2026-11-04): the map (the replay, its panels) and Arena's split analysis of the times the
   // tracks give at the controls, in the map's place. The circuit is chosen in the left panel's « Circuits » tab (chips by the
   // title would not scale). The split times keep the map's layout (owner, 2026-11-05: the page seemed to change): the circuit
@@ -462,6 +465,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   const openViewer = async () => {
     viewer?.destroy();
     viewer = null;
+    const fb = $("#sh-fresh"); if (fb) fb.hidden = true;     // (the traces read again: the next check says what is still new)
     const c = A.courses.find((x) => x.n === courseN);
     if (!c) {
       document.body.classList.remove("an-theatre");
@@ -477,6 +481,43 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   drawTabs();
   await openViewer();
   if (pane === "splits") showPane("splits");
+  // the other runners' new traces (owner, 2026-11-08): the list asked again every minute while this page is open and its browser
+  // tab in front, never drawn in under the reader's eyes — a notice offers « Actualiser », which reopens the replay where it was
+  const POLL_MS = 60000, sigOf = (list) => new Map(list.map((x) => [`${x.course}:${x.uid}`, x.updated || ""]));
+  let polled = Date.now(), freshSig = "", dismissed = "";
+  const notice = () => {
+    const box = $("#sh-fresh");
+    if (!box) return;
+    const was = sigOf(data.traces), now = freshSig ? new Map(JSON.parse(freshSig)) : null;
+    const added = now ? [...now.keys()].filter((k) => !was.has(k)).length : 0;
+    box.hidden = !now || freshSig === dismissed;
+    $("#sh-fresh-t").textContent = added ? tn("sh.fresh.added", added) : t("sh.fresh.changed");
+  };
+  const poll = async () => {
+    if (!document.contains(main) || document.visibilityState !== "visible" || Date.now() - polled < POLL_MS - 1000) return;
+    polled = Date.now();
+    let list;
+    try { list = (await api(`/${id}?poll=1`, { key: keyOf(id) })).traces || []; } catch (e) { return; }
+    const was = sigOf(data.traces), now = sigOf(list);
+    const same = was.size === now.size && [...now].every(([k, u]) => was.get(k) === u);
+    freshSig = same ? "" : JSON.stringify([...now].sort());
+    notice();
+  };
+  const pollTimer = setInterval(poll, 15000);
+  document.addEventListener("visibilitychange", poll);
+  $("#sh-fresh-x").addEventListener("click", () => { dismissed = freshSig; notice(); });
+  $("#sh-fresh-go").addEventListener("click", async () => {
+    viewer?.pause?.();                                     // (pausing writes the replay's state into the address)
+    const q = Object.fromEntries(new URLSearchParams(location.hash.split("?")[1] || ""));
+    const before = new Set(data.traces.map((x) => `${x.course}:${x.uid}`));
+    try { data = await api(`/${id}`, { key: keyOf(id) }); } catch (e) { alert(errText(e)); return; }
+    // the runners shown kept, the new ones shown too
+    if (q.show) q.show = [q.show, ...data.traces.filter((x) => x.course === courseN && !before.has(`${x.course}:${x.uid}`)).map((x) => x.uid)].join(",");
+    freshSig = ""; polled = Date.now(); notice();
+    initial = q;
+    await openViewer();
+    if (pane === "splits") showPane("splits");
+  });
   // the first visit: the offer to add one's track (owner, 2026-11-04) — to an account allowed to add one, with none in this
   // analysis yet; once per analysis and browser, closed or not
   const you = data.you || {};
@@ -490,7 +531,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       data = await api(`/${id}`, { key: keyOf(id) }); courseN = n; drawTabs(); openViewer();
     } }); });
   }
-  return { title: A.title, cleanup: () => { viewer?.destroy(); window.removeEventListener("resize", spFit); document.body.classList.remove("an-theatre"); leaveFull(); document.querySelector(".sh-offer")?.remove(); } };
+  return { title: A.title, cleanup: () => { clearInterval(pollTimer); document.removeEventListener("visibilitychange", poll); viewer?.destroy(); window.removeEventListener("resize", spFit); document.body.classList.remove("an-theatre"); leaveFull(); document.querySelector(".sh-offer")?.remove(); } };
 }
 
 // ---- « Temps intermédiaires »: the tracks' times at the controls as a results document (owner, 2026-11-04) ---------------
