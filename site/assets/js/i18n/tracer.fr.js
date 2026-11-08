@@ -1955,8 +1955,8 @@ export default {
   "trc.rib.spTipArea": "Un clic par sommet, puis un double-clic (ou Entrée) : la zone se ferme toute seule.",
   "trc.rib.spTipPoint": "Un clic à l'endroit voulu.",
   // the advanced level (owner, 2026-10-24)
-  "trc.rib.tipPro": "Niveau avancé : réservé aux administrateurs pour l'instant.",
-  "trc.dlg.proOnly": "Cette commande fait partie du niveau avancé, réservé aux administrateurs pour l'instant.",
+  "trc.rib.tipPro": "Niveau avancé : les fonctions venues de Condes, pour des besoins plus pointus.",
+  "trc.dlg.proOnly": "Cette commande fait partie du niveau avancé.",
   // the .ppen export of an event using the advanced level (ppen.js ppenLosses)
   "trc.dlg.ppenLossTitle": "Exporter pour Purple Pen",
   "trc.dlg.ppenLossOk": "Exporter quand même",

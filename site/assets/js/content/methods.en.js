@@ -1374,8 +1374,7 @@ export function build(X) {
           <h2>The advanced level</h2>
           <p>Course setting has two levels. The <b>essential</b> level, for everyone, does what a Purple Pen file does, plus Ozimut's
             teamwork, field mode, checks and after-race tools. The <b>advanced</b> level adds what Condes, another course-setting program,
-            does: for now it is open to the site's administrators only. Its buttons carry a small orange dot. An event that uses it opens,
-            draws and prints for the whole team; only administrators change what belongs to it. A Purple Pen file (.ppen) does not keep
+            does, for more specialised needs; it is open to everyone. Its buttons carry a small orange dot. A Purple Pen file (.ppen) does not keep
             these additions: the export says first what it leaves out; the Ozimut file (.ozmt) keeps everything.</p>
           <h3>Coming from another program</h3>
           <p>${W("import-courses")} takes the controls, courses, classes and relay teams of an IOF XML file (3.0 or 2.0.3) exported from

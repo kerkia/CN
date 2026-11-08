@@ -295,8 +295,8 @@ export const BACKSTAGE = [
   { id: "options", label: t("trc.rd.bsOptions"), icon: "sliders" },
 ];
 
-// ---- the advanced level (administrators for now) ------------------------------------------------------------------------------------
-/** Is the advanced level open in this editor? (E.pro: the account is an administrator; editor.js) */
+// ---- the advanced level (every account's since 2026-11-08; its buttons keep their orange dot) ----------------------------------------
+/** Is the advanced level open in this editor? (E.pro, editor.js: always since 2026-11-08) */
 export const proOpen = (E) => !!E?.pro;
 /** The acts and tools of the advanced level, wherever they are drawn (ribbon, right-click menu, quick-access bar, search). */
 export const PRO = new Set();

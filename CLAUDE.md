@@ -2222,7 +2222,10 @@ Every multiple-choice game was played through to its score page at phone size, w
 - **The Tracer's advanced level** (owner, 2026-10-24, after the Condes study, private artifact
   https://claude.ai/artifact/MfUEJDFRoYi1J4TYTa2FcV — 33 gaps against Condes, the plan decided): one tool at two levels. The
   **essential** level — what a .ppen holds and Ozimut's own tools — for everyone, unchanged; the **advanced** level — every Condes gap —
-  **for administrators only for now** (`E.pro` = `auth.session().admin`, editor.js). `ribbon-data.js`: an item, group or tab marked
+  **every account's since 2026-11-08** (owner: « make all features available to all »; the administrators' only from 2026-10-24;
+  `E.pro` = true in editor.js, the IOF XML import and the OCAD course file's classes in `pages/tracer.js` no longer gated; the
+  orange dots and the « Niveau avancé » blocks stay as the level's mark; what follows says « administrators » for that time,
+  read « everyone » now). `ribbon-data.js`: an item, group or tab marked
   `pro: true`; `PRO` = the acts and tools whose every place is pro (plus `special:<kind>` of `PRO_SPECIALS`), `isPro`; ribbon.js
   draws them for `E.pro` only (tabs, groups, the quick-access bar, the search, the « Fichier » page), context.js the right-click menu,
   `dialogs.action` refuses them to others (`trc.dlg.proOnly`); their buttons carry an orange dot (`[data-pro]`); dialogs show an
@@ -2274,7 +2277,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   the local « ent opa 8 nov26 deski P » event (OCAD 2018): « Courbes seules » on one course, the whole map on the others, a 60 m
   corridor on another, both on screen and in the PDF (vector); the geometry in Node (a 4-leg loop: corridor and island in 52 ms).
   Not done: image, scan or PDF maps (masks only; filtering them would mean repainting pixels). The mask it makes is a « mask » special,
-  which only administrators draw by hand (`PRO_SPECIALS`); everyone removes it with the dialog's « Retirer le masque ».
+  which anyone may also draw by hand (`PRO_SPECIALS`, the advanced level, everyone's since 2026-11-08); everyone removes it with the dialog's « Retirer le masque ».
 - **« Tournée des postes » / Control tour in the Tracer** (owner, 2026-11-07: « trace the optimal route through a selected list of
   controls, by default all », for the controller, and for placing and collecting controls; every account, the essential level): ribbon
   Équipe et course › Terrain › « Tournée des postes » (act `tour`, `tracer/tour.js`). A dialog: the controls (all normal controls ticked;
@@ -2325,8 +2328,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   (owner, 2026-11-04: « logos are never removed from any display of the map »): a course file's layout images (the test file's 5
   JPEG logos) become image objects on every course where OCAD shows them (`iofin.layoutPictures` / `placeLayoutImages`, also from the
   editor's « Importer des circuits », not twice at the same place; none when the course file is the map: drawn with it). Not done:
-  variations keep their first branch only (listed in the dialog; none in the test file), OCAD's circle gaps are left out, classes
-  (the advanced level's) for administrators only, a single file holding both map and courses not met yet.
+  variations keep their first branch only (listed in the dialog; none in the test file), OCAD's circle gaps are left out (classes,
+  the advanced level's, for everyone since 2026-11-08), a single file holding both map and courses not met yet.
 - **Analyse multi, the owner's review of 2026-11-04** (`pages/shared.js`): the left panel opens on its first tab, « Circuits »
   (`sh.tab.circuits`): the circuit is a drop-down at its top (each with its number of tracks; no chips by the title), the runners'
   list names its columns (Voir, Coureur, Suivre, Temps) instead of a sentence. **First visit**: an account allowed to add a track

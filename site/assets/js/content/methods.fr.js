@@ -1376,9 +1376,8 @@ export function build(X) {
           <h2>Le niveau avancé</h2>
           <p>Le tracé a deux niveaux. Le niveau <b>essentiel</b>, pour tous, fait ce que fait un fichier Purple Pen, plus le travail en
             équipe, le terrain, les vérifications et l'après-course d'Ozimut. Le niveau <b>avancé</b> ajoute ce que fait Condes, un autre
-            logiciel de tracé : il n'est ouvert, pour l'instant, qu'aux administrateurs du site. Ses boutons portent un petit point orange.
-            Un événement qui s'en sert s'ouvre, se dessine et s'imprime pour toute l'équipe ; seuls les administrateurs changent ce qui en
-            relève. Un fichier Purple Pen (.ppen) ne garde pas ces ajouts : l'export dit avant ce qu'il laisse de côté ; le fichier Ozimut
+            logiciel de tracé, pour des besoins plus pointus ; il est ouvert à tous. Ses boutons portent un petit point orange.
+            Un fichier Purple Pen (.ppen) ne garde pas ces ajouts : l'export dit avant ce qu'il laisse de côté ; le fichier Ozimut
             (.ozmt) garde tout.</p>
           <h3>Venir d'un autre logiciel</h3>
           <p>${W("import-courses")} reprend les postes, les circuits, les catégories et les équipes de relais d'un IOF XML (3.0 ou

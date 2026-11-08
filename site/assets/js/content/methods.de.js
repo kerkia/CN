@@ -1377,9 +1377,8 @@ export function build(X) {
           <h2>Die erweiterte Stufe</h2>
           <p>Die Bahnlegung hat zwei Stufen. Die <b>Grundstufe</b>, für alle, kann, was eine Purple-Pen-Datei kann, dazu die Teamarbeit,
             das Gelände, die Prüfungen und die Nachbereitung von Ozimut. Die <b>erweiterte Stufe</b> fügt hinzu, was Condes kann, ein anderes
-            Bahnlegungsprogramm: Sie steht vorerst nur den Administratoren der Website offen. Ihre Schaltflächen tragen einen kleinen orangen Punkt.
-            Eine Veranstaltung, die sie nutzt, öffnet sich, wird gezeichnet und gedruckt für das ganze Team; nur die Administratoren ändern, was zu ihr
-            gehört. Eine Purple-Pen-Datei (.ppen) behält diese Ergänzungen nicht: Der Export sagt vorher, was er weglässt; die Ozimut-Datei
+            Bahnlegungsprogramm, für speziellere Anforderungen; sie steht allen offen. Ihre Schaltflächen tragen einen kleinen orangen Punkt.
+            Eine Purple-Pen-Datei (.ppen) behält diese Ergänzungen nicht: Der Export sagt vorher, was er weglässt; die Ozimut-Datei
             (.ozmt) behält alles.</p>
           <h3>Von einem anderen Programm kommen</h3>
           <p>${W("import-courses")} übernimmt die Posten, die Bahnen, die Kategorien und die Staffelteams aus einem IOF XML (3.0 oder

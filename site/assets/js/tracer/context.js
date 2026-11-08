@@ -91,7 +91,7 @@ export function menuItems(E, at = {}) {
     if (isPro(g) && !E.pro) continue;
     const here = [];
     const walk = (items) => items.forEach((it) => {
-      if (isPro(it) && !E.pro) return;                           // the advanced level: administrators only
+      if (isPro(it) && !E.pro) return;                           // the advanced level (E.pro: every account's since 2026-11-08)
       if (it.t === "stack") walk(it.items);
       else if (it.t === "modes" && it.id === "flag") here.push("-", ...FLAG_MENU);
       else if (it.act && applies(E, it.act, kind, { ...at, menu: true })) here.push([it.act, menuLabel(E, it.act, kind, it.label)]);

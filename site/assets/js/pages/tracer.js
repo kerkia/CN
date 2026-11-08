@@ -253,7 +253,6 @@ async function ocadCourses(file) {
   const iof = await import("../tracer/iofin.js");
   await (await import("../tracer/symbols.js")).loadSymbols().catch(() => {});
   const got = iof.fromOcad(cs);
-  if (!auth.session()?.admin) got.classes = [];
   const ev = M.newEvent({ lang: lang(), map: { kind: "none", scale: map.scale || 10000 } });
   ev.title = file.name.replace(/\.ocd$/i, "");
   iof.importInto(ev, got, { fileMm: false });
@@ -397,8 +396,8 @@ async function importEvent(main, files = []) {
           const text = await file.text();
           try { st.ev = readPpen(text); st.ppen = file; st.ocn = null; st.ocad = null; st.iof = false; if (st.mapFromOcn) { st.map = null; st.mapFromOcn = false; } if (f.elements.title && !f.elements.title.value) f.elements.title.value = st.ev.title || ""; }
           catch (e) {
-            // an IOF XML CourseData (Condes, OCAD, MeOS…): the advanced level's import, for administrators for now
-            const iof = auth.session()?.admin && /\.xml$/i.test(file.name) ? await import("../tracer/iofin.js") : null;
+            // an IOF XML CourseData (Condes, OCAD, MeOS…): the advanced level's import, every account's since 2026-11-08
+            const iof = /\.xml$/i.test(file.name) ? await import("../tracer/iofin.js") : null;
             const kind = iof?.iofKind(text);
             if (kind === "coursedata3" || kind === "coursedata2") {
               const data = iof.readIof(text), ev = M.newEvent({ lang: lang(), map: { kind: "none", scale: data.scale || 10000 } });

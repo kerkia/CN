@@ -5,7 +5,8 @@
 // Every change goes through change(): a snapshot for undo (100 steps), a new layout, a redraw, and a save a moment later
 // (the event's version guards against two people saving over each other; a lock tells the team who is editing).
 // One interface, the ribbon (ribbon.js, ribbon-data.js; owner, 2026-10-17 — the Purple Pen menus retired on 2026-10-24), at two
-// levels: the essential one for everyone, the advanced one (Condes's features) for administrators for now (E.pro).
+// levels: the essential one and the advanced one (Condes's features, E.pro), both every account's since 2026-11-08 (owner; the
+// advanced level was the administrators' from 2026-10-24); its buttons keep their orange dot.
 
 import * as M from "./model.js";
 import { layoutCourse, distFrom } from "./layout.js";
@@ -55,7 +56,7 @@ export async function openEditor(ctx) {
     opts: { intensity: loadPref("intensity", 1), allControls: loadPref("allControls", false), others: [], printArea: false },
     layout: null, items: [], view: { k: 1, ox: 0, oy: 0 }, pending: null,
     overlays: [], closeHooks: [], pickOnce: null, rev: 0,
-    pro: !!auth.session()?.admin,                         // the advanced level: administrators for now (owner, 2026-10-24)
+    pro: true,                                            // the advanced level: every account's since 2026-11-08 (owner)
   };
   window.__tracer = E;                                   // for support and scripted checks
   const root = document.createElement("div");

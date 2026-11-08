@@ -1376,9 +1376,8 @@ export function build(X) {
           <h2>El nivel avanzado</h2>
           <p>El trazado tiene dos niveles. El nivel <b>esencial</b>, para todos, hace lo que hace un archivo de Purple Pen, más el trabajo en
             equipo, el terreno, las comprobaciones y el después de la carrera de Ozimut. El nivel <b>avanzado</b> añade lo que hace Condes, otro
-            programa de trazado: por ahora solo está abierto a los administradores del sitio. Sus botones llevan un pequeño punto naranja.
-            Un evento que lo usa se abre, se dibuja y se imprime para todo el equipo; solo los administradores cambian lo que
-            depende de él. Un archivo de Purple Pen (.ppen) no conserva estos añadidos: la exportación indica antes lo que deja fuera; el archivo Ozimut
+            programa de trazado, para necesidades más específicas; está abierto a todos. Sus botones llevan un pequeño punto naranja.
+            Un archivo de Purple Pen (.ppen) no conserva estos añadidos: la exportación indica antes lo que deja fuera; el archivo Ozimut
             (.ozmt) lo conserva todo.</p>
           <h3>Venir de otro programa</h3>
           <p>${W("import-courses")} toma los controles, los recorridos, las categorías y los equipos de relevos de un IOF XML (3.0 o

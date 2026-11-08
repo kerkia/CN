@@ -1955,8 +1955,8 @@ export default {
   "trc.rib.spTipArea": "One click per corner, then a double-click (or Enter): the area closes on its own.",
   "trc.rib.spTipPoint": "One click where you want it.",
   // the advanced level (owner, 2026-10-24)
-  "trc.rib.tipPro": "Advanced level: for administrators only for now.",
-  "trc.dlg.proOnly": "This command belongs to the advanced level, for administrators only for now.",
+  "trc.rib.tipPro": "Advanced level: the features taken from Condes, for more specialised needs.",
+  "trc.dlg.proOnly": "This command belongs to the advanced level.",
   // the .ppen export of an event using the advanced level (ppen.js ppenLosses)
   "trc.dlg.ppenLossTitle": "Export for Purple Pen",
   "trc.dlg.ppenLossOk": "Export anyway",
