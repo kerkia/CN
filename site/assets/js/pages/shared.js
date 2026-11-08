@@ -44,7 +44,7 @@ import { drawCurves, curveRows } from "../trace/curves.js";
 import { paceRange, paceColour, paceLegend, rampColour, rampLegend, colourOf, legendHtml, gapSpeed } from "../trace/pacecolour.js";
 import { legVariants, resample, VARIANT_COLOURS } from "../trace/routes.js";
 import { deviations, corridorScore, bearingError } from "../trace/corridor.js";
-import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
+import { drawPaceStrip, stripSamples, stripFraction, graphName, isPaceGraph } from "../trace/pacestrip.js";
 import { views as bottomViews, legsPanel, TABS } from "./sharedviews.js";
 import { videoPanel } from "./sharedvideo.js";
 import { matchControls, publishedTaus, publishedPasses, startOnTrace, classLegs } from "../trace/published.js";
@@ -81,6 +81,8 @@ const COURSE = "#a626a4";
 const COLOUR_BY = ["runner", "pace", "gap", "ele", "slope", "legtime", "variant"];        // the last two in a leg's view only
 const HEIGHT_BY = ["gap", "ele", "slope"];          // from the relief: the pace corrected for the slope, the altitude, the slope
 const LEG_ONLY = ["legtime", "variant"];
+// what the graph under the map can draw (owner, 2026-11-08: « Graphique »): the pace, then the terrain's measures, as the Trace menu
+const GRAPHS = ["speed", "gap", "ele", "slope"];
 const MODES = ["clock", "mass", "from", "wait", "waitpause"];
 // the start modes' icons (owner, 2026-11-05: the bar fits over the map, the mode a menu of icon and name), 16 px line drawings
 // the map's panning button, a crosshair (owner, 2026-11-05)
@@ -1394,11 +1396,12 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   let orient = prefs.orient === "leg" ? "leg" : "north", lastTurn = 0;      // the map turned to the leg (as « Analyse solo »)
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);
   let colourBy = COLOUR_BY.includes(prefs.colourBy) ? prefs.colourBy : "runner";      // the routes' colours: each runner's, or the pace
+  let graph = GRAPHS.includes(prefs.graph) ? prefs.graph : "speed";
   let showStrip = prefs.strip !== false && !drawers();     // the runners' paces under the map (a phone: slid down at the opening)
   let ex3d = [1, 1.25, 1.5, 1.75, 2, 2.25, 2.5, 2.75, 3].includes(prefs.ex3d) ? prefs.ex3d : 1.5;   // the 3D view's vertical exaggeration
   // the picture exported (« Export »): the part of the map in view or all of it, PNG or JPEG, with a title and the runners' colours
   const shot = { zone: ["race", "map"].includes(prefs.shotZone) ? prefs.shotZone : "view", type: prefs.shotType === "jpeg" ? "jpeg" : "png", legend: prefs.shotLegend !== false };
-  const savePrefs = () => { try { localStorage.setItem(LAY, JSON.stringify({ lw, rw })); localStorage.setItem(PREFS_KEY, JSON.stringify({ shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, tail, width, wv: 2, future, showCourse: courseOn, courseOver, mapAlpha, traceAlpha, colourBy, strip: showStrip, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
+  const savePrefs = () => { try { localStorage.setItem(LAY, JSON.stringify({ lw, rw })); localStorage.setItem(PREFS_KEY, JSON.stringify({ shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, tail, width, wv: 2, future, showCourse: courseOn, courseOver, mapAlpha, traceAlpha, colourBy, strip: showStrip, graph, lw, rw, ltab: lp.tab, rtab: rp.tab, lcol: lp.collapsed, rcol: rp.collapsed, ex3d, orient })); } catch (e) { /* not kept */ } };
   const int = (v, lo, hi, d) => { const n = Number(v); return v != null && v !== "" && Number.isInteger(n) && n >= lo && n <= hi ? n : d; };
   const MODE0 = modes.includes("wait") ? "wait" : "mass";   // waiting at the controls by default (owner, 2026-11-05)
   let mode = modes.includes(init.m) ? init.m : MODE0, fromK = int(init.from, 0, Math.max(0, legsN - 1), 1), leg = int(init.leg, 0, legsN, 0), T = 0, speed = 10;
@@ -1428,7 +1431,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}" aria-label="${t("sh.fit")}">${raw(ICONS.fit)}</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
           <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button>${videoOn ? html`<button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden>` : ""}</div>
         <div class="an-legchip" id="sh-legchip" hidden><span id="sh-legchip-t"></span><button type="button" class="btn btn-sm ico-btn" id="sh-leg-all" hidden title="${t("lg.whole")}" aria-label="${t("lg.whole")}">${raw(ICONS.course)}</button></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-courseinfo" id="sh-courseinfo">${courseInfo}</div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
-        <div class="sh-bottom"><div class="sh-stripbar"><button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${stripArrow(showStrip)} ${t("sh.strip.title")}</button><span class="an-bar-stats" id="sh-stats"></span></div>
+        <div class="sh-bottom"><div class="sh-stripbar"><button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${stripArrow(showStrip)} ${graphName(graph)}</button><span class="an-bar-stats" id="sh-stats"></span></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
       ${raw(panelHtml({ id: "sh-rp", side: "right", cls: "sh-rp", tabs: [{ key: "display", label: t("an.tab.display"), tip: t("an.tab.display.tip") }, ...(routesOn ? [{ key: "compute", label: t("an.tab.compute"), tip: t("an.tab.compute.tip") }] : []),
@@ -1609,7 +1612,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     if ((!early && !HEIGHT_BY.includes(cmode())) || hts !== undefined) return;
     hts = "loading";
     heights3d((f) => { hFrac = f; setBar($("#sh-legend .wait-bar"), f); }).then((g) => { hts = g?.z ? g : "failed"; }, (e) => { console.warn(e); hts = "failed"; })
-      .then(() => { if (!box.isConnected) return; heightScale(); legend(); mv.draw(); sync3d(); });
+      .then(() => { if (!box.isConnected) return; heightScale(); legend(); mv.draw(); sync3d(); stripCache = null; drawStrip(); });
   }
   /** The colours in use: a leg's colours only in a leg's view. */
   const cmode = () => (!leg && LEG_ONLY.includes(colourBy) ? "runner" : colourBy);
@@ -1714,7 +1717,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   function setStrip(on) {
     showStrip = on; savePrefs();
     $("#sh-strip").hidden = !on;
-    const b = $("#sh-strip-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${stripArrow(on)} ${t("sh.strip.title")}`; }
+    const b = $("#sh-strip-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${stripArrow(on)} ${graphName(graph)}`; }
     const c = $("#sh-strip-on"); if (c) c.checked = on;
     drawStrip(); window.dispatchEvent(new Event("resize"));
   }
@@ -1754,16 +1757,22 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   let stripCache = null;
   function stripSeries() {
     const cv = $("#sh-strip"), K = stripSamples(cv), shown = runners.filter((r) => r.visible);
-    const sig = [K, T0, T1, mode, fromK, leg, shown.map((r) => r.uid).join(",")].join("|");
+    const sig = [K, T0, T1, mode, fromK, leg, shown.map((r) => r.uid).join(","), graph, hts?.z ? 1 : 0].join("|");
     if (stripCache?.sig === sig) return stripCache.series;
     const half = Math.max(3, Math.min(15, (T1 - T0) / 80));
+    // the pace from the distance run; the terrain's measures their mean over the window (none until the heights are loaded)
     const series = shown.map((r) => {
-      const vals = new Array(K).fill(null), end = r.finish ?? r.tr.dur;
+      const vals = new Array(K).fill(null), end = r.finish ?? r.tr.dur, arr = graph === "speed" ? null : hseries(r, graph);
+      if (graph !== "speed" && !arr) return { r, vals };
       for (let k = 0; k < K; k++) {
         const s = sAt(r, T0 + (k / (K - 1)) * (T1 - T0));
         if (s == null || s < r.start - 1 || s > end + 1) continue;
         const a = Math.max(r.start, s - half), b = Math.min(end, s + half);
-        if (b - a >= 2) vals[k] = (cumAt(r.tr, b) - cumAt(r.tr, a)) / (b - a);
+        if (b - a < 2) continue;
+        if (!arr) { vals[k] = (cumAt(r.tr, b) - cumAt(r.tr, a)) / (b - a); continue; }
+        let sum = 0, n = 0;
+        for (let i = indexAt(r.tr, a), i1 = indexAt(r.tr, b); i <= i1; i++) if (Number.isFinite(arr[i])) { sum += arr[i]; n++; }
+        vals[k] = n ? sum / n : null;
       }
       return { r, vals };
     });
@@ -1780,7 +1789,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     for (let x = Math.ceil(T0 / step) * step; x <= T1; x += step) ticks.push({ f: f(x), label: fmtT(x) });
     // in the waiting mode, every control is a moment of the axis; in a leg's view, its two ends
     const marks = !leg && (mode === "wait" || mode === "waitpause") ? waits.slice(1, -1).map((w, j) => ({ f: f(w), label: ctrlLabel(j + 1) })) : [];
-    drawPaceStrip(cv, { series: stripSeries().map(({ r, vals }) => ({ colour: r.colour, vals, bold: r === sel })), cursor: f(T), ticks, marks });
+    if (graph !== "speed") needHeights(true);
+    drawPaceStrip(cv, { series: stripSeries().map(({ r, vals }) => ({ colour: r.colour, vals, bold: r === sel })), cursor: f(T), ticks, marks, by: graph, unit: isPaceGraph(graph) ? "" : graph === "ele" ? "m" : "" });
   }
   // ---- the replay's state in the address (owner's study of 2DRerun, 2026-10-23: a link reopens the same view): the circuit,
   // mode, time, leg, runners shown, followed runner, duel reference and view; written once the replay has been still 0.4 s
@@ -2079,6 +2089,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
           <label><span>${t("an.width")}</span><select id="sh-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
           <label><span>${t("an.colour")}</span><select id="sh-colour-by">${COLOUR_BY.filter((c) => (leg || !LEG_ONLY.includes(c)) && (c !== "variant" || variantsOn)).map((c) => html`<option value="${c}" ${raw(c === cmode() ? "selected" : "")} title="${c === "gap" ? t("an.colour.gap.tip") : ""}">${t(`sh.colourBy.${c}`)}</option>`)}</select></label>
           ${one ? html`<label id="sh-colour-row"><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === one.colour}" title="${c}"></button>`)}<input type="color" id="sh-colour-pick" value="${one.colour}" title="${t("an.traceColour.any")}"></span></label>` : ""}
+          <label title="${t("an.graph.tip")}"><span>${t("an.graph")}</span><select id="sh-graph">${GRAPHS.map((g) => html`<option value="${g}" ${raw(g === graph ? "selected" : "")}>${graphName(g)}</option>`)}</select></label>
           <label><span>${t("an.orient")}</span><select id="sh-orient"><option value="north" ${raw(orient === "north" ? "selected" : "")}>${t("an.orient.north")}</option><option value="leg" ${raw(orient === "leg" ? "selected" : "")}>${t("sh.orient.leg")}</option></select></label>
           <label><span>${t("an.future")}</span><select id="sh-future"><option value="hide" ${raw(future === "hide" ? "selected" : "")}>${t("an.future.hide")}</option><option value="faint" ${raw(future === "faint" ? "selected" : "")}>${t("an.future.faint")}</option></select></label>
           ${leg ? "" : html`<label><span>${t("an.tail")}</span><select id="sh-tail">${TAILS.map((s) => html`<option value="${s}" ${raw(s === tail ? "selected" : "")}>${s ? clock(s) : t("an.tail.all")}</option>`)}</select></label>`}
@@ -2113,6 +2124,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-tail")?.addEventListener("change", (e) => { tail = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-width").addEventListener("change", (e) => { width = Number(e.target.value); savePrefs(); mv.draw(); });
     $("#sh-future").addEventListener("change", (e) => { future = e.target.value; savePrefs(); mv.draw(); });
+    $("#sh-graph").addEventListener("change", (e) => {
+      graph = e.target.value; savePrefs();
+      const b = $("#sh-strip-tog"); if (b) b.textContent = `${stripArrow(showStrip)} ${graphName(graph)}`;
+      stripCache = null; drawStrip();
+    });
     $("#sh-orient").addEventListener("change", (e) => { orient = e.target.value; savePrefs(); if (leg) setLeg(leg); else frame(); });
     $("#sh-map-alpha").addEventListener("input", (e) => { mapAlpha = Number(e.target.value); mv.setAlpha(mapAlpha / 100); savePrefs(); mv.draw(); });
     $("#sh-trace-alpha").addEventListener("input", (e) => { traceAlpha = Number(e.target.value); savePrefs(); mv.draw(); });

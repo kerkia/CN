@@ -47,7 +47,7 @@ export function keyHtml(o = {}) {
   ]]);
   groups.push([t("lg.h.panels"), [
     phone ? [`${btn("›")}${btn("‹")}`, t("lg.handle"), t("lg.handle.d.phone")] : [`${btn("‹")}${btn("›")}`, t("lg.fold"), t("lg.fold.d")],
-    [btn(`${phone ? "▴" : "▸"} ${t("sh.strip.title")}`), t("sh.strip.title"), t("lg.strip.d")],
+    [btn(`${phone ? "▴" : "▸"} ${t("sh.strip.title")}`), t("an.graph"), t("lg.strip.d")],
     ...(o.multi ? [[btn("⌖"), t("lg.follow", cols), t("lg.follow.d", cols)],
       // the runners' times: « ~ » = read on the track, not published
       [btn("~"), t("lg.timeEst"), t("lg.timeEst.d", { tab: cols.tab, col: t("prov.time") })]] : []),

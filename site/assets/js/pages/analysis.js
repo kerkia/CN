@@ -48,7 +48,7 @@ import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
 import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
-import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
+import { drawPaceStrip, stripSamples, stripFraction, graphName, isPaceGraph } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { videoPanel } from "./sharedvideo.js";
 
@@ -228,7 +228,7 @@ export async function render(main, { query = {}, route } = {}) {
             <button type="button" class="btn btn-sm" id="an-fit" title="${t("an.fitTrace")}" aria-label="${t("an.fitTrace")}">${raw(ICONS.fit)}</button><button type="button" class="btn btn-sm" id="an-map" title="${t("an.fitMap")}">▭</button>
             <button type="button" class="btn btn-sm an-measure" id="an-measure" aria-pressed="false" title="${t("an.measure.hint")}" hidden>📏</button><button type="button" class="btn btn-sm" id="an-video-btn" title="${t("sh.video.add")}" hidden>🎥</button><input type="file" id="an-video-file" accept="video/*" hidden></div>
           <div class="an-legchip" id="an-legchip" hidden><span id="an-legchip-t"></span><button type="button" class="btn btn-sm ico-btn" id="an-leg-all" hidden title="${t("lg.whole")}" aria-label="${t("lg.whole")}">${raw(ICONS.course)}</button></div><div class="an-measure-out" id="an-measure-out" hidden></div><div class="an-northarrow" id="an-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="an-legend" hidden></div><div class="an-3d-credit" id="an-3d-credit" hidden></div><div class="an-gen-credit" id="an-gen-credit" hidden></div></div>
-        <div class="sh-bottom"><div class="sh-stripbar" id="an-stripbar" hidden><button type="button" class="sh-strip-tog" id="an-ps-tog" aria-expanded="true" title="${t("an.strip.fold")}">▾ ${t("sh.strip.title")}</button><span class="an-bar-stats" id="an-stats"></span></div>
+        <div class="sh-bottom"><div class="sh-stripbar" id="an-stripbar" hidden><button type="button" class="sh-strip-tog" id="an-ps-tog" aria-expanded="true" title="${t("an.strip.fold")}">▾ ${graphName("speed")}</button><span class="an-bar-stats" id="an-stats"></span></div>
         <canvas class="sh-strip" id="an-ps" hidden></canvas></div></div>
         <div class="an-split" id="an-split-s" title="${t("an.split")}" hidden></div>
         <aside class="an-side" id="an-side"></aside>
@@ -285,6 +285,7 @@ export async function render(main, { query = {}, route } = {}) {
   let chans = new Set(Array.isArray(prefs.chans) && !oldDefault ? prefs.chans : ["pace", ...Object.keys(CHANNEL_COLOUR)]);
   const pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
   let mapAlpha = pct(prefs.mapAlpha, 100), traceAlpha = pct(prefs.traceAlpha, 100);     // the map's and the trace's opacity, %
+  let graph = typeof prefs.graph === "string" ? prefs.graph : "speed";   // the graph under the map (owner, 2026-11-08: « Graphique »)
   let showStrip = prefs.strip !== false && !drawers();     // (a phone: slid down at the opening)                   // the pace under the map, as « Analyse de carte »'s (owner, 2026-11-05)
   // « Parcours sur la carte » (owner, 2026-11-05, as « Analyse de carte »): the course drawn over the map, by default only where
   // the map does not show it already — an organiser's circuit printed, or a course read on the map; the choice kept for each kind
@@ -305,7 +306,7 @@ export async function render(main, { query = {}, route } = {}) {
   // both panels unfolded at every opening, « Inter-postes » and « Affichage » (owner, 2026-11-04); their widths stay remembered
   const lp = { tab: "legs", collapsed: false };
   const rp = { tab: "display", collapsed: false };
-  const savePrefs = () => { try { if (calibrated && traceSig()) localStorage.setItem(`ocn.an.lay.${traceSig()}`, JSON.stringify({ gw, sw })); localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, wv: 2, strip: showStrip, showCourse: courseOn, courseOver, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
+  const savePrefs = () => { try { if (calibrated && traceSig()) localStorage.setItem(`ocn.an.lay.${traceSig()}`, JSON.stringify({ gw, sw })); localStorage.setItem(PREFS_KEY, JSON.stringify({ follow, colour, tail, width, wv: 2, strip: showStrip, graph, showCourse: courseOn, courseOver, future, chans: [...chans], mapAlpha, traceAlpha, traceColour, gw, sw, gcol: lp.collapsed, rcol: rp.collapsed, ltab: lp.tab, rtab: rp.tab, ex3d: v3ex, relief3d: v3relief, interval3d: v3interval,
     shotZone: shot.zone, shotType: shot.type, shotLegend: shot.legend, orient })); } catch (e) { /* not kept */ } };
   /** Whether the sequence of controls is known complete: the published split times or a course file give it. A course
    *  read on the map alone may miss controls, and legs numbered from what was found would mislead. */
@@ -1824,7 +1825,7 @@ export async function render(main, { query = {}, route } = {}) {
         ${track.ch.ele ? html`<span class="an-stat" title="${t("an.climbSo.tip")}"><span class="muted">${t("an.climbSo")}</span> <b id="an-climb">—</b> <span class="muted">m</span></span>` : ""}
         ${short.map((x) => html`<span class="an-warn" title="${x}">⚠ ${x}</span>`)}`;
     $("#an-stripbar").hidden = false; $("#an-ps").hidden = !showStrip;
-    $("#an-ps-tog").setAttribute("aria-expanded", String(showStrip)); $("#an-ps-tog").textContent = `${stripArrow(showStrip)} ${t("sh.strip.title")}`;
+    $("#an-ps-tog").setAttribute("aria-expanded", String(showStrip)); $("#an-ps-tog").textContent = `${stripArrow(showStrip)} ${graphName(graphBy())}`;
     showPanels(false);
     $("#an-bar").hidden = false; $("#an-side").hidden = true; $("#an-left").hidden = false; $("#an-right").hidden = false;
     // the right panel: the display, and (administrators) the computed routes' settings
@@ -1833,6 +1834,7 @@ export async function render(main, { query = {}, route } = {}) {
           <label><span>${t("an.width")}</span><select id="an-width">${WIDTHS.map(([w, k]) => html`<option value="${w}" ${raw(w === width ? "selected" : "")}>${t(k)}</option>`)}</select></label>
           <label><span>${t("an.colour")}</span><select id="an-colour">${["plain", ...colourModes(track)].map((c) => html`<option value="${c}" ${raw(c === (colourBy() || "plain") ? "selected" : "")} title="${c === "gap" ? t("an.colour.gap.tip") : ""}">${t(`an.colour.${c}`)}</option>`)}</select></label>
           <label id="an-colour-row" ${raw(colourBy() ? "hidden" : "")}><span>${t("an.traceColour")}</span><span class="an-swatches">${TRACE_PRESETS.map((c) => html`<button type="button" class="an-swatch" data-colour="${c}" style="background:${c}" aria-pressed="${c === traceColour}" title="${c}"></button>`)}<input type="color" id="an-colour-pick" value="${traceColour}" title="${t("an.traceColour.any")}"></span></label>
+          <label title="${t("an.graph.tip")}"><span>${t("an.graph")}</span><select id="an-graph">${colourModes(track).map((c) => html`<option value="${c}" ${raw(c === graphBy() ? "selected" : "")}>${graphName(c)}</option>`)}</select></label>
           <label><span>${t("an.orient")}</span><select id="an-orient"><option value="north" ${raw(orient === "north" ? "selected" : "")}>${t("an.orient.north")}</option><option value="leg" ${raw(orient === "leg" ? "selected" : "")}>${t("an.orient.leg")}</option></select></label>
           <label><span>${t("an.future")}</span><select id="an-future"><option value="hide" ${raw(future === "hide" ? "selected" : "")}>${t("an.future.hide")}</option><option value="faint" ${raw(future === "faint" ? "selected" : "")}>${t("an.future.faint")}</option></select></label>
           <label><span>${t("an.tail")}</span><select id="an-tail">${TAILS.map((v) => html`<option value="${v}" ${raw(v === tail ? "selected" : "")}>${v ? clock(v) : t("an.tail.all")}</option>`)}</select></label>
@@ -1871,6 +1873,7 @@ export async function render(main, { query = {}, route } = {}) {
     ps.onpointerup = ps.onpointercancel = () => { psDrag = false; };
     applyLayout();
     // the trace's colour applies to the plain trace only: hidden while it is coloured by a measure
+    $("#an-graph").addEventListener("change", (e) => { graph = e.target.value; savePrefs(); $("#an-ps-tog").textContent = `${stripArrow(showStrip)} ${graphName(graphBy())}`; paceStrip(); });
     $("#an-colour").addEventListener("change", (e) => { colour = e.target.value; vSet = false; $("#an-colour-row").hidden = colour !== "plain"; savePrefs(); paceLegend(); draw(); });
     const shotSet = () => { shot.zone = $("#an-shot-zone").value; shot.type = $("#an-shot-type").value; shot.legend = $("#an-shot-legend").checked; savePrefs(); };
     ["#an-shot-zone", "#an-shot-type", "#an-shot-legend"].forEach((s) => $(s).addEventListener("change", shotSet));
@@ -2036,7 +2039,7 @@ export async function render(main, { query = {}, route } = {}) {
   function setStrip(on) {
     showStrip = on; savePrefs();
     $("#an-ps").hidden = !on;
-    const b = $("#an-ps-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${stripArrow(on)} ${t("sh.strip.title")}`; }
+    const b = $("#an-ps-tog"); if (b) { b.setAttribute("aria-expanded", String(on)); b.textContent = `${stripArrow(on)} ${graphName(graphBy())}`; }
     fitHeight(); paceStrip();
   }
   // the race's pace over its own time, smoothed over a few seconds to half a minute, the controls marked (made once per width)
@@ -2044,12 +2047,18 @@ export async function render(main, { query = {}, route } = {}) {
   function paceStrip() {
     const cv = $("#an-ps");
     if (!cv || cv.hidden || !cv.clientWidth || !track || !(total > 0)) return;
-    const K = stripSamples(cv), sig = `${K}|${offset}|${total}|${track.n}`;
+    const by = graphBy(), K = stripSamples(cv), sig = `${K}|${offset}|${total}|${track.n}|${by}`;
     if (psCache?.sig !== sig) {
-      const half = Math.max(3, Math.min(15, total / 80)), vals = new Array(K).fill(null);
+      // the pace from the distance run, any other measure its mean over the window (cadence and power when moving only)
+      const half = Math.max(3, Math.min(15, total / 80)), vals = new Array(K).fill(null), arr = by === "speed" ? null : seriesOf(track, by);
+      const moving = by === "cad" || by === "pw";
       for (let k = 0; k < K; k++) {
         const s = offset + (k / (K - 1)) * total, a = Math.max(offset, s - half), b = Math.min(offset + total, s + half);
-        if (b - a >= 2) vals[k] = (cumAt(track, b) - cumAt(track, a)) / (b - a);
+        if (b - a < 2) continue;
+        if (!arr) { vals[k] = (cumAt(track, b) - cumAt(track, a)) / (b - a); continue; }
+        let sum = 0, n = 0;
+        for (let i = indexAt(track, a), i1 = indexAt(track, b); i <= i1; i++) { const v = arr[i]; if (Number.isFinite(v) && (!moving || (v > 0 && track.v[i] > 0.5))) { sum += v; n++; } }
+        vals[k] = n ? sum / n : null;
       }
       psCache = { sig, vals };
     }
@@ -2057,7 +2066,7 @@ export async function render(main, { query = {}, route } = {}) {
     const ticks = [];
     for (let x = 0; x <= total; x += step) ticks.push({ f: x / total, label: clock(x) });
     const marks = sequenceKnown() ? legs.slice(0, -1).filter((l) => l.t1 != null).map((l) => ({ f: l.t1 / total, label: l.label || String(l.n) })) : [];
-    drawPaceStrip(cv, { series: [{ colour: colourBy() ? "#1c5fd6" : traceColour, vals: psCache.vals, bold: true }], cursor: tNow / total, ticks, marks });
+    drawPaceStrip(cv, { series: [{ colour: colourBy() ? "#1c5fd6" : traceColour, vals: psCache.vals, bold: true }], cursor: tNow / total, ticks, marks, by, unit: isPaceGraph(by) ? "" : unitOf(by) });
   }
   /** The map's turn: the leg being run up (its controls from one to the other), else north up; kept between legs it cannot read. */
   let lastTurn = 0;
@@ -2327,6 +2336,8 @@ export async function render(main, { query = {}, route } = {}) {
   // the pace colours (trace/pacecolour.js): from the fastest (blue) through green to the slowest (red), on the trace's own 10-90 % range
   /** What the trace is coloured by now: null (plain), "speed", or a measure the file has (else the pace). */
   const colourBy = () => (!track || colour === "plain" ? null : colourModes(track).includes(colour) ? colour : "speed");
+  /** The measure the graph under the map draws: the one chosen when the file has it, else the pace. */
+  const graphBy = () => (track && colourModes(track).includes(graph) ? graph : "speed");
   /** The race's points, for the colours' range: from the start to the finish when the race is known. */
   const raceSpan = () => (offset == null ? [0, track.n - 1] : [Math.max(0, indexAt(track, offset)), indexAt(track, offset + total)]);
   function paceScale() { vSet = true; [vLo, vHi] = rangeOf(track, colourBy() || "speed", ...raceSpan()); }
