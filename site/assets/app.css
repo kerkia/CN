@@ -1646,6 +1646,12 @@ body.an-theatre .an-right { grid-area: side; }
   padding: 3px 8px; border-radius: 8px; background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--ink); font-variant-numeric: tabular-nums; }
 .an-legchip[hidden] { display: none; }
 .an-legchip .btn { height: 26px; min-width: 30px; padding: 0 5px; margin-right: -4px; }
+/* the circuit at the map's top left, under the bar (owner, 2026-11-08): its name, length and controls; beside the north arrow when
+   the map is turned */
+.an-courseinfo { position: absolute; left: 8px; top: 8px; z-index: 3; max-width: calc(100% - 120px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: 12.5px; font-weight: 600; padding: 3px 8px; border-radius: 8px; background: color-mix(in srgb, var(--surface) 88%, transparent); color: var(--ink);
+  font-variant-numeric: tabular-nums; pointer-events: none; }
+.an-northarrow:not([hidden]) ~ .an-courseinfo { left: 48px; top: 12px; }
 /* the legend of the trace coloured by pace, in the map's bottom right corner */
 .an-legend { position: absolute; right: 8px; bottom: 8px; z-index: 2; padding: 5px 8px 4px; border-radius: 8px; font-size: 11px; line-height: 1.25;
   background: color-mix(in srgb, var(--surface) 90%, transparent); border: 1px solid var(--border); color: var(--ink); pointer-events: none; width: 168px; }
@@ -4036,4 +4042,6 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
   .sh-mapcol .an-measure-out, body.an-theatre .an-mapcol .an-measure-out,
   body.an-theatre .an-mapcol .an-map > .an-brief { top: calc(var(--bar-h, 0px) + 8px); }
   .sh-mapcol .an-northarrow, body.an-theatre .an-mapcol .an-northarrow { top: calc(var(--bar-h, 0px) + 10px); }
+  .sh-mapcol .an-courseinfo { top: calc(var(--bar-h, 0px) + 8px); }
+  .sh-mapcol .an-northarrow:not([hidden]) ~ .an-courseinfo { top: calc(var(--bar-h, 0px) + 12px); }
 }

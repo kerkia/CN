@@ -2319,6 +2319,8 @@ export default {
   "sh.m.ctrls.one": "{n} Posten",
   "sh.m.ctrls.other": "{n} Posten",
   "sh.m.len": "{km} km Luftlinie",
+  "sh.len.km": "{km} km",
+  "sh.len.climb": "{m} Hm",
   "sh.m.state.draft": "Entwurf",
   "sh.m.state.live": "Veröffentlicht",
   "sh.m.draft.tip": "Solange diese Analyse nicht veröffentlicht ist, sehen sie nur die Veranstalter.",

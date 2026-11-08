@@ -2243,6 +2243,8 @@ export default {
   "sh.m.ctrls.one": "{n} control",
   "sh.m.ctrls.other": "{n} controls",
   "sh.m.len": "{km} km as the crow flies",
+  "sh.len.km": "{km} km",
+  "sh.len.climb": "{m} m climb",
   "sh.m.state.draft": "Draft",
   "sh.m.state.live": "Published",
   "sh.m.draft.tip": "Only the organisers see this analysis until it is published.",

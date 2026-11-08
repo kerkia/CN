@@ -2319,6 +2319,8 @@ export default {
   "sh.m.ctrls.one": "{n} control",
   "sh.m.ctrls.other": "{n} controles",
   "sh.m.len": "{km} km en línea recta",
+  "sh.len.km": "{km} km",
+  "sh.len.climb": "{m} m de desnivel",
   "sh.m.state.draft": "Borrador",
   "sh.m.state.live": "Publicado",
   "sh.m.draft.tip": "Solo los organizadores ven este análisis mientras no esté publicado.",

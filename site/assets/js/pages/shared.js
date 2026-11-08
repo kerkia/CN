@@ -687,6 +687,15 @@ function courseLength(c) {
   }
   return Number.isFinite(m) && m > 0 ? m : null;
 }
+/** A circuit's length as the runners know it (owner, 2026-11-08): the published class's length and climb when the race gives
+ *  them, else as the crow flies from its georeference — the way course lengths are measured, so said plainly unless `crow` names
+ *  the words that say so; "" when neither is known. */
+function courseLenText(c, race, crow = "sh.len.km") {
+  const k = race ? (race.docs || []).flatMap((d) => d.classes || []).find((x) => x.name === c.circuit && x.length_m) : null;
+  if (k) return [t("sh.len.km", { km: fmt(k.length_m / 1000, 1) }), k.climb_m ? t("sh.len.climb", { m: fmt(k.climb_m) }) : ""].filter(Boolean).join(" · ");
+  const m = courseLength(c);
+  return m ? t(crow, { km: fmt(m / 1000, 1) }) : "";
+}
 
 async function managePage(main, id, data, race) {
   const A = data.analysis, kind = A.kind;
@@ -732,8 +741,8 @@ async function managePage(main, id, data, race) {
     $("#sh-m-nomap").hidden = !!c;
     $("#sh-m-nomap").textContent = t(A.courses.length ? "sh.m.noMap" : "sh.m.courses.none");
     if (!c) { $("#sh-m-cap").textContent = ""; mv.draw(); return; }
-    const len = courseLength(c), ctrl = c.controls.filter((p) => p.kind === "control").length;
-    $("#sh-m-cap").textContent = [c.name, c.circuit, tn("sh.m.ctrls", ctrl), len ? t("sh.m.len", { km: fmt(len / 1000, 1) }) : "", c.score ? t("sh.score") : ""].filter(Boolean).join(" · ");
+    const ctrl = c.controls.filter((p) => p.kind === "control").length;
+    $("#sh-m-cap").textContent = [c.name, c.circuit, tn("sh.m.ctrls", ctrl), courseLenText(c, race, "sh.m.len"), c.score ? t("sh.score") : ""].filter(Boolean).join(" · ");
     const token = (preview = {});
     let img = images.get(`${c.n}:${c.map?.v}`);
     if (!img) {
@@ -1319,6 +1328,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   const score = !!course.score, ctrls = course.controls, legsN = score ? 0 : ctrls.length - 1;
   const modes = score ? MODES.filter((m) => m === "clock" || m === "mass") : MODES;
   const legName = (j) => (j < 1 ? t("sh.leg.all") : `${ctrlLabel(j - 1)} → ${ctrlLabel(j)}`);
+  const lens = new Map(), lenOf = (c) => { if (!lens.has(c.n)) lens.set(c.n, courseLenText(c, race)); return lens.get(c.n); };
+  // the circuit at the map's top left, under the bar (owner, 2026-11-08): its name, length and controls
+  const courseInfo = [course.name, lenOf(course), score ? t("sh.score") : tn("sh.m.ctrls", ctrls.filter((p) => p.kind === "control").length)].filter(Boolean).join(" · ");
   const ctrlLabel = (i) => { const p = ctrls[i]; if (p.kind === "start") return t("an.start"); if (p.kind === "finish") return t("an.finish"); return String(ctrls.slice(0, i + 1).filter((q) => q.kind === "control").length); };
   // the display as on « Analyse solo » (owner, 2026-10-14: no curves per runner here — the map is what is compared)
   const prefs = loadPrefs(), pct = (v, d) => (Number.isFinite(v) && v >= 10 && v <= 100 ? v : d);
@@ -1374,7 +1386,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
         <div class="an-tools">${view3dOn ? html`<button type="button" class="btn btn-sm an-3d-btn" id="sh-3d" aria-pressed="false" title="${t("an.v3.hint")}">3D</button>` : ""}<button type="button" class="btn btn-sm" id="sh-zin" title="${t("lg.zin.t")}" aria-label="${t("lg.zin.t")}">+</button><button type="button" class="btn btn-sm" id="sh-zout" title="${t("lg.zout.t")}" aria-label="${t("lg.zout.t")}">−</button>
           <button type="button" class="btn btn-sm" id="sh-fit" title="${t("sh.fit")}" aria-label="${t("sh.fit")}">${raw(ICONS.fit)}</button><button type="button" class="btn btn-sm" id="sh-fitmap" title="${t("an.fitMap")}">▭</button>
           <button type="button" class="btn btn-sm an-measure" id="sh-measure" aria-pressed="false" title="${t("an.measure.hint")}">📏</button>${videoOn ? html`<button type="button" class="btn btn-sm" id="sh-video-btn" title="${t("sh.video.add")}">🎥</button><input type="file" id="sh-video-file" accept="video/*" hidden>` : ""}</div>
-        <div class="an-legchip" id="sh-legchip" hidden><span id="sh-legchip-t"></span><button type="button" class="btn btn-sm ico-btn" id="sh-leg-all" hidden title="${t("lg.whole")}" aria-label="${t("lg.whole")}">${raw(ICONS.course)}</button></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
+        <div class="an-legchip" id="sh-legchip" hidden><span id="sh-legchip-t"></span><button type="button" class="btn btn-sm ico-btn" id="sh-leg-all" hidden title="${t("lg.whole")}" aria-label="${t("lg.whole")}">${raw(ICONS.course)}</button></div><div class="an-measure-out" id="sh-measure-out" hidden></div><div class="an-northarrow" id="sh-northarrow" hidden title="${t("an.orient.n")}"><span>N</span></div><div class="an-courseinfo" id="sh-courseinfo">${courseInfo}</div><div class="an-legend" id="sh-legend" hidden></div><div class="an-3d-credit" id="sh-3d-credit" hidden></div></div>
         <div class="sh-bottom"><div class="sh-stripbar"><button type="button" class="sh-strip-tog" id="sh-strip-tog" aria-expanded="${showStrip}" title="${t("sh.strip.fold")}">${stripArrow(showStrip)} ${t("sh.strip.title")}</button><span class="an-bar-stats" id="sh-stats"></span></div>
         <canvas class="sh-strip" id="sh-strip" ${raw(showStrip ? "" : "hidden")}></canvas></div></div>
       <div class="an-split" id="sh-split-r" title="${t("an.split")}"></div>
@@ -1828,9 +1840,11 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     // the circuit, chosen here (owner, 2026-11-04: a row of chips by the title would not scale; as « En direct »'s course picker),
     // each with its number of tracks; the list's columns named by a header row rather than a sentence
     const nOn = (n) => (allTraces || []).filter((x) => x.course === n).length;
+    // each circuit's length after its name (owner, 2026-11-08)
+    const optName = (c) => [c.name, lenOf(c)].filter(Boolean).join(" · ");
     // (owner, 2026-11-05: no « Circuit » label under the tab of that name, no « n tracks shown of m » — the circuit's name gives
     // the count, the ticks show the rest)
-    $("#sh-left").innerHTML = html`${A.courses.length > 1 ? html`<label class="field sh-course-pick"><select id="sh-course" aria-label="${t("prov.circuit")}">${A.courses.map((c) => html`<option value="${c.n}" ${raw(c.n === course.n ? "selected" : "")}>${tn("sh.course.opt", nOn(c.n), { c: c.name })}</option>`)}</select></label>` : ""}
+    $("#sh-left").innerHTML = html`${A.courses.length > 1 ? html`<label class="field sh-course-pick"><select id="sh-course" aria-label="${t("prov.circuit")}">${A.courses.map((c) => html`<option value="${c.n}" ${raw(c.n === course.n ? "selected" : "")}>${tn("sh.course.opt", nOn(c.n), { c: optName(c) })}</option>`)}</select></label>` : ""}
       ${leg ? html`<div class="an-side-title">${legName(leg)}</div>` : ""}
       <div class="row" style="gap:4px;margin-bottom:4px;flex-wrap:wrap"><button type="button" class="btn btn-sm" id="sh-all">${t("sh.all")}</button><button type="button" class="btn btn-sm" id="sh-none">${t("sh.none")}</button>
         <button type="button" class="btn btn-sm" id="sh-invert">${t("sh.invert")}</button>${runners.some((r) => r.mine) ? html`<button type="button" class="btn btn-sm" id="sh-mine-only">${t("sh.meOnly")}</button>` : ""}</div>

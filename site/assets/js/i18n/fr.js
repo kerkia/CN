@@ -1634,6 +1634,8 @@ export default {
   "sh.m.ctrls.one": "{n} poste",
   "sh.m.ctrls.other": "{n} postes",
   "sh.m.len": "{km} km à vol d'oiseau",
+  "sh.len.km": "{km} km",
+  "sh.len.climb": "{m} m D+",
   "sh.m.state.draft": "Brouillon",
   "sh.m.state.live": "Publiée",
   "sh.m.draft.tip": "Seuls les organisateurs voient cette analyse tant qu'elle n'est pas publiée.",
