@@ -29,7 +29,7 @@ import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick, legArrows } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
@@ -2944,5 +2944,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   // the heights loaded in the background a moment after the opening (owner, 2026-11-07): altitude, slope and slope-corrected pace
   // then colour at once, and the 3D view and the computed routes find them ready (IGN's the first time, then this browser's copy)
   const preload = setTimeout(() => { if (box.isConnected) needHeights(true); }, 1500);
-  return { pause() { stop(); }, destroy() { clearTimeout(preload); measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); barFloat.destroy(); handleClear.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
+  // ← → from leg to leg while one is open, the map shown (not « Analyse des temps »)
+  const offArrows = legArrows((dir) => { if (!leg) return false; const j = Math.max(1, Math.min(legsN, leg + dir)); if (j !== leg) setLeg(j); }, () => !!box.offsetParent);
+  return { pause() { stop(); }, destroy() { offArrows(); clearTimeout(preload); measure.destroy(); stop(); close3d(); video.close(); rcm.token++; rcm.plan?.destroy(); mv.destroy(); barFloat.destroy(); handleClear.destroy(); wholeRo.disconnect(); ownRo.disconnect(); stripRo.disconnect(); window.removeEventListener("resize", fit); } };
 }

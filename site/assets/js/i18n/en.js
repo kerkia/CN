@@ -2685,7 +2685,7 @@ export default {
   "lg.legpick": "Leg shown",
   "lg.legpick.d": "Chooses what the map shows: “Whole course” (the default) or a single leg. The button shows the leg on display, whether it was chosen here, in “Legs” or with ⏮ ⏭.",
   "lg.legs": "Previous / next leg",
-  "lg.legs.d": "Opens the previous or next leg. The leg menu follows.",
+  "lg.legs.d": "Opens the previous or next leg. The leg menu follows. The keyboard's ← → arrows do the same while a leg is open.",
   "lg.play.d": "Starts the replay; ⏸ stops it.",
   "lg.speed.d": "×1 replays the race at its real pace, ×10 ten times faster.",
   "lg.zoom": "Zoom in / out",

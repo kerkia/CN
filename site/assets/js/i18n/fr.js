@@ -1967,7 +1967,7 @@ export default {
   "lg.legpick": "Inter-poste affiché",
   "lg.legpick.d": "Choisit ce que montre la carte : « Tout le parcours » (par défaut) ou un seul inter-poste. Le bouton indique l'inter-poste affiché, qu'il ait été choisi ici, dans « Inter-postes » ou avec ⏮ ⏭.",
   "lg.legs": "Inter-poste précédent / suivant",
-  "lg.legs.d": "Ouvre l'inter-poste précédent ou suivant. Le menu de l'inter-poste affiché le suit.",
+  "lg.legs.d": "Ouvre l'inter-poste précédent ou suivant. Le menu de l'inter-poste affiché le suit. Les flèches ← → du clavier font de même tant qu'un inter-poste est ouvert.",
   "lg.play.d": "Lance le replay ; ⏸ l'arrête.",
   "lg.speed.d": "×1 rejoue la course à son rythme réel, ×10 dix fois plus vite.",
   "lg.zoom": "Zoom avant / arrière",

@@ -46,7 +46,7 @@ import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick, legArrows } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawPaceStrip, stripSamples, stripFraction, graphName, isPaceGraph } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
@@ -2109,6 +2109,8 @@ export async function render(main, { query = {}, route } = {}) {
     else if (fit) { fitTrace(); still = true; }
     sliderSpan(); legsTable(); seek(tNow);
   }
+  // ← → from leg to leg while one is open
+  const offArrows = legArrows((dir) => { if (legSel < 0) return false; jumpLeg(dir); });
   function jumpLeg(dir) {
     moved();
     if (legSel >= 0) {                                     // a leg opened: the next or previous one
@@ -2976,7 +2978,7 @@ export async function render(main, { query = {}, route } = {}) {
     window.removeEventListener("resize", onWinResize);
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
     window.removeEventListener("ocn:inbox", onInbox);
-    document.removeEventListener("keydown", onDrawKey); measure.destroy(); video?.close();
+    document.removeEventListener("keydown", onDrawKey); offArrows(); measure.destroy(); video?.close();
     themeWatch.disconnect();
     stop(); ro.disconnect(); barFloat.destroy(); handleClear.destroy(); prepToken++; close3d(); rcs.token++; rcs.plan?.destroy();
     if (map || track) memos[pageMode] = { map, track, courseCache, iofIndex, northUp, restoredFiles: true, files: { ...files }, orgaKey: orgaMode ? key : null };

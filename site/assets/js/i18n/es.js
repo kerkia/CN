@@ -2824,7 +2824,7 @@ export default {
   "lg.legpick": "Tramo mostrado",
   "lg.legpick.d": "Elige lo que muestra el mapa: «Todo el recorrido» (por defecto) o un solo tramo. El botón indica el tramo mostrado, tanto si se eligió aquí, en «Tramos» o con ⏮ ⏭.",
   "lg.legs": "Tramo anterior / siguiente",
-  "lg.legs.d": "Abre el tramo anterior o siguiente. El menú de tramos lo sigue.",
+  "lg.legs.d": "Abre el tramo anterior o siguiente. El menú de tramos lo sigue. Las flechas ← → del teclado hacen lo mismo mientras hay un tramo abierto.",
   "lg.play.d": "Inicia la reproducción; ⏸ la detiene.",
   "lg.speed.d": "×1 reproduce la carrera a su ritmo real, ×10 diez veces más rápido.",
   "lg.zoom": "Acercar / alejar",

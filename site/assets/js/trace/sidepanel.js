@@ -99,6 +99,19 @@ export function legPickHtml(id, items, cur) {
     <span class="sh-mode-menu an-legpick-menu" role="menu" hidden><button type="button" role="menuitemradio" aria-checked="${!now}" data-leg="-1">${raw(ICONS.course)}<span>${t("sh.leg.all")}</span></button>${items.map(([v, l]) => html`<button type="button" role="menuitemradio" aria-checked="${v === cur}" data-leg="${v}"><span class="an-legpick-n">${l}</span></button>`)}</span></span>`;
 }
 /** The leg menu's behaviour: onPick(value) on a choice (-1 = the whole course); a click beside it or Escape closes it. */
+/**
+ * ← and → step the legs while one is open (owner, 2026-11-08), unless the key goes to a field, a slider, a menu or a dialog, or
+ * comes with a modifier; `step(dir)` returns false when no leg is open (the key then left alone). Returns the listener to remove.
+ */
+export function legArrows(step, shown = () => true) {
+  const on = (e) => {
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+    if (e.target?.closest?.("input, select, textarea, [contenteditable], [role=menu], [role=dialog], dialog, .tr-modal") || !shown()) return;
+    if (step(e.key === "ArrowLeft" ? -1 : 1) !== false) e.preventDefault();
+  };
+  document.addEventListener("keydown", on);
+  return () => document.removeEventListener("keydown", on);
+}
 export function bindLegPick(root, onPick) {
   const b = root && $("button", root), menu = root && $(".an-legpick-menu", root);
   if (!b || !menu) return;
