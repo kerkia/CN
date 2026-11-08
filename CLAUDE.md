@@ -3058,7 +3058,16 @@ Every multiple-choice game was played through to its score page at phone size, w
   challenge nor robots.txt, unlike IOF Eventor): date, host (the IOC's code, `IOC` → ISO), name, the World Cup badge, the status;
   each WRE links its IOF Eventor page (`src.eventor`, owner 2026-11-04: venue, website, entries for the reader's browser — the
   ranking site numbers events as Eventor does, a split event 1 000 000 / 2 000 000 + the number; Eventor screens robots, Ozimut
-  reads nothing there; an Eventor API key is asked of the IOF);
+  reads nothing there; an Eventor API key is asked of the IOF); **Eventor's own list, copied by hand** (owner, 2026-11-08): `countries/wre_eventor.tsv` holds
+  Eventor's event list as the owner pasted it from their browser (Eventor answers robots with a Cloudflare challenge: never
+  read nor rendered by Ozimut); `wre.eventor_rows` reads it (Eventor writes « 10 Oct » without a year: the first row's year
+  nearest the « # copied: » day, then the next year each time the month falls back by more than two; a cell of several lines
+  — « World Ranking Event » / « Gold WRE » — as its lines; organisers by English name, `EVENTOR_HOST`), `wre.pair` matches
+  each event to the ranking calendar's row (same host, discipline and day — any day of a multi-day event, which then covers
+  every row of its days sharing a word —, one row each), copying Eventor's level and entry deadline (`reg.close`, no link)
+  onto it; the rest are rows of their own (`xwe<hash>`, `src.eventor` the list page; « (Preliminary Dates) » becomes
+  `prelim`, the tag « dates provisoires »). On 2026-11-08: 265 rows to December 2029, 122 matched, 143 added (the WREs from
+  May 2027, the championships, the World Cup rounds). To update it, paste the list again and change the date.
   this year and the next (the last too until March), one row per event (its men's and women's lists are two rows there), ~10
   requests a day; `countries.modules()` runs it **last** in the agenda run so that each WRE is matched to its host country's agenda
   as refreshed that day (`match`: a competition of that day or spanning it, the same discipline, sprint apart from forest except a

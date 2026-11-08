@@ -3591,6 +3591,8 @@ export default {
   "agd.wre.tip": "Competición del ranking mundial IOF (World Ranking Event)",
   "agd.wc": "Copa del Mundo",
   "agd.wc.tip": "Una prueba de la Copa del Mundo IOF",
+  "agd.prelim": "fechas provisionales",
+  "agd.prelim.tip": "Fechas anunciadas por la IOF, aún por confirmar",
   "agd.nat.tag": "provisional",
   "agd.nat.tagFinal": "calendario nacional",
   "agd.nat.tip": "En el calendario nacional, aún no en la agenda: su fecha y su organización pueden cambiar",

@@ -419,7 +419,8 @@ export async function render(main, { query }) {
       ${safeUrl(n.url) ? html`<p style="margin:6px 0 0"><a class="btn btn-sm" href="${n.url}" target="_blank" rel="noopener">${t("agd.nat.pdf")}</a></p>` : ""}</div>`;
   };
   const wreTags = (e) => html`${e.wre && !inWre ? html` <span class="tag tag-wre" title="${t("agd.wre.tip")}">WRE</span>` : ""}${
-    e.wc ? html` <span class="tag tag-wre" title="${t("agd.wc.tip")}">${t("agd.wc")}</span>` : ""}`;
+    e.wc ? html` <span class="tag tag-wre" title="${t("agd.wc.tip")}">${t("agd.wc")}</span>` : ""}${
+    e.prelim ? html` <span class="tag" title="${t("agd.prelim.tip")}">${t("agd.prelim")}</span>` : ""}`;
   /** What « Résultats » found of a past competition: the organisers' results, split times, the official results. */
   const pastTags = (e) => html`${e.docs ? html` <span class="tag">${t("agd.past.results")}</span>` : ""}${e.splits ? html` <span class="tag">${t("agd.past.splits")}</span>` : ""}${
     e.official ? html` <span class="tag" title="${t("prov.ffcoResults")}">${t("agd.past.official")}</span>` : ""}`;
@@ -574,7 +575,7 @@ export async function render(main, { query }) {
         ${row(t(fr ? "agd.reg.byCircuit" : "agd.reg.byCat"), r.circuits ? html`<div class="reg-circ">${r.circuits.map(([c, n]) => html`<span>${c} <b>${fmt(n)}</b></span>`)}</div>` : "")}
       </dl>` : html`<div class="dim">${t("agd.reg.noDates")}</div>`}
 
-      <p style="margin:10px 0 0"><a class="btn btn-primary btn-sm" href="${r.url}" target="_blank" rel="noopener">${t("agd.reg.link")}</a></p>
+      ${r.url ? html`<p style="margin:10px 0 0"><a class="btn btn-primary btn-sm" href="${r.url}" target="_blank" rel="noopener">${t("agd.reg.link")}</a></p>` : ""}
     </div>`;
   }
 

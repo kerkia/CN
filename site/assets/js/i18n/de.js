@@ -3591,6 +3591,8 @@ export default {
   "agd.wre.tip": "Wettkampf der IOF-Weltrangliste (World Ranking Event)",
   "agd.wc": "Weltcup",
   "agd.wc.tip": "Ein Lauf des IOF-Weltcups",
+  "agd.prelim": "vorläufige Termine",
+  "agd.prelim.tip": "Von der IOF angekündigte Termine, noch nicht bestätigt",
   "agd.nat.tag": "vorläufig",
   "agd.nat.tagFinal": "nationaler Kalender",
   "agd.nat.tip": "Im nationalen Kalender, noch nicht im Terminkalender: Datum und Ausrichter können sich ändern",

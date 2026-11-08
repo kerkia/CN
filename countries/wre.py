@@ -26,9 +26,11 @@ from countries import agenda
 from countries.base import Country
 
 COUNTRY = Country(code="XW", federation="IOF", access="all", db=paths.DATA_DIR / "xw.sqlite3", lang="en", results=False)
-AGENDA_VERSION = 4                       # 2: the WREs placed on the maps (a town of their name, else their country's centre);
+AGENDA_VERSION = 5                       # 2: the WREs placed on the maps (a town of their name, else their country's centre);
                                          # 3: France's centre was Clipperton Island's (worldplaces), none off its map any more;
-                                         # 4: each WRE's page on IOF Eventor (`src.eventor`)
+                                         # 4: each WRE's page on IOF Eventor (`src.eventor`);
+                                         # 5: IOF Eventor's list as copied by the owner (wre_eventor.tsv) adds what the
+                                         #    ranking calendar lacks (2026-11-08)
 SOURCE = "https://ranking.orienteering.org"
 # a WRE's page on IOF Eventor, where its organiser gives the venue, website, entries and documents (owner, 2026-11-04: « POM 27
 # has its own site »): the ranking site numbers its events as Eventor does, an event ranked in two lists (men's and women's)
@@ -51,6 +53,36 @@ IOC = {
     "PAK": "PK", "PER": "PE", "PHI": "PH", "POL": "PL", "POR": "PT", "PRK": "KP", "PUR": "PR", "ROU": "RO", "RSA": "ZA",
     "RUS": "RU", "SGP": "SG", "SLO": "SI", "SRB": "RS", "SRI": "LK", "SUI": "CH", "SVK": "SK", "SWE": "SE", "THA": "TH",
     "TPE": "TW", "TUN": "TN", "TUR": "TR", "UKR": "UA", "URU": "UY", "USA": "US", "UZB": "UZ", "VEN": "VE", "VIE": "VN"}
+# IOF Eventor's list of the IOF's events, copied by hand from the owner's browser (owner, 2026-11-08: Eventor has the WREs a
+# year and more ahead, the championships and the World Cup rounds, which the ranking calendar lists only later):
+# countries/wre_eventor.tsv, Eventor's columns as pasted. Its events the ranking calendar already lists give that row
+# Eventor's level (« Gold WRE ») and entry deadline; the others are added. Ozimut never reads Eventor itself.
+EVENTOR_FILE = Path(__file__).resolve().parent / "wre_eventor.tsv"
+EVENTOR_LIST = "https://eventor.orienteering.sport/events?mode=List"
+# Eventor's organisers (a country in English, sometimes a body) -> ISO 3166-1 alpha-2; a body of no country: none
+EVENTOR_HOST = {
+    "argentina": "AR", "armenia": "AM", "australia": "AU", "austria": "AT", "azerbaijan": "AZ", "belarus": "BY",
+    "belgium": "BE", "bosnia and herzegovina": "BA", "brazil": "BR", "bulgaria": "BG", "canada": "CA", "chile": "CL",
+    "china": "CN", "chinese taipei": "TW", "colombia": "CO", "croatia": "HR", "cuba": "CU", "cyprus": "CY", "czechia": "CZ",
+    "czech republic": "CZ", "denmark": "DK", "ecuador": "EC", "estonia": "EE", "finland": "FI", "france": "FR",
+    "georgia": "GE", "germany": "DE", "great britain": "GB", "scottish orienteering association": "GB", "greece": "GR",
+    "hong kong china": "HK", "hong kong": "HK", "hungary": "HU", "iceland": "IS", "india": "IN", "indonesia": "ID",
+    "iran": "IR", "ireland": "IE", "israel": "IL", "italy": "IT", "japan": "JP", "kazakhstan": "KZ", "kenya": "KE",
+    "korea": "KR", "korea, republic of": "KR", "kosovo": "XK", "kyrgyzstan": "KG", "latvia": "LV", "lithuania": "LT",
+    "luxembourg": "LU", "malaysia": "MY", "malta": "MT", "mexico": "MX", "moldova": "MD",
+    "moldova, republic of": "MD", "mongolia": "MN", "montenegro": "ME", "morocco": "MA", "netherlands": "NL",
+    "new zealand": "NZ", "north macedonia": "MK", "norway": "NO", "pakistan": "PK", "philippines": "PH", "poland": "PL",
+    "portugal": "PT", "romania": "RO", "russia": "RU", "russian federation": "RU", "serbia": "RS", "singapore": "SG",
+    "slovakia": "SK", "slovenia": "SI", "south africa": "ZA", "spain": "ES", "sri lanka": "LK", "sweden": "SE",
+    "switzerland": "CH", "thailand": "TH", "tunisia": "TN", "turkiye": "TR", "turkey": "TR", "ukraine": "UA",
+    "united states": "US", "usa": "US", "uruguay": "UY", "uzbekistan": "UZ", "vietnam": "VN"}
+# Eventor's « CF » (the format) -> the agenda's format (the sprint, middle, long; trail-O's and the mass start: none)
+EVENTOR_CF = {"S": agenda.SPRINT, "KS": agenda.SPRINT, "M": agenda.MIDDLE, "L": agenda.LONG, "U": agenda.LONG}
+EVENTOR_D = {"F": agenda.FOOT, "M": agenda.MTBO, "S": agenda.SKI, "T": agenda.TRAIL}
+MONTHS = {m: i + 1 for i, m in enumerate("jan feb mar apr may jun jul aug sep oct nov dec".split())}
+DAY = re.compile(r"^(\d{1,2}) ([A-Za-z]{3})(?: - (\d{1,2}) ([A-Za-z]{3}))?\t")
+PRELIM = re.compile(r"^\(preliminary dates\)\s*-?\s*", re.I)
+
 ROW = re.compile(r'datetime="(\d{4}-\d{2}-\d{2})".*?flag-([A-Z]{3}).*?ResultsView\?event=(\d+)">([^<]*)</a>(.*?)$', re.S)
 # a matched row's fields the WRE list shows as its own
 COPY = ("place", "org", "site", "reg", "invitation", "gps", "pos", "cancelled")
@@ -194,6 +226,104 @@ def inside(cc: str, lat: float, lon: float) -> bool:
     return not b or (b[0] <= lon <= b[2] and b[1] <= lat <= b[3])
 
 
+def eventor_rows(text: str | None = None) -> list[dict]:
+    """The events of Eventor's list as pasted: {date, end, name, host, spec, epr, wre, wc, level, close}. Eventor writes
+    « 10 Oct » with no year: the first row's year is the one that puts it nearest the day the list was copied (« # copied: »),
+    each row then in the year of the row before, the next one when its month falls back by more than two (the list is in
+    date order, a day out of it here and there). A cell of several lines (« World Ranking Event » then « Gold WRE ») comes as
+    its lines, the row's other cells after the last."""
+    from datetime import timedelta
+    if text is None:
+        try:
+            text = EVENTOR_FILE.read_text(encoding="utf-8")
+        except OSError:
+            return []
+    m = re.search(r"^# copied: (\d{4}-\d{2}-\d{2})", text, re.M)
+    copied = date.fromisoformat(m.group(1)) if m else date.today()
+    rows, cur = [], None
+    for line in text.splitlines():
+        if line.startswith("#") or line.startswith("Date\t"):
+            continue
+        if DAY.match(line):
+            cur = [line]
+            rows.append(cur)
+        elif cur is not None and line.strip():
+            cur.append(line)
+    out, year, month = [], None, None
+    for lines in rows:
+        cells = "\n".join(lines).split("\t") + [""] * 9
+        d1, m1, d2, m2 = DAY.match(lines[0]).groups()
+        mo = MONTHS.get(m1.lower())
+        if not mo:
+            continue
+        if year is None:
+            year = min((copied.year - 1, copied.year, copied.year + 1),
+                       key=lambda y: abs((date(y, mo, min(int(d1), 28)) - copied).days))
+        elif mo < month - 2:
+            year += 1
+        month = mo
+        try:
+            day = date(year, mo, int(d1))
+            end = None
+            if d2:
+                me = MONTHS[m2.lower()]
+                end = date(year + (1 if me < mo else 0), me, int(d2))
+        except (ValueError, KeyError):
+            continue
+        name, org, disc, kind, cf, ed = (c.strip() for c in (cells[1], cells[2], cells[4], cells[5], cells[6], cells[7]))
+        types = [t.strip() for t in kind.split("\n") if t.strip()]
+        level = [t for t in types if t not in ("World Ranking Event", "World Cup")]
+        prelim = bool(PRELIM.match(name))         # (dates to be confirmed: a tag on the page, in the reader's language)
+        name = PRELIM.sub("", name)
+        spec = EVENTOR_D.get(disc) or agenda.spec_of(name)
+        epr = EVENTOR_CF.get(cf) if spec != agenda.TRAIL else None
+        close = None
+        mm = re.match(r"(\d{1,2})/(\d{1,2})", ed)
+        if mm:                                    # the entry deadline: the last such day before the event
+            dd, dm = int(mm.group(1)), int(mm.group(2))
+            for y in (day.year, day.year - 1):
+                try:
+                    c = date(y, dm, dd)
+                except ValueError:
+                    continue
+                if c <= day and day - c < timedelta(days=366):
+                    close = c.isoformat()
+                    break
+        out.append({"date": day.isoformat(), "end": end.isoformat() if end else None, "name": name,
+                    "host": EVENTOR_HOST.get(agenda.fold(org)), "spec": spec, "epr": epr or None,
+                    "wre": "World Ranking Event" in types, "wc": "World Cup" in types,
+                    "level": " · ".join(level) or None, "close": close, "prelim": prelim})
+    return out
+
+
+def pair(ev: list[dict], cal: list[dict]) -> list[tuple[dict, dict | None]]:
+    """Each Eventor event and the ranking calendar's row of it, or None: a row of the same host and discipline on that day
+    (for an event of several days, any of its days); among several, the one whose name shares the most words, then the
+    same format; one row to one event, except an event of several days, which covers every row of its days whose name
+    shares a word with it (a championship's races are rows of their own on the calendar)."""
+    used, out = set(), []
+    for e in sorted(ev, key=lambda e: (e["end"] is not None, e["date"])):
+        last = e["end"] or e["date"]
+        cands = []
+        for i, w in enumerate(cal):
+            if w.get("host") != e["host"] or w.get("spec") != e["spec"] or not (e["date"] <= w["date"] <= last):
+                continue
+            n = len(words(w["name"]) & words(e["name"]))
+            if e["end"]:
+                if n:
+                    cands.append((n, 0, -i))
+            elif i not in used:
+                cands.append((n, int(bool(e["epr"]) and w.get("epr") == e["epr"]), -i))
+        if not cands:
+            out.append((e, None))
+            continue
+        best = -max(cands)[2]
+        if not e["end"]:
+            used.add(best)
+        out.append((e, cal[best]))
+    return out
+
+
 def read(http, today: date) -> list[dict]:
     rows, failed = [], 0
     for y in years(today):
@@ -217,20 +347,40 @@ def read(http, today: date) -> list[dict]:
         e = agenda.event("XW", r["id"], r["date"], r["name"], spec=spec, epr=epr if epr is not None else (agenda.fmt_of(r["name"]) or None),
                          src={"iof": f"{SOURCE}/ResultsView?event={r['id']}", "eventor": EVENTOR.format(int(r["id"]) % 1_000_000)}, wre=True, wc=r["wc"] or None,
                          calculated=(r["status"] == "Calculated") or None, host=cc, ioc=r["ioc"] if not cc else None)
-        if cc:
-            hit = match(e, hosts.setdefault(cc, host_events(cc)))
-            if hit:
-                e["same"] = hit["id"]
-                for f in COPY:
-                    if hit.get(f) not in (None, "", [], {}):
-                        e[f] = hit[f]
-        if cc and not e.get("pos") and not e.get("gps"):
-            pos = position(cc, r["name"])
-            if pos:
-                e["pos"] = pos
-        POS[e["id"]] = e.get("pos")
-        out.append(e)
+        out.append(settle(e, cc, hosts))
+    # what Eventor's list adds: its level and entry deadline to the rows the calendar has, its other events as rows
+    import hashlib
+    for ev, w in pair(eventor_rows(), out):
+        if w is not None:
+            if ev["level"] and not w.get("level"):
+                w["level"] = ev["level"]
+            if ev["close"] and not w.get("reg"):
+                w["reg"] = {"close": ev["close"]}
+            continue
+        key = hashlib.sha1(f"{ev['date']}|{ev['host']}|{ev['name']}".encode("utf-8")).hexdigest()[:10]
+        e = agenda.event("XW", f"e{key}", ev["date"], ev["name"], end=ev["end"], spec=ev["spec"],
+                         epr=ev["epr"] or (agenda.fmt_of(ev["name"]) or None), level=ev["level"],
+                         src={"eventor": EVENTOR_LIST}, reg={"close": ev["close"]} if ev["close"] else None,
+                         wre=ev["wre"] or None, wc=ev["wc"] or None, prelim=ev["prelim"] or None, host=ev["host"])
+        out.append(settle(e, ev["host"], hosts))
     return out
+
+
+def settle(e: dict, cc: str | None, hosts: dict) -> dict:
+    """A WRE row matched to its host country's agenda row (its place, organiser, website… copied) and placed on the map."""
+    if cc:
+        hit = match(e, hosts.setdefault(cc, host_events(cc)))
+        if hit:
+            e["same"] = hit["id"]
+            for f in COPY:
+                if hit.get(f) not in (None, "", [], {}):
+                    e[f] = hit[f]
+    if cc and not e.get("pos") and not e.get("gps"):
+        pos = position(cc, e["name"])
+        if pos:
+            e["pos"] = pos
+    POS[e["id"]] = e.get("pos")
+    return e
 
 
 # each row's position as the last read gave it (its match's, a town of its name, its country's centre): the file's change

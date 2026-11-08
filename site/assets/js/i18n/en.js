@@ -3432,6 +3432,8 @@ export default {
   "agd.wre.tip": "IOF World Ranking Event",
   "agd.wc": "World Cup",
   "agd.wc.tip": "A round of the IOF World Cup",
+  "agd.prelim": "provisional dates",
+  "agd.prelim.tip": "Dates announced by the IOF, still to be confirmed",
   "agd.nat.tag": "provisional",
   "agd.nat.tagFinal": "national calendar",
   "agd.nat.tip": "On the national calendar, not yet on the agenda: its date and organiser may change",

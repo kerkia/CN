@@ -1,0 +1,293 @@
+# IOF Eventor's list of the IOF's events (eventor.orienteering.sport/events, List mode), copied by hand from the owner's
+# browser: Eventor screens robots, Ozimut never reads it itself. countries/wre.py adds the events the IOF ranking site's
+# calendar does not list yet. To update: paste the list again under the header line, change the date below.
+# copied: 2026-11-08
+Date	Event	Organiser	Regions	D	Event type	CF	ED
+10 Oct	Australian MTBO Middle Distance Championships	Australia	Oceania	M	World Ranking Event	M		Results
+10 Oct	Batys-Azimut	Kazakhstan	Asia	F	World Ranking Event	S		Results
+10 Oct	Hungarian Long Distance Championships	Hungary	Europe	F	World Ranking Event	L		Results
+10 Oct	Cerrado Orienteering Trophy - GOLD WRE - Long	Brazil	South America	F	World Ranking Event
+Gold WRE	L		Results
+11 Oct	Australian MTBO Long Distance Championships	Australia	Oceania	M	World Ranking Event	M		Results
+11 Oct	OC Tortoise 50th Anniversary Competitions Day2	Japan	Asia	F	World Ranking Event	M		Results
+11 Oct	25mannamedeln - Middle Stockholm	Sweden	Europe	F	World Ranking Event	M		Results
+11 Oct	Banat open 2026	Serbia	Europe	F	World Ranking Event	M		Results
+11 Oct	Cerrado Orienteering Trophy - GOLD WRE - Middle	Brazil	South America	F	World Ranking Event
+Gold WRE	M		Results
+12 Oct	OC Tortoise 50th Anniversary Competitions Day3	Japan	Asia	F	World Ranking Event	L		Results
+12 Oct	Cerrado Orienteering Trophy - GOLD WRE - Sprint	Brazil	South America	F	World Ranking Event
+Gold WRE	S		Results
+17 Oct	Makopala Universitas Budi Luhur Orienteering Championship VI - Middle Distance	Indonesia	Asia	F	World Ranking Event	M		Results
+17 Oct	Dragon Cup - Polish TrailO Championships 2026 - Sprint	Poland	Europe	T	World Ranking Event	PS
+17 Oct	Dragon Cup - Polish TrailO Championships 2026 - TempO	Poland	Europe	T	World Ranking Event	T
+18 Oct	Makopala Universitas Budi Luhur Orienteering Championship VI - Sprint Distance	Indonesia	Asia	F	World Ranking Event	S		Results
+18 Oct	Dragon Cup - Polish TrailO Championships 2026 - PreO	Poland	Europe	T	World Ranking Event	P
+20 Oct - 24 Oct	CISM World Military Championship Orienteering 2026	Switzerland	Europe	F	World Ranking Event
+Partner Event			Results
+23 Oct	Adventure Way Cup - Stage 1	Moldova, Republic of	Europe	F	World Ranking Event	S
+24 Oct	Trail-O Adriatic Meeting - PreO sprint	Italy	Europe	T	World Ranking Event	PS		Results
+24 Oct	Taizhou GOLD WRE 1, Zhejiang Province	China	Asia	F	World Ranking Event
+Gold WRE	S		Results
+25 Oct	Adventure Way Cup - Stage 3	Moldova, Republic of	Europe	F	World Ranking Event	M
+25 Oct	Trail-O Adriatic Meeting - TempO	Italy	Europe	T	World Ranking Event	T		Results
+25 Oct	Taizhou GOLD WRE 2, Zhejiang Province	China	Asia	F	World Ranking Event
+Gold WRE	S		Results
+30 Oct	Leshan GOLD WRE 3, Sichuan province	China	Asia	F	World Ranking Event
+Gold WRE	S		Results
+31 Oct	Asian Cup Japan Orienteering Championships – Middle distance	Japan	Asia	F	World Ranking Event	M		Results
+31 Oct	Brașov O-Meeting	Romania	Europe	F	World Ranking Event	M		Results
+1 Nov	Asian Cup Japan Orienteering Championships – Long distance	Japan	Asia	F	World Ranking Event	L		Results
+1 Nov	Brașov O-Meeting	Romania	Europe	F	World Ranking Event	S		Results
+1 Nov	Leshan GOLD WRE 4, Sichuan province	China	Asia	F	World Ranking Event
+Gold WRE	S
+6 Nov	X Central American and Caribbean Championships - Middle	Colombia	South America	F	World Ranking Event	M		Results
+7 Nov	Open International - Colombian Championships	Colombia	South America	F	World Ranking Event	L		Results
+8 Nov	Jættemilen 2026	Denmark	Europe	F	World Ranking Event	U
+9 Nov - 12 Nov	Asian Junior and Youth Orienteering Championships 2026	China	Asia	F	Regional Championships
+9 Nov - 12 Nov	Asian Orienteering Championships 2026	China	Asia	F	Regional Championships
+World Ranking Event
+8 Nov	X Central American and Caribbean Championships	Colombia	South America	F	World Ranking Event	S
+13 Nov - 15 Nov	South American Orienteering Championships (Senior, Junior, Youth)	Chile	South America	F	Regional Championships
+World Ranking Event		7/11
+28 Nov	2026 Dinghai Foot-O World Ranking Event	China	Asia	F	World Ranking Event	S
+29 Nov	2026 Dinghai Foot-O World Ranking Event	China	Asia	F	World Ranking Event	S
+5 Dec	Hong Kong Annual Trail Orienteering Championships 2026 (Pre O) cum World Ranking Event	Hong Kong China	Asia	T	World Ranking Event	P
+6 Dec	Hong Kong Annual Trail Orienteering Championships 2026 (Temp O) cum World Ranking Event	Hong Kong China	Asia	T	World Ranking Event	T
+11 Dec	Kainuu Ski O Week, Sprint	Finland	Europe	S	World Ranking Event	S
+12 Dec	Kainuu Ski O Week, Middle	Finland	Europe	S	World Ranking Event	M
+19 Dec	Sjusjørennet 2026 sprint	Norway	Europe	S	World Ranking Event	S
+20 Dec	Sjusjørennet 2026 mellom	Norway	Europe	S	World Ranking Event	M
+25 Dec	Hong Kong Annual Orienteering Championships 2026 (Middle)	Hong Kong China	Asia	F	World Ranking Event	M
+26 Dec	Hong Kong Annual Orienteering Championships 2026 (Sprint)	Hong Kong China	Asia	F	World Ranking Event	S
+27 Dec	Hong Kong Annual Orienteering Championships 2026 (Long)	Hong Kong China	Asia	F	World Ranking Event	L
+27 Dec - 2 Jan	North American Orienteering Championships	United States	North America	F	Regional Championships
+World Ranking Event
+29 Dec	Baschi Sprint Ski-OL	Switzerland	Europe	S	World Ranking Event	S
+30 Dec	Gommer Ski-OL	Switzerland	Europe	S	World Ranking Event	L
+15 Jan - 25 Jan	FISU Winter World University Games 2027	FISU Federation Internationale du Sport Universitaire		S	Partner Event
+16 Jan	Estonian Ski-O championships Middle Distance	Estonia	Europe	S	World Ranking Event	M
+16 Jan	NAOM 2027 - Stage 2 (WRE)	Portugal	Europe	F	World Ranking Event	S
+17 Jan	Estonian Ski-O championships Long Distance	Estonia	Europe	S	World Ranking Event	L
+17 Jan	NAOM 2027 - Stage 3 (WRE)	Portugal	Europe	F	World Ranking Event	M
+22 Jan	MCO WRE	Turkiye	Europe	F	World Ranking Event	M
+23 Jan	MCO WRE	Turkiye	Europe	F	World Ranking Event	S
+23 Jan	Austria Cup Middle Distance	Austria	Europe	S	World Ranking Event	M
+29 Jan	ANTALYA O MEETING	Turkiye	Europe	F	World Ranking Event	L	9/1
+30 Jan	ANTALYA O MEETING	Turkiye	Europe	F	World Ranking Event	M	10/1*
+30 Jan	Algarve "O" Meeting	Portugal	Europe	F	World Ranking Event	M
+30 Jan	Austria Cup Long Distance	Austria	Europe	S	World Ranking Event	L
+31 Jan	ANTALYA O MEETING	Turkiye	Europe	F	World Ranking Event	S	25/1*
+31 Jan	Algarve "O" Meeting	Portugal	Europe	F	World Ranking Event	L
+6 Feb	Vang ski-o weekend - mellom	Norway	Europe	S	World Ranking Event	M
+7 Feb	POM'27 - Stage 2 (WRE)	Portugal	Europe	F	World Ranking Event	L
+7 Feb	Vang ski-o weekend - sprint	Norway	Europe	S	World Ranking Event	S
+8 Feb	POM'27 - Stage 6 (WRE)	Portugal	Europe	F	World Ranking Event	S
+9 Feb - 14 Feb	European Youth Ski Orienteering Championships 2027	Norway	Europe	S	Regional Championships
+9 Feb - 14 Feb	Junior World Ski Orienteering Championships 2027	Norway	Europe	S	Junior World Championships
+World Ranking Event
+9 Feb - 14 Feb	World Ski Orienteering Championships 2027	Norway	Europe	S	World Championships
+World Cup
+World Ranking Event
+13 Feb	Aguiar da Beira O' Meeting 2027 - Stage 2 (WRE)	Portugal	Europe	F	World Ranking Event	L
+13 Feb	XVI Premi internacional d’orientació de la CV - Middle Distance	Spain	Europe	F	World Ranking Event	M
+14 Feb	Aguiar da Beira O' Meeting 2027 - Stage 3 (WRE)	Portugal	Europe	F	World Ranking Event	M
+14 Feb	XVI Premi internacional d’orientació de la CV - Long distance	Spain	Europe	F	World Ranking Event	L
+26 Feb	PROVOM – Etape 2	France	Europe	F	World Ranking Event	M
+27 Feb	39 International Trophy Murcia Costa Cálida - Long Distance	Spain	Europe	F	World Ranking Event	L
+28 Feb	39 International Trophy Murcia Costa Cálida - Middle Distance	Spain	Europe	F	World Ranking Event	M
+28 Feb	PROVOM – Etape 4	France	Europe	F	World Ranking Event	M
+5 Mar - 8 Mar	Ski Orienteering World Cup Round 2 2027 and World U23 Ski Orienteering Championships 2027	Sweden	Europe	S	World Cup
+World Ranking Event
+6 Mar	Austria Cup Sprint	Austria	Europe	S	World Ranking Event	S
+11 Mar - 14 Mar	Ski Orienteering World Cup Final 2027	Sweden	Europe	S	World Cup
+World Ranking Event
+12 Mar - 14 Mar	World Masters Ski Orienteering Championships 2027	Sweden	Europe	S			31/1
+13 Mar	ANDALUCIA ORIENTEERING TROPHY (AOT) - Long Distance	Spain	Europe	F	World Ranking Event	L
+13 Mar	Budapest TrailO Weekend	Hungary	Europe	T	World Ranking Event	PS
+12 Mar	Vancouver Sprint Camp	Canada	North America	F	World Ranking Event	S
+14 Mar	ANDALUCIA ORIENTEERING TROPHY (AOT) - Middle Distance	Spain	Europe	F	World Ranking Event	M
+14 Mar	Budapest TrailO Weekend	Hungary	Europe	T	World Ranking Event	P
+15 Mar	Budapest TrailO Weekend	Hungary	Europe	T	World Ranking Event	T
+20 Mar	1. Nationaler Mitteldistanz	Switzerland	Europe	F	World Ranking Event	M
+21 Mar	Langdistanz Schweizermeisterschaft	Switzerland	Europe	F	World Ranking Event	L
+26 Mar	New Zealand Sprint Orienteering Championships 2027	New Zealand	Oceania	F	World Ranking Event	S
+25 Mar	JK Day 1 - Sprint	Great Britain	Europe	F	World Ranking Event	S
+27 Mar	Australian 3 Days - Middle Distance	Australia	Oceania	F	World Ranking Event	M
+27 Mar	Dzintaru O-Cup	Latvia	Europe	F	World Ranking Event	M
+26 Mar	JK Day 2 - Middle	Great Britain	Europe	F	World Ranking Event	M
+27 Mar	Nationale Moyenne Distance	France	Europe	M	World Ranking Event	M
+28 Mar	Australian 3 Days - Long Distance	Australia	Oceania	F	World Ranking Event	L
+28 Mar	JK Day 3 - Long	Great Britain	Europe	F	World Ranking Event	L
+29 Mar	Lieldienu balva	Latvia	Europe	F	World Ranking Event	KS
+29 Mar	Championnat de France Mass Start	France	Europe	M	World Ranking Event	MS
+2 Apr	Falco Cup 2027	Lithuania	Europe	T	World Ranking Event	P
+3 Apr	Kurzemes Pavasaris (Day1, Middle)	Latvia	Europe	F	World Ranking Event	M
+3 Apr	Honvéd Cup - Long	Hungary	Europe	F	World Ranking Event	L	21/3
+3 Apr	Falco Cup 2027	Lithuania	Europe	T	World Ranking Event	T
+3 Apr	Falco Cup 2027	Lithuania	Europe	T	World Ranking Event	PS
+4 Apr	Kurzemes Pavasaris (Day2, Long)	Latvia	Europe	F	World Ranking Event	L
+4 Apr	Falco Cup 2027	Lithuania	Europe	T	World Ranking Event	P
+4 Apr	Honvéd Cup - Middle	Hungary	Europe	F	World Ranking Event	M	21/3
+10 Apr	Sprint League 1	Romania	Europe	F	World Ranking Event	S
+10 Apr	NC mellom	Norway	Europe	F	World Ranking Event	M
+11 Apr	2. Austria Cup Middle Distance	Austria	Europe	F	World Ranking Event	M
+17 Apr	Deutsche Meisterschaft Knock Out Sprint	Germany	Europe	F	World Ranking Event	KS
+17 Apr	Discover Lower Silesia	Poland	Europe	F	World Ranking Event	M
+17 Apr	MTBO Camp, Swedish Cup, Long distance	Sweden	Europe	M	World Ranking Event	L
+18 Apr	Bundesranglistenlauf Sprint OL	Germany	Europe	F	World Ranking Event	S
+18 Apr	Danish Ultra Long Championships	Denmark	Europe	F	World Ranking Event	M
+18 Apr	MTBO Camp, Swedish Cup, Middle distance	Sweden	Europe	M	World Ranking Event	M
+23 Apr	Brazilian Orienteering Championships	Brazil	South America	F	World Ranking Event	M
+24 Apr	NOL Round 4, Queensland Orienteering Championships Sprint Distance	Australia	Oceania	F	World Ranking Event	S
+24 Apr	Finnish Spring 2027, long distance	Finland	Europe	F	World Ranking Event	L
+24 Apr	Sprint League 2	Romania	Europe	F	World Ranking Event	S
+24 Apr	1. Austria Cup Sprint Distance	Austria	Europe	M	World Ranking Event	S
+24 Apr	Coppa Italia Middle	Italy	Europe	F	World Ranking Event	M
+24 Apr	Metropole Jugoistočne Evrope, 46. Meorijal Čika Duško Jovanović	Serbia	Europe	F	World Ranking Event	M
+24 Apr	Brazilian Orienteering Championships	Brazil	South America	F	World Ranking Event	L
+25 Apr	2. Austria Cup Middle Distance	Austria	Europe	M	World Ranking Event	M
+25 Apr	Campionati Italiani Long	Italy	Europe	F	World Ranking Event	L
+25 Apr	Metropole Jugoistočne Evrope, 46. Meorijal Čika Duško Jovanović	Serbia	Europe	F	World Ranking Event	L
+25 Apr	Brazilian Orienteering Championships	Brazil	South America	F	World Ranking Event	S
+4 May - 8 May	European Junior and Youth MTB Orienteering Championships 2027	Czechia	Europe	M	Regional Championships
+4 May - 8 May	European MTB Orienteering Championships 2027	Czechia	Europe	M	Regional Championships
+World Cup
+World Ranking Event
+6 May	Turku TrailO Meeting, PreO Sprint 1	Finland	Europe	T	World Ranking Event	PS
+6 May	Danish Spring - Sprint	Denmark	Europe	F	World Ranking Event	S	31/12
+7 May	Turku TrailO Meeting, PreO Sprint 2	Finland	Europe	T	World Ranking Event	PS
+8 May	Estonian Championships Sprint	Estonia	Europe	F	World Ranking Event	S
+8 May	Turku TrailO Meeting, PreO 1	Finland	Europe	T	World Ranking Event	P
+8 May	Turku TrailO Meeting, TempO	Finland	Europe	T	World Ranking Event	T
+8 May	Championnat de France de Moyenne Distance	France	Europe	F	World Ranking Event	M
+8 May	Swedish League, #3, long (WRE)	Sweden	Europe	F	World Ranking Event	L
+8 May	Danish Spring - Middle	Denmark	Europe	F	World Ranking Event	M	31/12
+9 May	Turku TrailO Meeting, PreO 2	Finland	Europe	T	World Ranking Event	P
+9 May	Swedish League, #4, middle (WRE)	Sweden	Europe	F	World Ranking Event	M
+9 May	Danish Spring - Long	Denmark	Europe	F	World Ranking Event	L	31/12
+15 May	Baltic Orienteering Championships	Lithuania	Europe	F	World Ranking Event	M
+15 May	Campionatul National pe Echipe MD	Romania	Europe	F	World Ranking Event	M
+15 May	Voipiovuori Middle distance	Finland	Europe	F	World Ranking Event	M
+15 May	ASOM 2027 Sprint WRE	Belgium	Europe	F	World Ranking Event	S
+15 May	Championnat de France Moyenne Distance	France	Europe	M	World Ranking Event	M
+15 May	Pinseløp dag 1	Norway	Europe	F	World Ranking Event	M
+15 May	PreO i Väst, PreO Sprint	Sweden	Europe	T	World Ranking Event	PS
+15 May	PreO i Väst, TempO	Sweden	Europe	T	World Ranking Event	T
+15 May	Vertes Grand Prix - Middle	Hungary	Europe	F	World Ranking Event	M
+16 May	Bundesranglistenlauf Sprint	Germany	Europe	F	World Ranking Event	S
+16 May	Championnat de France Longue Distance	France	Europe	M	World Ranking Event	L
+16 May	Pinseløp dag 2	Norway	Europe	F	World Ranking Event	L
+16 May	PreO i Väst, PreO	Sweden	Europe	T	World Ranking Event	P
+16 May	Vertes Grand Prix - Long	Hungary	Europe	F	World Ranking Event	L
+16 May	Campionati Italiani Middle - Memorial Mattia Debertolis	Italy	Europe	F	World Ranking Event	M	10/5
+17 May	Bundesranglistenlauf Mittel-OL	Germany	Europe	F	World Ranking Event	M
+17 May	Vertes Grand Prix - Sprint	Hungary	Europe	F	World Ranking Event	S
+22 May	DM Sprint	Denmark	Europe	F	World Ranking Event	S
+22 May	Swedish League, #5, sprint (WRE)	Sweden	Europe	F	World Ranking Event	S
+22 May - 28 May	World Masters Orienteering Championships 2027	Japan	Asia	F	World Masters		10/4
+23 May	Sprint Schweizermeisterschaft	Switzerland	Europe	F	World Ranking Event	S
+30 May	Finnish Orienteering Championship, Middle distance	Finland	Europe	F	World Ranking Event	M
+2 Jun - 6 Jun	Orienteering World Cup Round 1 - Sweden	Sweden	Europe	F	World Cup
+3 Jun	Carpathian Orienteering Trophy MD	Romania	Europe	F	World Ranking Event	M	31/1
+5 Jun	King's Birthday Weekend Middle	New Zealand	Oceania	F	World Ranking Event	M
+5 Jun	Carpathian Orienteering Trophy MD	Romania	Europe	F	World Ranking Event	M	31/1
+6 Jun	King's Birthday Weekend Long	New Zealand	Oceania	F	World Ranking Event	L
+6 Jun	Carpathian Orienteering Trophy Sprint	Romania	Europe	F	World Ranking Event	S	31/1
+7 Jun	King's Birthday Weekend Sprint	New Zealand	Oceania	F	World Ranking Event	S
+10 Jun - 16 Jun	CX80 World MTB Orienteering Championships 2027	Latvia	Europe	M	World Championships
+10 Jun - 16 Jun	Junior World MTB Orienteering Championships 2027	Latvia	Europe	M	Junior World Championships
+12 Jun	Hungarian Middle Distance Championships	Hungary	Europe	F	World Ranking Event	M
+17 Jun	Kajaani Middle Distance	Finland	Europe	F	World Ranking Event	M
+25 Jun - 28 Jun	European Youth Orienteering Championships 2027	Latvia	Europe	F	Regional Championships
+25 Jun	Norsk O-Festival sprint	Norway	Europe	F	World Ranking Event	S
+26 Jun	Norsk O-Festival mellom	Norway	Europe	F	World Ranking Event	M
+26 Jun - 29 Jun	CISM Military World Summer Games	United States	North America	F	Partner Event
+27 Jun	Grövelsjönfjällen och Idrefjäll PreO, PreO	Sweden	Europe	T	World Ranking Event	P
+27 Jun	Norsk O-Festival lang	Norway	Europe	F	World Ranking Event	L
+28 Jun	Grövelsjönfjällen och Idrefjäll PreO, PreO Sprint	Sweden	Europe	T	World Ranking Event	PS
+28 Jun	Grövelsjönfjällen och Idrefjäll PreO, TempO	Sweden	Europe	T	World Ranking Event	T
+29 Jun	Canadian Championships - Middle	Canada	North America	F	World Ranking Event	M
+30 Jun	Canadian Championships - Long	Canada	North America	F	World Ranking Event	L
+2 Jul	Kapa 2027 3-days (Day1)	Latvia	Europe	F	World Ranking Event	M
+2 Jul - 6 Jul	Orienteering World Cup Round 2 - Czechia	Czechia	Europe	F	World Cup
+3 Jul	Kapa 2027 3-days (Day2)	Latvia	Europe	F	World Ranking Event	M
+11 Jul - 17 Jul	Junior World Orienteering Championships 2027	Poland	Europe	F	Junior World Championships
+1 Aug	Scottish 6-Day - Day 1	Scottish Orienteering Association	Europe	F	World Ranking Event	L
+6 Aug	Mazury Cup 2027 – Middle Distance (Stage 1)	Poland	Europe	F	World Ranking Event	M
+7 Aug	FinTrailO - PreO Sprint	Finland	Europe	T	World Ranking Event	PS
+7 Aug	Vakka Middle Distance	Finland	Europe	F	World Ranking Event	M
+7 Aug	FinTrailO - TempO	Finland	Europe	T	World Ranking Event	T
+7 Aug	Sprint Scotland - Day 1	Scottish Orienteering Association	Europe	F	World Ranking Event	S
+8 Aug	FinTrailO - PreO	Finland	Europe	T	World Ranking Event	P
+8 Aug	Sprint Scotland - Day 2	Scottish Orienteering Association	Europe	F	World Ranking Event	S
+9 Aug - 14 Aug	World Orienteering Championships 2027	Hungary	Europe	F	World Championships
+15 Aug	Siguldas Kauss 2027	Latvia	Europe	F	World Ranking Event	L
+18 Aug - 22 Aug	(Preliminary Dates) - Asian Junior and Youth Orienteering Championships 2027	Kazakhstan	Asia	F	Regional Championships
+22 Aug	Championnat de France de Longue Distance	France	Europe	F	World Ranking Event	L
+22 Aug	EM test sprint løp 1	Norway	Europe	F	World Ranking Event	S
+22 Aug	EM test sprint løp 2	Norway	Europe	F	World Ranking Event	S
+25 Aug - 28 Aug	European University Orienteering Championships	Turkiye	Europe	F	Partner Event
+28 Aug	Estonian championships in middle distance	Estonia	Europe	F	World Ranking Event	M
+28 Aug	Danish Championship, Middle Distance	Denmark	Europe	F	World Ranking Event	M
+29 Aug	Finnish Orienteering Championship, Knock-Out sprint	Finland	Europe	F	World Ranking Event	KS
+2 Sep	SEEOC 2027 - Middle Distance	North Macedonia	Europe	F	World Ranking Event	M
+3 Sep	SEEOC 2027 - Long Distance	North Macedonia	Europe	F	World Ranking Event	L
+4 Sep	Estonian championships Long distance	Estonia	Europe	F	World Ranking Event	L
+4 Sep	Lithuania orienteering championship middle	Lithuania	Europe	F	World Ranking Event	M
+4 Sep	Deutsche Meisterschaft Sprint OL	Germany	Europe	F	World Ranking Event	S
+4 Sep	Testlauf EOC	Switzerland	Europe	F	World Ranking Event	S
+5 Sep	Bundesranglistenlauf Mittel-OL	Germany	Europe	F	World Ranking Event	M
+5 Sep	SEEOC 2027 - Sprint Distance	North Macedonia	Europe	F	World Ranking Event	S
+11 Sep	Campionati Italiani Sprint	Italy	Europe	F	World Ranking Event	S
+11 Sep	Mitteldistanz Schweizermeisterschaften	Switzerland	Europe	F	World Ranking Event	M
+12 Sep	Danish Championships Long	Denmark	Europe	F	World Ranking Event	L
+18 Sep	Finnish Championship Sprint distance	Finland	Europe	F	World Ranking Event	S
+18 Sep	8. Austria Cup Long Distance	Austria	Europe	F	World Ranking Event	L
+18 Sep	Hungarian Sprint Championships	Hungary	Europe	F	World Ranking Event	S
+18 Sep	NC mellom	Norway	Europe	F	World Ranking Event	M
+20 Sep - 24 Sep	MTB Orienteering World Cup round 3 and U23 World MTB Orienteering Championships 2027	Portugal	Europe	M	World Cup
+World Ranking Event
+22 Sep - 25 Sep	World Masters MTB Orienteering Championships 2027	Portugal	Europe	M	World Masters
+24 Sep	Sprint League 4	Romania	Europe	F	World Ranking Event	S
+25 Sep	EOF Cup Series Final 2027 Middle Distance	Estonia	Europe	F	World Ranking Event	M
+25 Sep	Middle Distance Championship	Romania	Europe	F	World Ranking Event	M
+26 Sep	EOF Cup Series Final 2027 Long Distance	Estonia	Europe	F	World Ranking Event	L
+26 Sep	3. Nationaler Langdistanz	Switzerland	Europe	F	World Ranking Event	L
+29 Sep - 3 Oct	Orienteering World Cup Round 3 & European Orienteering Championships 2027	Switzerland	Europe	F	Regional Championships
+World Cup
+2 Oct	Australian Middle Distance Championships	Australia	Oceania	F	World Ranking Event	M
+3 Oct	Australian Long Distance Championships	Australia	Oceania	F	World Ranking Event	L
+9 Oct	Hungarian Long Distance Championships	Hungary	Europe	F	World Ranking Event	L
+10 Oct	Australian Sprint Distance Championships	Australia	Oceania	F	World Ranking Event	S
+10 Oct	25mannamedeln Middle (WRE)	Sweden	Europe	F	World Ranking Event	M
+15 Oct	Worldcup testløp sprint	Norway	Europe	F	World Ranking Event	S
+16 Oct	Sprint League Final	Romania	Europe	F	World Ranking Event	S
+16 Oct	10. Austria Cup Sprint	Austria	Europe	F	World Ranking Event	S
+17 Oct	KO-Sprint	Austria	Europe	F	World Ranking Event	KS
+23 Oct	Coppa Italia Middle	Italy	Europe	F	World Ranking Event	M
+30 Oct - 31 Oct	Orienteering World Cup Round 4 - Finals	Spain	Europe	F	World Cup
+9 Nov - 14 Nov	(Preliminary Dates) - World Trail Orienteering Championships 2027	United States	North America	T	World Championships
+14 Nov	Jættemilen	Denmark	Europe	F	World Ranking Event	M
+25 Dec	Hong Kong Annual Orienteering Championships 2027 (Middle)	Hong Kong China	Asia	F	World Ranking Event	M
+26 Dec	Hong Kong Annual Orienteering Championships 2027 (Sprint)	Hong Kong China	Asia	F	World Ranking Event	S
+27 Dec	Hong Kong Annual Orienteering Championships 2027 (Long)	Hong Kong China	Asia	F	World Ranking Event	L
+1 Jan - 3 Jan	(Preliminary Dates) - African Orienteering Championships 2028	South Africa	Africa	F	Regional Championships
+26 Apr - 30 Apr	(Preliminary Dates) - World Orienteering Championships 2028	Spain	Europe	F	World Championships
+19 May - 21 May	(Preliminary Dates) - MTB Orienteering World Cup round 1 and U23 World MTB Orienteering Championships 2028	Lithuania	Europe	M	World Cup
+2 Jun - 6 Jun	(Preliminary Dates) - Orienteering World Cup Round 1	Sweden	Europe	F	World Cup
+23 Jun - 25 Jun	European Youth Orienteering Championships 2028	Bulgaria	Europe	F	Regional Championships
+9 Jul - 14 Jul	Junior World Orienteering Championships 2028	Finland	Europe	F	Junior World Championships
+2 Aug - 8 Aug	(Preliminary Dates) - World Masters MTB Orienteering Championships 2028	Finland	Europe	M	World Masters
+11 Aug - 13 Aug	Orienteering World Cup Round 2 - Sprint	International Orienteering Federation		F	World Cup
+World Ranking Event
+17 Sep - 23 Sep	CX80 World MTB Orienteering Championships 2028 and MTB Orienteering World Cup round 3 2028	Portugal	Europe	M	World Championships
+World Cup
+17 Sep - 23 Sep	Junior World MTB Orienteering Championships 2028	Portugal	Europe	M	Junior World Championships
+28 Sep - 1 Oct	Orienteering World Cup Round 3	Switzerland	Europe	F	World Cup
+27 Oct - 3 Nov	World Masters Orienteering Championships 2028	Turkiye	Europe	F	World Masters
+7 Nov - 12 Nov	European Orienteering Championships 2028	Portugal	Europe	F	Regional Championships
+11 Jul - 17 Jul	(Preliminary Dates) - World Orienteering Championships 2029	Sweden	Europe	F	World Championships
+World Ranking Event
+19 Jul - 29 Jul	(Preliminary dates) The World Games 2029 - Karlsruhe, Germany	Germany	Europe	F	Partner Event
+4 Aug - 10 Aug	(Preliminary Dates) - World Masters Orienteering Championships 2029	Czechia	Europe	F	World Masters
+1 Dec - 9 Dec	(Preliminary Dates) - Junior World Orienteering Championships 2029	New Zealand	Oceania	F	Junior World Championships
