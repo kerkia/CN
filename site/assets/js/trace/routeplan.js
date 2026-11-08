@@ -426,8 +426,10 @@ export function nearestRoute(routes, pts, tol) {
   return best;
 }
 
-/** A route's facts for a table cell: time at the pace, length, climb. */
+/** A route's facts for a table cell: time at the pace, length, climb and descent (« D+ » / « D− », owner 2026-11-08: a bare
+ *  « +25 m » did not say what it was), each left out under a metre. */
 export function routeFacts(r, pace, clock) {
-  return `${clock(r.time * pace)} · ${fmt(Math.round(r.len / 10) * 10)} m${r.up >= 1 ? ` · +${fmt(Math.round(r.up))} m` : ""}`;
+  const h = (k, v) => (v >= 1 ? ` · ${t(k, { m: fmt(Math.round(v)) })}` : "");
+  return `${clock(r.time * pace)} · ${fmt(Math.round(r.len / 10) * 10)} m${h("rc.up", r.up)}${h("rc.down", r.down)}`;
 }
 export const sideLabel = (r) => t(r.side < 0 ? "rc.side.left" : r.side > 0 ? "rc.side.right" : "rc.side.straight");

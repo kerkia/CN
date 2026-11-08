@@ -2745,6 +2745,7 @@ export default {
   "rc.cls.oob": "Out of bounds", "rc.cls.band": "Forbidden route",
   "rc.cls.north": "North line taken out", "rc.st.reading": "Reading the map…", "rc.st.relief": "Heights: loading…",
   "rc.st.reliefPct": "Heights: loading… {p}%", "rc.st.legs": "Computing routes: {n} of {t} legs…", "rc.st.done": "{n} of {t} legs in {s} s · {c} m cells · heights: {r}",
+  "rc.up": "↑ {m} m", "rc.down": "↓ {m} m",
   "rc.st.flat": "none (flat terrain assumed)", "rc.st.failed": "Computing the routes failed.", "rc.side.left": "left",
   "rc.side.right": "right", "rc.side.straight": "straight", "rc.table": "Computed routes",
   "rc.table.hint": "Times estimated at a pace of {p} min/km in flat runnable forest ({how}). Your route: your track laid on the map (within the GPS's margin of error, on the path it runs along); if it follows a computed route for 80% of its length, that route, else the share it follows. Choice: the route taken's time minus route A's, the best at the caution chosen. Execution: your actual time minus the route taken's time.", "rc.pace.typed": "pace typed", "rc.pace.auto": "from your legs",

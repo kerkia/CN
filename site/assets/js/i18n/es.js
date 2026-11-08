@@ -2890,6 +2890,7 @@ export default {
   "rc.st.done": "{n} de {t} tramos en {s} s · celdas de {c} m · relieve: {r}",
   "rc.st.flat": "ninguno (terreno supuestamente llano)",
   "rc.st.failed": "El cálculo de las rutas ha fallado.",
+  "rc.up": "D+ {m} m", "rc.down": "D− {m} m",
   "rc.side.left": "por la izquierda",
   "rc.side.right": "por la derecha",
   "rc.side.straight": "recto",

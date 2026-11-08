@@ -2890,6 +2890,7 @@ export default {
   "rc.st.done": "{n} von {t} Teilstrecken in {s} s · Zellen von {c} m · Relief: {r}",
   "rc.st.flat": "keines (flaches Gelände angenommen)",
   "rc.st.failed": "Die Berechnung der Routen ist fehlgeschlagen.",
+  "rc.up": "↑ {m} m", "rc.down": "↓ {m} m",
   "rc.side.left": "links herum",
   "rc.side.right": "rechts herum",
   "rc.side.straight": "geradeaus",
