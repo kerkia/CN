@@ -10,6 +10,9 @@
 // (_lib/maplib.js) does not take it, nor keeps it when the account is deleted; off by default
 //
 //   GET    /api/solo                  { analyses: [summary + id] }
+//   GET    /api/solo?all=1            administrators only (owner, 2026-11-08: « just to know that they exist »): every account's
+//                                     analyses — title, day, kind, length, dates, the account's name and e-mail — and the bytes kept;
+//                                     never a record, a position or a map, which stay their owner's
 //   POST   /api/solo                  the analysis (JSON) -> { id }        PUT /api/solo/<id>  the same, replacing it
 //   GET    /api/solo/<id>             the analysis (its current title also in X-Title, URI-encoded: a rename touches the summary only)
 //   PATCH  /api/solo/<id>             { title } -> { analysis }  (renamed)   DELETE /api/solo/<id>  it, and its map once unused
@@ -18,7 +21,7 @@
 //   GET    /api/solo/maps/<sha>  |  /maps/<sha>/thumb
 // The account's deletion removes them all (api/account/delete.js).
 
-import { allow, currentUser, json, nowIso } from "../../_lib/api.js";
+import { allow, currentUser, isAdmin, json, nowIso } from "../../_lib/api.js";
 import { randomBytes } from "../../_lib/crypto.js";
 
 const MAX_MAP = 80 * 1024 * 1024;                    // as « Mes cartes » and the shared analyses (Cloudflare takes 100 MB a request)
@@ -68,6 +71,44 @@ async function listAll(env, uid) {
   } while (cursor);
   return out.filter(Boolean);
 }
+/** The administrators' list: every account's analyses (that they exist, not what they show) and the bytes each account keeps. */
+async function listEveryone(env) {
+  const rows = [], bytes = new Map(), maps = new Map();
+  let cursor;
+  do {
+    const r = await env.BUCKET.list({ prefix: "solo/", cursor, limit: 1000, include: ["customMetadata"] });
+    for (const o of r.objects) {
+      const m = /^solo\/(\d+)\/(a|m)\/([^/]+)$/.exec(o.key);
+      if (!m) continue;
+      const uid = Number(m[1]);
+      bytes.set(uid, (bytes.get(uid) || 0) + (o.size || 0));
+      if (m[2] === "m") { if (!m[3].endsWith(".thumb")) maps.set(uid, (maps.get(uid) || 0) + 1); continue; }
+      let s = null;
+      try { s = JSON.parse(o.customMetadata?.s || "null"); } catch (e) { /* a summary unreadable: left out */ }
+      if (!s) continue;
+      rows.push({ id: s.id, uid, title: s.title || "", day: s.day || null, source: s.source || "solo", dur: s.dur ?? null, dist: s.dist ?? null,
+        orga: !!s.orga, priv: !!s.priv, created: s.created || null, updated: s.updated || null });
+    }
+    cursor = r.truncated ? r.cursor : undefined;
+  } while (cursor);
+  const ids = [...bytes.keys()];
+  const who = new Map();
+  if (ids.length && env.DB) {
+    try {
+      for (let i = 0; i < ids.length; i += 90) {                         // D1 binds 100 values a statement at most
+        const part = ids.slice(i, i + 90);
+        const res = await env.DB.prepare(`SELECT id, display_name, email FROM users WHERE id IN (${part.map(() => "?").join(",")})`).bind(...part).all();
+        for (const u of res.results || []) who.set(Number(u.id), u);
+      }
+    } catch (e) { /* the numbers alone */ }
+  }
+  const nameOf = (uid) => who.get(uid)?.display_name || "", mailOf = (uid) => who.get(uid)?.email || "";
+  for (const a of rows) { a.name = nameOf(a.uid); a.email = mailOf(a.uid); }
+  rows.sort((a, b) => String(b.created || "").localeCompare(String(a.created || "")));
+  const accounts = ids.map((uid) => ({ uid, name: nameOf(uid), email: mailOf(uid), bytes: bytes.get(uid) || 0, maps: maps.get(uid) || 0,
+    analyses: rows.filter((a) => a.uid === uid).length }));
+  return { analyses: rows, accounts, bytes: [...bytes.values()].reduce((x, y) => x + y, 0) };
+}
 async function serve(env, k) {
   const obj = await env.BUCKET.get(k);
   if (!obj) return json({ error: "not found" }, 404);
@@ -95,6 +136,10 @@ export async function onRequest(ctx) {
   const parts = [].concat(params.path || []).map(String);
   try {
     if (!parts.length) {
+      if (method === "GET" && new URL(request.url).searchParams.get("all") === "1") {
+        if (!isAdmin(env, user)) return json({ error: "forbidden" }, 403);
+        return json(await listEveryone(env), 200, { "Cache-Control": "private, no-store" });
+      }
       if (method === "GET") {
         const list = await listAll(env, uid);
         list.sort((a, b) => String(b.day || "").localeCompare(String(a.day || "")) || String(b.created || "").localeCompare(String(a.created || "")));

@@ -20,7 +20,7 @@
 import { html, raw, $, $$, fmt, fmtDate, traceAccept, touchScreen } from "../util.js";
 import { t, tn, locale } from "../i18n.js";
 import * as auth from "../auth.js";
-import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
+import { pageTabs, tabFrom, bindPageTabs, dataTable } from "../ui.js";
 import { getProv, clock } from "./provisional.js";
 import * as declare from "../declare.js";
 import * as country from "../country.js";
@@ -137,12 +137,14 @@ export async function render(main, r) {
 
 // ---- the organisers' page: four tabs for its four jobs (owner, 2026-11-04: « create a competition, create a training, open an
 // existing event, manage an opened one »; the list of opened analyses by default) ----------------------------------------
-const ORG_TABS = () => [["ouvertes", t("sh.org.tab.opened")], ["ouvrir", t("sh.org.tab.open")],
-  ["competition", t("sh.org.tab.newRace")], ["entrainement", t("sh.org.tab.newTraining")]];
+// (a fifth, « Analyses solo », for the administrators: owner, 2026-11-08 — every account's kept solo analyses, to know that they
+// exist; neither their maps nor their traces, which stay their owner's)
+const ORG_TABS = (admin) => [["ouvertes", t("sh.org.tab.opened")], ["ouvrir", t("sh.org.tab.open")],
+  ["competition", t("sh.org.tab.newRace")], ["entrainement", t("sh.org.tab.newTraining")], ...(admin ? [["solo", t("sh.org.tab.solo")]] : [])];
 
 async function orgListPage(main, query = {}) {
   const me = auth.session();
-  const tabs = ORG_TABS(), tab = tabFrom(tabs, query);
+  const tabs = ORG_TABS(!!me?.admin), tab = tabFrom(tabs, query);
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("sh.org.title")}</h1><p class="lede">${t("sh.org.lede")}</p></div></div>
     ${raw(pageTabs(tabs, tab))}
@@ -167,6 +169,12 @@ async function orgListPage(main, query = {}) {
     <div data-panel="entrainement" ${raw(tab === "entrainement" ? "" : "hidden")}>
       <section class="card sh-create" id="sh-create"></section>
     </div>
+    ${me?.admin ? html`<div data-panel="solo" ${raw(tab === "solo" ? "" : "hidden")}>
+      <p class="hint sh-tab-intro">${t("sh.solo.intro")}</p>
+      <div class="sh-pick-bar"><label class="field"><span>${t("sh.org.filter")}</span><input id="sh-f-solo" placeholder="${t("sh.solo.filter.ph")}" style="width:240px"></label>
+        <span class="sh-pick-act muted" id="sh-solo-sum"></span></div>
+      <section class="card"><div id="sh-list-solo"><div class="empty">${t("misc.loading")}</div></div></section>
+    </div>` : ""}
     <p class="muted" style="font-size:12.5px;margin:6px 2px 0" id="sh-storage"></p>`;
   const show = bindPageTabs(main, tabs, tab);
   let data;
@@ -327,8 +335,52 @@ async function orgListPage(main, query = {}) {
   if (me?.admin) {
     const mb = (b) => (b >= 1e9 ? t("unit.gb", { n: fmt(b / 1e9, 2) }) : t("unit.mb", { n: fmt(b / 1e6, 1) }));
     api("?stats=1").then((st) => { $("#sh-storage").textContent = t("sh.storage", { used: mb(st.bytes), an: mb(st.analyses), maps: st.maps, traces: st.traces }); }).catch(() => {});
+    soloAdminList(mb);
   }
   return { title: t("sh.org.title") };
+}
+
+/** The administrators' tab « Analyses solo »: every account's kept solo analyses (GET /api/solo?all=1), listed only — no link
+ *  opens one, the map and the run being their owner's. */
+async function soloAdminList(mb) {
+  const box = $("#sh-list-solo");
+  if (!box) return;
+  let d;
+  try {
+    const r = await fetch("api/solo?all=1", { credentials: "same-origin" });
+    d = await r.json().catch(() => null);
+    if (!r.ok) throw new Error(d?.error || `HTTP ${r.status}`);
+  } catch (e) { box.innerHTML = html`<div class="empty">${t("sh.err.other")} (${e.message})</div>`; return; }
+  const all = d.analyses || [];
+  const byUid = new Map((d.accounts || []).map((a) => [a.uid, a]));
+  $("#sh-solo-sum").textContent = t("sh.solo.sum", { n: fmt(all.length), accounts: fmt((d.accounts || []).length), size: mb(d.bytes || 0) });
+  const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const who = (a) => a.name || t("sh.solo.account", { n: a.uid });
+  const draw = () => {
+    const q = norm($("#sh-f-solo").value);
+    const rows = q ? all.filter((a) => norm(`${a.title} ${a.name} ${a.email}`).includes(q)) : all;
+    if (!rows.length) { box.innerHTML = html`<div class="empty">${t(all.length ? "lv.find.none" : "sh.solo.none")}</div>`; return; }
+    dataTable(box, {
+      rows, sortKey: "created", sortDir: -1, compact: true, freeze: [0, 0],
+      columns: [
+        { key: "created", label: t("sh.solo.col.saved"), cls: "num", sort: (a) => a.created || "",
+          render: (a) => (a.created ? fmtDate(a.created.slice(0, 10), "short") : "—") },
+        { key: "day", label: t("f.date"), cls: "num", sort: (a) => a.day || "", render: (a) => (a.day ? fmtDate(a.day, "short") : "—") },
+        { key: "title", label: t("sh.solo.col.title"), cls: "cut", sort: (a) => norm(a.title), defaultDir: 1,
+          render: (a) => html`${a.title || t("ma.solo.untitled")}${a.priv ? html` <span class="tag" title="${t("sh.solo.priv.tip")}">${t("sh.solo.priv")}</span>` : ""}` },
+        { key: "kind", label: t("sh.org.col.type"), sort: (a) => a.source, defaultDir: 1,
+          render: (a) => html`<span class="tag">${t(`sh.solo.src.${a.source === "drawn" || a.source === "orga" ? a.source : "solo"}`)}</span>` },
+        { key: "dist", label: t("sh.solo.col.dist"), align: "r", cls: "num", sort: (a) => a.dist, render: (a) => (a.dist ? `${fmt(a.dist / 1000, 2)} km` : "—") },
+        { key: "dur", label: t("sh.solo.col.dur"), align: "r", cls: "num", sort: (a) => a.dur, render: (a) => (a.dur ? clock(a.dur) : "—") },
+        { key: "who", label: t("sh.solo.col.who"), cls: "cut", sort: (a) => norm(who(a)), defaultDir: 1,
+          render: (a) => html`<span title="${a.email || ""}">${who(a)}</span>${a.email ? html` <span class="muted">· ${a.email}</span>` : ""}` },
+        { key: "acc", label: t("sh.solo.col.acc"), align: "r", cls: "num", sort: (a) => byUid.get(a.uid)?.bytes || 0,
+          render: (a) => { const u = byUid.get(a.uid); return u ? html`<span title="${t("sh.solo.acc.tip", { n: fmt(u.analyses), maps: fmt(u.maps) })}">${mb(u.bytes)}</span>` : "—"; } },
+      ],
+    });
+  };
+  $("#sh-f-solo").addEventListener("input", draw);
+  draw();
 }
 
 // 4. a training event: its analysis created at once (a draft, its organiser's alone until « Publier »)
