@@ -29,7 +29,7 @@ import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar, clearHandle, ICONS } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
@@ -2056,6 +2056,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     const modeHint = t(`sh.mode.${mode}.hint`);
     $("#sh-bar").innerHTML = html`
       <div class="an-bar-row">
+        ${legsN ? raw(legPickHtml("sh-legpick", Array.from({ length: legsN }, (_, k) => [k + 1, legName(k + 1)]), leg || -1)) : ""}
         <span class="sh-bar-opts">${html`<span class="sh-mode-pick"><button type="button" class="btn btn-sm sh-mode-btn" id="sh-mode-btn" aria-haspopup="menu" aria-expanded="false" aria-label="${t("sh.mode")}" title="${t(`sh.mode.${mode}`)} — ${modeHint}">${raw(MODE_ICON[mode])}<span class="sh-caret">▾</span></button>
             <span class="sh-mode-menu" id="sh-mode-menu" role="menu" hidden>${modes.map((m) => html`<button type="button" role="menuitemradio" aria-checked="${m === mode}" data-mode="${m}" title="${t(`sh.mode.${m}.hint`)}">${raw(MODE_ICON[m])}<span>${t(`sh.mode.${m}`)}</span></button>`)}</span></span>
           ${mode === "from" ? html`<select id="sh-from" aria-label="${t("sh.from")}" title="${t("lg.from")}">${fromOpts.map(([i, l]) => html`<option value="${i}" ${raw(i === fromK ? "selected" : "")}>${l}</option>`)}</select>` : ""}`}</span>
@@ -2091,6 +2092,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     $("#sh-bar-add")?.addEventListener("click", addDialog);
     $("#sh-play").addEventListener("click", () => (playing ? stop() : play()));
     $("#sh-pan").addEventListener("click", () => { pan = !pan; if (pan) still = false; followMarks(); frame(); });
+    bindLegPick($("#sh-legpick"), (v) => setLeg(v < 0 ? 0 : v));
     $("#sh-prev").addEventListener("click", () => setLeg(Math.max(1, (leg || 1) - (leg ? 1 : 0))));
     $("#sh-next").addEventListener("click", () => setLeg(Math.min(legsN, leg + 1)));
     $("#sh-speed").addEventListener("change", (e) => { speed = Number(e.target.value); });

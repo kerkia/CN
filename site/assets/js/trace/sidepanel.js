@@ -88,6 +88,38 @@ export const ICONS = {
   // the whole course (owner, 2026-11-07: back from a leg's view): its start triangle, a control, its finish, joined
   course: svg('<path d="M3 16.5 5.6 12 8.2 16.5z"/><circle cx="10" cy="5" r="2.2"/><circle cx="15.5" cy="14" r="2.4"/><circle cx="15.5" cy="14" r="1.1"/><path d="M6.3 11.2 8.9 6.9M11.2 6.9l3.1 5"/>'),
 };
+/**
+ * The leg shown, chosen at the control bar's left (owner, 2026-11-08: no easy way back to the whole course): an icon button and
+ * its menu, as the start mode's — « Tout le parcours » (value -1, the default) then each leg. The button says the leg shown;
+ * the page draws it again whenever the leg changes, wherever it was chosen. items [[value, label]].
+ */
+export function legPickHtml(id, items, cur) {
+  const now = cur >= 0 ? items.find(([v]) => v === cur) : null, label = now ? now[1] : t("sh.leg.all");
+  return html`<span class="sh-mode-pick an-legpick" id="${id}"><button type="button" class="btn btn-sm sh-mode-btn${now ? " on" : ""}" aria-haspopup="menu" aria-expanded="false" aria-label="${t("lg.legpick")}" title="${t("lg.legpick")} — ${label}">${raw(ICONS.course)}${now ? html`<span class="an-legpick-t">${now[1]}</span>` : ""}<span class="sh-caret">▾</span></button>
+    <span class="sh-mode-menu an-legpick-menu" role="menu" hidden><button type="button" role="menuitemradio" aria-checked="${!now}" data-leg="-1">${raw(ICONS.course)}<span>${t("sh.leg.all")}</span></button>${items.map(([v, l]) => html`<button type="button" role="menuitemradio" aria-checked="${v === cur}" data-leg="${v}"><span class="an-legpick-n">${l}</span></button>`)}</span></span>`;
+}
+/** The leg menu's behaviour: onPick(value) on a choice (-1 = the whole course); a click beside it or Escape closes it. */
+export function bindLegPick(root, onPick) {
+  const b = root && $("button", root), menu = root && $(".an-legpick-menu", root);
+  if (!b || !menu) return;
+  const off = (e) => { if (!root.contains(e.target)) close(); };
+  const close = () => { menu.hidden = true; b.setAttribute("aria-expanded", "false"); document.removeEventListener("pointerdown", off, true); };
+  b.addEventListener("click", () => {
+    if (!menu.hidden) { close(); return; }
+    menu.hidden = false; b.setAttribute("aria-expanded", "true"); document.addEventListener("pointerdown", off, true);
+    const cur = menu.querySelector('[aria-checked="true"]') || menu.querySelector("button");
+    cur?.focus(); cur?.scrollIntoView({ block: "nearest" });
+  });
+  menu.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { e.stopPropagation(); close(); b.focus(); return; }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const all = [...menu.querySelectorAll("button")], i = all.indexOf(document.activeElement);
+      all[Math.max(0, Math.min(all.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))]?.focus();
+    }
+  });
+  menu.querySelectorAll("[data-leg]").forEach((x) => x.addEventListener("click", () => { close(); onPick(Number(x.dataset.leg)); }));
+}
 /** A button's content: its icon and its words (the words hidden on a phone, the button's title saying them). */
 export const iconLabel = (icon, text) => `${ICONS[icon]}<span class="ico-lbl">${text}</span>`;
 

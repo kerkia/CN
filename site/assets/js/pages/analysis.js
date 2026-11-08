@@ -46,7 +46,7 @@ import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle, ICONS } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
@@ -1806,6 +1806,7 @@ export async function render(main, { query = {}, route } = {}) {
     // the controls over the map's column, as « Analyse de carte »'s: follow, the transport, the speed, the time
     $("#an-bar").innerHTML = html`
       <div class="an-bar-row">
+        <span id="an-legpick-slot"></span>
         <span class="an-transport">
           <button type="button" class="btn btn-sm sh-pan${follow ? " on" : ""}" id="an-follow" aria-pressed="${follow}" aria-label="${t(follow ? "sh.pan.stop" : "sh.pan.start")}" title="${t("an.follow.hint")}">${raw(PAN_ICON)}</button>
           <button type="button" class="btn btn-sm" id="an-prev" title="${t("an.prevLeg")}">⏮</button>
@@ -2100,6 +2101,14 @@ export async function render(main, { query = {}, route } = {}) {
       return;
     }
     const j = legAt(tNow);
+    // the whole course shown: ⏮ opens the leg run now, ⏭ the next one (owner, 2026-11-08: as the map analysis's, the leg menu
+    // then saying it)
+    if (legItems().length) {
+      let k = dir < 0 ? Math.max(0, j) : j + 1;
+      while (legs[k] && legs[k].t0 == null) k += dir < 0 ? -1 : 1;
+      if (legs[k]) setLegView(k);
+      return;
+    }
     const target = dir < 0 ? (j >= 0 && tNow - legs[j].t0 > 2 ? legs[j].t0 : legs[Math.max(0, j - 1)]?.t0 ?? 0) : legs[j + 1]?.t0 ?? total;
     seek(target ?? 0);
   }
@@ -2157,7 +2166,17 @@ export async function render(main, { query = {}, route } = {}) {
     paceStrip(); video?.sync();
     if (rcs.on) rcCurrent();
   }
+  /** The legs a leg's view opens: those timed, when the course's sequence is known ([index, « 2 → 3 »]). */
+  const legItems = () => (sequenceKnown() ? legs.map((l, i) => [i, l]).filter(([, l]) => l.t0 != null && l.label).map(([i, l]) => [i, `${i ? legs[i - 1].label : t("an.start")} → ${l.label}`]) : []);
+  /** The leg menu at the bar's left (owner, 2026-11-08), drawn again whenever the leg shown changes. */
+  function legPick() {
+    const slot = $("#an-legpick-slot"); if (!slot) return;
+    const items = legItems();
+    slot.innerHTML = items.length ? legPickHtml("an-legpick", items, legSel) : "";
+    if (items.length) bindLegPick($("#an-legpick"), (v) => setLegView(v));
+  }
   function legsTable() {
+    legPick();
     const k = klass(), r = runner(), est = !officialTaus();
     const hasHr = !!track.ch.hr, hasCad = !!track.ch.cad;
     const sum = legs.reduce((a, l) => ({ dist: a.dist + (l.dist || 0), straight: a.straight + (l.straight || 0), lost: a.lost + (l.mistake ? l.lost : 0), n: a.n + (l.mistake ? 1 : 0) }), { dist: 0, straight: 0, lost: 0, n: 0 });

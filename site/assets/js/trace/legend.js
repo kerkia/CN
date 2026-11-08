@@ -23,6 +23,8 @@ export function keyHtml(o = {}) {
   top.push([btn("⤢"), t("lg.full"), t("lg.full.d")]);
   groups.push([t("lg.h.top"), top]);
   const bar = [];
+  // the leg shown, at the bar's left (owner, 2026-11-08)
+  bar.push([btn(`${ICONS.course}▾`), t("lg.legpick"), t("lg.legpick.d")]);
   if (o.multi && o.modes) {
     for (const [icon, m] of o.modes) bar.push([btn(icon), t(`sh.mode.${m}`), t(`sh.mode.${m}.hint`)]);
     bar.push([btn("▷"), t("lg.from"), t("lg.from.d", { mode: t("sh.mode.from") })]);

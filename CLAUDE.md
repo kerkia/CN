@@ -2353,7 +2353,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   browser tab in front, it asks `GET /api/analyses/<id>?poll=1` (the traces' list alone, no visit counted; visitors' `/v/<id>`
   too) every minute; a change is never drawn in under the reader's eyes — a notice at the window's bottom (« 1 nouvelle trace » /
   « Des traces ont changé », `.sh-fresh`) offers « Actualiser », which reopens the replay from the address's state (time, leg…),
-  the new runners shown. Each circuit's length follows its name in the selector and stands at the map's top left (`courseLenText`:
+  the new runners shown. **The leg shown** (owner, 2026-11-08), in both analyses: a menu at the control bar's left
+  (`sidepanel.legPickHtml` / `bindLegPick`: the course icon, the leg's « 3 → 4 » when one is open, « Tout le parcours » then
+  each leg), drawn again on every change of leg, so it, « Inter-postes » and ⏮ ⏭ always agree; in Solo ⏮ ⏭ from the whole
+  course open the leg run now / the next (they only moved the time), as the map analysis's open a leg; « Aide » has it. Each circuit's length follows its name in the selector and stands at the map's top left (`courseLenText`:
   the published class's length and climb, else control to control from the georeference).
 - **Logos on OCAD maps, everywhere** (owner, 2026-11-04): an OCAD map's layout images (`vmap/map.js` `LayerBitmap`) are sized from
   their file's header when read (`ocad.js` `imageSize`: the map's extent holds them from the start), `map.ready` settles once all are
