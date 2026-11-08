@@ -1743,7 +1743,9 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       }
       if (mode === "clock" && !leg && s < r.start - 1) continue;           // not started yet
       const [mx, my] = posAt(r.tr, s), [x, y] = toPx(r.fit, mx, my);
-      stroke(g, r, from, to, lw((r === sel ? 2.8 : 2) * width), (r === sel || !sel ? 1 : 0.75) * ta, [x, y]);
+      // the route joined to the dot only when drawn up to it: a leg drawn whole ends at its control, and the join made a straight
+      // line from there back to the runner (owner, 2026-11-08)
+      stroke(g, r, from, to, lw((r === sel ? 2.8 : 2) * width), (r === sel || !sel ? 1 : 0.75) * ta, whole && r.passes[leg] > s ? null : [x, y]);
       g.globalAlpha = 1; g.beginPath(); g.arc(x, y, lw(7), 0, 2 * Math.PI); g.fillStyle = "#fff"; g.fill();
       g.beginPath(); g.arc(x, y, lw(5), 0, 2 * Math.PI); g.fillStyle = r.colour; g.fill();
       if (shown.length > 1 || r === sel) {
