@@ -28,7 +28,7 @@ import { getProv, clock } from "./provisional.js";
 import { raceFilters } from "../racefilters.js";
 import * as country from "../country.js";
 import { replaceQuery } from "../app.js";
-import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal, cutTrack } from "../trace/track.js";
+import { parseTrace, isTraceName, indexAt, posAt, cumAt, speedAt, valueAt, meanBetween, toLocal, cutTrack, cumClimb } from "../trace/track.js";
 import { fitSimilarity, fitAffine, toPx, toM, registerPoints, simplify } from "../trace/geom.js";
 import { isVectorName, readVector, renderVector, latLonOf, ownImage, throughGeo, cover, VECTOR_ACCEPT } from "../trace/vectorroutes.js";
 import { detectCourse, READER } from "../trace/course.js";
@@ -1821,6 +1821,7 @@ export async function render(main, { query = {}, route } = {}) {
         ${stat(t("an.pace"), "an-pace", html` <span class="muted">${t("an.pace.short")}</span>`)}
         ${stat(t("an.dist"), "an-dist", html` <span class="muted" id="an-dist-sub"></span>`)}
         ${avail.filter((c) => c !== "ele").map((c) => stat(t(CHANNEL_LABEL[c]), `an-ch-${c}`, html` <span class="muted">${unitOf(c)}</span>`))}
+        ${track.ch.ele ? html`<span class="an-stat" title="${t("an.climbSo.tip")}"><span class="muted">${t("an.climbSo")}</span> <b id="an-climb">—</b> <span class="muted">m</span></span>` : ""}
         ${short.map((x) => html`<span class="an-warn" title="${x}">⚠ ${x}</span>`)}`;
     $("#an-stripbar").hidden = false; $("#an-ps").hidden = !showStrip;
     $("#an-ps-tog").setAttribute("aria-expanded", String(showStrip)); $("#an-ps-tog").textContent = `${stripArrow(showStrip)} ${t("sh.strip.title")}`;
@@ -2163,6 +2164,8 @@ export async function render(main, { query = {}, route } = {}) {
     const len = klass()?.length_m;
     set("#an-dist-sub", len ? `${t("an.course.len")} ${fmt(len / 1000, 1)} km` : "");
     for (const c of Object.keys(track.ch)) { const v = valueAt(track, c, s); set(`#an-ch-${c}`, v == null || Number.isNaN(v) ? "—" : fmt(v, c === "temp" ? 1 : 0)); }
+    // the climb since the start, from the watch's altitude (owner, 2026-11-08), at the bar's end
+    if (track.ch.ele) { const cu = (track.climb ||= cumClimb(track, track.ch.ele)); set("#an-climb", fmt(Math.max(0, cu[indexAt(track, s)] - cu[indexAt(track, offset)]))); }
     paceStrip(); video?.sync();
     if (rcs.on) rcCurrent();
   }

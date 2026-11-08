@@ -235,6 +235,32 @@ export function indexAt(tr, s) {
   while (hi - lo > 1) { const m = (lo + hi) >> 1; if (tr.t[m] <= s) lo = m; else hi = m; }
   return lo;
 }
+/**
+ * The climb run so far at each point, in metres (owner, 2026-11-08: the « Allure » bar's ↑): the heights h (one a point: a
+ * watch's altitude, or the terrain model's under the route) smoothed over ±win seconds, then each rise counted from the lowest
+ * height since the last one counted, once over `dead` metres — the noise's ups and downs left out.
+ */
+export function cumClimb(tr, h, win = 10, dead = 1.5) {
+  const n = tr.n, out = new Float32Array(n);
+  if (!h || !n) return out;
+  const sm = new Float64Array(n);
+  let a = 0, b = 0, sum = 0, cnt = 0;
+  for (let i = 0; i < n; i++) {
+    while (b < n && tr.t[b] <= tr.t[i] + win) { if (Number.isFinite(h[b])) { sum += h[b]; cnt++; } b++; }
+    while (a < n && tr.t[a] < tr.t[i] - win) { if (Number.isFinite(h[a])) { sum -= h[a]; cnt--; } a++; }
+    sm[i] = cnt ? sum / cnt : NaN;
+  }
+  let ref = NaN, up = 0;
+  for (let i = 0; i < n; i++) {
+    const v = sm[i];
+    if (Number.isFinite(v)) {
+      if (!Number.isFinite(ref) || v < ref) ref = v;
+      else if (v - ref >= dead) { up += v - ref; ref = v; }
+    }
+    out[i] = up;
+  }
+  return out;
+}
 /** The position (metres) at trace time s, interpolated; clamped to the ends. */
 export function posAt(tr, s) {
   const i = indexAt(tr, s);

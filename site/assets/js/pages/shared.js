@@ -24,7 +24,7 @@ import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
 import { getProv, clock } from "./provisional.js";
 import * as declare from "../declare.js";
 import * as country from "../country.js";
-import { parseTrace, isTraceName, indexAt, posAt, cumAt } from "../trace/track.js";
+import { parseTrace, isTraceName, indexAt, posAt, cumAt, cumClimb } from "../trace/track.js";
 import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
@@ -2238,6 +2238,14 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
   /** The runner followed, at the replay's time: their race time, leg, pace over the last 30 s and distance run (owner, 2026-11-05:
    *  as « Analyse solo » says of its trace), in the pace's bar under the map — the runner followed, else the one runner shown
    *  (owner, 2026-11-05: a runner chosen alone on the map showed nothing); nothing with several and none followed. */
+  // the climb since the start (owner, 2026-11-08), from the terrain model's heights under the route (the shared traces keep no
+  // altitude); « — » until they are loaded (asked 1.5 s after the opening)
+  function climbSo(r, at) {
+    const h = hseries(r, "ele");
+    if (!h) return "—";
+    const cu = (r.climb ||= cumClimb(r.tr, h));
+    return fmt(Math.max(0, cu[indexAt(r.tr, at)] - cu[indexAt(r.tr, r.start)]));
+  }
   function stats() {
     const el = $("#sh-stats");
     if (!el) return;
@@ -2252,7 +2260,8 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     el.innerHTML = html`<span class="sh-stats-name"><span class="sh-swatch" style="background:${r.colour}"></span>${r.test ? initials(r) : r.name}</span>
       ${stat(t("an.time"), clock(Math.max(0, at - r.start)))}${score ? "" : stat(t("an.leg"), j < legsN ? legName(j + 1) : t("an.finish"))}
       ${stat(t("an.pace"), win >= 5 ? pace((cumAt(r.tr, at) - cumAt(r.tr, at - win)) / win) : "—")}
-      ${stat(t("an.dist"), `${fmt(d >= 1000 ? d / 1000 : d, d >= 1000 ? 2 : 0)} ${d >= 1000 ? "km" : "m"}`)}`.toString();
+      ${stat(t("an.dist"), `${fmt(d >= 1000 ? d / 1000 : d, d >= 1000 ? 2 : 0)} ${d >= 1000 ? "km" : "m"}`)}
+      ${html`<span class="an-stat" title="${t("an.climbSo.tip")}"><span class="muted">${t("an.climbSo")}</span> <b>${climbSo(r, at)}</b> <span class="muted">m</span></span>`}`.toString();
   }
   function reset() { stop(); [T0, T1] = range(); T = T0; right(); frame(); }
   function setLeg(j) {
