@@ -82,6 +82,14 @@ commit results, personal data, secrets or credentials.
   `C:\kerkia\Ozimut\data\ffco_results.sqlite3`, never on the original.
 - To stop the dev server on Windows, kill `workerd` and the `node` processes running wrangler. wrangler 4.157.0 (2026-11-03)
   crashed workerd on the PC (« access violation »): launch config `pages-dev-admin-4156` (8796) pins 4.156.2.
+- **workerd « access violation » on every Function request** (static files fine; 2026-11-09, the new PC, wrangler 4.159.0
+  and 4.156.2, Node 26 alike): a **corrupt local SQLite file** under `.wrangler/state/v3/` — that time the observability
+  trace store (`observability/miniflare-wobs-trace-store/*.sqlite`, 53 MB, « database disk image is malformed », written on
+  every request), damaged by Proton Drive syncing the folder mid-write (its « Edit conflict » copies beside it). workerd
+  crashes instead of reporting the error. Check each `.sqlite` there with `pragma integrity_check` (on a copy) and move the
+  bad one's folder out of `state/` — miniflare starts it afresh; the trace store holds nothing the site needs, the D1 folder
+  holds the local test accounts. Not the Visual C++ runtime, nor Node, nor wrangler's version; the 4.157.0 crash above was
+  probably the same. A minimal Pages project with `--persist-to <empty folder>` tells the state from the code.
 - After a JS change, check the page in a browser (console errors!) before pushing; the browser may cache
   modules — hard-reload.
 
