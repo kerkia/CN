@@ -1598,9 +1598,18 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       return [-Math.max(0, ...S.map((r) => r.passes[fromK] - r.start)), Math.max(1, ...S.map((r) => (r.finish ?? r.tr.dur) - r.passes[fromK]))];
     }
     waits = [0];
-    for (let j = 1; j <= legsN; j++) waits.push(waits[j - 1] + Math.max(0, ...R.map((r) => legTime(r, j) ?? 0)));
-    return [0, Math.max(1, waits[legsN])];
+    for (let j = 1; j <= legsN; j++) {
+      let w = waits[j - 1] + Math.max(0, ...R.map((r) => legTime(r, j) ?? 0));
+      // a runner who missed the controls before this one runs from their last control passed: the wait leaves them the time
+      for (const r of R) { const k = lastPass(r, j - 1); if (r.passes[j] != null && k != null && k < j - 1) w = Math.max(w, waits[k] + r.passes[j] - r.passes[k]); }
+      waits.push(w);
+    }
+    // a runner who never reached the finish runs on to their trace's end (owner, 2026-11-09: their trace vanished at the end)
+    const tails = R.map((r) => { const k = lastPass(r, legsN); return k == null || k === legsN ? 0 : waits[k] + (r.finish ?? r.tr.dur) - r.passes[k]; });
+    return [0, Math.max(1, waits[legsN], ...tails)];
   }
+  /** The last control at or before j that runner r was seen passing (null: not even the start). */
+  function lastPass(r, j) { for (let k = Math.min(j, legsN); k >= 0; k--) if (r.passes[k] != null) return k; return null; }
   function sAt(r, Td) {
     let s;
     if (leg) { const a = r.passes[leg - 1], d = legTime(r, leg); if (a == null || d == null) return null; s = a + Math.min(Math.max(Td, 0), d); }
@@ -1611,8 +1620,17 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       let j = 1;
       while (j < legsN && Td >= waits[j]) j++;
       const a = r.passes[j - 1], d = legTime(r, j);
-      if (a == null || d == null) return null;
-      s = a + Math.min(Math.max(Td - waits[j - 1], 0), d);
+      if (a != null && d != null) s = a + Math.min(Math.max(Td - waits[j - 1], 0), d);
+      else {
+        // a control missed, or the finish never reached: the runner goes on from the last control they passed, at their own pace, up
+        // to the next one they passed (or their finish, else their trace's end) — before, they had no position and their whole
+        // trace left the map (owner, 2026-11-09)
+        const k = lastPass(r, j - 1);
+        if (k == null) return null;
+        let m = j; while (m <= legsN && r.passes[m] == null) m++;
+        const end = m <= legsN ? r.passes[m] : r.finish ?? r.tr.dur;
+        s = r.passes[k] + Math.min(Math.max(Td - waits[k], 0), Math.max(0, end - r.passes[k]));
+      }
     }
     return Math.max(r.tr.t[0], Math.min(r.tr.dur, s));
   }
