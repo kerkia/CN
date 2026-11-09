@@ -26,7 +26,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `live/` | **O'CN's live relay**, Worker `ocn-live` (2026-10-18): Durable Objects — one `LiveRace` per liveresultat competition (« En direct »), MeOSDjango, O'Live or SPORTident Center race, or organiser's broadcast (« Organisation › Direct »), and the `Directory` (liveresultat's, MeOSDjango's and O'Live's lists, the broadcasts). No public address (`workers_dev = false`): O'CN reaches it only through its Durable Object bindings (`wrangler.toml` LIVE_RACE, LIVE_DIR) — `functions/api/live/list.js`, `functions/ws/[comp].js`, `functions/api/live/push.js`, `mop.js` (MeOS's online results) and `broadcasts.js`. Deployed by hand: `cd live && npx wrangler deploy`; local: launch config `ocn-live-dev` (8786), the local Pages dev binds to it; `live/dev/lr-mock.mjs` replays recorded races as liveresultat's API (`--var LR_API:…`) |
 
 On the PC everything is under `C:\kerkia\Ozimut` (one folder since 2026-11-07; `C:\kerkia\CO` and `C:\kerkia\cn-data` before):
-`code\` this repository, `data\` what the code reads outside git (the database, the HTTP cache, geonames, naturalearth, relays,
+`Ozimut\` this repository (`code\` until 2026-11-09: renamed so that the Claude app names its sessions « Ozimut »), `data\` what the code reads outside git (the database, the HTTP cache, geonames, naturalearth, relays,
 lidarmap, the secrets and pending files; `paths.DATA_DIR`), `work\` studies and test material the code never reads (`synth`,
 `study`, `scratch-scripts`, `Test files`). The whole of `C:\kerkia` is synced by Proton Drive (moved out of OneDrive on
 2026-10-08: syncing rewrote files mid-edit).
