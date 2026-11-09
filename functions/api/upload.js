@@ -180,7 +180,7 @@ export const onRequestDelete = withUser(async ({ request, env }, user) => {
 export async function startRun(env) {
   if (!env.GH_DISPATCH_TOKEN) return false;
   if (!(await allow(env, "upload:dispatch", 1, 180))) return true;       // one is starting already
-  const r = await fetch(`https://api.github.com/repos/${env.GH_REPO || "kerkia/CN"}/actions/workflows/update.yml/dispatches`, {
+  const r = await fetch(`https://api.github.com/repos/${env.GH_REPO || "kerkia/Ozimut"}/actions/workflows/update.yml/dispatches`, {
     method: "POST",
     headers: { Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`, Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "ocn-upload", "Content-Type": "application/json" },

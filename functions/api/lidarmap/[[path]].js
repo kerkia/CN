@@ -76,7 +76,7 @@ async function tileState(env, id, style) {
 /** The workflow started (GitHub workflow_dispatch); false without the token. */
 async function startMaps(env) {
   if (!env.GH_DISPATCH_TOKEN) return false;
-  const r = await fetch(`https://api.github.com/repos/${env.GH_REPO || "kerkia/CN"}/actions/workflows/lidarmap.yml/dispatches`, {
+  const r = await fetch(`https://api.github.com/repos/${env.GH_REPO || "kerkia/Ozimut"}/actions/workflows/lidarmap.yml/dispatches`, {
     method: "POST",
     headers: { Authorization: `Bearer ${env.GH_DISPATCH_TOKEN}`, Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "ozimut-lidarmap", "Content-Type": "application/json" },

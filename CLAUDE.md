@@ -65,8 +65,9 @@ commit results, personal data, secrets or credentials.
   of page, at most once a minute, and reloads the page when it differs. No file on the local server: nothing happens.
 - A push only triggers a run when it touches `site/**`, `functions/**` or `wrangler.toml`. A Python-only change is picked up by
   the next hourly run (it checks out `main`), or trigger it with `workflow_dispatch`.
+- The GitHub repository is `kerkia/Ozimut` (`kerkia/CN` until 2026-11-09; GitHub redirects the old name).
 - `gh` is not installed on the PC; read run status with the public API, e.g.
-  `curl -s "https://api.github.com/repos/kerkia/CN/actions/runs?per_page=5"` and `/runs/<id>/jobs`.
+  `curl -s "https://api.github.com/repos/kerkia/Ozimut/actions/runs?per_page=5"` and `/runs/<id>/jobs`.
   Data on the live site needs a login, but `/data/meta.json` and the JS assets are public: use them to check
   a deploy (e.g. `meta.json` → `methods`, `normalisation`).
 
@@ -615,7 +616,7 @@ wishes, « Publier sur O'CN » (`pages/upload.js`): the race (those of the file'
 the browser: straight to step 3. `functions/api/upload.js` streams the body to R2 (`cn-state`,
 `uploads/<id>/` + `meta.json`; binding `BUCKET`, the Functions write nowhere else), records it in D1 `uploads`, mails
 the administrators, deletes files older than 60 days, and, when the Pages secret `GH_DISPATCH_TOKEN` is set (a
-fine-grained token, repo kerkia/CN, "Actions: read and write"), starts a `prov` run (workflow_dispatch, at most
+fine-grained token, repo kerkia/Ozimut, "Actions: read and write"), starts a `prov` run (workflow_dispatch, at most
 every 3 min); the workflow copies `uploads/` to `$CN_DATA_DIR/uploads`, `sources/upload.py` turns each upload into
 a document (source "upload"; a newer one by the same account replaces it; added races get key `u<id>`). Every upload
 is published (owner's choice); the admin page's « Dépôts » tab lists them and removes one (meta status "removed").
@@ -3209,7 +3210,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   there); push: `push_subs.origin` (migration 0013), a device subscribing again on the new address drops its old
   subscription of the same label. Local test: `OLD_HOSTS=localhost` and `SITE_URL=http://127.0.0.1:<port>` in `.dev.vars`,
   `localStorage["ocn.bridgeTo"] = "http://127.0.0.1:<port>"` on localhost. Internal names stay: Pages `observatoire-cn`, D1
-  `ocn`, R2 `cn-state`, Worker `ocn-live`, repo `kerkia/CN`, the `ocn.*` / `cnx.*` browser keys, the method key `top6w`.
+  `ocn`, R2 `cn-state`, Worker `ocn-live`, the `ocn.*` / `cnx.*` browser keys, the method key `top6w`.
   **Switched on 2026-10-19 evening** (`bridge.ACTIVE` true, 348a5a5; before it, false moved only `?demenagement` visitors).
   The window about the move (`moved.js`, D1 `users.moved_notice` 0 = to show, set for the accounts of before the move) shows
   once on the new address. Mail goes from alert@ozimut.com (the Resend key's domain is « All domains »), replies to

@@ -5,7 +5,7 @@
 #   SCW_SECRET_KEY  Scaleway Transactional Email, beyond it (an IAM API key allowed to send; its project in SCW_PROJECT_ID below)
 #   NOTIFY_SECRET   lets update.py call /api/notify from the PC
 #   GH_DISPATCH_TOKEN  starts a provisional-results run after an upload (GitHub fine-grained token, repository
-#                      kerkia/CN, "Actions: read and write"); without it, uploads wait for the next hourly run
+#                      kerkia/Ozimut, "Actions: read and write"); without it, uploads wait for the next hourly run
 name = "observatoire-cn"
 pages_build_output_dir = "site"
 compatibility_date = "2025-06-01"
@@ -67,8 +67,8 @@ WORLD_OPEN = "1"
 # Cloudflare Turnstile on registration (_lib/turnstile.js): the widget's public site key; its secret is the Pages secret
 # TURNSTILE_SECRET. Empty (or no secret): no check
 TURNSTILE_SITE_KEY = "0x4AAAAAAFd6fHJaiIvn92Xe"
-# the repository whose workflow an upload starts
-GH_REPO = "kerkia/CN"
+# the repository whose workflow an upload starts (kerkia/CN until its rename on 2026-11-09)
+GH_REPO = "kerkia/Ozimut"
 # Resend free plan: 100 e-mails a day and 3 000 a month; beyond it Scaleway's Transactional Email (functions/_lib/mail.js)
 DAILY_EMAIL_LIMIT = "90"
 MONTHLY_EMAIL_LIMIT = "2900"
