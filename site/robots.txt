@@ -1,4 +1,4 @@
-# Ozimut — https://ozimut.com
+# Ozimut — Orienteering, in maps and numbers — https://ozimut.com
 # Orienteering results, rankings and analyses, made for orienteers on limited free resources. Search engines may read and
 # list the home page only. Nothing on this site may be collected, scraped, indexed beyond the home page, or used to train,
 # fine-tune, ground or feed artificial-intelligence models, agents or answers. For any automated or bulk use, write to
