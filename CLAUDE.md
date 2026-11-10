@@ -849,6 +849,31 @@ in multi-pick games), the answers and the result stay at the screen's bottom (st
 the Labyrinthe's view is nearly square on a narrow screen, hedge height tied to the lens (`WALL`), the start facing an open way, the
 buttons a pad, the view itself tapped (left/right third turns, middle steps, a swipe down steps back), its map as large as the view.
 Every multiple-choice game was played through to its score page at phone size, without errors. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
+- **Virtually** (« Jeux » › Virtually, `games/virtually.js` + `games/vworld.js`; owner, 2026-11-10, after Catching Features and
+  Virtual-O; **administrators only**: `pages/games.js`'s fifth field, `auth.session().admin`, and `functions/api/virtual` `admin: true`):
+  a virtual race in a 3D forest made from a real orienteering map. The runner is seen from behind (V: through their eyes), the map
+  with the course in a panel (M: small, large, hidden; its position hidden unless « Montrer ma position » is ticked), a compass
+  (baseplate, red needle north, the dial turning with the runner: the map's north is the world's, the world being the map's paper
+  frame in metres). Physical keys (`e.code`: ZQSD on AZERTY = WASD), arrows, Shift to walk, mouse drag to look, Space to punch
+  within 6 m of a flag — the flag then glows, a light column and a ring rise, a banner says « Poste 41 — Espace pour poinçonner »;
+  controls in order (a wrong or repeated one is said, not punched); speed by the ground class (`race.speed`) and the slope; impassable
+  classes, trunks and large boulders block (`World.hits`). The finish: time, splits, distance run, the route drawn on the map, the
+  palmarès (`virtually-<race>`, smaller is better; `functions/api/games/scores.js`). Touch screens get a pad. The world streams
+  64 m chunks within 250 m (ground mesh 1 m, instanced trees, bushes, ferns/grass as crossed sprites, rocks, walls and cliffs, water
+  surfaces); only chunks within 90 m cast shadows (34 fps in headless Edge at 1400 × 860, 2026-11-10). Each race is a package
+  (race.json, h.png heights as R·256+G cm, cls.png ground classes, veg.png tree/bush/low densities, ground.jpg, feats.json,
+  trees.bin LiDAR trees, map.ocd drawn by the Tracer's `vmap` with its own 7xx course symbols hidden) in R2 `virtual/<race>/`, served
+  by `/api/virtual/<race>/<file>`. **Built offline** by `tools/virtually/` (`dump.mjs`, `build.py`, `course.py`, `lidar.py`,
+  `upload.py`; inputs outside git in `C:\kerkia\Ozimut\data\virtual\<race>\`: the club's map.ocd — never in the repository —,
+  biome.json, the LiDAR): the map's classes by symbol for ISOM 2017 or ISOM 2000 (detected), the relief **read from the map's
+  contours** (slope ticks give the downhill side, a closed line without ticks is a hill, the direction carries on from line to line,
+  pieces of one contour joined, levels solved, a membrane between the lines, tops and bottoms in the innermost closed lines, the small
+  landforms as bumps; the contour interval chosen against the worldwide relief, AWS Terrain Tiles; on Desquinemarre, checked against
+  IGN's LiDAR: 77 % of lines at their exact level, 0.78 m RMS within 30 m of a contour), or the national LiDAR's ground and trees where
+  there is one (`lidar.py` through mapgen's fetchers; the map's relief is then checked against it). `course.py` proposes a course
+  (features as control sites, legs 180-480 m, no dog-leg, legs 45 m apart, the start beside a path). Races: **Granites** (Victoria,
+  Australia, ISOM 2017 1:15 000; no open LiDAR: the map and the worldwide relief) and **Foley Mountain** (Ontario, Canada, ISOM 2000
+  1:10 000; NRCan CanElevation LiDAR). The work of the day (Desquinemarre's movies, `C:\kerkia\Ozimut\work\vr3d`) stays outside git.
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
   open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only

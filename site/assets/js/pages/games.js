@@ -6,6 +6,7 @@ import { html, $, $$ } from "../util.js";
 import { t } from "../i18n.js";
 import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
 import { runGame } from "../games/quiz.js";
+import * as auth from "../auth.js";
 
 // key, module, export name, levels [[key, label key]] (a level restarts the game with another spec)
 const ALL = [
@@ -23,6 +24,9 @@ const ALL = [
   ["maze", "maze.js", "spec", [["small", "g.lvl.small"], ["medium", "g.lvl.medium"], ["large", "g.lvl.large"]]],
   // « Quel poste ? » (2026-11-10): « Apprendre »'s training, no settings; Débutant (the quiz's groups) and Avancé (drawn at random)
   ["learntest", "learntest.js", "spec", [["beginner", "g.lvl.beginner"], ["advanced", "g.lvl.advanced"]]],
+  // « Virtually » (2026-11-10): a virtual race in a 3D forest made from a real map, one level a race; administrators only for now.
+  // Its module has its own `mount` (not the quiz engine).
+  ["virtually", "virtually.js", "spec", [["granites", "g.virtually.granites"], ["foley", "g.virtually.foley"]], () => !!auth.session()?.admin],
 ];
 
 export async function render(main, { query }) {
@@ -55,6 +59,7 @@ export async function render(main, { query }) {
     try {
       const mod = await import(`../games/${file}`);
       if (!root.isConnected) return;
+      if (mod.mount) { running.set(k, mod.mount(root, level ?? levels?.[0]?.[0])); return; }   // a game of its own (Virtually)
       const spec = mod[name](level ?? levels?.[0]?.[0]);
       const lv = levels?.find(([lk]) => lk === (level ?? levels[0][0]));
       spec.palmTitle = lv ? `${t(`g.${k}.tab`)} · ${t(lv[1])}` : t(`g.${k}.tab`);

@@ -4157,3 +4157,54 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
   .sh-mapcol .an-courseinfo { top: calc(var(--bar-h, 0px) + 8px); }
   .sh-mapcol .an-northarrow:not([hidden]) ~ .an-courseinfo { top: calc(var(--bar-h, 0px) + 12px); }
 }
+
+/* ---- « Virtually » (games/virtually.js): the 3D view fills the game's card, everything else floats over it ---------------- */
+.g-panel[data-panel="virtually"] .g-root .card-body { padding: 0; }
+.vt { position: relative; height: max(440px, calc(100vh - 220px)); background: #1b1f22; overflow: hidden; outline: none; border-radius: inherit; user-select: none; }
+.vt:fullscreen { height: 100vh; border-radius: 0; }
+.vt-view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.vt-load { min-height: 300px; display: grid; place-content: center; justify-items: center; gap: 10px; }
+.vt-hud { position: absolute; left: 12px; top: 12px; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border-radius: 8px;
+  background: rgba(15, 20, 25, 0.62); color: #fff; font-size: 14px; pointer-events: none; }
+.vt-hud b { font-size: 16px; }
+.vt-hud #vt-time { font: 600 22px/1.1 ui-monospace, Consolas, monospace; }
+.vt-topbar { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 6px; }
+.vt-topbar .btn { background: rgba(15, 20, 25, 0.62); color: #fff; border-color: transparent; }
+.vt-cue { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); padding: 10px 18px; border-radius: 10px; font-weight: 700;
+  background: rgba(242, 107, 29, 0.92); color: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6), 0 6px 20px rgba(0, 0, 0, 0.35);
+  animation: vt-pulse 1s ease-in-out infinite; pointer-events: none; white-space: nowrap; }
+@keyframes vt-pulse { 50% { transform: translateX(-50%) scale(1.05); } }
+.vt-toast { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); padding: 8px 16px; border-radius: 8px; color: #fff; font-weight: 600; pointer-events: none; }
+.vt-toast.ok { background: rgba(30, 130, 60, 0.9); } .vt-toast.bad { background: rgba(190, 40, 40, 0.92); }
+.vt-compass { position: absolute; right: 16px; bottom: 12px; width: 180px; height: 180px; pointer-events: none; }
+.vt-map { position: absolute; right: 12px; top: 12px; width: min(380px, 40%); height: min(380px, 55%); background: #fff; border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); overflow: hidden; }
+.vt-map[data-size="large"] { left: 4%; right: 4%; top: 4%; width: auto; height: 92%; }
+.vt-map[data-size="hidden"] { display: none; }
+.vt-mapc { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.vt-mapbar { position: absolute; right: 6px; top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.vt-mapbar button { width: 30px; height: 30px; border-radius: 6px; border: 1px solid #bbb; background: rgba(255, 255, 255, 0.9); color: #222; font-size: 16px; cursor: pointer; }
+.vt-desc { position: absolute; left: 6px; bottom: 6px; max-height: 45%; overflow: auto; background: rgba(255, 255, 255, 0.92); border: 1px solid #999; border-radius: 4px;
+  font-size: 12px; color: #111; }
+.vt-desc td { padding: 1px 6px; } .vt-desc tr.done { color: #999; text-decoration: line-through; } .vt-desc tr.cur { background: #ffe1c8; font-weight: 700; }
+.vt-map[data-size="small"] .vt-desc { font-size: 11px; }
+.vt-map[data-size="small"] .vt-desc tr:not(.cur) { display: none; }
+.vt-over { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10, 14, 18, 0.45); }
+.vt-over[hidden], .vt-over:empty { display: none; }
+.vt-over.side { place-items: center start; padding-left: 2%; background: transparent; pointer-events: none; }
+.vt-over.side .vt-card { width: min(420px, 36%); pointer-events: auto; }
+.vt:has(.vt-over.side) .vt-map[data-size="large"] { left: calc(2% + min(420px, 36%) + 16px); }
+.vt ~ .push-offer, body:has(.vt) .push-offer { display: none; }
+.vt-card { width: min(520px, 92%); max-height: 92%; overflow: auto; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); }
+.vt-card h2 { margin: 0 0 6px; }
+.vt-keys { margin: 10px 0; padding-left: 18px; font-size: 13px; line-height: 1.5; }
+.vt-opt { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+.vt-btns { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.vt-big { font: 700 34px/1.2 ui-monospace, Consolas, monospace; margin: 4px 0; }
+.vt-done table { width: 100%; margin-top: 8px; }
+.vt-credit { font-size: 12px; margin-top: 10px; }
+.vt-pad { position: absolute; left: 12px; bottom: 60px; display: none; grid-template-columns: repeat(3, 54px); gap: 6px; }
+.vt-pad button { height: 50px; border-radius: 10px; border: 0; background: rgba(15, 20, 25, 0.55); color: #fff; font-size: 18px; touch-action: none; }
+.vt-pad .vt-padpunch { background: rgba(242, 107, 29, 0.9); font-size: 13px; }
+@media (hover: none) and (pointer: coarse) { .vt-pad { display: grid; } .vt-compass { width: 130px; height: 130px; } .vt-cue { bottom: 150px; } }
