@@ -16,8 +16,8 @@
 // big ones, each a boulder of its own), the earth wall (a linear bank: those found showed their ditch, or a hedge), re-entrant,
 // spur, small hill, path crossing, thicket and earth bank —, each credited in the list under the game; one by its author, with
 // his permission: Emmanuel Roiné's « zone rocheuse », the quiz's own, and five more of his (owner, 2026-11-10: route goudronnée,
-// souche, levée de terre — the earth wall's only photo —, grand rocher, petite falaise; a second photo where the feature had
-// one, the question drawing one of them at random). Replace one by dropping site/assets/learn/<key>.webp and
+// souche, levée de terre, grand rocher, petite falaise; his photo replaces the web's wherever he has one — owner: a professional
+// orienteering coach, his photos are best). A feature may have several photos (`k` in learnphotos.js), drawn at random. Replace one by dropping site/assets/learn/<key>.webp and
 // changing its credit in learnphotos.js. The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the
 // impassable cliff, and its « zone rocheuse » the boulder field.
 

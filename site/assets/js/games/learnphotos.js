@@ -3,16 +3,13 @@
 // « boulderField »: the club quiz's own photo, by Emmanuel Roiné, used with his permission (given to the owner, 2026-11-10).
 // An entry with `permission` is credited « avec son autorisation » instead of a licence. A feature may have several photos:
 // an entry whose key is not the feature's names it in `k` (the test draws one of them at random). Emmanuel Roiné's five of
-// 2026-11-10 (owner: « ajoute-les toutes »), the control's streamer in the picture, their EXIF (place, date) left out.
+// 2026-11-10 (owner: « ajoute-les toutes »), the control's streamer in the picture, their EXIF (place, date) left out; his
+// photo replaces the web's wherever he has one (owner: a professional orienteering coach, his photos are best).
 export const PHOTOS = {
-  stump: {"w": 400, "h": 600, "author": "Lotte76", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Nationalpark_Jasmund_-_Wurzel_im_Stubnitz-Wald_(1).jpg", "title": "Nationalpark Jasmund - Wurzel im Stubnitz-Wald (1)"},
-  boulder: {"w": 760, "h": 504, "author": "Jim Barton", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Erratic_boulder,_Abernethy_Forest_-_geograph.org.uk_-_3179085.jpg", "title": "Erratic boulder, Abernethy Forest - geograph.org.uk - 3179085"},
   roughOpen: {"w": 760, "h": 570, "author": "John Ferguson", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Small_clearing_in_the_forest_-_geograph.org.uk_-_1822289.jpg", "title": "Small clearing in the forest - geograph.org.uk - 1822289"},
   pathBend: {"w": 760, "h": 571, "author": "Keith Evans", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Bend_On_Forest_Track_-_geograph.org.uk_-_5334874.jpg", "title": "Bend On Forest Track - geograph.org.uk - 5334874"},
-  rockFace: {"w": 450, "h": 600, "author": "Michael Graham", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Small_Crag,_Round_Top_-_geograph.org.uk_-_3308355.jpg", "title": "Small Crag, Round Top - geograph.org.uk - 3308355"},
   smallDep: {"w": 760, "h": 506, "author": "Photobits", "licence": "CC BY 4.0", "licenceUrl": "https://creativecommons.org/licenses/by/4.0", "page": "https://commons.wikimedia.org/wiki/File:NSG_Kalkkuppen_Eschweiler_bei_Pesch_29.jpg", "title": "NSG Kalkkuppen Eschweiler bei Pesch 29"},
   bigTree: {"w": 400, "h": 600, "author": "Puusterke", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Naturdenkmal_Eiche_im_Misburger_Wald_(ND-H_220).jpg", "title": "Naturdenkmal Eiche im Misburger Wald (ND-H 220)"},
-  road: {"w": 760, "h": 570, "author": "Acabashi", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:High_Beach_road_through_Epping_Forest,_Essex,_England.jpg", "title": "High Beach road through Epping Forest, Essex, England"},
   pit: {"w": 760, "h": 570, "author": "Im Fokus", "licence": "CC BY 4.0", "licenceUrl": "https://creativecommons.org/licenses/by/4.0", "page": "https://commons.wikimedia.org/wiki/File:Sprockh%C3%B6vel,_BbWw_Alte-Haase-Weg_Nord_(3),_im_Wald_westl._H%C3%B6lteregge_32,_Pinge.jpg", "title": "Sprockhövel, BbWw Alte-Haase-Weg Nord (3), im Wald westl. Hölteregge 32, Pinge"},
   knoll: {"w": 760, "h": 570, "author": "Hajotthu", "licence": "CC BY-SA 3.0", "licenceUrl": "http://creativecommons.org/licenses/by-sa/3.0/", "page": "https://commons.wikimedia.org/wiki/File:H%C3%BCgelgrab_i_Wald_b_Wohlde-20210912-_(5).JPG", "title": "Hügelgrab i Wald b Wohlde-20210912- (5)"},
   depression: {"w": 760, "h": 504, "author": "Olga Ernst", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Doline_%C3%B6stlich_von_Obernheim_2.jpg", "title": "Doline östlich von Obernheim 2"},
@@ -25,9 +22,9 @@ export const PHOTOS = {
   cairn: {"w": 760, "h": 570, "author": "Lutz Lange", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Forstgrenzstein_Falkenstruth_(09286376)_(2).jpg", "title": "Forstgrenzstein Falkenstruth (09286376) (2)"},
   ditch: {"w": 506, "h": 600, "author": "Panek", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Wyschni%C4%99ty_r%C3%B3w_w_d%C4%85br%C3%B3wce_szlacheckiej.jpg", "title": "Wyschnięty rów w dąbrówce szlacheckiej"},
   pathJunction: {"w": 760, "h": 570, "author": "Deutschereditor", "licence": "CC0", "licenceUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en", "page": "https://commons.wikimedia.org/wiki/File:Schulenberger_Wald_(Hattingen)_Weggabelung.jpg", "title": "Schulenberger Wald (Hattingen) Weggabelung"},
-  "road-er": {"k": "road", "w": 421, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Route goudronnée"},
-  "stump-er": {"k": "stump", "w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Souche"},
-  earthWall: {"k": "earthWall", "w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Levée de terre"},
-  "boulder-er": {"k": "boulder", "w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Grand rocher"},
-  "rockFace-er": {"k": "rockFace", "w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Falaise (petite)"},
+  road: {"w": 421, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Route goudronnée"},
+  stump: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Souche"},
+  earthWall: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Levée de terre"},
+  boulder: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Grand rocher"},
+  rockFace: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Falaise (petite)"},
 };
