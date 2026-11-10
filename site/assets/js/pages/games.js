@@ -6,9 +6,10 @@ import { html, $, $$ } from "../util.js";
 import { t } from "../i18n.js";
 import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
 import { runGame } from "../games/quiz.js";
+import * as auth from "../auth.js";
 
 // key, module, export name, levels [[key, label key]] (a level restarts the game with another spec)
-const GAMES = [
+const ALL = [
   ["rapid", "rapidroute.js", "spec", [["sprint", "g.rapid.sprint"], ["maze", "g.rapid.maze"]]],
   ["memory", "mapmemory.js", "spec", [["easy", "g.lvl.easy"], ["medium", "g.lvl.medium"], ["hard", "g.lvl.hard"]]],
   ["contour", "contour.js", "spec"],
@@ -21,9 +22,12 @@ const GAMES = [
   ["photo", "photomemory.js", "spec"],
   ["trailo", "trailo.js", "spec"],
   ["maze", "maze.js", "spec", [["small", "g.lvl.small"], ["medium", "g.lvl.medium"], ["large", "g.lvl.large"]]],
+  // « Quel poste ? » (2026-11-10): « Apprendre »'s test, ten features; shown as « Apprendre » is (auth.owner, for now)
+  ["learntest", "learntest.js", "spec", [["easy", "g.lvl.easy"], ["random", "g.lvl.random"]], () => auth.owner()],
 ];
 
 export async function render(main, { query }) {
+  const GAMES = ALL.filter((g) => !g[4] || g[4]());
   const tabs = GAMES.map(([k]) => [k, t(`g.${k}.tab`)]);
   // the page opens on its games as tiles, one a game (owner, 2026-10-31: every game in sight at once; on a computer too the
   // same day); a tile opens its game (?onglet=), the browser's back button comes back here

@@ -17,7 +17,8 @@ const COLOURS = [["brown", "brown"], ["black", "black"], ["blue", "blue"], ["yel
 // how fast one runs through the forest's colours (the specification's shares of normal speed)
 const RUN = [["paper", 405], ["green30", 406], ["green60", 408], ["green", 410]];
 
-export async function render(main, { query = {} } = {}) {
+/** The page; `embedded` (« Apprendre », pages/learn.js): no title of its own, the page's heading says it. */
+export async function render(main, { query = {}, embedded = false } = {}) {
   const tabs = [["foret", t("ms.tab.forest")], ["sprint", t("ms.tab.sprint")]];
   const tab = tabFrom(tabs, query);
   let practice = FROM_QUERY[query.mode] || "";
@@ -41,7 +42,7 @@ export async function render(main, { query = {} } = {}) {
           <b>${t(`ms.run.${code}`)}</b><span>${t(`ms.s.${code}`)}</span></div>`)}</div></div>
     </div></section>`;
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("ms.title")}</h1><p class="lede">${t("ms.lede")}</p></div></div>
+    ${embedded ? html`<p class="lede learn-lede">${t("ms.lede")}</p>` : html`<div class="page-head"><div><h1>${t("ms.title")}</h1><p class="lede">${t("ms.lede")}</p></div></div>`}
     <ul class="ms-stds"><li>${t("ms.std.forest")}</li><li>${t("ms.std.sprint")}</li></ul>
     ${pageTabs(tabs, tab)}
     <div class="filters cd-filters">

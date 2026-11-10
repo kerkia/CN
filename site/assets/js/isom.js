@@ -705,10 +705,10 @@ function tagNear(pts, x, y, len, w, col, side = 1) {
 const LS = {
   forest: { 101: [C.brown, 0.14], 102: [C.brown, 0.25], 103: [C.brown, 0.1, dash(2, 0.2)], slope: [0.14, 0.47],
     104: [C.brown, 0.18, 0.14, 0.5, 0.49], 201: [C.black, 0.35, 0.12, 0.5, 0.575], 202: [C.black, 0.25, 0.12, 0.5, 0.525],
-    415: [C.black, 0.14], 416: [C.black, 0.22, ` stroke-linecap="round"${dash(0.001, 0.45)}`] },
+    415: [C.black, 0.14], 416: [C.black, 0.22, ` stroke-linecap="round"${dash(0.001, 0.45)}`], 505: [C.black, 0.25, dash(2, 0.25)] },
   sprint: { 101: [C.brown, 0.21], 102: [C.brown, 0.3], 103: [C.brown, 0.15, dash(3, 0.3)], slope: [0.21, 0.86],
     104: [C.brown, 0.27, 0.21, 0.75, 0.75], 201: [C.black, 0.5, 0.18, 0.75, 0.75], 202: [C.black, 0.3, 0.18, 0.75, 0.75],
-    415: [C.black, 0.15], 416: [C.black, 0.25, ` stroke-linecap="round"${dash(0.001, 0.6)}`] },
+    415: [C.black, 0.15], 416: [C.black, 0.25, ` stroke-linecap="round"${dash(0.001, 0.6)}`], 505: [C.black, 0.35, dash(2, 0.3)] },
 };
 /** The outlines areas have where they end (the bank of water, an uncrossable marsh's border, a paved area's edge). */
 const EDGE = { forest: { 301: [C.black, 0.18], 302: [C.blue, 0.1], 307: [C.black, 0.18], 501: [C.black, 0.14] },
@@ -762,6 +762,12 @@ function contoured(code, k, lines) {
     return k.stroke(style, pts, closed) + (slope ? k.slope(pts, slope[0], slope[1], slope[2] ?? 1) : "");
   }).join("");
 }
+// the arms of the path scenes, from the centre (in radii)
+const PATH_ARMS = {
+  bend: [[[0, 0], [-0.7, 0.32], [-1.8, 0.75]], [[0, 0], [0.35, -0.7], [0.7, -1.8]]],
+  cross: [[[0, 0], [-0.9, -0.2], [-1.8, -0.45]], [[0, 0], [0.9, 0.22], [1.8, 0.4]], [[0, 0], [-0.2, 0.9], [-0.4, 1.8]], [[0, 0], [0.18, -0.9], [0.45, -1.8]]],
+  junction: [[[0, 0], [-0.9, 0.15], [-1.8, 0.35]], [[0, 0], [0.9, -0.12], [1.8, -0.3]], [[0, 0], [0.3, 0.85], [0.7, 1.8]]],
+};
 /** Each feature's scene, by ISCD number: (map symbol, kit) → SVG, or null to show the symbol itself. */
 const SCENE = {
   // terrace: a level shelf on a slope, the contour pushed out round it
@@ -821,6 +827,11 @@ const SCENE = {
     return line(`M${X0},${n(cy() - g)}H${n(X1())}M${X0},${n(cy() + g)}H${n(X1())}`, C.black, 0.14) + line(`M${cx()},${n(cy() - b)}V${n(cy() + b)}`, C.black, 0.2)
       + (sprint ? `<rect x="${n(cx() - 0.3)}" y="${n(cy() - 0.3)}" width="0.6" height="0.6" fill="${C.paper}" stroke="${C.black}" stroke-width="0.2"/>` : "");
   },
+  // a path's bend, crossing and junction at the circle's centre (« Apprendre › Test », 2026-11-10): each arm drawn from the
+  // centre outward, so that a dash, not a gap, marks the point where they meet
+  "5.2bend": (c, k) => (c === "505" ? PATH_ARMS.bend.map((a) => k.stroke(c, curve(a))).join("") : null),
+  "5.2cross": (c, k) => (c === "505" ? PATH_ARMS.cross.map((a) => k.stroke(c, curve(a))).join("") : null),
+  "5.2junction": (c, k) => (c === "505" ? PATH_ARMS.junction.map((a) => k.stroke(c, curve(a))).join("") : null),
 };
 /** A feature's scene for a map symbol, its body for a square `side` mm wide, or "" when the symbol alone shows it. */
 function sceneOf(ref, code, sprint, side) {

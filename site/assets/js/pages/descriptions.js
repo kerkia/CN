@@ -13,7 +13,8 @@
 import { html, raw, $, $$, normalise } from "../util.js";
 import { t, lang } from "../i18n.js";
 import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
-import { loadSymbols, loadAllTexts, languages, symbol, symbolsFor, symbolName, symbolPaths } from "../tracer/symbols.js";
+import { loadSymbols, loadAllTexts, languages, symbol, symbolsFor, symbolName } from "../tracer/symbols.js";
+import { cdSymbolSvg as svg } from "../cdsymbol.js";
 import { textifier } from "../tracer/textify.js";
 import { iscdRef, mapCodes, mapSwatches } from "../iscd.js";
 
@@ -29,33 +30,11 @@ const FROM_QUERY = { pratique: "names", carte: "map", symbole: "sym" };
 // refreshments » — C, D, E, the F size, G, H (Purple Pen's control: symbols C, D, E, F-combination, G, H)
 const LETTERS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 const EXAMPLE = { num: "7", code: "145", symbols: ["0.1E", "1.12", "8.6", null, "11.3N", "12.2"], colF: "8x4" };
-// what a sheet prints as text in a symbol's place: the specification's own examples (column F's sizes, the distances of the
-// special instructions); « a/b » on a diagonal (height on slope), « a|b » one over the other (heights of two features)
-const PRINTED = { "9.1": "2.5", "9.2": "8 × 4", "9.3": "0.5/3", "9.4": "2|3", "14.1": "150 m", "15.1": "60 m", "15.2": "300 m",
-  "15.5": "50 m", "16.1": "400 m", "16.2": "150 m", "16.3": "380 m" };
 const num = (ref) => ref.split(".").map(Number);
 const byRef = (a, b) => { const x = num(a), y = num(b); return x[0] - y[0] || x[1] - y[1]; };
 
-/** A symbol drawn as SVG: a square cell, or a row of eight for a special instruction. */
-function svg(s, size = 56, cls = "cd-sym") {
-  const wide = s.k >= "T";
-  const w = wide ? size * 8 : size, h = size;
-  const d = (cmds) => cmds.map(([c, ...n]) => c + n.map((v) => +v.toFixed(2)).join(" ")).join("");
-  const parts = symbolPaths(s, 0, 0, w, h).map((p) => (p.fill ? `<path d="${d(p.d)}" fill="currentColor"/>`
-    : `<path d="${d(p.d)}" fill="none" stroke="currentColor" stroke-width="${Math.max(0.6, p.stroke).toFixed(2)}" stroke-linecap="${p.cap}" stroke-linejoin="${p.join}"/>`));
-  // the text a sheet prints there (descr.js places it so: column F's box, or columns D-E of an instruction's line)
-  const said = PRINTED[iscdRef(s.id)?.ref];
-  if (said) {
-    const tx = (x, y, v, fs) => `<text x="${x}" y="${y}" font-size="${fs}" text-anchor="middle" dominant-baseline="central" fill="currentColor" font-family="Arial, Helvetica, sans-serif" font-weight="600">${v}</text>`;
-    const cx = wide ? w / 2 : w / 2;
-    if (said.includes("/")) { const [a, b2] = said.split("/"); parts.push(`<path d="M${w},0L0,${h}" stroke="currentColor" stroke-width="1"/>`, tx(w * 0.3, h * 0.27, a, h * 0.3), tx(w * 0.7, h * 0.73, b2, h * 0.3)); }
-    else if (said.includes("|")) { const [a, b2] = said.split("|"); parts.push(tx(cx, h * 0.27, a, h * 0.34), tx(cx, h * 0.73, b2, h * 0.34)); }
-    else parts.push(tx(cx, h / 2, said, wide ? h * 0.42 : h * (said.length > 3 ? 0.3 : 0.4)));
-  }
-  return raw(`<svg class="${cls}${wide ? " wide" : ""}" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${parts.join("")}</svg>`);
-}
-
-export async function render(main, { query = {} } = {}) {
+/** The page; `embedded` (« Apprendre », pages/learn.js): no title of its own, the page's heading says it. */
+export async function render(main, { query = {}, embedded = false } = {}) {
   const tabs = [["foret", t("ms.tab.forest")], ["sprint", t("ms.tab.sprint")]];
   let tab = tabFrom(tabs, query);
   await loadSymbols();
@@ -64,7 +43,7 @@ export async function render(main, { query = {} } = {}) {
   let practice = FROM_QUERY[query.mode] || "";
   if (L !== "fr" && L !== "en") await loadAllTexts();
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("cd.title")}</h1><p class="lede">${t("cd.lede")}</p></div></div>
+    ${embedded ? html`<p class="lede learn-lede">${t("cd.lede")}</p>` : html`<div class="page-head"><div><h1>${t("cd.title")}</h1><p class="lede">${t("cd.lede")}</p></div></div>`}
     <ul class="ms-stds"><li>${t("cd.std")}</li><li>${t("cd.std.maps")}</li></ul>
     ${pageTabs(tabs, tab)}
     <div class="filters cd-filters">

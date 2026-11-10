@@ -845,6 +845,17 @@ in multi-pick games), the answers and the result stay at the screen's bottom (st
 the Labyrinthe's view is nearly square on a narrow screen, hedge height tied to the lens (`WALL`), the start facing an open way, the
 buttons a pad, the view itself tapped (left/right third turns, middle steps, a swipe down steps back), its map as large as the view.
 Every multiple-choice game was played through to its score page at phone size, without errors. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
+- **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
+  « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
+  open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), still the owner's
+  only (`OWNER_ROUTES` "learn"). **Test** (`games/learntest.js`, on the games' engine): a feature named (or shown by its description
+  symbols, `cdsymbol.js`, or both), four control circles drawn by `isom.isomInCircle` (ISOM 2017-2; new path scenes « 5.2bend »,
+  « 5.2cross », « 5.2junction »): which is on it? The 28 features and each one's three wrong answers (« Facile ») come from a club's
+  Wayground quiz the owner gave (« définitions carte course d'orientation »; its photos and map extracts not used, its wrong options
+  mapped to the other questions' features by image matching, the nine others read by eye); « Aléatoire » draws three of the 28,
+  never one with the same symbols. The user sets the number of questions, the time each (`runGame`'s new `limit`: a countdown, wrong
+  at zero) and easy/random question by question (`localStorage ocn.learn.test`). Also « Quel poste ? » in Jeux (10 questions, 20 s,
+  levels Facile / Aléatoire), shown as « Apprendre » is. `runGame` now stops a question's clock at the answer (its interval had run on).
 - **Santé / Health** (« Nutrition » until 2026-11-01, owner: more general — the name only: the code, the tables `nut_*`, the right
   `users.nutrition` and the route key `nutrition` keep it; `#/sante`, the old `#/nutrition` still opens it), formerly **Nutrition**
   (`pages/nutrition.js`, and its authors' « Rédaction » / Authoring, `#/redaction`, `pages/nutritionwrite.js` — out of the menu since

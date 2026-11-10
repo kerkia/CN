@@ -2516,6 +2516,33 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .g-pad .btn { min-width: 48px; height: 44px; font-size: 18px; justify-content: center; }
 .g-pad .btn[aria-pressed="true"] { background: var(--accent-wash); border-color: var(--focus); }
 .g-target { font-weight: 600; color: var(--ink-2); min-height: 20px; }
+/* a time limit per puzzle (« Apprendre › Test »): the time left and its bar */
+.g-limit { width: min(180px, 40vw); align-self: center; }
+.g-limit::after { display: none; }
+.g-limit i { transition: width .1s linear; }
+.g-time.g-hurry { color: var(--bad); }
+.g-frame.g-wrong { border-color: var(--bad); }
+
+/* « Apprendre » (2026-11-10): « Définitions de postes », « Symboles de carte » and the test as one page */
+.learn-lede { margin: 0 0 12px; color: var(--ink-2); }
+.lt-set { margin-bottom: 16px; }
+.lt-fields { align-items: flex-end; }
+.lt-fields input[type="number"] { width: 96px; }
+.lt-modes-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin: 12px 0 4px; }
+.lt-all { display: flex; flex-wrap: wrap; gap: 6px; }
+.lt-modes-hint { margin: 0 0 8px; font-size: 13px; }
+.lt-modes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 6px 16px; max-height: 236px; overflow: auto; }
+.lt-modes li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.lt-qn { font-size: 13.5px; color: var(--ink-2); white-space: nowrap; }
+.lt-seg button { font-size: 13px; padding: 3px 9px; }
+.lt-ask { display: flex; justify-content: center; }
+.lt-syms { display: inline-flex; border: 1.5px solid #000; background: #fff; color: #000; }
+.lt-cell { display: block; width: 56px; height: 56px; }
+.lt-cell + .lt-cell { border-left: 1px solid #000; }
+.lt-cell svg { display: block; }
+.lt-grid { max-width: 500px; }
+.lt-pic { width: 100%; display: flex; justify-content: center; }
+.lt-pic svg { display: block; width: 100%; max-width: 220px; height: auto; border: 1px solid var(--border-strong); border-radius: 8px; }
 
 /* ---------------------------------------------------------------- Tracer (Organisation › Tracer, 2026-10-15)
    The editor (.tr-app): menus and tools along the top, the course tabs, the description sheet and the selected object on

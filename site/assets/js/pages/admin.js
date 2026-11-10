@@ -28,7 +28,7 @@ function pageName(k) {
     deposit: "dep.title", live: "lv.title", relays: "rl.title", analysis: "nav.analysis.long", games: "nav.games", vma: "nav.vma",
     analysisPerso: "nav.analysisPerso.long", analysisClub: "nav.analysisClub.long", analysisRace: "nav.analysisRace.long", mapAnalysis: "nav.mapAnalysis", myMaps: "nav.myMaps", analysisOrga: "an.orga.title",
     orgAnalyses: "nav.orgAnalyses", orgRace: "nav.orgAnalyses", orgTraining: "nav.orgAnalyses", orgResults: "or.title", orgStarts: "os.title", orgDirect: "nav.orgDirect", ask: "nav.ask", orgTracer: "nav.orgTracer", orgMapper: "nav.orgMapper", categories: "cg.title", relayHistory: "rh.title", needCountry: "cty.need.title",
-    descriptions: "nav.descriptions", mapkey: "nav.mapkey", nutrition: "nav.nutrition", nutritionWrite: "nav.nutritionWrite", hub: "mod.pick", modtiles: "ad.modtiles" };
+    descriptions: "nav.descriptions", mapkey: "nav.mapkey", learn: "nav.learn", nutrition: "nav.nutrition", nutritionWrite: "nav.nutritionWrite", hub: "mod.pick", modtiles: "ad.modtiles" };
   if (k.startsWith("network:")) {
     const v = k.slice(8);
     return v === "ego" || v === "leaders" ? t(`nw.mode.${v}`) : `${t("nav.network")} · ${t(`nw.mode.${v}`)}`;

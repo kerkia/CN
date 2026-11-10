@@ -61,10 +61,10 @@ const PAGES = {
   relayHistory: () => import("./pages/relayhistory.js"),   // « Relais nationaux »: the CFC's and the CNE's history (2026-10-26)
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
   vma: () => import("./pages/vma.js"),
-  mapkey: () => import("./pages/mapkey.js"),       // « Symboles de carte » (Coach): ISOM 2017-2's symbols, as a legend (2026-10-31)
+  // « Apprendre » (Coach; owner, 2026-11-10): « Définitions de postes », « Symboles de carte » and a test, as three views
+  learn: () => import("./pages/learn.js"),
   nutrition: () => import("./pages/nutrition.js"),     // « Nutrition » (Coach): articles by theme and date (2026-11-01)
   nutritionWrite: () => import("./pages/nutritionwrite.js"),   // « Rédaction »: its authors write, change and delete them
-  descriptions: () => import("./pages/descriptions.js"),   // « Définitions de postes » (Coach): the IOF symbols (2026-10-30)             // « VMA »: the tests, a demi-Cooper / Cooper calculator, the apps (« Entrainement »)
   ask: () => import("./pages/ask.js"),             // « IA »: a question answered by a query an AI writes and the browser runs
 };
 
@@ -96,9 +96,10 @@ const homeOf = () => "#/modules";
 // multi » (a trace is shared by an account), Stats' runner, ranking and races over the period the federation publishes
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods", "contact", "agenda", "provisional", "live", "splits",
-  "analysis", "analysisPerso", "mapAnalysis", "analysisClub", "analysisRace", "myMaps", "descriptions", "mapkey", "games", "vma", "runner", "ranking", "courses", "needCountry", "phoneSend", "booking"]);
-// « Définitions de postes » and « Symboles de carte »: shown only to the accounts named Le Helloco for now (owner, 2026-10-31)
-const OWNER_ROUTES = new Set(["descriptions", "mapkey"]);
+  "analysis", "analysisPerso", "mapAnalysis", "analysisClub", "analysisRace", "myMaps", "learn", "games", "vma", "runner", "ranking", "courses", "needCountry", "phoneSend", "booking"]);
+// « Apprendre » (« Définitions de postes » and « Symboles de carte », one page since 2026-11-10, with its test): shown only to
+// the accounts named Le Helloco for now (owner, 2026-10-31)
+const OWNER_ROUTES = new Set(["learn"]);
 const ownerOnly = auth.owner;
 // « Nutrition » and its authors' « Rédaction » (owner, 2026-11-01): those given the right on the admin page, its authors and
 // the administrators; nobody else sees them in the menus, and their addresses lead the others to the modules page
@@ -164,8 +165,7 @@ function parseHash(hash = location.hash) {
     : head === "ia" ? "ask"
     : head === "modules" ? "hub"
     : head === "coach" || head === "stats" || head === "orga" ? "modtiles"     // a module's pages as tiles, its landing (2026-10-31)
-    : head === "definitions" ? "descriptions"
-    : head === "symboles" ? "mapkey"
+    : head === "apprendre" || head === "definitions" || head === "symboles" ? "learn"     // the two pages of before: its views
     : head === "sante" || head === "nutrition" ? "nutrition"     // « Santé » (« Nutrition » until 2026-11-01: old links)
     : head === "redaction" ? "nutritionWrite"
     : "overview";
@@ -422,7 +422,7 @@ export function moduleMenus() {
     coach: [["mapAnalysis", "#/analyses", t("nav.mapAnalysis")],
       // « Mes cartes » (owner, 2026-11-01): an account's own archive (a link shared opens it to anyone: GUEST_ROUTES)
       ...(me ? [["myMaps", "#/mes-cartes", t("nav.myMaps")]] : []),
-      ["descriptions", "#/definitions", t("nav.descriptions")], ["mapkey", "#/symboles", t("nav.mapkey")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
+      ["learn", "#/apprendre", t("nav.learn")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
       // « Santé » to the accounts given it; its authors reach « Rédaction » from its page, not from the menu (owner, 2026-11-01)
       ["nutrition", "#/sante", t("nav.nutrition")]]
       .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),

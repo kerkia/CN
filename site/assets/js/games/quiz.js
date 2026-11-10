@@ -2,7 +2,10 @@
 // the solution shown after each answer, a scoring rule, a summary and the best score kept in the browser.
 // Each game gives: key, count, make(i, r) → puzzle, scoring, and a few options. A puzzle: render(stage, api),
 // options (labels), answer (a label, or the labels of a multi-select), solution(stage, choice), times (for the
-// « added time » rule), text (a question), memorise (a first view to remember before the options show).
+// « added time » rule), text (a question), memorise (a first view to remember before the options show), answerText and
+// choiceText(choice) (what the summary writes for the answer and the choice, when not the options' labels).
+// spec.limit: seconds to answer each puzzle (« Apprendre › Test », 2026-11-10): the clock counts down, and at zero the
+// puzzle counts as wrong (« Temps écoulé »).
 
 import { html, raw, $, $$ } from "../util.js";
 import { t } from "../i18n.js";
@@ -51,7 +54,7 @@ const SCORING = {
 };
 
 /**
- * Runs a game in `root`. spec: {key, count, make, scoring, intro, multi, viewTime, chooseTime, memoriseLabel, seed}.
+ * Runs a game in `root`. spec: {key, count, make, scoring, intro, multi, viewTime, chooseTime, memoriseLabel, seed, limit}.
  * A puzzle's render(stage, api) draws it; an interactive puzzle calls api.done({ok, choice}) itself and has no options.
  */
 export function runGame(root, spec) {
@@ -142,17 +145,29 @@ export function runGame(root, spec) {
       const soFar = results.length ? S.total(results).label : "";
       root.innerHTML = html`<div class="g-top">
         <span class="g-n">${t("g.puzzle")} <b>${i + 1}</b> / ${spec.count}</span>
-        <span class="g-time num" id="g-time">0,0 s</span>
+        <span class="g-time num" id="g-time">${spec.limit ? fmtS(spec.limit * 1000) : "0,0 s"}</span>
+        ${spec.limit ? html`<span class="g-bar g-limit" aria-hidden="true"><i style="width:100%"></i></span>` : ""}
         <span class="g-score muted">${soFar}</span></div>
         ${p.text ? html`<p class="g-question" id="g-question">${p.text}</p>` : ""}
         <div class="g-stage" id="g-stage"></div>
         <div class="g-answers" id="g-answers"></div>
         <div class="g-result" id="g-result" hidden></div>`;
       const stage = $("#g-stage", root), answers = $("#g-answers", root), result = $("#g-result", root), timeEl = $("#g-time", root);
-      let t0 = 0, ms = 0, finished = false, choice = null, picked = [];
+      let t0 = 0, ms = 0, finished = false, choice = null, picked = [], timeUp = false, iv = null;
       const left = () => !root.isConnected || !stage.isConnected;
-      const tick = () => { if (left()) { stop(); resolve(null); return; } ms = performance.now() - t0; timeEl.textContent = (ms / 1000).toFixed(1).replace(".", ",") + " s"; };
-      const startTimer = () => { t0 = performance.now(); const tm = setInterval(tick, 100); setTimer(tm); };
+      const limitMs = (spec.limit || 0) * 1000, bar = $(".g-limit i", root);
+      const tick = () => {
+        if (left()) { clearInterval(iv); stop(); resolve(null); return; }
+        ms = Math.min(performance.now() - t0, limitMs || Infinity);
+        if (!limitMs) { timeEl.textContent = (ms / 1000).toFixed(1).replace(".", ",") + " s"; return; }
+        // a limited time: the time left, and the answer refused at zero
+        const rest = Math.max(0, limitMs - ms);
+        timeEl.textContent = fmtS(rest);
+        timeEl.classList.toggle("g-hurry", rest < Math.min(5000, limitMs / 3));
+        if (bar) bar.style.width = `${(100 * rest) / limitMs}%`;
+        if (!rest && !finished) { ms = limitMs; timeUp = true; finish(false, "—"); }
+      };
+      const startTimer = () => { t0 = performance.now(); iv = setInterval(tick, 100); setTimer(iv); };
       const stop = () => { if (p._cleanup) { p._cleanup(); p._cleanup = null; } };
       const api = {
         done: ({ ok, choice: c, extraMs = 0 }) => finish(ok, c, extraMs),
@@ -163,18 +178,18 @@ export function runGame(root, spec) {
         if (finished) return;
         finished = true;
         tick(); ms += extraMs;
-        setTimer(null);
+        clearInterval(iv); setTimer(null);       // the clock stops at the answer
         const points = S.points(p, ok, ms, c);
         $$("button", answers).forEach((b) => { b.disabled = true; if (b.dataset.opt === String(c)) b.classList.add(ok ? "g-right" : "g-wrong"); if ([].concat(p.answer).includes(b.dataset.opt)) b.classList.add("g-right"); });
         try { p.solution?.(stage, c, ok); } catch (e) { console.error(e); }
         const answerLabel = [].concat(p.answer).map((a) => p.labels?.[a] || a).join(" + ");
         result.hidden = false;
-        result.innerHTML = html`<span class="${ok ? "g-ok" : "g-ko"}">${ok ? t("g.right") : t("g.wrong")}</span>
+        result.innerHTML = html`<span class="${ok ? "g-ok" : "g-ko"}">${ok ? t("g.right") : timeUp ? t("g.timeUp") : t("g.wrong")}</span>
           ${!ok && p.answer != null ? html`<span>${t("g.answerWas")} <b>${answerLabel}</b>.</span>` : ""}
           ${p.info ? html`<span class="muted">${p.info}</span>` : ""}
           ${points != null ? html`<span class="num">${t("g.points", { n: points })}</span>` : ""}
           <button class="btn btn-primary btn-sm" type="button" id="g-next">${i + 1 < spec.count ? t("g.next") : t("g.finish")}</button>`;
-        const next = () => { stop(); resolve({ ok, choice: c, ms, points, answer: answerLabel, label: p.labels?.[c] || c }); };
+        const next = () => { stop(); resolve({ ok, choice: c, ms, points, answer: p.answerText ?? answerLabel, label: (c !== "—" && p.choiceText?.(c)) || p.labels?.[c] || c }); };
         $("#g-next", root).addEventListener("click", next);
         $("#g-next", root).focus({ preventScroll: true });
       };
