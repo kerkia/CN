@@ -2577,6 +2577,9 @@ dialog.g-palm::backdrop { background: rgba(0, 0, 0, .45); }
 .lt-grid .g-caption { font-size: 12.5px; line-height: 1.25; text-align: center; }
 .lt-grid .g-caption:empty { display: none; }
 .lt-photo { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+/* the feature's name right over its photo, centred with it (owner, 2026-11-10) */
+.lt-name { margin: 0; font-weight: 600; font-size: 16px; text-align: center; }
+.lt-ask > .lt-name { align-self: center; font-size: 18px; padding: 6px 0; }
 /* the photo as tall as a laptop's window leaves: the bar, the puzzle's line, the circles and the result fit under it */
 .lt-photo img { display: block; width: auto; height: auto; max-width: min(100%, 560px); max-height: clamp(150px, calc(100vh - 425px), 420px); border-radius: 8px; border: 1px solid var(--border-strong); }
 .lt-credit a { color: inherit; }

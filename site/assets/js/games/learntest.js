@@ -107,9 +107,10 @@ export const credit = (ph, page = true) => ph.permission
   : html`<span class="lt-credit">${t("lt.credit", { a: ph.author })} ·
   <a href="${ph.licenceUrl}" target="_blank" rel="noopener">${ph.licence}</a> ·
   ${page ? html`<a href="${ph.page}" target="_blank" rel="noopener">Wikimedia Commons</a>` : "Wikimedia Commons"} · ${t("lt.credit.cut")}</span>`;
-/** A photo, by its key (its credit in the list under the game, `creditsHtml`: owner, 2026-11-10, not under each photo). */
-const photo = (key) => { const ph = PHOTOS[key];
-  return html`<figure class="lt-photo"><img src="/assets/learn/${key}.webp" width="${ph.w}" height="${ph.h}" alt="${t("lt.photo.alt")}" decoding="async"></figure>`; };
+/** A photo, by its key (its credit in the list under the game, `creditsHtml`: owner, 2026-11-10, not under each photo), `cap`
+ *  the feature's name right over it (owner, 2026-11-10: the name beside the photo, not at the question's far left). */
+const photo = (key, cap = "") => { const ph = PHOTOS[key];
+  return html`<figure class="lt-photo">${cap}<img src="/assets/learn/${key}.webp" width="${ph.w}" height="${ph.h}" alt="${t("lt.photo.alt")}" decoding="async"></figure>`; };
 /** Every photo's credit, a folded list (under the test in « Apprendre » and under the game in « Jeux »). */
 export const creditsHtml = () => html`<details class="lt-credits"><summary>${t("lt.credits")}</summary><p class="muted">${t("lt.credits.hint")}</p>
   <ul>${PHOTO_KEYS.flatMap((k) => PHOTOS_OF[k].map((key) => html`<li><b>${t(`lt.q.${k}`)}</b> — ${credit(PHOTOS[key])}</li>`))}</ul>
@@ -160,9 +161,11 @@ export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show 
       const withSym = show.includes("sym");
       const puzzle = {
         options: LETTERS.slice(0, 4), answer,
-        text: withName ? nameOf(f) : "", labels,
+        text: "", labels,
         render(stage) {
-          if (withPhoto || withSym) stage.insertAdjacentHTML("beforeend", html`<div class="lt-ask">${withPhoto ? photo(shot) : ""}${withSym ? symbols(f) : ""}</div>`);
+          // the name over the photo, centred with it (owner, 2026-11-10: close to the photo on a wide screen)
+          const name = withName ? html`<p class="lt-name">${nameOf(f)}</p>` : "";
+          if (withPhoto || withSym || withName) stage.insertAdjacentHTML("beforeend", html`<div class="lt-ask">${withPhoto ? photo(shot, name) : name}${withSym ? symbols(f) : ""}</div>`);
           const box = (g, k) => { const d = document.createElement("div"); d.className = "lt-pic"; d.innerHTML = extract(g); return framed(d, "", `g-pick-${LETTERS[k]}`); };
           grid(stage, opts.map(box), 4).classList.add("lt-grid");
           stage.dataset.mode = mode;
@@ -185,12 +188,12 @@ export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show 
   };
 }
 
-/** « Jeux » (games.js), « Quel poste ? »: no settings — 20 questions of 10 s, the photo when the feature has one and its
- *  name —, two levels (owner, 2026-11-10): « Débutant », the quiz's groups of four; « Avancé », three extracts drawn at random;
- *  each its own palmarès. */
+/** « Jeux » (games.js), « Quel poste ? »: no settings — 20 questions of 10 s —, two levels (owner, 2026-11-10): « Débutant »,
+ *  the quiz's groups of four, the photo when the feature has one and its name; « Avancé », three extracts drawn at random, the
+ *  photo alone, the name only for a feature without one; each its own palmarès. */
 export const LEVELS = [["beginner", "g.lvl.beginner"], ["advanced", "g.lvl.advanced"]];
 export function spec(level = "beginner") {
   level = LEVELS.some(([k]) => k === level) ? level : "beginner";
   return testSpec({ key: `learntest-${level}`, palmKey: `learntest-${level}`, mode: level === "advanced" ? "random" : "groups",
-    show: ["photo", "name"] });
+    show: level === "advanced" ? ["photo"] : ["photo", "name"] });
 }
