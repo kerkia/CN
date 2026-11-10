@@ -28,8 +28,11 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 On the PC everything is under `C:\kerkia\Ozimut` (one folder since 2026-11-07; `C:\kerkia\CO` and `C:\kerkia\cn-data` before):
 `Ozimut\` this repository (`code\` until 2026-11-09: renamed so that the Claude app names its sessions « Ozimut »), `data\` what the code reads outside git (the database, the HTTP cache, geonames, naturalearth, relays,
 lidarmap, the secrets and pending files; `paths.DATA_DIR`), `work\` studies and test material the code never reads (`synth`,
-`study`, `scratch-scripts`, `Test files`). The whole of `C:\kerkia` is synced by Proton Drive (moved out of OneDrive on
-2026-10-08: syncing rewrote files mid-edit).
+`study`, `scratch-scripts`, `Test files`). Nothing syncs `C:\kerkia` any more (OneDrive until 2026-10-08, then Proton Drive
+until early November: both rewrote files mid-edit, leaving « Edit conflict » copies). **Backup** (2026-11-10): Kopia snapshots the
+whole of `C:\Kerkia` every hour into the encrypted repository `C:\KerkiaBackup\repo` (Task Scheduler folder `\Kerkia\`, scripts
+and logs in `C:\KerkiaBackup\tools` and `logs`, restore steps in `C:\KerkiaBackup\README-restore.txt`), and pCloud Sync copies
+`C:\KerkiaBackup` to pCloud's `/KerkiaBackup`; KopiaUI browses and restores. Its password is the owner's alone.
 Not in git (see `.gitignore`): the database and HTTP cache (`C:\kerkia\Ozimut\data` on the PC, `paths.py`, env `CN_DATA_DIR`),
 `site/data/` and `site/auth/` (generated), `.dev.vars` (local secrets), exports. **The repository is public:** never
 commit results, personal data, secrets or credentials.
