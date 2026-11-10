@@ -2828,7 +2828,7 @@ export default {
   "lg.legpick": "Angezeigte Teilstrecke",
   "lg.legpick.d": "Wählt, was die Karte zeigt: „Ganze Bahn“ (Standard) oder eine einzelne Teilstrecke. Der Knopf zeigt die angezeigte Teilstrecke, ob sie hier, in „Teilstrecken“ oder mit ⏮ ⏭ gewählt wurde.",
   "lg.legs": "Vorherige / nächste Teilstrecke",
-  "lg.legs.d": "Öffnet die vorherige oder nächste Teilstrecke. Das Teilstrecken-Menü folgt. Die Pfeiltasten ← → tun dasselbe, solange eine Teilstrecke geöffnet ist.",
+  "lg.legs.d": "Öffnet die vorherige oder nächste Teilstrecke. Das Teilstrecken-Menü folgt. Die Pfeiltasten ← → und ↑ ↓ tun dasselbe (↓ und → die nächste, wie in der Liste „Teilstrecken“), solange eine Teilstrecke geöffnet ist.",
   "lg.play.d": "Startet die Wiedergabe; ⏸ hält sie an.",
   "lg.speed.d": "×1 gibt den Lauf in seinem echten Tempo wieder, ×10 zehnmal schneller.",
   "lg.zoom": "Vergrößern / verkleinern",
