@@ -29,7 +29,7 @@ import { pxToLatLon } from "../trace/drawroute.js";
 import { measureTool } from "../trace/measure.js";
 import { toPx, toM, fitSimilarity } from "../trace/geom.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick, legArrows } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, iconLabel, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick, legArrows, mapOnlyButton, bindMapOnly, leaveMapOnly } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawCourse } from "../trace/coursedraw.js";
 import { readVector, throughGeo, cover } from "../trace/vectorroutes.js";
@@ -123,7 +123,7 @@ const errText = (e) => t(`sh.err.${e?.code}`) !== `sh.err.${e?.code}` ? t(`sh.er
 
 
 export async function render(main, r) {
-  bindFull();
+  bindFull(); bindMapOnly();
   if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the map page without the site's bar
   const org = r.route === "orgAnalyses";
   const kind = r.route === "analysisRace" ? "race" : "club";
@@ -440,7 +440,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       ${organiser && A.draft ? html`<span class="tag sh-m-draft" title="${t("sh.m.draft.tip")}">${t("sh.m.state.draft")}</span>` : ""}
       <span class="sh-top-add" id="sh-top-add"></span>
       <span class="muted sh-access">${t(`sh.access.${A.vis === "public" && A.visitors ? "all" : A.vis === "club" && A.code ? "clubCode" : A.vis}`)}</span>
-      <span class="fw-btns">${raw(fwButtons({ tab: false }))}</span></span></div>
+      <span class="fw-btns">${raw(mapOnlyButton())}${raw(fwButtons({ tab: false }))}</span></span></div>
     <div id="sh-viewer"></div>
     <div id="sh-splits" class="sh-splits" hidden></div>
     <div class="sh-fresh" id="sh-fresh" role="status" hidden><span id="sh-fresh-t"></span>
@@ -585,7 +585,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
       data = await api(`/${id}`, { key: keyOf(id) }); courseN = n; drawTabs(); openViewer();
     } }); });
   }
-  return { title: A.title, cleanup: () => { clearInterval(pollTimer); document.removeEventListener("visibilitychange", poll); viewer?.destroy(); window.removeEventListener("resize", spFit); document.body.classList.remove("an-theatre"); leaveFull(); document.querySelector(".sh-offer")?.remove(); } };
+  return { title: A.title, cleanup: () => { clearInterval(pollTimer); document.removeEventListener("visibilitychange", poll); viewer?.destroy(); window.removeEventListener("resize", spFit); document.body.classList.remove("an-theatre"); leaveFull(); leaveMapOnly(); document.querySelector(".sh-offer")?.remove(); } };
 }
 
 // ---- « Temps intermédiaires »: the tracks' times at the controls as a results document (owner, 2026-11-04) ---------------

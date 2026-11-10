@@ -46,7 +46,7 @@ import { bar, setBar } from "../waitbar.js";
 import * as phone from "../phonelink.js";
 import * as LM from "../trace/lidarmap.js";
 import * as RC from "../trace/routeplan.js";
-import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick, legArrows } from "../trace/sidepanel.js";
+import { panelHtml, bindPanel, bindSplitter, PAN_ICON, drawers, stripArrow, floatBar, clearHandle, ICONS, legPickHtml, bindLegPick, legArrows, mapOnlyButton, bindMapOnly, leaveMapOnly } from "../trace/sidepanel.js";
 import { keyHtml } from "../trace/legend.js";
 import { drawPaceStrip, stripSamples, stripFraction, graphName, isPaceGraph } from "../trace/pacestrip.js";
 import { drawCourse } from "../trace/coursedraw.js";
@@ -150,7 +150,7 @@ function sessionTag() {
 // ---- the page -------------------------------------------------------------------------------------------------------
 export async function render(main, { query = {}, route } = {}) {
   const me = auth.session();
-  bindFull();
+  bindFull(); bindMapOnly();
   if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the map page without the site's bar
   // « ↗ » during the playback: the new tab gets this tab's files (their key in IndexedDB, as the address says, whether or
   // not the browser copied this tab's session) and goes on with the playback instead of stopping on the files
@@ -935,7 +935,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-legs").innerHTML = ""; $("#an-left").hidden = true; $("#an-right").hidden = true; $("#an-bar").hidden = true; $("#an-side").hidden = false;
     $("#an-split-g").hidden = true; $("#an-split-s").hidden = true;
     $("#an-legend").hidden = true; $("#an-legchip").hidden = true; $("#an-top").hidden = true; $("#an-stripbar").hidden = true; $("#an-ps").hidden = true;
-    showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
+    leaveMapOnly(); showPanels(true); document.body.classList.remove("an-theatre"); fitHeight();
   };
   /** The playback's layout as set: the panels' widths (a rail when folded), the height. */
   function applyLayout() {
@@ -1802,7 +1802,7 @@ export async function render(main, { query = {}, route } = {}) {
     $("#an-top").innerHTML = html`<span class="sh-top-l">${orgaMode ? html`<b class="sh-title">${orga.A.title}</b><span class="muted">${[orga.A.date ? fmtDate(orga.A.date) : "", t(orga.A.kind === "race" ? "ma.kind.race" : "sh.kind.club")].filter(Boolean).join(" · ")}</span>`
         : perso ? html`<b class="sh-title">${openedKept?.title || t("an.perso.title")}</b><span class="muted">${fmtDate(day0)}</span>`
         : html`<b class="sh-title">${rc0?.name || race?.name || ""}</b><span class="muted">${[fmtDate(day0), klass()?.name, withTimes ? runner()?.name : ""].filter(Boolean).join(" · ")}</span>`}</span>
-      <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis === "club" && orga.A.code ? "clubCode" : orga.A.vis}`)}</span>` : ""}<span class="muted an-kept" id="an-kept"></span><span class="fw-btns">${raw(fwButtons({ tab: false }))}</span></span>`;
+      <span></span><span class="sh-top-r">${orgaMode ? html`<span class="muted sh-access">${t(`sh.access.${orga.A.vis === "public" && orga.A.visitors ? "all" : orga.A.vis === "club" && orga.A.code ? "clubCode" : orga.A.vis}`)}</span>` : ""}<span class="muted an-kept" id="an-kept"></span><span class="fw-btns">${raw(mapOnlyButton())}${raw(fwButtons({ tab: false }))}</span></span>`;
     $("#an-top").hidden = false;
     // the controls over the map's column, as « Analyse de carte »'s: follow, the transport, the speed, the time
     $("#an-bar").innerHTML = html`
@@ -2974,7 +2974,7 @@ export async function render(main, { query = {}, route } = {}) {
   return { title: t(titleKey), cleanup: () => {
     document.body.classList.remove("an-theatre");      // the site's menus come back on every other page
     clearTimeout(openTimer); main.classList.remove("an-opening-on");
-    leaveFull();
+    leaveFull(); leaveMapOnly();
     window.removeEventListener("resize", onWinResize);
     window.removeEventListener("dragover", onDragOver); window.removeEventListener("dragleave", onDragLeave); window.removeEventListener("drop", onDrop);
     window.removeEventListener("ocn:inbox", onInbox);

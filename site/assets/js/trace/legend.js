@@ -20,7 +20,7 @@ export function keyHtml(o = {}) {
     top.push([ICONS.map, t("sh.pane.map"), t("lg.map.d")], [ICONS.times, t("sh.pane.splits"), t("lg.times.d")]);
     if (o.add) top.push([ICONS.add, t("sh.trace.add"), t("lg.add.d")]);
   }
-  top.push([btn("⤢"), t("lg.full"), t("lg.full.d")]);
+  top.push([btn(ICONS.panelsOut), t("lg.mapOnly"), t("lg.mapOnly.d")], [btn("⤢"), t("lg.full"), t("lg.full.d")]);
   groups.push([t("lg.h.top"), top]);
   const bar = [];
   // the leg shown, at the bar's left (owner, 2026-11-08)

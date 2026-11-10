@@ -87,7 +87,47 @@ export const ICONS = {
   fit: svg('<path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/><path d="M6.5 13.5c1.5-3 2.5-1 4-3.5s2-3 3-3.5"/>'),
   // the whole course (owner, 2026-11-07: back from a leg's view): its start triangle, a control, its finish, joined
   course: svg('<path d="M3 16.5 5.6 12 8.2 16.5z"/><circle cx="10" cy="5" r="2.2"/><circle cx="15.5" cy="14" r="2.4"/><circle cx="15.5" cy="14" r="1.1"/><path d="M6.3 11.2 8.9 6.9M11.2 6.9l3.1 5"/>'),
+  // « Carte seule » (owner, 2026-11-10): the map, the panels pushed out to its left, right and bottom — and, pressed, back in
+  panelsOut: svg('<rect x="6" y="3" width="8" height="9" rx="1"/><path d="M4 7.5H1.2M2.6 6.1 1.2 7.5l1.4 1.4M16 7.5h2.8M17.4 6.1l1.4 1.4-1.4 1.4M10 14v4.6M8.6 17.2l1.4 1.4 1.4-1.4"/>'),
+  panelsIn: svg('<rect x="6" y="3" width="8" height="9" rx="1"/><path d="M1.2 7.5H4M2.6 6.1 4 7.5 2.6 8.9M18.8 7.5H16M17.4 6.1 16 7.5l1.4 1.4M10 18.6V14M8.6 15.4 10 14l1.4 1.4"/>'),
 };
+
+/**
+ * « Carte seule » (owner, 2026-11-10): the button left of « ⤢ » in both analyses' top line slides the left, right and bottom
+ * panels away, the map alone in their room (the control bar stays: it plays the race); pressed again, they come back as they
+ * were — widths, folds, the tab shown, a phone's drawer open. The page's state for the visit (body.map-only, app.css), not kept;
+ * the map analysis's split times too lose their panels while it is on.
+ */
+const MO = "map-only", MO_MS = 300;
+export const mapOnly = () => document.body.classList.contains(MO);
+const moLook = (on) => ({ title: t(on ? "mo.off" : "mo.on"), icon: on ? ICONS.panelsIn : ICONS.panelsOut });
+export const mapOnlyButton = () => { const on = mapOnly(), l = moLook(on); return `<button type="button" class="btn btn-sm fw-btn mo-btn${on ? " on" : ""}" data-mo aria-pressed="${on}" title="${l.title}" aria-label="${l.title}">${l.icon}</button>`; };
+let moTimer = 0, moBound = false;
+export function setMapOnly(on, animate = true) {
+  on = !!on;
+  const b = document.body;
+  if (on === mapOnly()) return;
+  // each bottom panel slides down by its own height (and the gap above it), the map growing into it
+  for (const bot of document.querySelectorAll(".sh-mapcol > .sh-bottom, .an-mapcol > .sh-bottom")) {
+    const gap = parseFloat(getComputedStyle(bot.parentElement).rowGap) || 0;
+    bot.style.setProperty("--mo-h", `${bot.offsetHeight + gap}px`);
+  }
+  clearTimeout(moTimer);
+  b.classList.toggle("mo-anim", animate);
+  b.classList.toggle(MO, on);
+  const l = moLook(on);
+  for (const x of document.querySelectorAll("[data-mo]")) { x.classList.toggle("on", on); x.setAttribute("aria-pressed", String(on)); x.title = l.title; x.setAttribute("aria-label", l.title); x.innerHTML = l.icon; }
+  const done = () => { b.classList.remove("mo-anim"); window.dispatchEvent(new Event("resize")); };   // the pages fit their height again
+  if (animate) moTimer = setTimeout(done, MO_MS + 40); else done();
+}
+/** Once per visit: the button's clicks, wherever a page draws it. */
+export function bindMapOnly() {
+  if (moBound) return;
+  moBound = true;
+  document.addEventListener("click", (e) => { if (e.target.closest?.("[data-mo]")) setMapOnly(!mapOnly()); });
+}
+/** Leaving the page (or Solo's playback): the panels back, at once. */
+export const leaveMapOnly = () => setMapOnly(false, false);
 /**
  * The leg shown, chosen at the control bar's left (owner, 2026-11-08: no easy way back to the whole course): an icon button and
  * its menu, as the start mode's — « Tout le parcours » (value -1, the default) then each leg. The button says the leg shown;

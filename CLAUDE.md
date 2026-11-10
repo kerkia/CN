@@ -1377,7 +1377,12 @@ Every multiple-choice game was played through to its score page at phone size, w
   its name and what it does, by place (top line, the bar, the map, the panels — the phone's handles or the computer's ‹ ›); the map
   analysis adds its views, « Ajouter ma trace », its start modes, the « Suivre » column and the times marked « ~ » (read on the
   trace, no published time: `sh.time.est` their tooltip, `lg.timeEst`). Every icon button has a tooltip (the zoom's
-  + −, ▶, the speed, the start control too). Full window also hides the line back to « Analyse de carte » (`.ma-crumb`).
+  + −, ▶, the speed, the start control too). Full window also hides the line back to « Analyse de carte » (`.ma-crumb`). **« Carte seule »** (owner, 2026-11-10): the button
+  left of « ⤢ » in both analyses (`sidepanel.mapOnlyButton` / `setMapOnly`, `body.map-only`, app.css) slides the left, right and bottom
+  panels away — on a computer their grid columns close (animated only under `body.mo-anim`, so a splitter never lags), the panels keeping
+  their width and sliding out over the layout's edge, the pace bar down under the map's bottom; on a phone the drawers, their handles and
+  the pace bar out of the map's edges — the control bar kept; again, everything as it was (widths, folds, tab, a drawer open). For the
+  visit, not kept; « Aide » has it (`lg.mapOnly`); the map analysis's split times lose their panels too while it is on.
 - **Generated maps** (owner, 2026-11-01, after the question of MapAnt-like maps: a prototype, administrators only, in « Analyse
   solo »): for a trace without a map in metropolitan France, « Générer une carte d'après le LiDAR (essai) » (files card,
   `genBlock`/`genMap`). The map: IGN's LiDAR HD point clouds (COPC LAZ, Licence Ouverte 2.0; each 1 km tile's addresses from IGN's
