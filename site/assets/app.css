@@ -2550,7 +2550,8 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .lt-ask { flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .lt-game .g-top { margin-bottom: 8px; }
 .lt-game .g-stage { gap: 8px; }
-.lt-game .g-result { margin-top: 6px; padding: 6px 12px; }
+/* the result centred under the circles (owner, 2026-11-10), its box as wide as its words */
+.lt-game .g-result { margin: 6px auto 0; padding: 6px 12px; width: fit-content; max-width: 100%; justify-content: center; }
 .lt-grid .g-caption { font-size: 12.5px; line-height: 1.25; text-align: center; }
 .lt-grid .g-caption:empty { display: none; }
 .lt-photo { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
