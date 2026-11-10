@@ -46,13 +46,15 @@ export async function render(main, { query = {}, path = "" }) {
   return { title: t("nav.learn"), cleanup: () => shown?.cleanup?.() };
 }
 
-/** The settings kept: {count, limit, ask, modes}. */
+/** The settings kept: {count, limit, show, modes}. */
 function load(T) {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { /* none kept */ }
   const count = Math.max(1, Math.min(T.MAX, Number(s.count) || 10));
   const modes = Array.from({ length: T.MAX }, (_, i) => (s.modes?.[i] === "random" ? "random" : "easy"));
-  return { count, limit: T.LIMITS.includes(Number(s.limit)) ? Number(s.limit) : 20, ask: T.ASK.includes(s.ask) ? s.ask : "name", modes };
+  // what a question shows: the photo by default (owner, 2026-11-10)
+  const show = Array.isArray(s.show) ? T.SHOW.filter((x) => s.show.includes(x)) : [];
+  return { count, limit: T.LIMITS.includes(Number(s.limit)) ? Number(s.limit) : 20, show: show.length ? show : ["photo"], modes };
 }
 function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* not kept then */ } }
 
@@ -67,8 +69,9 @@ async function testView(box) {
       <div class="filters lt-fields">
         <label class="field"><span>${t("lt.count")}</span><input type="number" id="lt-count" min="1" max="${T.MAX}" step="1" value="${s.count}" inputmode="numeric"></label>
         <label class="field"><span>${t("lt.limit")}</span><select id="lt-limit">${T.LIMITS.map((x) => html`<option value="${x}" ${raw(x === s.limit ? "selected" : "")}>${t("lt.seconds", { n: x })}</option>`)}</select></label>
-        <label class="field"><span>${t("lt.ask")}</span><select id="lt-ask">${T.ASK.map((x) => html`<option value="${x}" ${raw(x === s.ask ? "selected" : "")}>${t(`lt.ask.${x}`)}</option>`)}</select></label>
+        <fieldset class="field lt-show"><legend>${t("lt.ask")}</legend><span class="lt-checks">${T.SHOW.map((x) => html`<label class="check"><input type="checkbox" data-show="${x}" ${raw(s.show.includes(x) ? "checked" : "")}> ${t(`lt.ask.${x}`)}</label>`)}</span></fieldset>
       </div>
+      <p class="muted lt-modes-hint">${t("lt.show.hint", { n: T.PHOTO_KEYS.length, m: T.MAX })}</p>
       <div class="lt-modes-head"><b>${t("lt.modes")}</b>
         <span class="lt-all"><button type="button" class="btn btn-sm" data-all="easy">${t("lt.all.easy")}</button>
           <button type="button" class="btn btn-sm" data-all="random">${t("lt.all.random")}</button>
@@ -76,8 +79,18 @@ async function testView(box) {
       <p class="muted lt-modes-hint">${t("lt.modes.hint")}</p>
       <ol class="lt-modes" id="lt-modes"></ol>
     </section>
-    <div class="g-root card lt-game"><div class="card-body" id="lt-game"></div></div>`;
+    <div class="lt-running" hidden><button type="button" class="btn btn-sm" id="lt-stop">${t("lt.stop")}</button></div>
+    <div class="g-root card lt-game"><div class="card-body" id="lt-game"></div></div>
+    <details class="lt-credits"><summary>${t("lt.credits")}</summary><p class="muted">${t("lt.credits.hint")}</p>
+      <ul>${T.PHOTO_KEYS.map((k) => html`<li><b>${t(`lt.q.${k}`)}</b> — ${T.credit(T.PHOTOS[k])}</li>`)}</ul></details>`;
   let game = null;
+  // the settings while a run is under way: out of sight, « Arrêter le test » brings them back (owner, 2026-11-10)
+  const onState = (st) => {
+    const run = st === "play";
+    $(".lt-set", box).hidden = run;
+    $(".lt-running", box).hidden = !run;
+    if (run) $(".lt-game", box).scrollIntoView({ block: "start" });
+  };
   const drawModes = () => {
     $("#lt-modes", box).innerHTML = s.modes.slice(0, s.count).map((m, i) => html`<li><span class="lt-qn">${t("lt.q", { n: i + 1 })}</span>
       <span class="seg lt-seg" role="group">${["easy", "random"].map((x) => html`<button type="button" data-q="${i}" data-mode="${x}" aria-pressed="${m === x}">${t(`lt.mode.${x}`)}</button>`)}</span></li>`).join("");
@@ -85,8 +98,8 @@ async function testView(box) {
   const restart = () => {
     save(s);
     game?.stop();
-    game = runGame($("#lt-game", box), T.testSpec({ count: s.count, limit: s.limit, ask: s.ask, modes: s.modes.slice(0, s.count),
-      key: `learntest:${s.count}:${s.limit}` }));
+    game = runGame($("#lt-game", box), T.testSpec({ count: s.count, limit: s.limit, show: s.show, modes: s.modes.slice(0, s.count),
+      key: `learntest:${s.count}:${s.limit}:${s.show.join("+")}`, onState }));
   };
   drawModes();
   restart();
@@ -96,7 +109,12 @@ async function testView(box) {
     drawModes(); restart();
   });
   $("#lt-limit", box).addEventListener("change", (e) => { s.limit = Number(e.target.value); restart(); });
-  $("#lt-ask", box).addEventListener("change", (e) => { s.ask = e.target.value; restart(); });
+  $$("[data-show]", box).forEach((c) => c.addEventListener("change", () => {
+    const on = $$("[data-show]", box).filter((x) => x.checked).map((x) => x.dataset.show);
+    if (!on.length) { c.checked = true; return; }          // one at least
+    s.show = on; restart();
+  }));
+  $("#lt-stop", box).addEventListener("click", restart);
   $("#lt-modes", box).addEventListener("click", (e) => {
     const b = e.target.closest("[data-mode]");
     if (!b) return;

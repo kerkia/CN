@@ -1,12 +1,17 @@
 // « Apprendre › Test » and the game « Quel poste ? » (owner, 2026-11-10, after a club's quiz « définitions carte course
-// d'orientation »: 28 questions, a feature named, four map extracts with a control circle, 20 s each). A feature is named (or
-// shown by its control description symbols, or both) and four control circles are drawn on the map: which one is on it?
-// Nothing of the quiz itself is used — no photo, no map extract: the circles are drawn by Ozimut from the specifications
+// d'orientation »: 28 questions, a feature named, four map extracts with a control circle, 20 s each). A feature is shown — its
+// photo (by default), its name, its control description symbols, any of them — and four control circles are drawn on the
+// map: which one is on it? None of the quiz's pictures is used — no photo, no map extract: the circles are drawn by Ozimut from the specifications
 // (isom.js `isomInCircle`, ISOM 2017-2 at 1:15 000, the feature in its own shape where it has one), the symbols are the
 // IOF's (Purple Pen's, cdsymbol.js). From the quiz come its 28 features and, for each, the three wrong answers its author
 // chose (« Facile »: those of another question, mapped feature by feature; the nine pictures that were no other question's
 // answer read as the nearest feature — several boulders as « Gros rocher », small brown rings as « Petite dépression », a
 // green cross as « Souche »). « Aléatoire »: three other features of the 28 at random, never one shown by the same symbols.
+// The photos of the terrain (owner, 2026-11-10: « the whole point »): the quiz's own photos are not used — two carry stock
+// agencies' watermarks (Dreamstime, iStock), one a photographer's signature, the others no source —, but freely licensed
+// ones from Wikimedia Commons, one a feature where a good one was found (24 of 28; not the re-entrant, spur, thicket and
+// earth bank), each credited under it (author, licence; the file's page, whose name gives the answer away, after the
+// answer). Replace one by dropping site/assets/learn/<key>.webp and changing its credit in learnphotos.js.
 // The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the impassable cliff (201), and its
 // « zone rocheuse » the boulder field (208).
 
@@ -18,6 +23,8 @@ import { cdSymbolSvg } from "../cdsymbol.js";
 import { grid, framed } from "./common.js";
 import { shuffle } from "./rng.js";
 import { LETTERS } from "./quiz.js";
+import { PHOTOS } from "./learnphotos.js";
+export { PHOTOS };
 
 await loadSymbols();
 
@@ -56,9 +63,12 @@ export const BANK = [
 ];
 const BY = Object.fromEntries(BANK.map((f) => [f.k, f]));
 export const MAX = BANK.length;
-/** The question's wording: the feature's name, its symbols, or both. */
-export const ASK = ["name", "sym", "both"];
+/** What a question shows (owner, 2026-11-10: the photo of the terrain the most interesting, so chosen by default): any of a
+ *  photo of the feature, its name, its description symbols. A feature without a photo shows its name instead. */
+export const SHOW = ["photo", "name", "sym"];
 export const LIMITS = [10, 15, 20, 30, 45, 60];
+/** The features with a photo (games/learnphotos.js: Wikimedia Commons, free licences, credited under the photo). */
+export const PHOTO_KEYS = BANK.filter((f) => PHOTOS[f.k]).map((f) => f.k);
 
 const nameOf = (f) => t(`lt.q.${f.k}`);
 const sig = (f) => f.sym.join("+");
@@ -69,37 +79,57 @@ const symbols = (f, size = 56) => html`<span class="lt-syms" role="img" aria-lab
   const s = symbol(id);
   return s ? html`<span class="lt-cell">${cdSymbolSvg(s, size, "lt-sym")}</span>` : "";
 })}</span>`;
+/** A photo's credit (author, licence, Wikimedia Commons; `page`: with the link to the file, whose name gives the answer
+ *  away — after the answer only). */
+export const credit = (ph, page = true) => html`<span class="lt-credit">${t("lt.credit", { a: ph.author })} ·
+  <a href="${ph.licenceUrl}" target="_blank" rel="noopener">${ph.licence}</a> ·
+  ${page ? html`<a href="${ph.page}" target="_blank" rel="noopener">Wikimedia Commons</a>` : "Wikimedia Commons"} · ${t("lt.credit.cut")}</span>`;
+/** A feature's photo, its credit under it. */
+const photo = (f) => { const ph = PHOTOS[f.k];
+  return html`<figure class="lt-photo"><img src="/assets/learn/${f.k}.webp" width="${ph.w}" height="${ph.h}" alt="${t("lt.photo.alt")}" decoding="async">
+    <figcaption>${credit(ph, false)}</figcaption></figure>`; };
 
 /**
- * The test's spec for the games' engine (games/quiz.js runGame): `count` features at random, each answered among four whose
- * wrong ones are the quiz's (`modes[i]` "easy") or drawn at random ("random"), `limit` seconds each, worded by `ask`.
+ * The test's spec for the games' engine (games/quiz.js runGame): `count` features at random (those with a photo first when
+ * photos are shown), each answered among four whose wrong ones are the quiz's (`modes[i]` "easy") or drawn at random
+ * ("random"), `limit` seconds each, showing `show` (SHOW). `onState`: the engine's (the page hides its settings).
  */
-export function testSpec({ count = 10, modes = [], limit = 20, ask = "name", key = "learntest" } = {}) {
+export function testSpec({ count = 10, modes = [], limit = 20, show = ["photo"], key = "learntest", onState } = {}) {
   count = Math.max(1, Math.min(MAX, count | 0));
+  show = SHOW.filter((x) => show.includes(x));
+  if (!show.length) show = ["photo"];
   let order = [];
   return {
-    key, count, limit, scoring: "count",
+    key, count, limit, scoring: "count", onState,
     intro: html`<p>${t("lt.rules", { n: count, s: limit })}</p><p class="muted">${t("lt.rules.how")}</p>`,
     make(i, r) {
-      if (i === 0) order = shuffle(r, BANK.slice()).slice(0, count);
+      if (i === 0) {
+        const all = shuffle(r, BANK.slice());
+        order = (show.includes("photo") ? [...all.filter((f) => PHOTOS[f.k]), ...all.filter((f) => !PHOTOS[f.k])] : all).slice(0, count);
+        order = shuffle(r, order);
+      }
       const f = order[i], mode = modes[i] === "random" ? "random" : "easy";
       const wrong = mode === "easy" ? f.easy.map((k) => BY[k])
         : shuffle(r, BANK.filter((g) => g !== f && sig(g) !== sig(f))).slice(0, 3);
       const opts = shuffle(r, [f, ...wrong]);
       const answer = LETTERS[opts.indexOf(f)];
       const label = (l) => `${l} · ${nameOf(opts[LETTERS.indexOf(l)])}`;
+      // what this question shows: the choice, a missing photo replaced by the name
+      const withPhoto = show.includes("photo") && !!PHOTOS[f.k];
+      const withName = show.includes("name") || (show.includes("photo") && !withPhoto) ;
+      const withSym = show.includes("sym");
       return {
         options: LETTERS.slice(0, 4), answer,
-        text: ask === "sym" ? t("lt.symQ") : nameOf(f),
+        text: withName ? nameOf(f) : withPhoto ? t("lt.photoQ") : t("lt.symQ"),
         answerText: label(answer), choiceText: label,
         render(stage) {
-          if (ask !== "name") stage.insertAdjacentHTML("beforeend", html`<div class="lt-ask">${symbols(f)}</div>`);
-          const box = (g, k) => { const d = document.createElement("div"); d.className = "lt-pic"; d.innerHTML = circle(g, 220); return framed(d, LETTERS[k], `g-pick-${LETTERS[k]}`); };
-          grid(stage, opts.map(box), 2).classList.add("lt-grid");
+          if (withPhoto || withSym) stage.insertAdjacentHTML("beforeend", html`<div class="lt-ask">${withPhoto ? photo(f) : ""}${withSym ? symbols(f) : ""}</div>`);
+          const box = (g, k) => { const d = document.createElement("div"); d.className = "lt-pic"; d.innerHTML = circle(g, 150); return framed(d, LETTERS[k], `g-pick-${LETTERS[k]}`); };
+          grid(stage, opts.map(box), 4).classList.add("lt-grid");
           stage.dataset.mode = mode;
         },
         solution(stage, choice) {
-          // each circle named, the right one framed, a wrong choice marked
+          // each circle named, the right one framed, a wrong choice marked; the photo's name and page now
           opts.forEach((g, k) => {
             const fr = stage.querySelector(`.g-pick-${LETTERS[k]}`);
             if (!fr) return;
@@ -107,13 +137,15 @@ export function testSpec({ count = 10, modes = [], limit = 20, ask = "name", key
             if (g === f) fr.classList.add("g-right");
             else if (choice === LETTERS[k]) fr.classList.add("g-wrong");
           });
+          const cap = stage.querySelector(".lt-photo figcaption");
+          if (cap) cap.innerHTML = html`<b>${nameOf(f)}</b> — ${credit(PHOTOS[f.k])}`;
         },
       };
     },
   };
 }
 
-/** « Jeux » (games.js): ten features, 20 s each, the quiz's wrong answers (« easy ») or random ones. */
+/** « Jeux » (games.js): ten features, 20 s each, shown by their photo, the quiz's wrong answers (« easy ») or random ones. */
 export function spec(level = "easy") {
   const mode = level === "random" ? "random" : "easy";
   return testSpec({ count: 10, limit: 20, modes: Array(10).fill(mode), key: `learntest-${mode}` });

@@ -2540,9 +2540,24 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .lt-cell { display: block; width: 56px; height: 56px; }
 .lt-cell + .lt-cell { border-left: 1px solid #000; }
 .lt-cell svg { display: block; }
-.lt-grid { max-width: 500px; }
+/* the four circles small and in one row (owner, 2026-11-10: « way too large »), two a row on a phone */
+.lt-grid { max-width: 600px; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; }
+@media (max-width: 560px) { .lt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 320px; } }
 .lt-pic { width: 100%; display: flex; justify-content: center; }
-.lt-pic svg { display: block; width: 100%; max-width: 220px; height: auto; border: 1px solid var(--border-strong); border-radius: 8px; }
+.lt-pic svg { display: block; width: 100%; max-width: 130px; height: auto; border: 1px solid var(--border-strong); border-radius: 8px; }
+.lt-ask { flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.lt-photo { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.lt-photo img { display: block; width: auto; height: auto; max-width: min(100%, 520px); max-height: min(380px, 48vh); border-radius: 8px; border: 1px solid var(--border-strong); }
+.lt-photo figcaption { font-size: 12px; color: var(--ink-3, var(--ink-2)); text-align: center; max-width: 520px; }
+.lt-credit a { color: inherit; }
+.lt-show { border: 0; margin: 0; padding: 0; min-width: 0; }
+.lt-show legend { padding: 0; margin-bottom: 4px; font-size: 12px; color: var(--ink-3); font-weight: 550; }
+.lt-checks { display: flex; flex-wrap: wrap; gap: 4px 16px; min-height: 36px; align-items: center; }
+.lt-checks .check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
+.lt-running { display: flex; justify-content: flex-end; margin: 0 0 8px; }
+.lt-credits { margin-top: 16px; font-size: 13px; }
+.lt-credits summary { cursor: pointer; color: var(--ink-2); }
+.lt-credits ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 3px; }
 
 /* ---------------------------------------------------------------- Tracer (Organisation › Tracer, 2026-10-15)
    The editor (.tr-app): menus and tools along the top, the course tabs, the description sheet and the selected object on

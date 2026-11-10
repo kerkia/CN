@@ -54,7 +54,8 @@ const SCORING = {
 };
 
 /**
- * Runs a game in `root`. spec: {key, count, make, scoring, intro, multi, viewTime, chooseTime, memoriseLabel, seed, limit}.
+ * Runs a game in `root`. spec: {key, count, make, scoring, intro, multi, viewTime, chooseTime, memoriseLabel, seed, limit,
+ * onState} — onState("intro" | "play" | "done") as the run starts and ends (« Apprendre » hides its settings meanwhile).
  * A puzzle's render(stage, api) draws it; an interactive puzzle calls api.done({ok, choice}) itself and has no options.
  */
 export function runGame(root, spec) {
@@ -101,6 +102,7 @@ export function runGame(root, spec) {
   };
 
   const intro = () => {
+    spec.onState?.("intro");
     root.innerHTML = html`<div class="g-intro">
       <div class="g-rules">${raw(spec.intro)}</div>
       <div class="row"><button class="btn btn-primary" type="button" id="g-start">${t("g.start")}</button>${bestBox()}</div>
@@ -125,6 +127,7 @@ export function runGame(root, spec) {
     const puzzles = await P.ready;
     if (!puzzles || prep !== P || !root.isConnected) return;
     prep = null;                                       // a puzzle is played once
+    spec.onState?.("play");
     const results = [];
     let timer = null, cleanup = null;
     const stop = () => { if (timer) clearInterval(timer); timer = null; cleanup?.(); cleanup = null; };
@@ -247,6 +250,7 @@ export function runGame(root, spec) {
   }
 
   function summary(R) {
+    spec.onState?.("done");
     const tot = S.total(R);
     const best = saveBest(spec.key, tot.value, tot.label, tot.higher);
     root.innerHTML = html`<div class="g-summary">
