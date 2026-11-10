@@ -78,10 +78,14 @@ export function adoptLang(l) {
 const areas = new Map();
 export function loadArea(name) {
   if (!areas.has(name)) {
+    // the three fetched together (they came one after the other: three round trips before an area's page could draw)
     areas.set(name, (async () => {
-      Object.assign(FR, (await import(`./i18n/${name}.fr.js`)).default);
-      if (EN) { try { Object.assign(EN, (await import(`./i18n/${name}.en.js`)).default); } catch (e) { /* French then */ } }
-      if (LOC) { try { Object.assign(LOC, (await import(`./i18n/${name}.${UI}.js`)).default); } catch (e) { /* English then */ } }
+      const [fr, en, loc] = await Promise.all([import(`./i18n/${name}.fr.js`),
+        EN ? import(`./i18n/${name}.en.js`).catch(() => null) : null,        // French then
+        LOC ? import(`./i18n/${name}.${UI}.js`).catch(() => null) : null]);  // English then
+      Object.assign(FR, fr.default);
+      if (EN && en) Object.assign(EN, en.default);
+      if (LOC && loc) Object.assign(LOC, loc.default);
     })());
   }
   return areas.get(name);

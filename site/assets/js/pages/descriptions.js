@@ -103,10 +103,21 @@ export async function render(main, { query = {}, embedded = false } = {}) {
       : [section(t(`cd.col.${c}`), t(`cd.col.${c}.hint`), keep(sheet(c)), c, sprint)]))}
       ${section(t("cd.special"), t("cd.special.hint"), keep(SPECIAL.flatMap(sheet)).sort((a, b) => byRef(iscdRef(a.id).ref, iscdRef(b.id).ref)), "", sprint)}`;
   }
+  // the tab shown drawn at once, the other when it is first opened (owner, 2026-11-10: the page was slow to come; each tab
+  // holds some 5 000 elements of drawings)
+  let drawn = {};
+  function drawTab(k) {
+    if (drawn[k]) return;
+    drawn[k] = true;
+    if (k === "sprint") $("#cd-body-sp").innerHTML = body(true);
+    else $("#cd-body").innerHTML = body(false);
+  }
   function draw() {
     $("#cd-intro").innerHTML = intro();
-    $("#cd-body").innerHTML = body(false);
-    $("#cd-body-sp").innerHTML = body(true);
+    drawn = {};
+    $("#cd-body").innerHTML = "";
+    $("#cd-body-sp").innerHTML = "";
+    drawTab(tab);
     filter();
   }
   function filter() {
@@ -124,7 +135,7 @@ export async function render(main, { query = {}, embedded = false } = {}) {
     hint.textContent = practice ? t(practice === "names" ? "cd.practice.hint" : `cd.practice.hint.${practice}`) : "";
   }
   draw();
-  bindPageTabs(main, tabs, tab, (k) => { tab = k; });
+  bindPageTabs(main, tabs, tab, (k) => { tab = k; if (!drawn[k]) { drawTab(k); filter(); } });
   $("#cd-lang").addEventListener("change", async (e) => {
     L = e.target.value;
     if (L !== "fr" && L !== "en") await loadAllTexts();

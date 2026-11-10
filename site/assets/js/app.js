@@ -989,7 +989,7 @@ async function route_() {
 // the pages a visit may open on that draw no chart (none of their modules calls charts.js's builders, checked 2026-11-06):
 // the first of them shown needs no ECharts (app.route_); keep it to pages checked so
 const NO_CHARTS = new Set(["hub", "orgaOff", "overview", "modtiles", "agenda", "mapAnalysis", "account", "phoneSend", "booking",
-  "analysis", "analysisPerso", "analysisOrga", "games", "vma"]);
+  "analysis", "analysisPerso", "analysisOrga", "games", "vma", "learn"]);
 let routed = false;
 /** Redraws the page for another method without moving anything (owner, 2026-10-12): no loading screen, the page keeps
  *  its height while it redraws, and the window's and the inner panes' scroll positions (the races' list, the tables)

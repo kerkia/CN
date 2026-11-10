@@ -7,15 +7,33 @@
 // the addresses of before, open theirs).
 
 import { html, raw, $, $$ } from "../util.js";
-import { t } from "../i18n.js";
+import { t, loadArea } from "../i18n.js";
 
 const VIEWS = ["definitions", "symboles", "test"];
 const KEY = "ocn.learn.test.v3";
 
+/** The modules and data a view needs, asked for all at once (owner, 2026-11-10: the page took seconds, blank under its
+ *  tabs — its files came one after the other, each found only once the one before was read: eight round trips). */
+function warm(v) {
+  // the symbols' file preloaded (it is read only once symbols.js has run, after the Tracer's catalogue), that catalogue asked now
+  if (!document.querySelector('link[data-learn-pre]')) {
+    document.head.insertAdjacentHTML("beforeend", '<link rel="preload" href="assets/tracer/symbols.json" as="fetch" crossorigin="anonymous" data-learn-pre>');
+  }
+  const common = () => [loadArea("tracer"), import("../tracer/lang.js"), import("../tracer/symbols.js").then((m) => m.loadSymbols()),
+    import("../iscd.js"), import("../isom.js"), import("../cdsymbol.js")];
+  const jobs = v === "symboles" ? [import("./mapkey.js"), import("../isom.js")]
+    : v === "test" ? [...common(), import("../games/learntest.js"), import("../games/quiz.js"), import("../games/common.js"),
+      import("../games/learnphotos.js")]
+    : [...common(), import("./descriptions.js"), import("../tracer/textify.js")];
+  jobs.forEach((p) => p.catch(() => {}));
+}
+
 async function view(el, v, query) {
-  // a fresh box each time: the views bind their listeners to the element they are given
+  // a fresh box each time: the views bind their listeners to the element they are given; the spinner until it is drawn
   const box = document.createElement("div");
+  box.innerHTML = html`<div class="boot"><div class="spinner"></div><p>${t("misc.loading")}</p></div>`;
   el.replaceChildren(box);
+  warm(v);
   if (v === "symboles") return (await import("./mapkey.js")).render(box, { query, embedded: true });
   if (v === "test") return testView(box);
   return (await import("./descriptions.js")).render(box, { query, embedded: true });
@@ -33,7 +51,9 @@ export async function render(main, { query = {}, path = "" }) {
     <nav class="page-tabs learn-tabs" role="tablist">${VIEWS.map((k) => html`<button type="button" role="tab" data-lview="${k}" aria-selected="${k === v}">${label(k)}</button>`)}</nav>
     <div id="learn-view"></div>`;
   const el = $("#learn-view", main);
+  // the other views' files fetched once this one is drawn, so that a tab opens at once
   let shown = await view(el, v, query);
+  setTimeout(() => VIEWS.filter((k) => k !== v).forEach(warm), 300);
   $$("[data-lview]", main).forEach((b) => b.addEventListener("click", async () => {
     const k = b.dataset.lview;
     if (k === v) return;
