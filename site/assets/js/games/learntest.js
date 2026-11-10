@@ -5,9 +5,9 @@
 // each question's right answer, 147 × 143 px as the quiz serves them, in site/assets/learn/map/<key>.png; a feature's extract
 // is its question's answer, so a wrong option shows another feature's. The symbols are the IOF's (Purple Pen's, cdsymbol.js).
 // From the quiz also come its 28 features and, for each, the three wrong answers its author chose (« Facile »: those of another
-// question, mapped feature by feature; the nine pictures that were no other question's answer read as the nearest feature —
-// several boulders as « Gros rocher », small brown rings as « Petite dépression », a green cross as « Souche » — and shown by
-// that feature's extract). « Aléatoire »: three other features of the 28 at random, never one shown by the same symbols.
+// question, mapped feature by feature; its three pictures that answer no question — used nine times — are kept as they are,
+// `EXTRA`, read by Ozimut: one boulder in a group « Rocher » (filed under « Gros rocher »), a small ring of form line « Butte »,
+// a green cross « Souche »). « Aléatoire »: three other features of the 28 at random, never one shown by the same symbols.
 // The photos of the terrain (owner, 2026-11-10: « the whole point »): the quiz's own photos are not used — two carry stock
 // agencies' watermarks (Dreamstime, iStock), one a photographer's signature, the others no source —, but freely licensed
 // ones from Wikimedia Commons, one a feature where an unambiguous one was found — the feature at a control's scale, nothing
@@ -38,25 +38,25 @@ export const BANK = [
   { k: "boulder", sym: ["2.4"], easy: ["depression", "knoll", "roughOpen"] },
   { k: "roughOpen", sym: ["4.4"], easy: ["bigTree", "pit", "reentrant"] },
   { k: "pathBend", sym: ["5.2", "11.7"], easy: ["smallDep", "pathCross", "cliff"] },
-  { k: "rockFace", sym: ["2.1"], easy: ["boulder", "smallDep", "boulderField"] },
+  { k: "rockFace", sym: ["2.1"], easy: ["boulder-2", "knoll-2", "boulderField"] },
   { k: "smallDep", sym: ["1.13"], easy: ["spur", "fence", "earthWall"] },
-  { k: "earthWall", sym: ["1.6"], easy: ["pathCross", "hill", "smallDep"] },
-  { k: "bigTree", sym: ["4.9"], easy: ["stump", "vegBoundary", "ruin"] },
+  { k: "earthWall", sym: ["1.6"], easy: ["pathCross", "hill", "knoll-2"] },
+  { k: "bigTree", sym: ["4.9"], easy: ["stump-2", "vegBoundary", "ruin"] },
   { k: "road", sym: ["5.1"], easy: ["pathCross", "knoll", "pathJunction"] },
-  { k: "boulderCluster", sym: ["2.6"], easy: ["impFence", "ruin", "boulder"] },
+  { k: "boulderCluster", sym: ["2.6"], easy: ["impFence", "ruin", "boulder-2"] },
   { k: "pathCross", sym: ["5.2", "10.1"], easy: ["fence", "pathJunction", "road"] },
-  { k: "pit", sym: ["1.14"], easy: ["stump", "smallDep", "knoll"] },
-  { k: "knoll", sym: ["1.10"], easy: ["boulder", "roughOpen", "earthBank"] },
+  { k: "pit", sym: ["1.14"], easy: ["stump", "knoll-2", "knoll"] },
+  { k: "knoll", sym: ["1.10"], easy: ["boulder-2", "roughOpen", "earthBank"] },
   { k: "depression", sym: ["1.12"], easy: ["knoll", "vegBoundary", "hill"] },
   { k: "ruin", sym: ["5.13"], easy: ["impFence", "cairn", "pathBend"] },
   { k: "reentrant", sym: ["1.3"], easy: ["earthBank", "smallDep", "boulderField"] },
-  { k: "boulderField", sym: ["2.5"], easy: ["depression", "stump", "cliff"] },
+  { k: "boulderField", sym: ["2.5"], easy: ["depression", "stump-2", "cliff"] },
   { k: "cliff", sym: ["2.1"], easy: ["boulderField", "depression", "fence"] },
   { k: "fence", sym: ["5.9"], easy: ["earthWall", "pathCross", "cairn"] },
   { k: "spur", sym: ["1.2"], easy: ["depression", "earthBank", "roughOpen"] },
   { k: "impFence", sym: ["5.9"], easy: ["earthWall", "pathCross", "pit"] },
   { k: "vegBoundary", sym: ["4.7"], easy: ["fence", "bigTree", "impFence"] },
-  { k: "cairn", sym: ["5.17"], easy: ["bigTree", "stump", "cliff"] },
+  { k: "cairn", sym: ["5.17"], easy: ["bigTree", "stump-2", "cliff"] },
   { k: "thicket", sym: ["4.5"], easy: ["ditch", "vegBoundary", "roughOpen"] },
   { k: "ditch", sym: ["3.5"], easy: ["spur", "fence", "pathBend"] },
   { k: "pathJunction", sym: ["5.2", "10.2"], easy: ["pathCross", "pathBend", "fence"] },
@@ -64,6 +64,16 @@ export const BANK = [
   { k: "earthBank", sym: ["1.4"], easy: ["spur", "cairn", "rockFace"] },
 ];
 const BY = Object.fromEntries(BANK.map((f) => [f.k, f]));
+/** The quiz's three wrong pictures that answer none of its questions (owner, 2026-11-10: shown as the quiz shows them, with
+ *  Ozimut's reading of their circle): only among the « Facile » answers, where the quiz has them. `name`: a name of their own. */
+const EXTRA = {
+  "boulder-2": { k: "boulder", name: "lt.q.rock" },   // one boulder at the centre, in a group of boulders
+  "knoll-2": { k: "knoll" },                          // a small ring of form line, no slope tick: a knoll
+  "stump-2": { k: "stump" },                          // a green cross (ISOM 419)
+};
+/** An option: its feature, its picture (`learn/map/<img>.png`) and its name. */
+const pic = (key) => { const x = EXTRA[key], f = BY[x ? x.k : key];
+  return { f, img: key, name: x?.name ? t(x.name) : nameOf(f) }; };
 export const MAX = BANK.length;
 /** What a question shows (owner, 2026-11-10: the photo of the terrain the most interesting, so chosen by default): any of a
  *  photo of the feature, its name, its description symbols. A feature without a photo shows its name instead. */
@@ -76,8 +86,8 @@ export const PHOTO_KEYS = BANK.filter((f) => PHOTOS[f.k]).map((f) => f.k);
 
 const nameOf = (f) => t(`lt.q.${f.k}`);
 const sig = (f) => f.sym.join("+");
-/** A feature's map extract with its control circle, the quiz's own (147 × 143 px). */
-const extract = (f) => html`<img class="lt-map" src="/assets/learn/map/${f.k}.png" width="147" height="143" alt="${t("lt.map.alt")}" draggable="false">`;
+/** An option's map extract with its control circle, the quiz's own (147 × 143 px). */
+const extract = (o) => html`<img class="lt-map" src="/assets/learn/map/${o.img}.png" width="147" height="143" alt="${t("lt.map.alt")}" draggable="false">`;
 /** Its description symbols, side by side as on a sheet. */
 const symbols = (f, size = 56) => html`<span class="lt-syms" role="img" aria-label="${t("lt.symbols")}">${f.sym.map((id) => {
   const s = symbol(id);
@@ -127,12 +137,13 @@ export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show 
         order = shuffle(r, order);
       }
       const f = order[i], mode = r() < 0.5 ? "random" : "easy";
-      const wrong = mode === "easy" ? f.easy.map((k) => BY[k])
-        : shuffle(r, BANK.filter((g) => g !== f && sig(g) !== sig(f))).slice(0, 3);
-      const opts = shuffle(r, [f, ...wrong]);
-      const answer = LETTERS[opts.indexOf(f)];
+      const right = pic(f.k);
+      const wrong = mode === "easy" ? f.easy.map(pic)
+        : shuffle(r, BANK.filter((g) => g !== f && sig(g) !== sig(f))).slice(0, 3).map((g) => pic(g.k));
+      const opts = shuffle(r, [right, ...wrong]);
+      const answer = LETTERS[opts.indexOf(right)];
       // the pictures alone answer (owner, 2026-11-10: no letters): the result and the summary say the features' names
-      const labels = Object.fromEntries(opts.map((g, k) => [LETTERS[k], nameOf(g)]));
+      const labels = Object.fromEntries(opts.map((o, k) => [LETTERS[k], o.name]));
       // what this question shows: the choice, a missing photo replaced by the name
       const withPhoto = show.includes("photo") && !!PHOTOS[f.k];
       const withName = show.includes("name") || (show.includes("photo") && !withPhoto) ;
@@ -153,7 +164,7 @@ export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show 
             const fr = stage.querySelector(`.g-pick-${LETTERS[k]}`);
             if (!fr) return;
             fr.title = labels[LETTERS[k]];
-            if (g === f) fr.classList.add("g-right");
+            if (g === right) fr.classList.add("g-right");
             else if (choice === LETTERS[k]) fr.classList.add("g-wrong");
           });
           puzzle.info = ok ? nameOf(f) : labels[choice] ? t("lt.yours", { a: labels[choice] }) : "";

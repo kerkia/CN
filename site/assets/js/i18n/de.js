@@ -5595,6 +5595,7 @@ export default {
   "g.learntest.desc": "Ein Foto des Geländes, vier Postenkreise auf der Karte: Welcher liegt darauf? 20 Sekunden pro Frage.",
   "lt.q.stump": "Baumstumpf",
   "lt.q.boulder": "Großer Stein",
+  "lt.q.rock": "Stein",
   "lt.q.roughOpen": "Kleine offene Fläche (rauer Boden)",
   "lt.q.pathBend": "Wegknick",
   "lt.q.rockFace": "Felswand (kleine Felswand)",

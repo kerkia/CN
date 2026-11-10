@@ -4550,6 +4550,7 @@ export default {
   "g.learntest.desc": "Une photo du terrain, quatre cercles de poste sur la carte : lequel est dessus ? 20 secondes par question.",
   "lt.q.stump": "Souche",
   "lt.q.boulder": "Gros rocher",
+  "lt.q.rock": "Rocher",
   "lt.q.roughOpen": "Petite zone découverte (encombrée au sol)",
   "lt.q.pathBend": "Coude (virage) de chemin",
   "lt.q.rockFace": "Paroi rocheuse (petite falaise)",

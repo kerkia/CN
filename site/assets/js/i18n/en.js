@@ -5377,6 +5377,7 @@ export default {
   "g.learntest.desc": "A photo of the terrain, four control circles on the map: which one is on it? 20 seconds a question.",
   "lt.q.stump": "Tree stump",
   "lt.q.boulder": "Large boulder",
+  "lt.q.rock": "Boulder",
   "lt.q.roughOpen": "Small open area (rough ground)",
   "lt.q.pathBend": "Path bend",
   "lt.q.rockFace": "Rock face (small cliff)",

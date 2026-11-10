@@ -874,7 +874,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`.g-n-box`), the result centred under the circles; on a phone the four extracts still on one line (~62 px on a 375 px screen) and the result one
   short paragraph — checked at 1366 × 650, 375 × 812 and 375 × 667. The 28 features and each one's three wrong answers (« Facile ») come from a club's
   Wayground quiz the owner gave (« définitions carte course d'orientation »; its photos not used, its map extracts used since the same evening, its wrong options
-  mapped to the other questions' features by image matching, the nine others read by eye); « Aléatoire » draws three of the 28,
+  mapped to the other questions' features by image matching; its three pictures that answer no question — nine options — kept as they are, `learn/map/<key>-2.png`, `EXTRA`, named by Ozimut's reading: « Rocher » (one boulder in a group, under « Gros rocher »), « Butte » (a small ring of form line, no tick), « Souche » (a green cross; owner, 2026-11-10)); « Aléatoire » draws three of the 28,
   never one with the same symbols; **every question draws one or the other at random** (owner, 2026-11-10: that mode alone for
   now, the per-question choice gone). The user sets the number of questions (20 by default) and the time each (10 s by default, 5 to
   60; `runGame`'s `limit`: a countdown, wrong at zero), `localStorage ocn.learn.test.v2`; « Commencer », its rules and « Palmarès »

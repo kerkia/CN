@@ -5595,6 +5595,7 @@ export default {
   "g.learntest.desc": "Una foto del terreno, cuatro círculos de control en el mapa: ¿cuál está sobre él? 20 segundos por pregunta.",
   "lt.q.stump": "Tocón",
   "lt.q.boulder": "Roca grande",
+  "lt.q.rock": "Roca",
   "lt.q.roughOpen": "Pequeña zona abierta (suelo irregular)",
   "lt.q.pathBend": "Curva de camino",
   "lt.q.rockFace": "Pared rocosa (cortado pequeño)",
