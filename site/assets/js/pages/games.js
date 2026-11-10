@@ -58,6 +58,8 @@ export async function render(main, { query }) {
       if (!root.isConnected) return;
       const spec = mod[name](level ?? levels?.[0]?.[0]);
       running.set(k, runGame(root, spec));
+      // a game whose pictures need credits (« Quel poste ? »'s photos) lists them under it
+      if (mod.creditsHtml && !$(".lt-credits", root.closest(".g-panel"))) root.closest(".g-root").insertAdjacentHTML("afterend", mod.creditsHtml());
     } catch (e) {
       console.error(e);
       root.innerHTML = html`<div class="empty">${t("err.load")}<br><span class="muted">${String(e.message || e)}</span></div>`;

@@ -89,23 +89,26 @@ export const credit = (ph, page = true) => ph.permission
   : html`<span class="lt-credit">${t("lt.credit", { a: ph.author })} ·
   <a href="${ph.licenceUrl}" target="_blank" rel="noopener">${ph.licence}</a> ·
   ${page ? html`<a href="${ph.page}" target="_blank" rel="noopener">Wikimedia Commons</a>` : "Wikimedia Commons"} · ${t("lt.credit.cut")}</span>`;
-/** A feature's photo, its credit under it. */
+/** A feature's photo (its credit in the list under the game, `creditsHtml`: owner, 2026-11-10, not under each photo). */
 const photo = (f) => { const ph = PHOTOS[f.k];
-  return html`<figure class="lt-photo"><img src="/assets/learn/${f.k}.webp" width="${ph.w}" height="${ph.h}" alt="${t("lt.photo.alt")}" decoding="async">
-    <figcaption>${credit(ph, false)}</figcaption></figure>`; };
+  return html`<figure class="lt-photo"><img src="/assets/learn/${f.k}.webp" width="${ph.w}" height="${ph.h}" alt="${t("lt.photo.alt")}" decoding="async"></figure>`; };
+/** Every photo's credit, a folded list (under the test in « Apprendre » and under the game in « Jeux »). */
+export const creditsHtml = () => html`<details class="lt-credits"><summary>${t("lt.credits")}</summary><p class="muted">${t("lt.credits.hint")}</p>
+  <ul>${PHOTO_KEYS.map((k) => html`<li><b>${t(`lt.q.${k}`)}</b> — ${credit(PHOTOS[k])}</li>`)}</ul></details>`;
 
 /**
  * The test's spec for the games' engine (games/quiz.js runGame): `count` features at random (those with a photo first when
  * photos are shown), each answered among four whose wrong ones are the quiz's (`modes[i]` "easy") or drawn at random
  * ("random"), `limit` seconds each, showing `show` (SHOW). `onState`: the engine's (the page hides its settings).
  */
-export function testSpec({ count = 10, modes = [], limit = 20, show = ["photo"], key = "learntest", onState } = {}) {
+export function testSpec({ count = 10, modes = [], limit = 20, show = ["photo"], key = "learntest", onState, onStop } = {}) {
   count = Math.max(1, Math.min(MAX, count | 0));
   show = SHOW.filter((x) => show.includes(x));
   if (!show.length) show = ["photo"];
   let order = [];
   return {
-    key, count, limit, scoring: "count", onState,
+    key, count, limit, scoring: "count", onState, pickOnly: true, scrollOnPlay: true,
+    topAction: onStop ? { label: t("lt.stop"), onClick: onStop } : null,
     intro: html`<p>${t("lt.rules", { n: count, s: limit })}</p><p class="muted">${t("lt.rules.how")}</p>`,
     make(i, r) {
       if (i === 0) {
@@ -118,34 +121,35 @@ export function testSpec({ count = 10, modes = [], limit = 20, show = ["photo"],
         : shuffle(r, BANK.filter((g) => g !== f && sig(g) !== sig(f))).slice(0, 3);
       const opts = shuffle(r, [f, ...wrong]);
       const answer = LETTERS[opts.indexOf(f)];
-      const label = (l) => `${l} · ${nameOf(opts[LETTERS.indexOf(l)])}`;
+      // the pictures alone answer (owner, 2026-11-10: no letters): the result and the summary say the features' names
+      const labels = Object.fromEntries(opts.map((g, k) => [LETTERS[k], nameOf(g)]));
       // what this question shows: the choice, a missing photo replaced by the name
       const withPhoto = show.includes("photo") && !!PHOTOS[f.k];
       const withName = show.includes("name") || (show.includes("photo") && !withPhoto) ;
       const withSym = show.includes("sym");
-      return {
+      const puzzle = {
         options: LETTERS.slice(0, 4), answer,
-        text: withName ? nameOf(f) : withPhoto ? t("lt.photoQ") : t("lt.symQ"),
-        answerText: label(answer), choiceText: label,
+        text: withName ? nameOf(f) : "", labels,
         render(stage) {
           if (withPhoto || withSym) stage.insertAdjacentHTML("beforeend", html`<div class="lt-ask">${withPhoto ? photo(f) : ""}${withSym ? symbols(f) : ""}</div>`);
-          const box = (g, k) => { const d = document.createElement("div"); d.className = "lt-pic"; d.innerHTML = circle(g, 150); return framed(d, LETTERS[k], `g-pick-${LETTERS[k]}`); };
+          const box = (g, k) => { const d = document.createElement("div"); d.className = "lt-pic"; d.innerHTML = circle(g, 100); return framed(d, "", `g-pick-${LETTERS[k]}`); };
           grid(stage, opts.map(box), 4).classList.add("lt-grid");
           stage.dataset.mode = mode;
         },
-        solution(stage, choice) {
-          // each circle named, the right one framed, a wrong choice marked; the photo's name and page now
+        solution(stage, choice, ok) {
+          // the right circle framed, a wrong choice marked, each named by its tooltip; the names in the result's line, not over
+          // the circles (owner, 2026-11-10: the whole question on a laptop's screen)
           opts.forEach((g, k) => {
             const fr = stage.querySelector(`.g-pick-${LETTERS[k]}`);
             if (!fr) return;
-            fr.querySelector(".g-caption").textContent = label(LETTERS[k]);
+            fr.title = labels[LETTERS[k]];
             if (g === f) fr.classList.add("g-right");
             else if (choice === LETTERS[k]) fr.classList.add("g-wrong");
           });
-          const cap = stage.querySelector(".lt-photo figcaption");
-          if (cap) cap.innerHTML = html`<b>${nameOf(f)}</b> — ${credit(PHOTOS[f.k])}`;
+          puzzle.info = ok ? nameOf(f) : labels[choice] ? t("lt.yours", { a: labels[choice] }) : "";
         },
       };
+      return puzzle;
     },
   };
 }

@@ -79,17 +79,15 @@ async function testView(box) {
       <p class="muted lt-modes-hint">${t("lt.modes.hint")}</p>
       <ol class="lt-modes" id="lt-modes"></ol>
     </section>
-    <div class="lt-running" hidden><button type="button" class="btn btn-sm" id="lt-stop">${t("lt.stop")}</button></div>
     <div class="g-root card lt-game"><div class="card-body" id="lt-game"></div></div>
-    <details class="lt-credits"><summary>${t("lt.credits")}</summary><p class="muted">${t("lt.credits.hint")}</p>
-      <ul>${T.PHOTO_KEYS.map((k) => html`<li><b>${t(`lt.q.${k}`)}</b> — ${T.credit(T.PHOTOS[k])}</li>`)}</ul></details>`;
+    ${T.creditsHtml()}`;
   let game = null;
-  // the settings while a run is under way: out of sight, « Arrêter le test » brings them back (owner, 2026-11-10)
+  // the settings and the lede while a run is under way: out of sight, « Arrêter le test » on the puzzle's line brings them
+  // back (owner, 2026-11-10)
   const onState = (st) => {
     const run = st === "play";
     $(".lt-set", box).hidden = run;
-    $(".lt-running", box).hidden = !run;
-    if (run) $(".lt-game", box).scrollIntoView({ block: "start" });
+    $(".learn-lede", box).hidden = run;
   };
   const drawModes = () => {
     $("#lt-modes", box).innerHTML = s.modes.slice(0, s.count).map((m, i) => html`<li><span class="lt-qn">${t("lt.q", { n: i + 1 })}</span>
@@ -99,7 +97,7 @@ async function testView(box) {
     save(s);
     game?.stop();
     game = runGame($("#lt-game", box), T.testSpec({ count: s.count, limit: s.limit, show: s.show, modes: s.modes.slice(0, s.count),
-      key: `learntest:${s.count}:${s.limit}:${s.show.join("+")}`, onState }));
+      key: `learntest:${s.count}:${s.limit}:${s.show.join("+")}`, onState, onStop: () => restart() }));
   };
   drawModes();
   restart();
@@ -114,7 +112,6 @@ async function testView(box) {
     if (!on.length) { c.checked = true; return; }          // one at least
     s.show = on; restart();
   }));
-  $("#lt-stop", box).addEventListener("click", restart);
   $("#lt-modes", box).addEventListener("click", (e) => {
     const b = e.target.closest("[data-mode]");
     if (!b) return;

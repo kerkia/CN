@@ -76,7 +76,7 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // tooltip of its name in the second row (NAV_HINT), its buttons go to the right of the tab row. The runner's, a club's
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", relayHistory: "rh.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
-  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede",
+  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede", learn: "lt.lede",
   analysisPerso: "an.perso.lede", analysisOrga: "an.orga.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
   orgAnalyses: "sh.org.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint", orgMapper: "nav.orgMapper.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
@@ -107,7 +107,7 @@ const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.
 // the map analyses out of beta on 2026-11-05; « Résultats » and « Horaires » marked beta on 2026-11-07 (owner)
 const BETA_ROUTES = new Set(["orgDirect", "orgTracer", "orgMapper", "orgResults", "orgStarts"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
-const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "vma"].includes(r.route)
+const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "vma", "learn"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
   || (r.route === "orgAnalyses" && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
 // Réseau views that count every discipline together by default (all but the leaders, who are

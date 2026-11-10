@@ -2521,6 +2521,8 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .g-limit::after { display: none; }
 .g-limit i { transition: width .1s linear; }
 .g-time.g-hurry { color: var(--bad); }
+.g-top-act { margin-left: auto; align-self: center; }
+.g-root { scroll-margin-top: 64px; }
 .g-frame.g-wrong { border-color: var(--bad); }
 
 /* « Apprendre » (2026-11-10): « Définitions de postes », « Symboles de carte » and the test as one page */
@@ -2546,15 +2548,19 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .lt-pic { width: 100%; display: flex; justify-content: center; }
 .lt-pic svg { display: block; width: 100%; max-width: 92px; height: auto; border: 1px solid var(--border-strong); border-radius: 8px; }   /* half the area of 130 px (owner, 2026-11-10) */
 .lt-ask { flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.lt-game .g-top { margin-bottom: 8px; }
+.lt-game .g-stage { gap: 8px; }
+.lt-game .g-result { margin-top: 6px; padding: 6px 12px; }
+.lt-grid .g-caption { font-size: 12.5px; line-height: 1.25; text-align: center; }
+.lt-grid .g-caption:empty { display: none; }
 .lt-photo { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.lt-photo img { display: block; width: auto; height: auto; max-width: min(100%, 520px); max-height: min(380px, 48vh); border-radius: 8px; border: 1px solid var(--border-strong); }
-.lt-photo figcaption { font-size: 12px; color: var(--ink-3, var(--ink-2)); text-align: center; max-width: 520px; }
+/* the photo as tall as a laptop's window leaves: the bar, the puzzle's line, the circles and the result fit under it */
+.lt-photo img { display: block; width: auto; height: auto; max-width: min(100%, 560px); max-height: clamp(150px, calc(100vh - 385px), 420px); border-radius: 8px; border: 1px solid var(--border-strong); }
 .lt-credit a { color: inherit; }
 .lt-show { border: 0; margin: 0; padding: 0; min-width: 0; }
 .lt-show legend { padding: 0; margin-bottom: 4px; font-size: 12px; color: var(--ink-3); font-weight: 550; }
 .lt-checks { display: flex; flex-wrap: wrap; gap: 4px 16px; min-height: 36px; align-items: center; }
 .lt-checks .check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; white-space: nowrap; }
-.lt-running { display: flex; justify-content: flex-end; margin: 0 0 8px; }
 .lt-credits { margin-top: 16px; font-size: 13px; }
 .lt-credits summary { cursor: pointer; color: var(--ink-2); }
 .lt-credits ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 3px; }

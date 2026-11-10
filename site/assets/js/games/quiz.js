@@ -55,7 +55,10 @@ const SCORING = {
 
 /**
  * Runs a game in `root`. spec: {key, count, make, scoring, intro, multi, viewTime, chooseTime, memoriseLabel, seed, limit,
- * onState} — onState("intro" | "play" | "done") as the run starts and ends (« Apprendre » hides its settings meanwhile).
+ * onState, pickOnly, topAction, scrollOnPlay} — onState("intro" | "play" | "done") as the run starts and ends (« Apprendre » hides
+ * its settings meanwhile); pickOnly: the answers are the pictures alone, no buttons under them (their `labels` name them in the
+ * result and the summary); topAction {label, onClick}: a button at the end of the puzzle's top line; scrollOnPlay: the game
+ * brought to the window's top when a run starts (owner, 2026-11-10: a question whole on a laptop's screen).
  * A puzzle's render(stage, api) draws it; an interactive puzzle calls api.done({ok, choice}) itself and has no options.
  */
 export function runGame(root, spec) {
@@ -128,6 +131,7 @@ export function runGame(root, spec) {
     if (!puzzles || prep !== P || !root.isConnected) return;
     prep = null;                                       // a puzzle is played once
     spec.onState?.("play");
+    if (spec.scrollOnPlay) root.closest(".g-root")?.scrollIntoView({ block: "start" });
     const results = [];
     let timer = null, cleanup = null;
     const stop = () => { if (timer) clearInterval(timer); timer = null; cleanup?.(); cleanup = null; };
@@ -150,12 +154,14 @@ export function runGame(root, spec) {
         <span class="g-n">${t("g.puzzle")} <b>${i + 1}</b> / ${spec.count}</span>
         <span class="g-time num" id="g-time">${spec.limit ? fmtS(spec.limit * 1000) : "0,0 s"}</span>
         ${spec.limit ? html`<span class="g-bar g-limit" aria-hidden="true"><i style="width:100%"></i></span>` : ""}
-        <span class="g-score muted">${soFar}</span></div>
+        <span class="g-score muted">${soFar}</span>
+        ${spec.topAction ? html`<button type="button" class="btn btn-sm g-top-act">${spec.topAction.label}</button>` : ""}</div>
         ${p.text ? html`<p class="g-question" id="g-question">${p.text}</p>` : ""}
         <div class="g-stage" id="g-stage"></div>
-        <div class="g-answers" id="g-answers"></div>
+        <div class="g-answers" id="g-answers" ${raw(spec.pickOnly ? "hidden" : "")}></div>
         <div class="g-result" id="g-result" hidden></div>`;
       const stage = $("#g-stage", root), answers = $("#g-answers", root), result = $("#g-result", root), timeEl = $("#g-time", root);
+      $(".g-top-act", root)?.addEventListener("click", () => spec.topAction.onClick());
       let t0 = 0, ms = 0, finished = false, choice = null, picked = [], timeUp = false, iv = null;
       const left = () => !root.isConnected || !stage.isConnected;
       const limitMs = (spec.limit || 0) * 1000, bar = $(".g-limit i", root);
