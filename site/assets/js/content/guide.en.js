@@ -246,7 +246,7 @@ export function build(X) {
           <p>The ${P("#/symboles", "Map symbols")} are the full legend of a forest map (ISOM 2017-2), colour by colour: each symbol with its number, name and
             meaning, those that must not be crossed marked. “What the colours say” explains how runnable the forest is by its green. To revise, hide the
             names or the drawings.</p>
-          <p>These two pages are two tabs of ${P("#/apprendre", "Learning")}, with a third, “Test”: a photo of the terrain and four control circles on
+          <p>These two pages are two tabs of ${P("#/apprendre", "Learning")}, with a third, “Training”: a photo of the terrain and four control circles on
             the map, which one is on the feature? Twenty questions of ten seconds by default; their number, their time and what the question shows
             (photo, name, description) can be set. When you are signed in, your games go into the “Leaderboard”.</p>`)}`,
       jeux: () => html`
@@ -258,7 +258,7 @@ export function build(X) {
               between three or four routes.`,
             html`<b>Reading relief and terrain</b>: Contours, Uphill or downhill?, Matching maps, Spot the difference, Trail'O.`,
             html`<b>Memory</b>: Map memory, Photo memory, and the Maze, seen in the first person.`,
-            html`<b>Descriptions</b>: Which control?, the test of “Learning” (a photo of the terrain, the right control circle on the map).`,
+            html`<b>Descriptions</b>: Which control?, the training of “Learning” (a photo of the terrain, the right control circle on the map).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "Maximal aerobic speed", html`

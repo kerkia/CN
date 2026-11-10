@@ -252,7 +252,7 @@ export function build(X) {
           <p>Los ${P("#/symboles", "Símbolos del mapa")} son la leyenda completa de un mapa de bosque (ISOM 2017-2), color por color: cada símbolo con
             su número, su nombre y lo que significa, y señalados los que está prohibido cruzar. «Lo que dicen los colores» explica cuánto se puede correr
             según el verde. Para repasar, puedes ocultar los nombres o los dibujos.</p>
-          <p>Estas dos páginas son dos pestañas de ${P("#/apprendre", "Aprender")}, con una tercera, «Test»: una foto del terreno y cuatro círculos de
+          <p>Estas dos páginas son dos pestañas de ${P("#/apprendre", "Aprender")}, con una tercera, «Entrenamiento»: una foto del terreno y cuatro círculos de
             control en el mapa, ¿cuál está sobre el elemento? Veinte preguntas de diez segundos por defecto; su número, su tiempo y lo que muestra la
             pregunta (foto, nombre, descripción) se ajustan. Si estás conectado, tus partidas entran en la «Clasificación».</p>`)}`,
       jeux: () => html`
@@ -264,7 +264,7 @@ export function build(X) {
               rápida, Elección de ruta entre tres o cuatro trazados.`,
             html`<b>Lectura del relieve y del terreno</b>: Curvas de nivel, ¿Subida o bajada?, Mapas idénticos, Encuentra el error, Trail'O.`,
             html`<b>Memoria</b>: Memoria de mapa, Memoria fotográfica y el Laberinto, visto en primera persona.`,
-            html`<b>Descripciones</b>: ¿Qué control?, el test de «Aprender» (una foto del terreno, el círculo de control correcto en el mapa).`,
+            html`<b>Descripciones</b>: ¿Qué control?, el entrenamiento de «Aprender» (una foto del terreno, el círculo de control correcto en el mapa).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "La VAM", html`

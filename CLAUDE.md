@@ -853,7 +853,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
   open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only
   for a day, **everyone's since 2026-11-10** (owner; visitors without an account too, `GUEST_ROUTES`: the test plays, without a
-  palmarès). **Test** (`games/learntest.js`, on the games' engine): a feature shown — by any of a photo of the
+  palmarès). **Entrainement** (« Test » until 2026-11-10 evening, owner; Training, Training, Entrenamiento; its address still `?vue=test`) (`games/learntest.js`, on the games' engine): a feature shown — by any of a photo of the
   terrain (the default, owner: « the whole point »), its name, its description symbols (`cdsymbol.js`) — and four map extracts
   with a control circle, **the quiz's own** (owner, 2026-11-10: « use those, never invent map extracts »; the circles Ozimut had
   drawn with `isom.isomInCircle` and its path scenes are gone): each question's right answer as the quiz serves it, 147 × 143 px,

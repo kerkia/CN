@@ -255,7 +255,7 @@ export function build(X) {
           <p>Die ${P("#/symboles", "Kartensymbole")} sind die vollständige Legende einer Waldkarte (ISOM 2017-2), Farbe für Farbe: jedes Symbol mit
             Nummer, Name und Bedeutung, die nicht zu überquerenden markiert. „Was die Farben sagen“ erklärt, wie gut man je nach Grün laufen kann. Zum Üben
             blendest du die Namen oder die Zeichnungen aus.</p>
-          <p>Diese beiden Seiten sind zwei Reiter von ${P("#/apprendre", "Lernen")}, mit einem dritten, „Test“: ein Foto des Geländes und vier
+          <p>Diese beiden Seiten sind zwei Reiter von ${P("#/apprendre", "Lernen")}, mit einem dritten, „Training“: ein Foto des Geländes und vier
             Postenkreise auf der Karte – welcher liegt auf dem Objekt? Zwanzig Fragen zu zehn Sekunden als Standard; ihre Zahl, ihre Zeit und was die
             Frage zeigt (Foto, Name, Beschreibung) lassen sich einstellen. Angemeldet kommen deine Spiele in die „Bestenliste“.</p>`)}`,
       jeux: () => html`
@@ -267,7 +267,7 @@ export function build(X) {
               Routenwahl zwischen drei oder vier Routen.`,
             html`<b>Relief und Gelände lesen</b>: Höhenlinien, Bergauf oder bergab?, Gleiche Karten, Finde den Fehler, Trail'O.`,
             html`<b>Gedächtnis</b>: Kartengedächtnis, Fotogedächtnis und das Labyrinth, aus der Ich-Perspektive.`,
-            html`<b>Beschreibungen</b>: Welcher Posten?, der Test von „Lernen“ (ein Foto des Geländes, der richtige Postenkreis auf der Karte).`,
+            html`<b>Beschreibungen</b>: Welcher Posten?, das Training von „Lernen“ (ein Foto des Geländes, der richtige Postenkreis auf der Karte).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "Die MAG", html`

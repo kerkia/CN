@@ -253,7 +253,7 @@ export function build(X) {
           <p>Les ${P("#/symboles", "Symboles de carte")} sont la légende complète d'une carte de forêt (ISOM 2017-2), couleur par couleur : chaque symbole avec
             son numéro, son nom et ce qu'il signifie, ceux qu'il est interdit de franchir signalés. « Ce que disent les couleurs » explique la course possible
             selon le vert. Pour réviser, on cache les noms ou les dessins.</p>
-          <p>Ces deux pages sont deux onglets de ${P("#/apprendre", "Apprendre")}, avec un troisième, « Test » : une photo du terrain et quatre cercles de
+          <p>Ces deux pages sont deux onglets de ${P("#/apprendre", "Apprendre")}, avec un troisième, « Entrainement » : une photo du terrain et quatre cercles de
             poste sur la carte, lequel est sur l'élément ? Vingt questions de dix secondes par défaut ; leur nombre, leur temps et ce que montre la
             question (photo, nom, définition) se règlent. Connecté, vos parties entrent au « Palmarès ».</p>`)}`,
       jeux: () => html`
@@ -265,7 +265,7 @@ export function build(X) {
               plus rapide, Choix d'itinéraire entre trois ou quatre tracés.`,
             html`<b>Lecture du relief et du terrain</b> : Courbes de niveau, Montée ou descente ?, Cartes identiques, Cherchez l'erreur, Trail'O.`,
             html`<b>Mémoire</b> : Mémoire de carte, Mémoire photo, et le Labyrinthe, vu à la première personne.`,
-            html`<b>Définitions</b> : Quel poste ?, le test d'« Apprendre » (une photo du terrain, le bon cercle de poste sur la carte).`,
+            html`<b>Définitions</b> : Quel poste ?, l'entrainement d'« Apprendre » (une photo du terrain, le bon cercle de poste sur la carte).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "La VMA", html`
