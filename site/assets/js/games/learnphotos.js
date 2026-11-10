@@ -1,5 +1,7 @@
 // Generated from the Wikimedia Commons picks of 2026-11-10 (learntest.js): one photo a feature, its author, licence and page.
 // Each photo reduced to 760 × 600 px at most and saved as WebP (« photo réduite » in the credit).
+// « boulderField »: the club quiz's own photo, by Emmanuel Roiné, used with his permission (given to the owner, 2026-11-10).
+// An entry with `permission` is credited « avec son autorisation » instead of a licence.
 export const PHOTOS = {
   stump: {"w": 400, "h": 600, "author": "Lotte76", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Nationalpark_Jasmund_-_Wurzel_im_Stubnitz-Wald_(1).jpg", "title": "Nationalpark Jasmund - Wurzel im Stubnitz-Wald (1)"},
   boulder: {"w": 760, "h": 504, "author": "Jim Barton", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Erratic_boulder,_Abernethy_Forest_-_geograph.org.uk_-_3179085.jpg", "title": "Erratic boulder, Abernethy Forest - geograph.org.uk - 3179085"},
@@ -13,7 +15,7 @@ export const PHOTOS = {
   knoll: {"w": 760, "h": 570, "author": "Hajotthu", "licence": "CC BY-SA 3.0", "licenceUrl": "http://creativecommons.org/licenses/by-sa/3.0/", "page": "https://commons.wikimedia.org/wiki/File:H%C3%BCgelgrab_i_Wald_b_Wohlde-20210912-_(5).JPG", "title": "Hügelgrab i Wald b Wohlde-20210912- (5)"},
   depression: {"w": 760, "h": 504, "author": "Olga Ernst", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Doline_%C3%B6stlich_von_Obernheim_2.jpg", "title": "Doline östlich von Obernheim 2"},
   ruin: {"w": 760, "h": 507, "author": "Olivier S", "licence": "CC BY 3.0", "licenceUrl": "https://creativecommons.org/licenses/by/3.0", "page": "https://commons.wikimedia.org/wiki/File:Forest_Ruins_(257333247).jpeg", "title": "Forest Ruins (257333247)"},
-  boulderField: {"w": 760, "h": 570, "author": "Rosa-Maria Rinkl", "licence": "CC BY 4.0", "licenceUrl": "https://creativecommons.org/licenses/by/4.0", "page": "https://commons.wikimedia.org/wiki/File:Fels-Blockmeer,_Lusen.jpg", "title": "Fels-Blockmeer, Lusen"},
+  boulderField: {"w": 354, "h": 336, "author": "Emmanuel Roiné", "permission": true, "title": "Zone rocheuse"},
   cliff: {"w": 760, "h": 570, "author": "Sipalius", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Felswand_bei_der_DAV-Hutte_im_Helletal_bei_Benniehausen.jpg", "title": "Felswand bei der DAV-Hutte im Helletal bei Benniehausen"},
   fence: {"w": 760, "h": 570, "author": "Richard Webb", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Fence_in_woodland_-_geograph.org.uk_-_4613926.jpg", "title": "Fence in woodland - geograph.org.uk - 4613926"},
   impFence: {"w": 760, "h": 507, "author": "DS Pugh", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Fence_in_woodland_-_geograph.org.uk_-_7396869.jpg", "title": "Fence in woodland - geograph.org.uk - 7396869"},

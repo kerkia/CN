@@ -14,7 +14,7 @@
 // boundary): 20 of 28, none for the boulder cluster (many boulders too close to map one by one: those found showed two or three
 // big ones, each a boulder of its own), the earth wall (a linear bank: those found showed their ditch, or a hedge), re-entrant, spur, small hill,
 // path crossing, thicket and earth bank —, each credited under it (author, licence; the file's page, whose name gives the answer away, after the
-// answer). Replace one by dropping site/assets/learn/<key>.webp and changing its credit in learnphotos.js.
+// answer); one by its author, with his permission: Emmanuel Roiné's « zone rocheuse », the quiz's own. Replace one by dropping site/assets/learn/<key>.webp and changing its credit in learnphotos.js.
 // The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the impassable cliff (201), and its
 // « zone rocheuse » the boulder field (208).
 
@@ -84,7 +84,9 @@ const symbols = (f, size = 56) => html`<span class="lt-syms" role="img" aria-lab
 })}</span>`;
 /** A photo's credit (author, licence, Wikimedia Commons; `page`: with the link to the file, whose name gives the answer
  *  away — after the answer only). */
-export const credit = (ph, page = true) => html`<span class="lt-credit">${t("lt.credit", { a: ph.author })} ·
+export const credit = (ph, page = true) => ph.permission
+  ? html`<span class="lt-credit">${t("lt.credit", { a: ph.author })} · ${t("lt.credit.perm")}</span>`
+  : html`<span class="lt-credit">${t("lt.credit", { a: ph.author })} ·
   <a href="${ph.licenceUrl}" target="_blank" rel="noopener">${ph.licence}</a> ·
   ${page ? html`<a href="${ph.page}" target="_blank" rel="noopener">Wikimedia Commons</a>` : "Wikimedia Commons"} · ${t("lt.credit.cut")}</span>`;
 /** A feature's photo, its credit under it. */
