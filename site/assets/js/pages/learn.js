@@ -10,7 +10,7 @@ import { html, raw, $, $$ } from "../util.js";
 import { t } from "../i18n.js";
 
 const VIEWS = ["definitions", "symboles", "test"];
-const KEY = "ocn.learn.test.v2";
+const KEY = "ocn.learn.test.v3";
 
 async function view(el, v, query) {
   // a fresh box each time: the views bind their listeners to the element they are given
@@ -47,13 +47,14 @@ export async function render(main, { query = {}, path = "" }) {
 }
 
 /** The settings kept: {count, limit, show} (« ocn.learn.test.v2 » since the defaults became 20 questions of 10 s, owner,
- *  2026-11-10; the per-question choice of easy or random answers gone with them: every question is drawn at random). */
+ *  2026-11-10; the per-question choice of easy or random answers gone with them: every question is drawn at random; « .v3 »
+ *  since the photo and the name are shown by default, the same day). */
 function load(T) {
   let s = {};
   try { s = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { /* none kept */ }
   const count = Math.max(1, Math.min(T.MAX, Number(s.count) || T.DEFAULTS.count));
   const show = Array.isArray(s.show) ? T.SHOW.filter((x) => s.show.includes(x)) : [];
-  return { count, limit: T.LIMITS.includes(Number(s.limit)) ? Number(s.limit) : T.DEFAULTS.limit, show: show.length ? show : ["photo"] };
+  return { count, limit: T.LIMITS.includes(Number(s.limit)) ? Number(s.limit) : T.DEFAULTS.limit, show: show.length ? show : T.DEFAULTS.show };
 }
 function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) { /* not kept then */ } }
 

@@ -83,8 +83,8 @@ export const MAX = BANK.length;
  *  photo of the feature, its name, its description symbols. A feature without a photo shows its name instead. */
 export const SHOW = ["photo", "name", "sym"];
 export const LIMITS = [5, 10, 15, 20, 30, 45, 60];
-/** The defaults (owner, 2026-11-10): 20 questions, 10 s each. */
-export const DEFAULTS = { count: 20, limit: 10 };
+/** The defaults (owner, 2026-11-10): 20 questions, 10 s each, the photo and the name shown (not the description symbols). */
+export const DEFAULTS = { count: 20, limit: 10, show: ["photo", "name"] };
 /** Each feature's photos (games/learnphotos.js: an entry names its feature in `k`, else by its key), and the features that
  *  have one. */
 const PHOTOS_OF = {};
@@ -121,10 +121,10 @@ export const creditsHtml = () => html`<details class="lt-credits"><summary>${t("
  * other features (owner, 2026-11-10: that mode alone for now), `limit` seconds each, showing `show` (SHOW). `onState`: the
  * engine's (the page hides its settings); a finished run goes to the palmarès when signed in (`record`).
  */
-export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show = ["photo"], key = "learntest", onState, onStop } = {}) {
+export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show = DEFAULTS.show, key = "learntest", onState, onStop } = {}) {
   count = Math.max(1, Math.min(MAX, count | 0));
   show = SHOW.filter((x) => show.includes(x));
-  if (!show.length) show = ["photo"];
+  if (!show.length) show = DEFAULTS.show;
   let order = [];
   return {
     key, count, limit, scoring: "count", pickOnly: true, scrollOnPlay: true, onState,
