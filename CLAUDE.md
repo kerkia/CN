@@ -865,7 +865,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   2026-11-10): a lean page (no title, its line the menu entry's tooltip), the lede hidden too during a run, « Arrêter le test » on
   the puzzle's line (`topAction`), the game scrolled to the top (`scrollOnPlay`), no question text, no letters (the circles alone
   answer, `pickOnly`), the names in the result's line (« Votre réponse : … ») and the circles' tooltips, the credits only in the
-  list under the game (« Apprendre » and « Jeux »), circles of 92 px, the photo's height from the window's (`100vh − 385px`). The 28 features and each one's three wrong answers (« Facile ») come from a club's
+  list under the game (« Apprendre » and « Jeux »), circles of 92 px, the photo's height from the window's (`100vh − 370px`), the time's bar a thin line under « Énigme n / N »
+  (`.g-n-box`), the result centred under the circles; on a phone the four circles still on one line (up to 76 px) and the result one
+  short paragraph — checked at 1366 × 650, 375 × 812 and 375 × 667. The 28 features and each one's three wrong answers (« Facile ») come from a club's
   Wayground quiz the owner gave (« définitions carte course d'orientation »; its photos and map extracts not used, its wrong options
   mapped to the other questions' features by image matching, the nine others read by eye); « Aléatoire » draws three of the 28,
   never one with the same symbols. The user sets the number of questions, the time each (`runGame`'s new `limit`: a countdown, wrong

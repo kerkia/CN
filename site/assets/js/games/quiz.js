@@ -151,9 +151,11 @@ export function runGame(root, spec) {
       if (!p) { resolve({ ok: false, choice: "—", ms: 0, points: 0, answer: "?" }); return; }
       const soFar = results.length ? S.total(results).label : "";
       root.innerHTML = html`<div class="g-top">
-        <span class="g-n">${t("g.puzzle")} <b>${i + 1}</b> / ${spec.count}</span>
+        ${spec.limit
+    // a limited time: its bar a thin line under « Énigme n / N », on the same line as the time (owner, 2026-11-10)
+    ? html`<span class="g-n-box"><span class="g-n">${t("g.puzzle")} <b>${i + 1}</b> / ${spec.count}</span><span class="g-bar g-limit" aria-hidden="true"><i style="width:100%"></i></span></span>`
+    : html`<span class="g-n">${t("g.puzzle")} <b>${i + 1}</b> / ${spec.count}</span>`}
         <span class="g-time num" id="g-time">${spec.limit ? fmtS(spec.limit * 1000) : "0,0 s"}</span>
-        ${spec.limit ? html`<span class="g-bar g-limit" aria-hidden="true"><i style="width:100%"></i></span>` : ""}
         <span class="g-score muted">${soFar}</span>
         ${spec.topAction ? html`<button type="button" class="btn btn-sm g-top-act">${spec.topAction.label}</button>` : ""}</div>
         ${p.text ? html`<p class="g-question" id="g-question">${p.text}</p>` : ""}

@@ -2517,7 +2517,8 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .g-pad .btn[aria-pressed="true"] { background: var(--accent-wash); border-color: var(--focus); }
 .g-target { font-weight: 600; color: var(--ink-2); min-height: 20px; }
 /* a time limit per puzzle (« Apprendre › Test »): the time left and its bar */
-.g-limit { width: min(180px, 40vw); align-self: center; }
+.g-n-box { display: inline-flex; flex-direction: column; gap: 4px; align-self: center; }
+.g-limit { width: 100%; min-width: 96px; height: 5px; }
 .g-limit::after { display: none; }
 .g-limit i { transition: width .1s linear; }
 .g-time.g-hurry { color: var(--bad); }
@@ -2544,11 +2545,20 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .lt-cell svg { display: block; }
 /* the four circles small and in one row (owner, 2026-11-10: « way too large »), two a row on a phone */
 .lt-grid { max-width: 480px; grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: end; }
-@media (max-width: 560px) { .lt-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 240px; } }
+/* a phone: the four circles still on one line, a little smaller */
+@media (max-width: 560px) {
+  .lt-grid { gap: 6px; max-width: 100%; }
+  .lt-pic svg { max-width: 76px; }
+  /* the result one short paragraph, its parts in a row (a flex row put each on a line of its own) */
+  .lt-game .g-result.g-result { display: block; width: auto; margin-left: -4px; margin-right: -4px; text-align: center; font-size: 14px; line-height: 1.4; }
+  .lt-game .g-result > * { margin: 0 4px; }
+  .lt-game .g-result .btn { vertical-align: middle; }
+}
 .lt-pic { width: 100%; display: flex; justify-content: center; }
 .lt-pic svg { display: block; width: 100%; max-width: 92px; height: auto; border: 1px solid var(--border-strong); border-radius: 8px; }   /* half the area of 130 px (owner, 2026-11-10) */
 .lt-ask { flex-wrap: wrap; align-items: flex-end; gap: 12px; }
-.lt-game .g-top { margin-bottom: 8px; }
+.lt-game .g-top { margin-bottom: 6px; align-items: center; gap: 6px 14px; }
+.lt-game .g-time { font-size: 17px; min-width: 0; }
 .lt-game .g-stage { gap: 8px; }
 /* the result centred under the circles (owner, 2026-11-10), its box as wide as its words */
 .lt-game .g-result { margin: 6px auto 0; padding: 6px 12px; width: fit-content; max-width: 100%; justify-content: center; }
@@ -2556,7 +2566,7 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .lt-grid .g-caption:empty { display: none; }
 .lt-photo { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 /* the photo as tall as a laptop's window leaves: the bar, the puzzle's line, the circles and the result fit under it */
-.lt-photo img { display: block; width: auto; height: auto; max-width: min(100%, 560px); max-height: clamp(150px, calc(100vh - 385px), 420px); border-radius: 8px; border: 1px solid var(--border-strong); }
+.lt-photo img { display: block; width: auto; height: auto; max-width: min(100%, 560px); max-height: clamp(150px, calc(100vh - 370px), 420px); border-radius: 8px; border: 1px solid var(--border-strong); }
 .lt-credit a { color: inherit; }
 .lt-show { border: 0; margin: 0; padding: 0; min-width: 0; }
 .lt-show legend { padding: 0; margin-bottom: 4px; font-size: 12px; color: var(--ink-3); font-weight: 550; }
