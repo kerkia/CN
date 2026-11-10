@@ -20,6 +20,8 @@
 // orienteering coach, his photos are best). A feature may have several photos (`k` in learnphotos.js), drawn at random. Replace one by dropping site/assets/learn/<key>.webp and
 // changing its credit in learnphotos.js. The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the
 // impassable cliff, and its « zone rocheuse » the boulder field.
+// Its « fossé (sec) » is ISOM 108, brown dots (« petite ravine, fossé sec ou tranchée »), so described by 1.8 « Petite ravine »,
+// not by 3.5 « Fossé, rigole », a water feature (306, blue) — owner, 2026-11-10.
 
 import { html, fmt } from "../util.js";
 import { t } from "../i18n.js";
@@ -60,7 +62,7 @@ export const BANK = [
   { k: "vegBoundary", sym: ["4.7"], easy: ["fence", "bigTree", "impFence"] },
   { k: "cairn", sym: ["5.17"], easy: ["bigTree", "stump-2", "cliff"] },
   { k: "thicket", sym: ["4.5"], easy: ["ditch", "vegBoundary", "roughOpen"] },
-  { k: "ditch", sym: ["3.5"], easy: ["spur", "fence", "pathBend"] },
+  { k: "ditch", sym: ["1.8"], easy: ["spur", "fence", "pathBend"] },
   { k: "pathJunction", sym: ["5.2", "10.2"], easy: ["pathCross", "pathBend", "fence"] },
   { k: "hill", sym: ["1.9"], easy: ["smallDep", "knoll", "depression"] },
   { k: "earthBank", sym: ["1.4"], easy: ["spur", "cairn", "rockFace"] },
