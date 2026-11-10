@@ -159,7 +159,7 @@ export const body = (SITE, { world = false } = {}) => `
         supprimé. Le calcul de la dénivelée envoie au service d'altitude de l'IGN (Géoplateforme, France) les seules coordonnées des
         postes et des coudes des circuits, sans nom ni code.</p>
       <h2 style="font-size:16px">Palmarès des jeux</h2>
-      <p>Quand vous êtes connecté, chaque partie terminée d'un jeu (« Jeux », l'entrainement d'« Apprendre ») envoie son résultat : il est
+      <p>Quand vous êtes connecté, chaque partie terminée d'un jeu (« Jeux ») envoie son résultat : il est
         gardé sous le nom de votre compte si c'est l'un de vos 20 meilleurs pour ce jeu, et montré aux autres comptes s'il est parmi les
         20 meilleurs de tous. Le résultat, ses réglages et la date seulement ; rien n'est gardé des parties d'un visiteur sans compte.
         Ces résultats sont supprimés avec votre compte.</p>

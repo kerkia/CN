@@ -52,7 +52,7 @@ const SCORING = {
  * its settings meanwhile); pickOnly: the answers are the pictures alone, no buttons under them (their `labels` name them in the
  * result and the summary); topAction {label, onClick}: a button at the end of the puzzle's top line; scrollOnPlay: the game
  * brought to the window's top when a run starts (owner, 2026-11-10: a question whole on a laptop's screen); onState("done", results,
- * total) gives the run; palmKey (else `key`), palmTitle (the game's name over its palmarès), palmScore(results, total) →
+ * total) gives the run; palmKey (else `key`; `palmares: false`: none), palmTitle (the game's name over its palmarès), palmScore(results, total) →
  * {value, label, higher, extra} (else the scoring rule's total): what the palmarès keeps of a finished run.
  * A puzzle's render(stage, api) draws it; an interactive puzzle calls api.done({ok, choice}) itself and has no options.
  */
@@ -60,8 +60,8 @@ export function runGame(root, spec) {
   let seed = spec.seed ?? newSeed();
   const S = SCORING[spec.scoring] || SCORING.count;
   // « Palmarès » beside « Commencer » and « Rejouer », for a signed-in account
-  const palmKey = spec.palmKey || spec.key;
-  const extraBtn = () => (palm.signedIn() ? html`<button class="btn" type="button" id="g-extra">${t("g.palm")}</button>` : "");
+  const palmKey = spec.palmares === false ? null : spec.palmKey || spec.key;
+  const extraBtn = () => (palmKey && palm.signedIn() ? html`<button class="btn" type="button" id="g-extra">${t("g.palm")}</button>` : "");
   const bindExtra = () => $("#g-extra", root)?.addEventListener("click", () => palm.openPalmares(palmKey, spec.palmTitle));
 
   // The puzzles are made before the run (owner, 2026-10-31: some games took seconds, the page frozen, and on Edge without
@@ -259,7 +259,7 @@ export function runGame(root, spec) {
   function summary(R) {
     const tot = S.total(R);
     spec.onState?.("done", R, tot);
-    palm.record(palmKey, spec.palmScore ? spec.palmScore(R, tot) : { value: tot.value, label: tot.label, higher: tot.higher });
+    if (palmKey) palm.record(palmKey, spec.palmScore ? spec.palmScore(R, tot) : { value: tot.value, label: tot.label, higher: tot.higher });
     root.innerHTML = html`<div class="g-summary">
       <h3>${t("g.done")} <span class="g-total">${tot.label}</span></h3>
 

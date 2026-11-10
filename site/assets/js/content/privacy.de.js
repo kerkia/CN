@@ -161,7 +161,7 @@ export const body = (SITE, { world = false } = {}) => `
         gelöscht. Die Berechnung der Steigung sendet an den Höhendienst des IGN (Géoplateforme, Frankreich) nur die Koordinaten der
         Posten und der Knickpunkte der Bahnen, ohne Namen oder Code.</p>
       <h2 style="font-size:16px">Bestenliste der Spiele</h2>
-      <p>Wenn du angemeldet bist, sendet jedes beendete Spiel (« Spiele », das Training von « Lernen ») sein Ergebnis: Es wird unter dem
+      <p>Wenn du angemeldet bist, sendet jedes beendete Spiel (« Spiele ») sein Ergebnis: Es wird unter dem
         Namen deines Kontos gespeichert, wenn es eines deiner 20 besten für dieses Spiel ist, und den anderen Konten gezeigt, wenn es
         zu den 20 besten aller gehört. Nur das Ergebnis, seine Einstellungen und das Datum; von den Spielen eines Besuchers ohne Konto
         wird nichts gespeichert. Diese Ergebnisse werden mit deinem Konto gelöscht.</p>

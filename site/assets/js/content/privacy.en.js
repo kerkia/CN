@@ -144,7 +144,7 @@ export const body = (SITE, { world = false } = {}) => `
         controller) who has an account, otherwise it is deleted. The climb calculation sends to IGN's elevation service
         (Géoplateforme, France) only the coordinates of the controls and of the courses' bends, with no name or code.</p>
       <h2 style="font-size:16px">Games leaderboard</h2>
-      <p>When you are signed in, each finished game (« Games », the training of « Learning ») sends its result: it is kept under your
+      <p>When you are signed in, each finished game (« Games ») sends its result: it is kept under your
         account's name if it is one of your 20 best for that game, and shown to the other accounts if it is among everyone's 20 best.
         The result, its settings and the date only; nothing is kept of a visitor's games without an account. These results are
         deleted with your account.</p>

@@ -21,8 +21,8 @@ const ALL = [
   ["photo", "photomemory.js", "spec"],
   ["trailo", "trailo.js", "spec"],
   ["maze", "maze.js", "spec", [["small", "g.lvl.small"], ["medium", "g.lvl.medium"], ["large", "g.lvl.large"]]],
-  // « Quel poste ? » (2026-11-10): « Apprendre »'s test with its defaults
-  ["learntest", "learntest.js", "spec"],
+  // « Quel poste ? » (2026-11-10): « Apprendre »'s training, no settings; Débutant (the quiz's groups) and Avancé (drawn at random)
+  ["learntest", "learntest.js", "spec", [["beginner", "g.lvl.beginner"], ["advanced", "g.lvl.advanced"]]],
 ];
 
 export async function render(main, { query }) {

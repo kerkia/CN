@@ -81,7 +81,7 @@ async function testView(box) {
   const restart = () => {
     save(s);
     game?.stop();
-    game = runGame($("#lt-game", box), T.testSpec({ count: s.count, limit: s.limit, show: s.show,
+    game = runGame($("#lt-game", box), T.testSpec({ count: s.count, limit: s.limit, show: s.show, mode: "groups",
       onState, onStop: () => restart() }));
   };
   restart();

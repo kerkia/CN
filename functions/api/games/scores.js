@@ -10,7 +10,7 @@
 import { allow, json, nowIso, readBody, withUser } from "../../_lib/api.js";
 
 const KEEP = 20;
-const GAME = /^(contour|coursechoice|gaffle|forestroute|learntest|matching|photomemory|spot|trailo|updown|(mapmemory|maze|rapid)-[a-z]{1,12})$/;
+const GAME = /^(contour|coursechoice|gaffle|forestroute|learntest|matching|photomemory|spot|trailo|updown|(learntest|mapmemory|maze|rapid)-[a-z]{1,12})$/;
 const TOP = (g) => `games/${g}/top.json`, MINE = (g, uid) => `games/${g}/u/${uid}.json`;
 
 async function read(env, key) {

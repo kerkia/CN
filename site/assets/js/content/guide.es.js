@@ -254,7 +254,7 @@ export function build(X) {
             según el verde. Para repasar, puedes ocultar los nombres o los dibujos.</p>
           <p>Estas dos páginas son dos pestañas de ${P("#/apprendre", "Aprender")}, con una tercera, «Entrenamiento»: una foto del terreno y cuatro círculos de
             control en el mapa, ¿cuál está sobre el elemento? Veinte preguntas de diez segundos por defecto; su número, su tiempo y lo que muestra la
-            pregunta (foto, nombre, descripción) se ajustan. Si estás conectado, tus partidas entran en la «Clasificación».</p>`)}`,
+            pregunta (foto, nombre, descripción) se ajustan; los cuatro extractos de cada pregunta se agrupan como en el cuestionario.</p>`)}`,
       jeux: () => html`
         ${slide("Coach", "Trece juegos de lectura de mapa", html`
           <p>Los ${P("#/jeux", "Juegos")} se juegan sobre mapas que el sitio dibuja en cada partida —un bosque con su relieve y su vegetación, una
@@ -264,7 +264,7 @@ export function build(X) {
               rápida, Elección de ruta entre tres o cuatro trazados.`,
             html`<b>Lectura del relieve y del terreno</b>: Curvas de nivel, ¿Subida o bajada?, Mapas idénticos, Encuentra el error, Trail'O.`,
             html`<b>Memoria</b>: Memoria de mapa, Memoria fotográfica y el Laberinto, visto en primera persona.`,
-            html`<b>Descripciones</b>: ¿Qué control?, el entrenamiento de «Aprender» (una foto del terreno, el círculo de control correcto en el mapa).`,
+            html`<b>Descripciones</b>: ¿Qué control?, el entrenamiento de «Aprender» en dos niveles —Principiante, los grupos del cuestionario; Avanzado, extractos sorteados— (una foto del terreno, el círculo de control correcto en el mapa).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "La VAM", html`

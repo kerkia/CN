@@ -257,7 +257,7 @@ export function build(X) {
             blendest du die Namen oder die Zeichnungen aus.</p>
           <p>Diese beiden Seiten sind zwei Reiter von ${P("#/apprendre", "Lernen")}, mit einem dritten, „Training“: ein Foto des Geländes und vier
             Postenkreise auf der Karte – welcher liegt auf dem Objekt? Zwanzig Fragen zu zehn Sekunden als Standard; ihre Zahl, ihre Zeit und was die
-            Frage zeigt (Foto, Name, Beschreibung) lassen sich einstellen. Angemeldet kommen deine Spiele in die „Bestenliste“.</p>`)}`,
+            Frage zeigt (Foto, Name, Beschreibung) lassen sich einstellen; die vier Ausschnitte jeder Frage sind wie im Quiz gruppiert.</p>`)}`,
       jeux: () => html`
         ${slide("Coach", "Dreizehn Spiele zum Kartenlesen", html`
           <p>Die ${P("#/jeux", "Spiele")} werden auf Karten gespielt, die die Website für jede Runde neu zeichnet – ein Wald mit Relief und Vegetation, eine
@@ -267,7 +267,7 @@ export function build(X) {
               Routenwahl zwischen drei oder vier Routen.`,
             html`<b>Relief und Gelände lesen</b>: Höhenlinien, Bergauf oder bergab?, Gleiche Karten, Finde den Fehler, Trail'O.`,
             html`<b>Gedächtnis</b>: Kartengedächtnis, Fotogedächtnis und das Labyrinth, aus der Ich-Perspektive.`,
-            html`<b>Beschreibungen</b>: Welcher Posten?, das Training von „Lernen“ (ein Foto des Geländes, der richtige Postenkreis auf der Karte).`,
+            html`<b>Beschreibungen</b>: Welcher Posten?, das Training von „Lernen“ in zwei Stufen – Einsteiger, die Gruppen des Quiz, Fortgeschritten, zufällig gezogene Ausschnitte – (ein Foto des Geländes, der richtige Postenkreis auf der Karte).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "Die MAG", html`

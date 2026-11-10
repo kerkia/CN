@@ -156,7 +156,7 @@ export const body = (SITE, { world = false } = {}) => `
         elimina. El cálculo del desnivel envía al servicio de altitud del IGN (Géoplateforme, Francia) solo las coordenadas de los
         controles y de los vértices de los recorridos, sin nombre ni código.</p>
       <h2 style="font-size:16px">Clasificación de los juegos</h2>
-      <p>Cuando estás conectado, cada partida terminada de un juego (« Juegos », el entrenamiento de « Aprender ») envía su resultado: se
+      <p>Cuando estás conectado, cada partida terminada de un juego (« Juegos ») envía su resultado: se
         guarda con el nombre de tu cuenta si es uno de tus 20 mejores en ese juego, y se muestra a las demás cuentas si está entre los
         20 mejores de todos. Solo el resultado, sus ajustes y la fecha; no se guarda nada de las partidas de un visitante sin cuenta.
         Estos resultados se borran con tu cuenta.</p>

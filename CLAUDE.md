@@ -875,11 +875,12 @@ Every multiple-choice game was played through to its score page at phone size, w
   short paragraph — checked at 1366 × 650, 375 × 812 and 375 × 667. The 28 features and each one's three wrong answers (« Facile ») come from a club's
   Wayground quiz the owner gave (« définitions carte course d'orientation »; its photos not used, its map extracts used since the same evening, its wrong options
   mapped to the other questions' features by image matching; its three pictures that answer no question — nine options — kept as they are, `learn/map/<key>-2.png`, `EXTRA`, named by Ozimut's reading: « Rocher » (one boulder in a group, under « Gros rocher »), « Butte » (a small ring of form line, no tick), « Souche » (a green cross; owner, 2026-11-10)); « Aléatoire » draws three of the 28,
-  never one with the same symbols; **every question draws one or the other at random** (owner, 2026-11-10: that mode alone for
-  now, the per-question choice gone). The question shows the photo and the name by default, not the description symbols (owner, 2026-11-10; `DEFAULTS.show`, settings kept in `ocn.learn.test.v3`). The user sets the number of questions (20 by default) and the time each (10 s by default, 5 to
-  60; `runGame`'s `limit`: a countdown, wrong at zero), `localStorage ocn.learn.test.v2`; « Commencer », its rules and « Palmarès »
-  above the settings. Also « Quel poste ? » in Jeux (the test's defaults, one palmarès with the test, `palmKey`
-  « learntest »), shown as « Apprendre » is. **The games' palmarès** (owner, 2026-11-10: every game, not only the test;
+  never one with the same symbols. **The training always gives the quiz's groups of four** (owner, 2026-11-10, evening: grouped
+  as in its PDF; `testSpec`'s `mode` "groups"; the random mixing of before gone) and keeps no palmarès. The question shows the photo and the name by default, not the description symbols (owner, 2026-11-10; `DEFAULTS.show`, settings kept in `ocn.learn.test.v3`). The user sets the number of questions (20 by default) and the time each (10 s by default, 5 to
+  60; `runGame`'s `limit`: a countdown, wrong at zero), `localStorage ocn.learn.test.v3`; « Commencer » and its rules above the settings. Also « Quel poste ? » in Jeux: no settings
+  (20 questions of 10 s, the photo when there is one and the name), two levels (owner, 2026-11-10) — « Débutant », the quiz's
+  groups, « Avancé », the right extract and three drawn at random, new each time — each its palmarès (`learntest-beginner`,
+  `learntest-advanced`). **The games' palmarès** (owner, 2026-11-10: every game, not only the test;
   `games/palmares.js`, `functions/api/games/scores.js`): a signed-in account's finished runs are kept under its name, for each game and
   level (`spec.key`, the server's `GAME` list) its 20 best and everyone's 20 best, in R2 `games/<key>/u/<account>.json` and
   `games/<key>/top.json` (the account's number kept there, never answered); nothing kept for a visitor, and the best score the

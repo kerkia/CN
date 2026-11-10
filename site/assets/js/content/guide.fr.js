@@ -255,7 +255,7 @@ export function build(X) {
             selon le vert. Pour réviser, on cache les noms ou les dessins.</p>
           <p>Ces deux pages sont deux onglets de ${P("#/apprendre", "Apprendre")}, avec un troisième, « Entrainement » : une photo du terrain et quatre cercles de
             poste sur la carte, lequel est sur l'élément ? Vingt questions de dix secondes par défaut ; leur nombre, leur temps et ce que montre la
-            question (photo, nom, définition) se règlent. Connecté, vos parties entrent au « Palmarès ».</p>`)}`,
+            question (photo, nom, définition) se règlent ; les quatre extraits de chaque question sont groupés comme dans le questionnaire.</p>`)}`,
       jeux: () => html`
         ${slide("Coach", "Treize jeux de lecture de carte", html`
           <p>Les ${P("#/jeux", "Jeux")} se jouent sur des cartes dessinées par le site à chaque partie — une forêt avec son relief et sa végétation, une
@@ -265,7 +265,7 @@ export function build(X) {
               plus rapide, Choix d'itinéraire entre trois ou quatre tracés.`,
             html`<b>Lecture du relief et du terrain</b> : Courbes de niveau, Montée ou descente ?, Cartes identiques, Cherchez l'erreur, Trail'O.`,
             html`<b>Mémoire</b> : Mémoire de carte, Mémoire photo, et le Labyrinthe, vu à la première personne.`,
-            html`<b>Définitions</b> : Quel poste ?, l'entrainement d'« Apprendre » (une photo du terrain, le bon cercle de poste sur la carte).`,
+            html`<b>Définitions</b> : Quel poste ?, l'entrainement d'« Apprendre » en deux niveaux — Débutant, les groupes du questionnaire, Avancé, des extraits tirés au hasard — (une photo du terrain, le bon cercle de poste sur la carte).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "La VMA", html`

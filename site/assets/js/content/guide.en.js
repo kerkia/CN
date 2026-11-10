@@ -248,7 +248,7 @@ export function build(X) {
             names or the drawings.</p>
           <p>These two pages are two tabs of ${P("#/apprendre", "Learning")}, with a third, “Training”: a photo of the terrain and four control circles on
             the map, which one is on the feature? Twenty questions of ten seconds by default; their number, their time and what the question shows
-            (photo, name, description) can be set. When you are signed in, your games go into the “Leaderboard”.</p>`)}`,
+            (photo, name, description) can be set; each question's four extracts are grouped as in the quiz.</p>`)}`,
       jeux: () => html`
         ${slide("Coach", "Thirteen map-reading games", html`
           <p>The ${P("#/jeux", "Games")} are played on maps the site draws for each game — a forest with its relief and vegetation, a town, a maze — and
@@ -258,7 +258,7 @@ export function build(X) {
               between three or four routes.`,
             html`<b>Reading relief and terrain</b>: Contours, Uphill or downhill?, Matching maps, Spot the difference, Trail'O.`,
             html`<b>Memory</b>: Map memory, Photo memory, and the Maze, seen in the first person.`,
-            html`<b>Descriptions</b>: Which control?, the training of “Learning” (a photo of the terrain, the right control circle on the map).`,
+            html`<b>Descriptions</b>: Which control?, the training of “Learning” at two levels — Beginner, the quiz's groups, Advanced, extracts drawn at random — (a photo of the terrain, the right control circle on the map).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "Maximal aerobic speed", html`

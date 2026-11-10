@@ -116,12 +116,13 @@ export const creditsHtml = () => html`<details class="lt-credits"><summary>${t("
   <p class="muted">${t("lt.credit.maps")}</p></details>`;
 
 /**
- * The test's spec for the games' engine (games/quiz.js runGame): `count` features at random (those with a photo first when
- * photos are shown), each answered among four whose wrong ones are, question by question at random, the quiz's own or three
- * other features (owner, 2026-11-10: that mode alone for now), `limit` seconds each, showing `show` (SHOW). `onState`: the
- * engine's (the page hides its settings); a finished run goes to the palmarès when signed in (`record`).
+ * The spec for the games' engine (games/quiz.js runGame): `count` features at random (those with a photo first when photos
+ * are shown), `limit` seconds each, showing `show` (SHOW), each answered among four map extracts — `mode` "groups": the quiz's
+ * own four, grouped as in its PDF (owner, 2026-11-10: « Apprendre »'s training and the game's beginner level); "random": the
+ * right one and three others drawn at random, different each time (the game's advanced level). `palmKey`: the palmarès it
+ * goes to when signed in (none for the training, owner). `onState`: the engine's (the page hides its settings).
  */
-export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show = DEFAULTS.show, key = "learntest", onState, onStop } = {}) {
+export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show = DEFAULTS.show, mode = "groups", key = "learntest", palmKey = null, onState, onStop } = {}) {
   count = Math.max(1, Math.min(MAX, count | 0));
   show = SHOW.filter((x) => show.includes(x));
   if (!show.length) show = DEFAULTS.show;
@@ -129,23 +130,23 @@ export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show 
   return {
     key, count, limit, scoring: "count", pickOnly: true, scrollOnPlay: true, onState,
     topAction: onStop ? { label: t("lt.stop"), onClick: onStop } : null,
-    // the palmarès: one for every setting, best = the larger share of right answers, then the shorter mean time a question
-    palmKey: "learntest", palmTitle: t("lt.tab"),
+    // the palmarès: one a level of the game, best = the larger share of right answers, then the shorter mean time a question
+    palmares: !!palmKey, palmKey, palmTitle: t("lt.tab"),
     palmScore: (R) => {
       const right = R.filter((x) => x.ok).length, mean = R.reduce((a, x) => a + (x.ms || 0), 0) / Math.max(1, R.length);
       return { value: (right / Math.max(1, R.length)) * 1e6 - mean, higher: true,
         label: `${right} / ${R.length} · ${fmt(mean / 1000, 1)} s`, extra: `${t("lt.seconds", { n: limit })} · ${show.map((s) => t(`lt.sh.${s}`)).join(" + ")}` };
     },
-    intro: html`<p>${t("lt.rules", { n: count, s: limit })}</p><p class="muted">${t("lt.rules.how")}</p>`,
+    intro: html`<p>${t("lt.rules", { n: count, s: limit })}</p><p class="muted">${t(mode === "random" ? "lt.rules.how.random" : "lt.rules.how")}</p>`,
     make(i, r) {
       if (i === 0) {
         const all = shuffle(r, BANK.slice());
         order = (show.includes("photo") ? [...all.filter((f) => PHOTOS_OF[f.k]), ...all.filter((f) => !PHOTOS_OF[f.k])] : all).slice(0, count);
         order = shuffle(r, order);
       }
-      const f = order[i], mode = r() < 0.5 ? "random" : "easy";
+      const f = order[i];
       const right = pic(f.k);
-      const wrong = mode === "easy" ? f.easy.map(pic)
+      const wrong = mode === "groups" ? f.easy.map(pic)
         : shuffle(r, BANK.filter((g) => g !== f && sig(g) !== sig(f))).slice(0, 3).map((g) => pic(g.k));
       const opts = shuffle(r, [right, ...wrong]);
       const answer = LETTERS[opts.indexOf(right)];
@@ -184,7 +185,12 @@ export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show 
   };
 }
 
-/** « Jeux » (games.js): the test with its defaults, shown by the photos. */
-export function spec() {
-  return testSpec({ key: "learntest-game" });
+/** « Jeux » (games.js), « Quel poste ? »: no settings — 20 questions of 10 s, the photo when the feature has one and its
+ *  name —, two levels (owner, 2026-11-10): « Débutant », the quiz's groups of four; « Avancé », three extracts drawn at random;
+ *  each its own palmarès. */
+export const LEVELS = [["beginner", "g.lvl.beginner"], ["advanced", "g.lvl.advanced"]];
+export function spec(level = "beginner") {
+  level = LEVELS.some(([k]) => k === level) ? level : "beginner";
+  return testSpec({ key: `learntest-${level}`, palmKey: `learntest-${level}`, mode: level === "advanced" ? "random" : "groups",
+    show: ["photo", "name"] });
 }
