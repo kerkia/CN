@@ -6,7 +6,6 @@ import { html, $, $$ } from "../util.js";
 import { t } from "../i18n.js";
 import { pageTabs, tabFrom, bindPageTabs } from "../ui.js";
 import { runGame } from "../games/quiz.js";
-import * as auth from "../auth.js";
 
 // key, module, export name, levels [[key, label key]] (a level restarts the game with another spec)
 const ALL = [
@@ -22,8 +21,8 @@ const ALL = [
   ["photo", "photomemory.js", "spec"],
   ["trailo", "trailo.js", "spec"],
   ["maze", "maze.js", "spec", [["small", "g.lvl.small"], ["medium", "g.lvl.medium"], ["large", "g.lvl.large"]]],
-  // « Quel poste ? » (2026-11-10): « Apprendre »'s test with its defaults; shown as « Apprendre » is (auth.owner, for now)
-  ["learntest", "learntest.js", "spec", null, () => auth.owner()],
+  // « Quel poste ? » (2026-11-10): « Apprendre »'s test with its defaults
+  ["learntest", "learntest.js", "spec"],
 ];
 
 export async function render(main, { query }) {

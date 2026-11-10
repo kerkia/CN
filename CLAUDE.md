@@ -390,7 +390,8 @@ only a trace is taken; a trace just dropped plays at once (`orgaGo`). Every anal
 `mapanalysis.backLine`; hidden during the playback and in full window); the runners' lists of Multi and `coachtabs.js` are gone
 (`#/analyse-club` / `#/analyse-competition` without `id` lead to the list). « Définitions de postes »
 (`#/definitions`, `pages/descriptions.js`; it and « Symboles de carte » shown only to the accounts whose last name
-is Le Helloco for now — owner, 2026-10-31: `app.OWNER_ROUTES`, `auth.owner`, out of the menus, the router sends others to the modules page; the texts naming them —
+is Le Helloco from 2026-10-31 to 2026-11-10, **everyone's since, with « Apprendre »** (owner: its three tabs for all; `OWNER_ROUTES`
+empty, the « .lim » texts and `auth.ownerKey` gone) — owner, 2026-10-31: `app.OWNER_ROUTES`, `auth.owner`, out of the menus, the router sends others to the modules page; the texts naming them —
 the home page's Coach section, its picture and Tarifs line, the modules page, the tiles, Coach's documentation — have a « .lim »
 version without them, `auth.ownerKey`, `tour.js` `lim` / `OWNER_CAPS`, the guide's `owner`): Purple Pen's symbols (`tracer/symbols.js`) column by column, column D by family,
 a search, a practice mode hiding the names; Purple Pen credited in the legal notices. **Everything from the specifications and
@@ -850,8 +851,9 @@ buttons a pad, the view itself tapped (left/right third turns, middle steps, a s
 Every multiple-choice game was played through to its score page at phone size, without errors. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
-  open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), still the owner's
-  only (`OWNER_ROUTES` "learn"). **Test** (`games/learntest.js`, on the games' engine): a feature shown — by any of a photo of the
+  open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only
+  for a day, **everyone's since 2026-11-10** (owner; visitors without an account too, `GUEST_ROUTES`: the test plays, without a
+  palmarès). **Test** (`games/learntest.js`, on the games' engine): a feature shown — by any of a photo of the
   terrain (the default, owner: « the whole point »), its name, its description symbols (`cdsymbol.js`) — and four small control
   circles drawn by `isom.isomInCircle` (ISOM 2017-2; new path scenes « 5.2bend », « 5.2cross », « 5.2junction »): which is on it?
   **The photos** are not the quiz's (two carry Dreamstime / iStock watermarks, one a photographer's signature, the rest no source):

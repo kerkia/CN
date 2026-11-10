@@ -245,16 +245,20 @@ export function build(X) {
         ${slide("Coach", "Map symbols", html`
           <p>The ${P("#/symboles", "Map symbols")} are the full legend of a forest map (ISOM 2017-2), colour by colour: each symbol with its number, name and
             meaning, those that must not be crossed marked. “What the colours say” explains how runnable the forest is by its green. To revise, hide the
-            names or the drawings.</p>`)}`,
+            names or the drawings.</p>
+          <p>These two pages are two tabs of ${P("#/apprendre", "Learning")}, with a third, “Test”: a photo of the terrain and four control circles on
+            the map, which one is on the feature? Twenty questions of ten seconds by default; their number, their time and what the question shows
+            (photo, name, description) can be set. When you are signed in, your games go into the “Leaderboard”.</p>`)}`,
       jeux: () => html`
-        ${slide("Coach", "Twelve map-reading games", html`
+        ${slide("Coach", "Thirteen map-reading games", html`
           <p>The ${P("#/jeux", "Games")} are played on maps the site draws for each game — a forest with its relief and vegetation, a town, a maze — and
-            “photos” of the terrain drawn the same way. Nothing is sent; the best scores stay in the browser.</p>
+            “photos” of the terrain drawn the same way. Nothing is sent; when you are signed in, your games go into each game's “Leaderboard” (your 20 best, everyone's 20 best).</p>
           ${list([
             html`<b>Route choice</b>: Rapid route (draw the shortest), Course choice (20 seconds of map, 5 to choose), Fastest fork, Route choice
               between three or four routes.`,
             html`<b>Reading relief and terrain</b>: Contours, Uphill or downhill?, Matching maps, Spot the difference, Trail'O.`,
             html`<b>Memory</b>: Map memory, Photo memory, and the Maze, seen in the first person.`,
+            html`<b>Descriptions</b>: Which control?, the test of “Learning” (a photo of the terrain, the right control circle on the map).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "Maximal aerobic speed", html`

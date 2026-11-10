@@ -12,7 +12,7 @@ export async function render(main, r) {
   const m = tilesModule(r);
   const items = moduleMenus()[m];
   main.innerHTML = html`<div class="mod-tiles-page" data-mod="${m}">
-    <div class="mod-tiles-head">${icon(m)}<p>${t(m === "coach" ? auth.ownerKey("mod.coach.tag") : `mod.${m}.tag`)}</p></div>
+    <div class="mod-tiles-head">${icon(m)}<p>${t(m === "coach" ? "mod.coach.tag" : `mod.${m}.tag`)}</p></div>
     <div class="mod-tiles" style="--cols:${items.length === 4 ? 2 : 3}">${items.map(([k, href, text]) => html`<a class="mod-tile" href="${href}">
       <b>${text}</b><span>${t(`mt.${k}`)}</span></a>`)}</div>
   </div>`;

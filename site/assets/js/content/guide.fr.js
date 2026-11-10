@@ -252,16 +252,20 @@ export function build(X) {
         ${slide("Coach", "Symboles de carte", html`
           <p>Les ${P("#/symboles", "Symboles de carte")} sont la légende complète d'une carte de forêt (ISOM 2017-2), couleur par couleur : chaque symbole avec
             son numéro, son nom et ce qu'il signifie, ceux qu'il est interdit de franchir signalés. « Ce que disent les couleurs » explique la course possible
-            selon le vert. Pour réviser, on cache les noms ou les dessins.</p>`)}`,
+            selon le vert. Pour réviser, on cache les noms ou les dessins.</p>
+          <p>Ces deux pages sont deux onglets de ${P("#/apprendre", "Apprendre")}, avec un troisième, « Test » : une photo du terrain et quatre cercles de
+            poste sur la carte, lequel est sur l'élément ? Vingt questions de dix secondes par défaut ; leur nombre, leur temps et ce que montre la
+            question (photo, nom, définition) se règlent. Connecté, vos parties entrent au « Palmarès ».</p>`)}`,
       jeux: () => html`
-        ${slide("Coach", "Douze jeux de lecture de carte", html`
+        ${slide("Coach", "Treize jeux de lecture de carte", html`
           <p>Les ${P("#/jeux", "Jeux")} se jouent sur des cartes dessinées par le site à chaque partie — une forêt avec son relief et sa végétation, une
-            ville, un labyrinthe — et des « photos » du terrain dessinées de même. Rien n'est envoyé ; les meilleurs scores restent dans le navigateur.</p>
+            ville, un labyrinthe — et des « photos » du terrain dessinées de même. Rien n'est envoyé ; connecté, vos parties entrent au « Palmarès » de chaque jeu (vos 20 meilleures, les 20 meilleures de tous).</p>
           ${list([
             html`<b>Choix d'itinéraire</b> : Tracé rapide (dessiner le plus court), Choix de parcours (20 secondes de carte, 5 pour choisir), Variante la
               plus rapide, Choix d'itinéraire entre trois ou quatre tracés.`,
             html`<b>Lecture du relief et du terrain</b> : Courbes de niveau, Montée ou descente ?, Cartes identiques, Cherchez l'erreur, Trail'O.`,
             html`<b>Mémoire</b> : Mémoire de carte, Mémoire photo, et le Labyrinthe, vu à la première personne.`,
+            html`<b>Définitions</b> : Quel poste ?, le test d'« Apprendre » (une photo du terrain, le bon cercle de poste sur la carte).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "La VMA", html`

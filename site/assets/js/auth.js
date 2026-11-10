@@ -32,7 +32,7 @@ export const owner = () => normalise(nameParts(session()?.nom || "").last) === "
 export const nutritionReads = () => !!session()?.nutrition;
 export const nutritionWrites = () => ["admin", "author"].includes(session()?.nutrition);
 /** The key of a text naming those pages, or its version without them for everyone else. */
-export const ownerKey = (k) => (owner() ? k : `${k}.lim`);
+// (ownerKey, the « .lim » texts for everyone but the owner, gone on 2026-11-10: « Apprendre » is everyone's)
 export function session() {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) || "null");

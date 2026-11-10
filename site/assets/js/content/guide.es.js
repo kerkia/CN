@@ -251,16 +251,20 @@ export function build(X) {
         ${slide("Coach", "Símbolos del mapa", html`
           <p>Los ${P("#/symboles", "Símbolos del mapa")} son la leyenda completa de un mapa de bosque (ISOM 2017-2), color por color: cada símbolo con
             su número, su nombre y lo que significa, y señalados los que está prohibido cruzar. «Lo que dicen los colores» explica cuánto se puede correr
-            según el verde. Para repasar, puedes ocultar los nombres o los dibujos.</p>`)}`,
+            según el verde. Para repasar, puedes ocultar los nombres o los dibujos.</p>
+          <p>Estas dos páginas son dos pestañas de ${P("#/apprendre", "Aprender")}, con una tercera, «Test»: una foto del terreno y cuatro círculos de
+            control en el mapa, ¿cuál está sobre el elemento? Veinte preguntas de diez segundos por defecto; su número, su tiempo y lo que muestra la
+            pregunta (foto, nombre, descripción) se ajustan. Si estás conectado, tus partidas entran en la «Clasificación».</p>`)}`,
       jeux: () => html`
-        ${slide("Coach", "Doce juegos de lectura de mapa", html`
+        ${slide("Coach", "Trece juegos de lectura de mapa", html`
           <p>Los ${P("#/jeux", "Juegos")} se juegan sobre mapas que el sitio dibuja en cada partida —un bosque con su relieve y su vegetación, una
-            ciudad, un laberinto— y «fotos» del terreno dibujadas del mismo modo. No se envía nada; las mejores puntuaciones se quedan en el navegador.</p>
+            ciudad, un laberinto— y «fotos» del terreno dibujadas del mismo modo. No se envía nada; si estás conectado, tus partidas entran en la «Clasificación» de cada juego (tus 20 mejores, las 20 mejores de todos).</p>
           ${list([
             html`<b>Elección de ruta</b>: Ruta rápida (dibujar la más corta), Elección de recorrido (20 segundos de mapa, 5 para elegir), Variante más
               rápida, Elección de ruta entre tres o cuatro trazados.`,
             html`<b>Lectura del relieve y del terreno</b>: Curvas de nivel, ¿Subida o bajada?, Mapas idénticos, Encuentra el error, Trail'O.`,
             html`<b>Memoria</b>: Memoria de mapa, Memoria fotográfica y el Laberinto, visto en primera persona.`,
+            html`<b>Descripciones</b>: ¿Qué control?, el test de «Aprender» (una foto del terreno, el círculo de control correcto en el mapa).`,
           ])}`)}`,
       vma: () => html`
         ${slide("Coach", "La VAM", html`

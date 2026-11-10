@@ -97,9 +97,9 @@ const homeOf = () => "#/modules";
 // openly — and the pages outside the modules (the home page, the documentation, the rules, « Nous écrire »).
 const GUEST_ROUTES = new Set(["overview", "account", "hub", "modtiles", "methods", "contact", "agenda", "provisional", "live", "splits",
   "analysis", "analysisPerso", "mapAnalysis", "analysisClub", "analysisRace", "myMaps", "learn", "games", "vma", "runner", "ranking", "courses", "needCountry", "phoneSend", "booking"]);
-// « Apprendre » (« Définitions de postes » and « Symboles de carte », one page since 2026-11-10, with its test): shown only to
-// the accounts named Le Helloco for now (owner, 2026-10-31)
-const OWNER_ROUTES = new Set(["learn"]);
+// The pages shown only to the accounts named Le Helloco (auth.owner): none since 2026-11-10 (owner: « Apprendre », its three
+// tabs, for everyone; « Définitions de postes » and « Symboles de carte » were the owner's from 2026-10-31)
+const OWNER_ROUTES = new Set([]);
 const ownerOnly = auth.owner;
 // « Nutrition » and its authors' « Rédaction » (owner, 2026-11-01): those given the right on the admin page, its authors and
 // the administrators; nobody else sees them in the menus, and their addresses lead the others to the modules page
