@@ -5,14 +5,15 @@
 
 import { html, raw, $, fmt, pct, pctN } from "../util.js";
 import { t } from "../i18n.js";
-import { DEFAULTS, LEGEND, A } from "./routechoice.js";
-import { layers, resampleLayers, VECTOR_ACCEPT } from "./vectorroutes.js";
+import { DEFAULTS, LEGEND, A, CROSS_PACE } from "./routechoice.js";
+import { layers, resampleLayers, LAYER_KEYS, VECTOR_ACCEPT } from "./vectorroutes.js";
 
 const PREFS = "ocn.rc.prefs";                        // the settings, kept on the device (the map's kind apart: the race's)
 const MAX_PX = 9e6;                                  // a larger map is read at a reduced size (memory, time)
 export const ROUTE_COLOURS = ["#00a651", "#f7941d", "#0072bc", "#e0218a"];
 export const LETTERS = ["A", "B", "C", "D"];
 const SPEED_KEYS = ["track", "path", "small", "open", "rough", "g1", "g2", "g3", "marsh", "paved", "grey", "shallow"];
+const VECTOR_SPEEDS = ["slow1", "slow2", "slow3"];         // an OCAD or Mapper map's stony or sandy ground: shown with one only
 
 /** The settings: the saved ones over the defaults; the map's kind from the race (`map`), unless changed this visit. */
 export function loadSettings(map = "forest") {
@@ -61,8 +62,9 @@ export function planner(image, toM, vector = null, opts = {}) {
     const T = vector.T, L = vector.layers ? resampleLayers(vector.layers, W, H)
       : layers(vector.v, { a: T.a * sc, b: T.b * sc, c: T.c * sc, d: T.d * sc, e: T.e * sc, f: T.f * sc }, W, H);
     // sent to the worker, not copied: a copy of layers kept by the page (they serve the planner made after a change)
-    const bufs = ["area", "path", "blue", "block", "hand"].map((k) => (L === vector.layers ? L[k].slice() : L[k]).buffer);
-    ready = ask("layers", { area: bufs[0], path: bufs[1], blue: bufs[2], block: bufs[3], hand: bufs[4], w: W, h: H, J }, bufs)
+    const planes = {};
+    for (const k of LAYER_KEYS) planes[k] = (L[k] ? (L === vector.layers ? L[k].slice() : L[k]) : new Uint8Array(W * H)).buffer;
+    ready = ask("layers", { ...planes, w: W, h: H, J }, Object.values(planes))
       .then((r) => ({ ...r, vector: { counts: L.counts, ms: L.ms, name: vector.name || vector.v.name } }));
   } else {
     const c = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(W, H) : Object.assign(document.createElement("canvas"), { width: W, height: H });
@@ -166,54 +168,72 @@ export function chosen(m, routes) {
 /** The routes a runner's route follows, by share: « A 62 % · B 31 % » (10 % or more). */
 export const sharesLabel = (m) => (m.shares || []).map((v, i) => [v, i]).filter(([v]) => v >= 0.1).sort((x, y) => y[0] - x[0]).map(([v, i]) => `${LETTERS[i]} ${pct(v)}`).join(" · ");
 // ---- the calibration on the runners' own legs (owner, 2026-11-01) -------------------------------------------------------------
-/** The fit's constants: legs needed, the residual (log) beyond which a leg is set aside, the prior's weight and spreads. */
-export const CAL = { minLegs: 5, trim: 0.25, prior: 0.12, sdPath: 0.2, sdClimb: 0.4 };
+/** The fit's constants: legs needed, the residual (log) beyond which a leg is set aside, the prior's weight and spreads; the
+ *  crossings needed (and the legs holding them) before their time is fitted. */
+export const CAL = { minLegs: 5, trim: 0.25, prior: 0.12, sdPath: 0.2, sdClimb: 0.4, sdCross: 0.7, minCross: 5, minCrossLegs: 3 };
 /**
  * The model calibrated on legs whose route is known (the runner's route laid on the map, trace/routechoice.js matchRoute):
- * samples [{ who, actual (s), parts { path, off, up, down } (the route's model time at 1 s/m, split as segment does) }].
- * A leg's time is taken as pace(who) × (path × α + off + up × γ + down): α scales the time on paths (a runner faster on tracks
- * than the model has α < 1), γ the climb's cost, each runner has their own pace. α and γ are searched on a grid of their
- * logarithms, each runner's log pace being the median of their legs' log residuals, the score the sum of the absolute residuals
- * plus a prior holding α and γ at 1 (with few legs they move little). α is fitted only when two legs run mostly on paths and two
- * mostly off them, γ when the climb is 4 % of the model's time over six legs or more. Then the legs over 25 % off the fit (a
- * mistake, a stop, a map misread) are set aside and the fit made again. Returns { ok (enough legs), n (legs kept), total,
- * alpha, gamma, fitPath, fitClimb, pace { who: s/m }, runners }.
+ * samples [{ who, actual (s), parts { path, off, up, down, cross, xn } (the route's model time at 1 s/m, split as segment does;
+ * cross: the time its xn crossings of passable lines add) }].
+ * A leg's time is taken as pace(who) × (path × α + off + up × γ + down + cross × κ): α scales the time on paths (a runner faster
+ * on tracks than the model has α < 1), γ the climb's cost, κ a crossing's (owner, 2026-11-10: 10 s by default, calibrated when
+ * possible), each runner has their own pace. α and γ are searched on a grid of their logarithms, each runner's log pace being the
+ * median of their legs' log residuals, the score the sum of the absolute residuals plus a prior holding α, γ and κ at 1 (with few
+ * legs they move little). α is fitted only when two legs run mostly on paths and two mostly off them, γ when the climb is 4 % of
+ * the model's time over six legs or more, κ when the routes cross passable lines 5 times or more over 3 legs or more — κ on its
+ * own grid, α and γ fitted again at the κ found, three rounds. Then the legs over 25 % off the fit (a mistake, a stop, a map
+ * misread) are set aside and the fit made again. Returns { ok (enough legs), n (legs kept), total, alpha, gamma, kappa, fitPath,
+ * fitClimb, fitCross, crosses (the crossings of the legs kept), pace { who: s/m }, runners }.
  */
 export function calibrate(samples) {
   const S = samples.filter((x) => x.actual > 0 && x.parts && x.parts.path + x.parts.off > 0);
-  const out = { ok: false, n: S.length, total: S.length, alpha: 1, gamma: 1, fitPath: false, fitClimb: false, pace: {}, runners: 0 };
+  const out = { ok: false, n: S.length, total: S.length, alpha: 1, gamma: 1, kappa: 1, fitPath: false, fitClimb: false, fitCross: false, crosses: 0, pace: {}, runners: 0 };
   if (S.length < CAL.minLegs) return out;
   const share = (x) => x.parts.path / (x.parts.path + x.parts.off);
-  const model = (x, a, g) => Math.max(1, x.parts.path * a + x.parts.off + x.parts.up * g + x.parts.down);
+  const model = (x, a, g, k = 1) => Math.max(1, x.parts.path * a + x.parts.off + x.parts.up * g + x.parts.down + (x.parts.cross || 0) * k);
+  const crossings = (set) => set.reduce((n, x) => n + (x.parts.xn || 0), 0);
   const median = (v) => { const s = [...v].sort((p, q) => p - q), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
   const grid = (lo, hi, st) => { const v = []; for (let x = Math.log(lo); x <= Math.log(hi) + 1e-9; x += st) v.push(x); return v; };
   const fit = (set) => {
     const fitPath = set.filter((x) => share(x) >= 0.3).length >= 2 && set.filter((x) => share(x) < 0.3).length >= 2;
     const tot = set.reduce((s, x) => s + model(x, 1, 1), 0), up = set.reduce((s, x) => s + x.parts.up, 0);
     const fitClimb = set.length >= 6 && up >= 0.04 * tot;
-    let best = null;
-    for (const la of fitPath ? grid(0.6, 1.6, 0.02) : [0]) for (const lg of fitClimb ? grid(0.4, 2.5, 0.05) : [0]) {
-      const a = Math.exp(la), g = Math.exp(lg), by = new Map();
-      for (const x of set) { const r = Math.log(x.actual / model(x, a, g)); if (!by.has(x.who)) by.set(x.who, []); by.get(x.who).push(r); }
-      let sc = CAL.prior * ((la / CAL.sdPath) ** 2 + (lg / CAL.sdClimb) ** 2);
+    const fitCross = crossings(set) >= CAL.minCross && set.filter((x) => x.parts.xn > 0).length >= CAL.minCrossLegs;
+    const score = (la, lg, lk) => {
+      const a = Math.exp(la), g = Math.exp(lg), k = Math.exp(lk), by = new Map();
+      for (const x of set) { const r = Math.log(x.actual / model(x, a, g, k)); if (!by.has(x.who)) by.set(x.who, []); by.get(x.who).push(r); }
+      let sc = CAL.prior * ((la / CAL.sdPath) ** 2 + (lg / CAL.sdClimb) ** 2 + (lk / CAL.sdCross) ** 2);
       const lp = new Map();
       for (const [w, rs] of by) { const m = median(rs); lp.set(w, m); for (const r of rs) sc += Math.abs(r - m); }
-      if (!best || sc < best.sc) best = { sc, a, g, lp };
+      return { sc, la, lg, lk, a, g, k, lp };
+    };
+    let best = null, lk = 0;
+    for (let round = 0; round < (fitCross ? 3 : 1); round++) {
+      best = null;
+      for (const la of fitPath ? grid(0.6, 1.6, 0.02) : [0]) for (const lg of fitClimb ? grid(0.4, 2.5, 0.05) : [0]) {
+        const r = score(la, lg, lk);
+        if (!best || r.sc < best.sc) best = r;
+      }
+      if (!fitCross) break;
+      for (const l of grid(0.1, 5, 0.1)) { const r = score(best.la, best.lg, l); if (r.sc < best.sc) best = r; }
+      lk = best.lk;
     }
-    return { ...best, fitPath, fitClimb };
+    return { ...best, fitPath, fitClimb, fitCross };
   };
   let f = fit(S);
-  const kept = S.filter((x) => Math.abs(Math.log(x.actual / model(x, f.a, f.g)) - f.lp.get(x.who)) <= CAL.trim);
+  const kept = S.filter((x) => Math.abs(Math.log(x.actual / model(x, f.a, f.g, f.k)) - f.lp.get(x.who)) <= CAL.trim);
   if (kept.length >= CAL.minLegs) f = fit(kept);
   const pace = {};
   for (const [w, l] of f.lp) pace[w] = Math.max(0.18, Math.min(1.2, Math.exp(l)));
-  return { ok: kept.length >= CAL.minLegs, n: kept.length, total: S.length, alpha: f.a, gamma: f.g, fitPath: f.fitPath, fitClimb: f.fitClimb, pace, runners: f.lp.size };
+  return { ok: kept.length >= CAL.minLegs, n: kept.length, total: S.length, alpha: f.a, gamma: f.g, kappa: f.k, fitPath: f.fitPath, fitClimb: f.fitClimb,
+    fitCross: f.fitCross, crosses: crossings(kept.length >= CAL.minLegs ? kept : S), pace, runners: f.lp.size };
 }
-/** The settings with a calibration applied: the paths' speeds divided by α, the climb's cost multiplied by γ. */
+/** The settings with a calibration applied: the paths' speeds divided by α, the climb's cost multiplied by γ, a crossing's by κ. */
 export function calibrated(s, c) {
   if (!c?.ok) return s;
   const sp = { ...DEFAULTS.speeds, ...(s.speeds || {}) }, k = (v) => Math.max(5, Math.round(v / c.alpha));
-  return { ...s, speeds: { ...sp, track: k(sp.track), path: k(sp.path), small: k(sp.small) }, climb: Math.round(s.climb * c.gamma * 10) / 10 };
+  const cross = Math.round((s.cross ?? DEFAULTS.cross) * (c.kappa || 1));
+  return { ...s, speeds: { ...sp, track: k(sp.track), path: k(sp.path), small: k(sp.small) }, climb: Math.round(s.climb * c.gamma * 10) / 10, cross };
 }
 /** The calibration's line under the settings: what it found and on how many legs, or why it did not. */
 export function calibNote(s, c, multi) {
@@ -221,7 +241,9 @@ export function calibNote(s, c, multi) {
   if (!c.ok) return t("rc.cal.few", { n: c.n, m: CAL.minLegs });
   const e = calibrated(s, c), def = ` ${t("rc.cal.default")}`;
   const vals = { s: `${pctN(e.speeds.path)}${c.fitPath ? "" : def}`, c: `${fmt(e.climb, 1)} m${c.fitClimb ? "" : def}`, n: c.n, r: c.runners };
-  return multi ? t("rc.cal.doneMulti", vals) : t("rc.cal.done", { ...vals, p: minKm(Object.values(c.pace)[0] || 0.36) });
+  // the crossings' time, once the runners' routes crossed passable lines (an OCAD map's)
+  const x = c.crosses ? t("rc.cal.cross", { x: `${e.cross} s${c.fitCross ? "" : def}`, k: c.crosses }) : "";
+  return (multi ? t("rc.cal.doneMulti", vals) : t("rc.cal.done", { ...vals, p: minKm(Object.values(c.pace)[0] || 0.36) })) + x;
 }
 export const setCalib = (text, s = null, c = null) => { const el = $("#rc-cal"); if (el) { el.textContent = text; el.hidden = !text; } if (s) showFitted(s, c); };
 /** The values the calibration fitted, shown in the fields it rules (greyed while it is on; owner, 2026-11-05): the runners' median
@@ -232,7 +254,8 @@ export function showFitted(s, c) {
   const on = !!(s.calib && c?.ok), e = on ? calibrated(s, c) : s;
   const put = (id, v, unit) => { const el = $(`#${id}`, box); if (!el) return; el.value = v; const o = $(`#${id}-v`, box); if (o) o.textContent = `${fmt(v, v % 1 ? 1 : 0)}${unit}`; };
   put("rc-climb", e.climb, " m");
-  for (const k of SPEED_KEYS) put(`rc-sp-${k}`, e.speeds[k], " %");
+  put("rc-cross", e.cross ?? DEFAULTS.cross, " s");
+  for (const k of [...SPEED_KEYS, ...VECTOR_SPEEDS]) put(`rc-sp-${k}`, e.speeds[k], " %");
   const p = $("#rc-pace", box);
   if (p) {
     const v = on ? Object.values(c.pace || {}).filter(Number.isFinite).sort((a, b) => a - b) : [];
@@ -270,8 +293,9 @@ export function panelHtml(s, { on, picture, decision = false, status = "", progr
         <fieldset class="rc-calgroup" id="rc-calgroup" ${raw(s.calib ? "disabled" : "")}>
           <label><span>${t("rc.pace")}</span><span class="rc-range"><input id="rc-pace" inputmode="numeric" placeholder="${auto ? minKm(auto) : "6:00"}" value="${s.pace > 0 ? minKm(s.pace / 1000) : ""}" style="width:70px"> <span class="muted">${t("rc.pace.unit")}</span></span></label>
           ${range("rc-climb", s.climb, 0, 20, 1, t("rc.climb"), " m")}
+          ${vector ? html`<span title="${t("rc.cross.hint", { p: minKm(CROSS_PACE) })}">${range("rc-cross", s.cross ?? DEFAULTS.cross, 0, 60, 1, t("rc.cross"), " s")}</span>` : ""}
           <details class="rc-speeds"><summary>${t("rc.speeds")}</summary><div class="an-opts">
-            ${SPEED_KEYS.map((k) => range(`rc-sp-${k}`, s.speeds[k], 5, 200, 5, t(`rc.sp.${k}`), " %"))}</div></details></fieldset>
+            ${[...SPEED_KEYS, ...(vector ? VECTOR_SPEEDS : [])].map((k) => range(`rc-sp-${k}`, s.speeds[k], 5, 200, 5, t(`rc.sp.${k}`), " %"))}</div></details></fieldset>
         ${range("rc-risk", s.risk, 0, 100, 5, t("rc.risk"), " %")}
         <label><span>${t("rc.variants")}</span><select id="rc-variants">${[1, 2, 3, 4].map((n) => html`<option value="${n}" ${raw(n === s.variants ? "selected" : "")}>${n}</option>`)}</select></label>
         ${range("rc-extra", s.extra, 5, 60, 5, t("rc.extra"), " %")}
@@ -279,7 +303,7 @@ export function panelHtml(s, { on, picture, decision = false, status = "", progr
       <label class="rc-on" title="${t("rc.decision.hint")}"><input type="checkbox" id="rc-dec" ${raw(decision ? "checked" : "")}> ${t("rc.decision")}</label>
       <div class="rc-dec-key" id="rc-dec-key" ${raw(decision ? "" : "hidden")}><span class="rc-dec-ramp"></span><span class="muted">${t("rc.decision.key", { p: s.extra })}</span></div>
       <label class="rc-on"><input type="checkbox" id="rc-pic" ${raw(picture ? "checked" : "")}> ${t("rc.picture")}</label>
-      <div class="rc-legend" id="rc-legend" ${raw(picture ? "" : "hidden")}>${LEGEND.map(([k, c]) => html`<span><i style="background:rgb(${c.join(",")})"></i>${t(`rc.cls.${k}`)}</span>`)}</div>
+      <div class="rc-legend" id="rc-legend" ${raw(picture ? "" : "hidden")}>${LEGEND.filter(([, , only]) => !only || vector).map(([k, c]) => html`<span><i style="background:rgb(${c.join(",")})"></i>${t(`rc.cls.${k}`)}</span>`)}</div>
       <p class="hint rc-hint">${t("rc.hint", { d: 50 })} <button type="button" class="btn btn-sm" id="rc-reset">${t("rc.reset")}</button></p>
     </div></details>`;
 }
@@ -305,13 +329,15 @@ export function bindPanel(root, s, onChange) {
   });
   const slide = (id, apply) => {
     const el = $(`#${id}`, box);
+    if (!el) return;                                          // shown with an OCAD or Mapper map only
     el.addEventListener("input", () => { const v = $(`#${id}-v`, box); if (v) v.textContent = v.textContent.replace(/^[\d.]+/, el.value); });
     el.addEventListener("change", () => { apply(Number(el.value)); set("search"); });
   };
   slide("rc-risk", (v) => { s.risk = v; });
   slide("rc-climb", (v) => { s.climb = v; });
+  slide("rc-cross", (v) => { s.cross = v; });
   slide("rc-extra", (v) => { s.extra = v; });
-  for (const k of SPEED_KEYS) slide(`rc-sp-${k}`, (v) => { s.speeds = { ...s.speeds, [k]: v }; });
+  for (const k of [...SPEED_KEYS, ...VECTOR_SPEEDS]) slide(`rc-sp-${k}`, (v) => { s.speeds = { ...s.speeds, [k]: v }; });
   $("#rc-pace", box).addEventListener("change", (e) => {
     const m = /^\s*(\d{1,2})(?:[:.,h'](\d{1,2}))?\s*$/.exec(e.target.value);
     s.pace = m ? Number(m[1]) * 60 + Number(m[2] || 0) : 0;

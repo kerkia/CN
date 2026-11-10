@@ -314,12 +314,23 @@ export function build(X) {
             dans votre navigateur avec le moteur du tracé de circuits et dessine chaque symbole à sa place exacte.</p>
           ${list([
             html`Les <b>surfaces</b> d'après leur couleur de remplissage (ou de hachure : bleue pour un marais, olive ou violette pour une zone
-              interdite), couche par couche comme sur la carte — un vert posé sur un jaune l'emporte. La couleur plutôt que le numéro : l'ISOM 2000,
-              l'ISOM 2017 et l'ISSprOM ne numérotent pas pareil.`,
-            html`Les <b>lignes</b> d'après leur numéro : routes et pistes (501 à 504), chemins (505), petits sentiers et layons (506 à 508) sont les trois types de chemin, continus même quand la carte les
-              dessine en tirets ; les falaises, murs et clôtures infranchissables (201, 515, 518 ; 521 et 524 en ISOM 2000) arrêtent la course, sauf
-              là où un chemin les traverse ; murs et clôtures franchissables et limites de végétation sont des lignes directrices ; les lignes
-              bleues des ruisseaux.`,
+              interdite), couche par couche comme sur la carte — un vert posé sur un jaune l'emporte. La couleur plutôt que le numéro, sauf quand le numéro en dit plus : végétation, marche, bonne visibilité (409), marais
+              infranchissable (307 ; 309 en ISOM 2000), végétation infranchissable (411 en ISSprOM).`,
+            html`Les <b>lignes</b> d'après leur numéro, dans la norme de la carte, reconnue à ses symboles (ISOM 2017 et ISSprOM, ISOM 2000 et ISSOM 2007) :
+              routes et pistes (501 à 504), chemins (505), petits sentiers et layons (506 à 508) sont les trois types de chemin, continus même quand la
+              carte les dessine en tirets ; les falaises, murs et clôtures infranchissables (201, 515, 518 ; 201, 521 et 524 en ISOM 2000) arrêtent
+              la course, sauf à un point de passage (519 ; 525 en ISOM 2000) ; murs et clôtures franchissables et limites de végétation sont des
+              lignes directrices ; les lignes bleues des ruisseaux.`,
+            html`Les <b>lignes à franchir</b> : talus, levées de terre et ravines (104 à 108), falaises franchissables (202), murs et clôtures
+              franchissables (513, 514, 516, 517 — en ISOM 2000 : 106 à 110, 203, 519, 520, 522, 523) coûtent chacune un temps de franchissement,
+              10 s par défaut pour un coureur à 6:00 min/km (proportionnel à l'allure), calibré sur les temps des coureurs quand leurs
+              itinéraires en franchissent au moins 5 sur 3 postes ; là où un chemin les traverse, rien. Les itinéraires les contournent donc quand
+              le détour coûte moins.`,
+            html`Le <b>sol lent</b> : les surfaces de zone de blocs dense (209), de sol pierreux (210 course lente, 211 marche, 212 progression
+              difficile) et de sol sableux (213) ralentissent la course par-dessus la végétation (70, 40 et 15 % de la forêt blanche par
+              défaut) ; une zone de blocs (208) ne ralentit pas, comme le dit l'ISOM. Un sol pierreux dessiné en points isolés, bien moins dense
+              que la norme, ne compte pas. Les analyses de carte publiées avant le 10 novembre 2026 n'ont ces lignes et ce sol qu'une fois
+              publiées à nouveau.`,
             html`Courbes, symboles ponctuels, textes et parcours sont laissés de côté.`,
           ])}
           <p>Dans l'Analyse solo, un fichier OCAD ou Mapper déposé seul <b>est</b> la carte : dessinée ici, la trace calée par son

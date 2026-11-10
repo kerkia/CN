@@ -2656,6 +2656,28 @@ Every multiple-choice game was played through to its score page at phone size, w
   Purple Pen's samples (Clouds, Penistone Hill, Ft Casey, Lake Sammamish, SampleMap georeferenced in UTM 10 with a synthetic GPX;
   Mapper's HG_Mar28 sprint): the layers in 0.1-1.5 s, the companion's placing equal to the map's own to the pixel. Not done: learning
   the speeds from the shared traces, purple out-of-bounds hatching on an image map (erased with the course).
+  **Crossings and slow ground** (owner, 2026-11-10, after reading Sárközy & Albert, *Comparative analysis of route-planning methods
+  and time-cost estimation in terrain navigation*, Int. J. of Cartography 2025 — its best model is isotropic and additive, Ozimut's
+  already better there; two ideas taken): on an OCAD or Mapper map, **each crossing of a passable line costs time** — earth banks and
+  walls, gullies (104-108), passable cliffs (202), passable walls and fences (513, 514, 516, 517) — the layer `cross`, drawn at the
+  line's own width; `DEFAULTS.cross` 10 s at `CROSS_PACE` (6:00 min/km, the model's units being metres of white forest, so a
+  runner's pace scales it), charged on entering the line (`routechoice.crosses`: a diagonal between two of its cells, a knight's
+  move over one), nowhere a path lies on it, in `step`, `segment` (parts `cross`, `xn`) and the tour's `costsFrom`; **calibrated**
+  (`routeplan.calibrate` κ, prior sd 0.7, grid 0.1-5, three rounds with α and γ) once the runners' laid routes cross 5 times over 3
+  legs, else 10 s; the slider « Franchir un talus, un mur, une clôture » and the calibration's line show it with a vector map only.
+  **Slow ground by symbol number** (`slow` 1-3, `speeds.slow1-3` 70/40/15 %, multiplied over the vegetation): dense boulder field 209,
+  stony ground 210/211/212, sandy 213 as areas — no longer read as slow-running forest by their black dots, nor a boulder field 208
+  (ISOM: no slowing); stony ground drawn as single dots (Desquinemarre's 210.1: 0.004 dots/m², a quarter of the specification's
+  slow-running density) does not count. By number too: 409 walk, 307 uncrossable marsh (impassable), ISSprOM's 411. **The map's
+  standard** (`vectorroutes.standardOf`, `STANDARDS`): 104 a line, 109/110 points → ISOM 2017 / ISSprOM; else ISOM 2000 (and ISSOM
+  2007, the same numbers: 519-524 walls and fences, 521/524 the impassable ones, 525 the crossing point, 515 railway, 518 tunnel —
+  Purple Pen's SampleMap and Ormeau), unless 525 is a line: an ISOM 2000 template shifted by one from 516 (Penistone Hill, Woodland:
+  522/525 impassable, 518 a power line). Before, 515 and 518 blocked on every map (ISOM 2000's railway and tunnel), and the blue
+  north lines (601) were read as streams, a strip of marsh along each (Desquinemarre: 3.6 ha); 6xx-9xx lines are now ignored. Stored
+  layers « OZL2 » (the second plane hand | cross << 1 | slow << 2; « OZL1 » still read, without them: an analysis published before
+  gets them when published again). Measured on Desquinemarre (12 random legs of 150-450 m; Penistone and Ft Casey alike): without the cost 3 of 12 legs crossed a
+  bank or fence, with 10 s one (unavoidable), the routes no slower; synthetic tests in the session's scratch (`t_cross.mjs`,
+  `t_cal.mjs`: κ 2 recovered as 2.0 on 52 legs, 0.5 as 0.6).
   **Kept with a map analysis's circuit** (owner, 2026-11-05: « you have the OCAD map information, why read colours? »): a circuit made
   from an OCAD or Mapper map — the Tracer's « Publier vers l'analyse de carte » and Orga's « Importer un fichier OCAD » — gets its
   layers drawn at that moment on the circuit image's pixels (`tracer/circuits.js circuitLayers`: the map's symbols with the frame's

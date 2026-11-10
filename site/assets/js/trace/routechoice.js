@@ -54,8 +54,13 @@ export const DEFAULTS = {
   calib: true,              // the speeds on paths and the climb's cost calibrated on the runners' own legs (routeplan.calibrate)
   relief: "contours",       // the heights: "contours" (the map's contour lines, levelled on the model) or "dem" (the model only)
   interval: 5,              // the map's contour interval, metres
-  speeds: { track: 130, path: 125, small: 110, open: 110, rough: 100, g1: 75, g2: 45, g3: 20, marsh: 65, paved: 120, grey: 80, shallow: 30 },
+  cross: 10,                // seconds to get over a passable line of an OCAD map (earth bank, passable cliff, wall, fence), at CROSS_PACE
+  // in % of white forest; slow1-3: an OCAD map's stony or sandy ground (slow running, walk, fight), over what grows there
+  speeds: { track: 130, path: 125, small: 110, open: 110, rough: 100, g1: 75, g2: 45, g3: 20, marsh: 65, paved: 120, grey: 80, shallow: 30, slow1: 70, slow2: 40, slow3: 15 },
 };
+/** The pace (s/m of white forest on the flat, 6:00 min/km) at which a crossing takes `cross` seconds: the model's times are in
+ *  metres of white forest, a runner's pace scales them all, the crossings with them. */
+export const CROSS_PACE = 0.36;
 
 // ---- 1. pixels ---------------------------------------------------------------------------------------------------------
 /** A colour's kind: an area (A.*) or an ink (INK.*). */
@@ -657,11 +662,13 @@ export function classify(rgba0, w, h, mpp, opt = {}, progress = () => {}) {
 export function cells(px, w, h, cs) {
   const nx = Math.ceil(w / cs), ny = Math.ceil(h / cs), M = nx * ny;
   const cls = new Uint8Array(M), path = new Uint8Array(M), raw = new Uint8Array(M), blue = new Uint8Array(M), north = new Uint8Array(M), over = new Uint8Array(M), count = new Int32Array(N_CLASSES);
-  // a vector map's own layers (trace/vectorroutes.js): lines that block, handrails
+  // a vector map's own layers (trace/vectorroutes.js): lines that block, handrails, passable lines slow to cross, slowing ground
   const vector = !!px.block, block = vector ? new Uint8Array(M) : null, hand = vector ? new Uint8Array(M) : null;
+  const cross = px.cross ? new Uint8Array(M) : null, slow = px.slow ? new Uint8Array(M) : null, sl = [0, 0, 0, 0];
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     count.fill(0);
-    let p = 0, r = 0, b = 0, n = 0, bl = 0, ha = 0, no = 0, oa = 0, ob = 0;
+    let p = 0, r = 0, b = 0, n = 0, bl = 0, ha = 0, no = 0, oa = 0, ob = 0, cr = 0;
+    if (slow) sl.fill(0);
     for (let y = j * cs; y < Math.min(h, (j + 1) * cs); y++) for (let x = i * cs; x < Math.min(w, (i + 1) * cs); x++) {
       const k = y * w + x, v = px.path[k];
       count[px.area[k]]++; b += px.blue[k]; n++;
@@ -669,6 +676,8 @@ export function cells(px, w, h, cs) {
       if (px.north?.[k]) no = 1;
       if (px.over) { if (px.over[k] === 1) oa++; else if (px.over[k] === 2) ob = 1; }
       if (vector) { bl |= px.block[k]; ha |= px.hand[k]; }
+      if (cross) cr |= px.cross[k];
+      if (slow && px.slow[k]) sl[px.slow[k]]++;
     }
     let best = 0;
     for (let c = 1; c < N_CLASSES; c++) if (count[c] > count[best]) best = c;
@@ -676,6 +685,9 @@ export function cells(px, w, h, cs) {
     cls[k] = best; path[k] = p; raw[k] = r; blue[k] = Math.round((255 * b) / Math.max(1, n)); north[k] = no;
     over[k] = oa * 2 >= n ? 1 : ob ? 2 : 0;
     if (vector) { block[k] = bl; hand[k] = ha; }
+    if (cross) cross[k] = cr;
+    // the slowing ground where it covers half the cell: the strongest level reached by that half
+    if (slow) { let c = 0; for (let lv = 3; lv >= 1; lv--) { c += sl[lv]; if (2 * c >= n) { slow[k] = lv; break; } } }
   }
   // a dashed path's last gaps: a cell between two path cells is one (the slower of the two)
   const fill = [];
@@ -694,7 +706,7 @@ export function cells(px, w, h, cs) {
     if (s / n > 0.2 * 255 && blue[k] && cls[k] <= A.G3) marsh.push(k);
   }
   for (const k of marsh) cls[k] = A.MARSH;
-  return { cs, nx, ny, cls, path, raw, blue, north, over, vector, block, hand };
+  return { cs, nx, ny, cls, path, raw, blue, north, over, vector, block, hand, cross, slow };
 }
 
 // ---- 3. costs -------------------------------------------------------------------------------------------------------------
@@ -717,13 +729,14 @@ export function costs(G, s, mpc) {
   F[A.WATER] = Infinity; F[A.SHALLOW] = inv(sp.shallow); F[A.PAVED] = inv(sp.paved); F[A.OOB] = Infinity; F[A.BUILDING] = Infinity;
   F[A.GREY] = s.map === "sprint" ? Infinity : inv(sp.grey); F[A.MARSH] = inv(sp.marsh);
   const bm = G.vector ? "paths" : blackMode(s);                          // a vector map's paths are paths
-  const FP = [1, inv(sp.small), inv(sp.path), inv(sp.track)];
+  const FP = [1, inv(sp.small), inv(sp.path), inv(sp.track)], FS = [1, inv(sp.slow1), inv(sp.slow2), inv(sp.slow3)];
   const f = new Float32Array(M), hand = new Uint8Array(M), isPath = new Uint8Array(M);
   const ov = G.over, rel = G.release;
   for (let k = 0; k < M; k++) {
     // the overprint near a control is the course's own circle or number: the ground under it is taken as runnable forest
     const freed = ov?.[k] === 1 && rel?.[k];
     let v = G.block?.[k] ? Infinity : freed ? 1 : F[cls[k]];
+    if (G.slow?.[k] && !freed) v *= FS[G.slow[k]];                     // stony or sandy ground, over what grows there
     // a vector map's path crosses water or a building (a bridge, a passage), never an area out of bounds nor an impassable wall or
     // fence (its crossing points are holes in it: trace/vectorroutes.js); on an image a line read as a path opens nothing impassable
     // (the black edge of a building, of an area out of bounds), nor does a gap bridged
@@ -760,7 +773,26 @@ export function costs(G, s, mpc) {
   }
   const R = Math.max(0, Math.min(100, s.risk ?? DEFAULTS.risk)) / 100, r = new Float32Array(M);
   for (let k = 0; k < M; k++) r[k] = 1 + (isPath[k] ? 0 : R * VIS[cls[k]] * Math.min(1, (d[k] * mpc) / RISK_DIST));
-  return { f, r, isPath, fMin: Math.min(...FP.slice(1), ...[...F].filter((v) => v > 0)) };
+  // the passable lines slow to cross (an OCAD map's): their cells, a path over them apart (a gate, a way through), and the time a
+  // crossing takes in the model's units (metres of white forest; `cross` seconds at CROSS_PACE)
+  const xp = G.cross ? Math.max(0, s.cross ?? DEFAULTS.cross) / CROSS_PACE : 0;
+  let cross = null;
+  if (xp > 0) {
+    cross = new Uint8Array(M);
+    for (let k = 0; k < M; k++) if (G.cross[k] && !isPath[k] && f[k] < Infinity) cross[k] = 1;
+  }
+  return { f, r, isPath, cross, xp, fMin: Math.min(...FP.slice(1), ...[...F].filter((v) => v > 0)) };
+}
+/** Whether the step n from cell k to cell q gets over a passable line: it enters one of its cells, or passes between two of them
+ *  (a diagonal) or over one (a knight's move); never from a cell of the line (a crossing counts once, on the way in). */
+function crosses(cr, nx, k, q, n) {
+  if (cr[k]) return false;
+  if (cr[q]) return true;
+  if (n < 4) return false;
+  const dx = DX[n], dy = DY[n];
+  if (n < 8) return cr[k + dx] === 1 && cr[k + dy * nx] === 1;
+  const sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1, m1 = dx === 2 || dx === -2 ? k + sx : k + sy * nx;
+  return cr[m1] === 1 || cr[k + sy * nx + sx] === 1;
 }
 export const RISK_DIST = 50;                              // metres from a handrail at which the risk is full
 const FORBIDDEN_ROUTE = 2.5;                             // a forbidden route's cells: 40 % of white forest's speed (crossed, not followed)
@@ -824,7 +856,8 @@ function step(X, a, b, n) {
   if (!(fa < Infinity) || !(fb < Infinity)) return null;
   const L = X.len[n], g = X.h ? (X.h[b] - X.h[a]) / L : 0;
   const tm = L * ((fa + fb) / 2) * slopeFactor(g, X.s.climb ?? DEFAULTS.climb);
-  return [tm, tm * ((r[a] + r[b]) / 2)];
+  const x = X.C.cross && crosses(X.C.cross, X.G.nx, a, b, n) ? X.C.xp : 0;
+  return [tm + x, tm * ((r[a] + r[b]) / 2) + x];
 }
 /** Whether the step n from cell (i, j) squeezes between blocked cells: a diagonal between two, a knight's move over one. */
 function squeezed(X, i, j, n) {
@@ -916,13 +949,14 @@ function measure(X, path) {
  * A straight line between two points in cell units (x, y; a cell's centre at i + 0.5) measured on the model, sampled every
  * half cell: { time, cost, len, onPath (metres), hs (the heights met), parts }; an impassable cell costs `cap` × white forest
  * (null: the line is refused). parts: the time on paths and off them on the flat, and what the slope adds — uphill (the climb
- * setting scales it) and downhill — for the calibration on a runner's legs.
+ * setting scales it) and downhill, and the crossings of passable lines (`cross`) — for the calibration on a runner's legs.
  */
 function segment(X, x0, y0, x1, y1, cap) {
   const { nx, ny } = X.G, climb = X.s.climb ?? DEFAULTS.climb, f = X.C.f, r = X.C.r;
   const at = (x, y) => Math.min(ny - 1, Math.max(0, Math.floor(y))) * nx + Math.min(nx - 1, Math.max(0, Math.floor(x)));
   const u = x1 - x0, v = y1 - y0, d = Math.hypot(u * X.em[0][0] + v * X.em[1][0], u * X.em[0][1] + v * X.em[1][1]);
-  const out = { time: 0, cost: 0, len: d, onPath: 0, hs: [], parts: { path: 0, off: 0, up: 0, down: 0 } };
+  const out = { time: 0, cost: 0, len: d, onPath: 0, hs: [], parts: { path: 0, off: 0, up: 0, down: 0, cross: 0, xn: 0 } };
+  const cr = X.C.cross, xp = X.C.xp;
   if (!d) return out;
   const n = Math.max(1, Math.ceil(d / (X.mpc / 2))), L = d / n;
   let ka = at(x0, y0);
@@ -935,6 +969,11 @@ function segment(X, x0, y0, x1, y1, cap) {
     out.time += tm; out.cost += tm * ((r[ka] + r[kb]) / 2);
     if (onP) { out.onPath += L; out.parts.path += flat; } else out.parts.off += flat;
     if (g >= 0) out.parts.up += tm - flat; else out.parts.down += tm - flat;
+    // a passable line got over: entering it, or slipping between two of its cells at a corner
+    if (cr && kb !== ka && !cr[ka]) {
+      const di = (kb % nx) - (ka % nx), dj = Math.round((kb - ka - di) / nx);
+      if (cr[kb] || (di && dj && cr[ka + di] && cr[ka + dj * nx])) { out.time += xp; out.cost += xp; out.parts.cross += xp; out.parts.xn++; }
+    }
     if (X.h) out.hs.push(X.h[kb]);
     ka = kb;
   }
@@ -944,7 +983,7 @@ function segment(X, x0, y0, x1, y1, cap) {
  *  (segment's, summed). */
 function polyline(X, pts, cap) {
   let time = 0, cost = 0, len = 0, on = 0, up = 0, down = 0, hPrev = null;
-  const hs = [], parts = { path: 0, off: 0, up: 0, down: 0 };
+  const hs = [], parts = { path: 0, off: 0, up: 0, down: 0, cross: 0, xn: 0 };
   for (let i = 1; i < pts.length; i++) {
     const s = segment(X, pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1], cap);
     if (!s) return null;
@@ -1295,7 +1334,7 @@ export function costsFrom(X, src, targets, want, cap, S) {
   targets.forEach((k, i) => { if (!at.has(k)) at.set(k, []); at.get(k).push(i); });
   const wanted = new Set(want), out = targets.map(() => [Infinity, Infinity]);
   // the step's cost written out (no array a step, no destructuring: this loop runs millions of times)
-  const f = X.C.f, rk = X.C.r, h = X.h, len = X.len, climb = X.s.climb ?? DEFAULTS.climb;
+  const f = X.C.f, rk = X.C.r, h = X.h, len = X.len, climb = X.s.climb ?? DEFAULTS.climb, cr = X.C.cross, xp = X.C.xp;
   const H = new Heap();
   g[src] = 0; tm[src] = 0; S.touched[nt++] = src; H.push(0, src);
   while (H.n) {
@@ -1326,10 +1365,11 @@ export function costsFrom(X, src, targets, want, cap, S) {
         }
       }
       const L = len[n], t1 = L * ((fa + fb) / 2) * (h ? slopeFactor((h[q] - h[k]) / L, climb) : 1);
-      const v = gk + t1 * ((rk[k] + rk[q]) / 2);
+      const x = cr && !cr[k] && (cr[q] || n >= 4) && crosses(cr, nx, k, q, n) ? xp : 0;
+      const v = gk + t1 * ((rk[k] + rk[q]) / 2) + x;
       if (v < g[q]) {
         if (g[q] === Infinity) { if (nt === S.touched.length) { const t2 = new Int32Array(nt * 2); t2.set(S.touched); S.touched = t2; } S.touched[nt++] = q; }
-        g[q] = v; tm[q] = tm[k] + t1; H.push(v, q);
+        g[q] = v; tm[q] = tm[k] + t1 + x; H.push(v, q);
       }
     }
   }
@@ -1396,17 +1436,20 @@ export function forbidCells(G, areas = [], lines = []) {
  *  a black line that blocks, a north line taken out. */
 export const CLASS_RGB = [[255, 255, 255], [255, 186, 54], [255, 228, 150], [196, 234, 180], [120, 200, 100], [40, 140, 60], [40, 120, 230], [140, 190, 245], [205, 160, 110], [130, 130, 20], [70, 40, 110], [150, 150, 150], [80, 170, 190]];
 export const PATH_RGB = [null, [255, 120, 160], [230, 30, 60], [130, 0, 30]];
-export const BLOCK_RGB = [0, 0, 0], NORTH_RGB = [0, 200, 220], BAND_RGB = [200, 0, 140];
+export const BLOCK_RGB = [0, 0, 0], NORTH_RGB = [0, 200, 220], BAND_RGB = [200, 0, 140], CROSS_RGB = [235, 110, 0];
+export const SLOW_RGB = [null, [190, 165, 135], [150, 120, 90], [105, 80, 55]];
 /** The legend: [key, rgb] — the areas' keys as the speeds' (routeplan.js words them). */
 export const LEGEND = [["track", PATH_RGB[3]], ["path", PATH_RGB[2]], ["small", PATH_RGB[1]], ["block", BLOCK_RGB], ["white", CLASS_RGB[A.WHITE]],
   ["open", CLASS_RGB[A.OPEN]], ["rough", CLASS_RGB[A.ROUGH]], ["g1", CLASS_RGB[A.G1]], ["g2", CLASS_RGB[A.G2]], ["g3", CLASS_RGB[A.G3]],
   ["marsh", CLASS_RGB[A.MARSH]], ["water", CLASS_RGB[A.WATER]], ["shallow", CLASS_RGB[A.SHALLOW]], ["paved", CLASS_RGB[A.PAVED]],
-  ["grey", CLASS_RGB[A.GREY]], ["building", CLASS_RGB[A.BUILDING]], ["oob", CLASS_RGB[A.OOB]], ["band", BAND_RGB], ["north", NORTH_RGB]];
+  ["grey", CLASS_RGB[A.GREY]], ["building", CLASS_RGB[A.BUILDING]], ["oob", CLASS_RGB[A.OOB]], ["band", BAND_RGB], ["north", NORTH_RGB],
+  ["cross", CROSS_RGB, "vector"], ["slow1", SLOW_RGB[1], "vector"], ["slow2", SLOW_RGB[2], "vector"], ["slow3", SLOW_RGB[3], "vector"]];
 export function picture(X) {
   const { nx, ny, cls, path } = X.G, raw = X.G.raw || path, out = new Uint8ClampedArray(nx * ny * 4);
   for (let k = 0; k < nx * ny; k++) {
     const ov = X.G.over?.[k], rel = X.G.release?.[k];
-    const c = ov === 2 && !rel ? BAND_RGB : ov === 1 && rel ? CLASS_RGB[A.WHITE] : X.C.isPath[k] ? PATH_RGB[path[k]] : raw[k] && !(X.C.f[k] < Infinity) ? BLOCK_RGB : X.G.north?.[k] ? NORTH_RGB : CLASS_RGB[cls[k]];
+    const c = ov === 2 && !rel ? BAND_RGB : ov === 1 && rel ? CLASS_RGB[A.WHITE] : X.C.isPath[k] ? PATH_RGB[path[k]] : (raw[k] || X.G.block?.[k]) && !(X.C.f[k] < Infinity) ? BLOCK_RGB
+      : X.G.cross?.[k] ? CROSS_RGB : X.G.north?.[k] ? NORTH_RGB : X.G.slow?.[k] && cls[k] !== A.BUILDING && cls[k] !== A.WATER ? SLOW_RGB[X.G.slow[k]] : CLASS_RGB[cls[k]];
     out[4 * k] = c[0]; out[4 * k + 1] = c[1]; out[4 * k + 2] = c[2]; out[4 * k + 3] = 255;
   }
   return out;

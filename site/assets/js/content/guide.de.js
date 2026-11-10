@@ -317,12 +317,23 @@ export function build(X) {
             in deinem Browser mit der Engine der Bahnlegung und zeichnet jedes Symbol an seiner genauen Stelle.</p>
           ${list([
             html`Die <b>Flächen</b> nach ihrer Füllfarbe (oder Schraffur: blau für einen Sumpf, oliv oder violett für ein Sperrgebiet), Schicht für
-              Schicht wie auf der Karte – ein Grün über einem Gelb gewinnt. Die Farbe statt der Nummer: ISOM 2000, ISOM 2017 und ISSprOM nummerieren
-              unterschiedlich.`,
-            html`Die <b>Linien</b> nach ihrer Nummer: Straßen und Fahrwege (501 bis 504), Fußwege (505), kleine Pfade und Schneisen (506 bis 508) sind die drei Arten von Wegen, durchgehend, auch wenn die Karte sie
-              gestrichelt zeichnet; unpassierbare Felswände, Mauern und Zäune (201, 515, 518; 521 und 524 in ISOM 2000) stoppen den Läufer, außer
-              dort, wo ein Weg sie quert; passierbare Mauern und Zäune und Vegetationsgrenzen sind Leitlinien; die blauen Linien sind
-              Bäche.`,
+              Schicht wie auf der Karte – ein Grün über einem Gelb gewinnt. Die Farbe statt der Nummer, außer wo die Nummer mehr sagt: Vegetation, gehen, gute Sicht (409),
+              unpassierbarer Sumpf (307; 309 in ISOM 2000), unpassierbare Vegetation (411 in ISSprOM).`,
+            html`Die <b>Linien</b> nach ihrer Nummer, in der Norm der Karte, an ihren Symbolen erkannt (ISOM 2017 und ISSprOM, ISOM 2000 und ISSOM
+              2007): Straßen und Fahrwege (501 bis 504), Fußwege (505), kleine Pfade und Schneisen (506 bis 508) sind die drei Arten von Wegen,
+              durchgehend, auch wenn die Karte sie gestrichelt zeichnet; unpassierbare Felswände, Mauern und Zäune (201, 515, 518; 201, 521 und 524
+              in ISOM 2000) stoppen den Läufer, außer an einem Durchgang (519; 525 in ISOM 2000); passierbare Mauern und Zäune und
+              Vegetationsgrenzen sind Leitlinien; die blauen Linien sind Bäche.`,
+            html`Die <b>zu überquerenden Linien</b>: Böschungen, Erdwälle und Erosionsrinnen (104 bis 108), passierbare Felswände (202), passierbare
+              Mauern und Zäune (513, 514, 516, 517 – in ISOM 2000: 106 bis 110, 203, 519, 520, 522, 523) kosten jeweils eine Überquerungszeit,
+              standardmäßig 10 s für einen Läufer mit 6:00 min/km (im Verhältnis zum Tempo), auf die Zeiten der Läufer kalibriert, wenn ihre
+              Routen mindestens 5 davon auf 3 Teilstrecken überqueren; wo ein Weg sie quert, nichts. Die Routen umgehen sie also, wenn der Umweg
+              weniger kostet.`,
+            html`Der <b>langsame Boden</b>: Flächen mit dichtem Blockfeld (209), steinigem Boden (210 langsam laufbar, 211 gehen, 212 schwer
+              passierbar) und sandigem Boden (213) bremsen den Läufer zusätzlich zur Vegetation (standardmäßig 70, 40 und 15 % des weißen Waldes);
+              ein Blockfeld (208) bremst nicht, wie die ISOM sagt. Steiniger Boden aus einzelnen Punkten, weit unter der Dichte der Norm, zählt
+              nicht. Kartenanalysen, die vor dem 10. November 2026 veröffentlicht wurden, haben diese Linien und diesen Boden erst nach einer
+              erneuten Veröffentlichung.`,
             html`Höhenlinien, Punktsymbole, Texte und Bahn bleiben unberücksichtigt.`,
           ])}
           <p>In der Einzelanalyse <b>ist</b> eine allein abgelegte OCAD- oder Mapper-Datei die Karte: hier gezeichnet, der Track über ihre

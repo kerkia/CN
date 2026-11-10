@@ -7,12 +7,23 @@
 //   brown (paved), grey and black (buildings; light grey passable), olive or purple (out of bounds) — the colour, not the symbol
 //   number, since ISOM 2000, ISOM 2017 and ISSprOM number them differently; drawn colour by colour from the bottom of the map's
 //   colour table, so that a green over a yellow wins as on the map;
-// - lines by their symbol number: roads and vehicle tracks (501-504), footpaths (505), small paths and rides (506-508) — the
-//   three kinds of path, solid even when the map dashes them; impassable
-//   cliffs, walls and fences (201, 515, 518, and ISOM 2000's 521 and 524 when they are lines) block, drawn at their line's own
-//   width (not the span of a fence's ticks) and crossed only at a crossing point (519, ISOM 2000's 525: owner, 2026-11-05 — a
+// - lines by their symbol number, in the map's standard (`STANDARDS`, `standardOf`): roads and vehicle tracks (501-504), footpaths
+//   (505), small paths and rides (506-508) — the three kinds of path, solid even when the map dashes them; impassable
+//   cliffs, walls and fences (201, 515, 518; ISOM 2000's and ISSOM 2007's 201, 521, 524) block, drawn at their line's own
+//   width (not the span of a fence's ticks) and crossed only at a crossing point (519; ISOM 2000's 525: owner, 2026-11-05 — a
 //   path crossing an impassable fence or running along it opens nothing, as ISOM says); passable walls, fences and
-//   cliffs, vegetation boundaries are handrails; blue lines are streams.
+//   cliffs, vegetation boundaries are handrails; blue lines are streams;
+// - what is passable but takes time to get over (owner, 2026-11-10, after Sárközy & Albert's comparison of route models): earth
+//   banks and walls, erosion gullies (104-108; ISOM 2000's 106-110), passable cliffs (202; ISOM 2000's 203), passable walls and
+//   fences (513, 514, 516, 517; ISOM 2000's 519, 520, 522, 523 and its crossable pipeline 533) — the `cross` layer, at their
+//   line's own width: each crossing costs a few seconds (trace/routechoice.js `costs`, the setting `cross`), and they are
+//   handrails too;
+// - the ground that slows running whatever grows on it, by its number (`slow`: 1 slow running, 2 walk, 3 fight): dense boulder
+//   field 209, stony ground 210 (slow), 211 (walk), 212 (fight), sandy ground 213 — ISOM 2000's 210 and 211 both slow — when
+//   they are areas (a stony ground drawn as single dots, below the specification's density, is scattered stones), laid
+//   over the vegetation instead of taking its place (their black dots were read as slow-running forest, a boulder field's 208
+//   too, which ISOM says does not slow); by number also: 409 walk with good visibility (its stripes read as slow running), the
+//   uncrossable marsh (307; ISOM 2000's 309) and the impassable vegetation (ISSprOM's 411); 529, a prominent impassable line.
 // Contours, points, text and the course are not drawn. A map that is not the one shown is placed through both georeferences.
 
 import { A, INK, kindOf } from "./routechoice.js";
@@ -20,10 +31,63 @@ import { A, INK, kindOf } from "./routechoice.js";
 export const isVectorName = (name) => /\.(ocd|omap|xmap)$/i.test(name || "");
 export const VECTOR_ACCEPT = ".ocd,.omap,.xmap";
 
-const PATHS = new Map([[501, 3], [502, 3], [503, 3], [504, 3], [505, 2], [506, 1], [507, 1], [508, 1]]);  // the path layer's kinds (routechoice.js PATH)
-const BLOCKS = new Set([201, 515, 518, 521, 524]);
-const HANDRAILS = new Set([202, 416, 415, 513, 514, 516, 517, 519, 520, 522, 523]);
-const CROSSING = 519, CROSSING_2000 = 525;                     // the crossing point of an impassable wall or fence (ISOM 2017, ISOM 2000)
+// The symbols' meaning by their number, in each standard (read on the test maps, 2026-11-10): ISOM 2017, whose numbers ISSprOM
+// shares; ISOM 2000, whose numbers ISSOM 2007 (the sprint standard before ISSprOM) shares — 505 a vehicle track, 506 a footpath,
+// 507-509 the small paths and the ride, 515 the railway, 516-517 power lines, 518 a tunnel, 519 and 520 the stone wall and the
+// ruined one, 521 the high (impassable) wall, 522-524 the same for fences, 525 the crossing point, 533 and 534 the crossable and
+// uncrossable pipelines, 106-110 the earth banks, walls and gullies, 203 the passable rock face, 309 the uncrossable marsh (Purple
+// Pen's SampleMap and Ormeau) —; and an ISOM 2000 template numbered one more from 516 on (Purple Pen's Penistone Hill and
+// Woodland): 516 the railway, 517-518 power lines, 520-525 the walls and fences, 535-536 the pipelines, 525 a high fence.
+// (Before, every map's 515 and 518 blocked: ISOM 2000's railway and tunnel.)
+// paths: the path layer's kinds (routechoice.js PATH); blocks: impassable lines; hand: handrails; cross: passable but each crossing
+// costs time; slow: the ground that slows running, laid over the vegetation (1 slow running, 2 walk, 3 fight; 0: no slowing, nor any
+// area class — a boulder field); area: areas whose number says more than their colour (walk with good visibility, whose stripes read
+// as slow running; the uncrossable marsh, whose blue hatching read as marsh; ISSprOM's impassable vegetation, drawn as a building:
+// impassable but a path opens it); crossing: the crossing point of an impassable wall or fence.
+const OLD_PATHS = new Map([[501, 3], [502, 3], [503, 3], [504, 3], [505, 3], [506, 2], [507, 1], [508, 1], [509, 1]]);
+const OLD_SLOW = new Map([[208, 0], [210, 1], [211, 1]]), OLD_AREA = new Map([[409, A.G2], [309, A.WATER]]);
+const STANDARDS = {
+  2017: {
+    paths: new Map([[501, 3], [502, 3], [503, 3], [504, 3], [505, 2], [506, 1], [507, 1], [508, 1]]),
+    blocks: new Set([201, 515, 518, 521, 529]),
+    hand: new Set([202, 416, 415, 513, 514, 516, 517, 519, 520, 522, 523]),
+    cross: new Set([104, 105, 106, 107, 108, 202, 513, 514, 516, 517]),
+    slow: new Map([[208, 0], [209, 1], [210, 1], [211, 2], [212, 3], [213, 1]]),
+    area: new Map([[409, A.G2], [307, A.WATER], [411, A.BUILDING]]),
+    crossing: 519,
+  },
+  2000: {
+    paths: OLD_PATHS,
+    blocks: new Set([201, 521, 524, 534]),
+    hand: new Set([203, 414, 415, 416, 515, 516, 517, 519, 520, 522, 523, 533]),
+    cross: new Set([106, 107, 108, 109, 110, 203, 519, 520, 522, 523, 533]),
+    slow: OLD_SLOW, area: OLD_AREA,
+    crossing: 525,
+  },
+  "2000+1": {
+    paths: OLD_PATHS,
+    blocks: new Set([201, 522, 525, 536]),
+    hand: new Set([203, 414, 415, 416, 516, 517, 518, 520, 521, 523, 524, 535]),
+    cross: new Set([106, 107, 108, 109, 110, 203, 520, 521, 523, 524, 535]),
+    slow: OLD_SLOW, area: OLD_AREA,
+    crossing: null,
+  },
+};
+/** The map's standard (2017, 2000 or "2000+1"), from what its own symbols are where the standards differ: 104 is ISOM 2017's
+ *  earth bank (a line) and the older standards' slope line (a point), 109 and 110 ISOM 2017's knolls (points) and their erosion
+ *  gullies (lines), 113 ISOM 2017's broken ground (an area) and their small depression or knoll (a point); then 525 is ISOM 2000's
+ *  crossing point (a point) and the shifted template's high fence (a line). The definitions count, used or not. */
+export function standardOf(map) {
+  let v = 0, shifted = 0;
+  for (const d of map.symdefs) {
+    const n = Math.floor(parseFloat(d.id));
+    if (n === 104) v += d.kind === "point" ? 1 : d.kind === "line" ? -1 : 0;
+    else if (n === 109 || n === 110) v += d.kind === "line" ? 1 : d.kind === "point" ? -1 : 0;
+    else if (n === 113) v += d.kind === "point" ? 1 : d.kind === "area" ? -1 : 0;
+    else if (n === 525) shifted += d.kind === "line" ? 1 : d.kind === "point" ? -1 : 0;
+  }
+  return v <= 0 ? 2017 : shifted > 0 ? "2000+1" : 2000;
+}
 const CROSSING_M = 3, CROSSING_MM = 0.6;                       // a crossing point's opening: its symbol's half size, at least so many metres and mm
 
 /**
@@ -126,15 +190,24 @@ function areaColour(def, map) {
   return def.fill || def.hatches?.[0]?.color || (def.patterns?.length ? map.colors.find((c) => def.patterns[0].glyph.hasColor?.(c)) : null) || null;
 }
 const lineColours = (def) => (def.partsDefs ? def.partsDefs.flatMap(lineColours) : [def.color, def.double?.fill, def.double?.left, def.second?.color].filter(Boolean));
-/** A line symbol's role: "path1", "path2", "path3" (small, path, track), "block", "hand", "blue" or null. */
-function lineRole(def) {
-  const n = Math.floor(parseFloat(def.id));
-  if (PATHS.has(n)) return `path${PATHS.get(n)}`;
-  if (BLOCKS.has(n)) return "block";
+const num = (def) => Math.floor(parseFloat(def.id));
+/** A line symbol's role in the standard std: "path1", "path2", "path3" (small, path, track), "block", "hand", "blue" or null. */
+function lineRole(def, std) {
+  const n = num(def);
+  // 6xx-9xx: the north lines (blue ones were read as streams, and a strip of marsh along each), the course, the margins
+  if (n >= 600) return null;
+  if (std.paths.has(n)) return `path${std.paths.get(n)}`;
+  if (std.blocks.has(n)) return "block";
   if (lineColours(def).some((c) => c.cmyk && kindOf(...rgbOf(c)) === INK.BLUE)) return "blue";
-  if (HANDRAILS.has(n)) return "hand";
+  if (std.hand.has(n) || std.cross.has(n)) return "hand";
   return null;
 }
+/** Whether a line symbol is passable but takes time to cross (an earth bank, a passable cliff, wall or fence). */
+const crossLine = (def, std) => std.cross.has(num(def));
+/** An area symbol's slowing of the ground (1-3), 0 for a boulder field (no slowing, no class of its own), undefined for the
+ *  others; and the class its number gives, if any. */
+const slowOf = (def, std) => std.slow.get(num(def));
+const classByNumber = (def, std) => std.area.get(num(def));
 
 // ---- drawing the layers ------------------------------------------------------------------------------------------------------
 function path2d(cmds) {
@@ -162,33 +235,44 @@ export function layers(v, T, W, H, extra = null) {
   const begin = () => { g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, W, H); g.setTransform(T.a, T.d, T.b, T.e, T.c, T.f); g.fillStyle = "#000"; g.strokeStyle = "#000"; };
   const read = (into, value) => { const d = g.getImageData(0, 0, W, H).data; let n = 0; for (let i = 0; i < N; i++) if (d[4 * i + 3] > 110) { into[i] = value; n++; } return n; };
   const area = new Uint8Array(N), path = new Uint8Array(N), blue = new Uint8Array(N), block = new Uint8Array(N), hand = new Uint8Array(N);
+  const cross = new Uint8Array(N), slow = new Uint8Array(N), slowAreas = [null, [], [], []];
   // the areas, colour by colour from the bottom of the colour table
   const z = new Map(map.colors.map((c, i) => [c, i]));
   const groups = new Map();
-  const counts = { areas: 0, paths: 0, blocks: 0, hands: 0, streams: 0, crossings: 0 };
-  // ISOM 2000 numbers its impassable wall and fence 521 and 524, its crossing point 525 (ISOM 2017's small tower)
-  const iso2000 = map.symdefs.some((d) => d.kind === "line" && d.symbols.length && [521, 524].includes(Math.floor(parseFloat(d.id))));
+  const counts = { areas: 0, paths: 0, blocks: 0, hands: 0, streams: 0, crossings: 0, crosses: 0, slows: 0 };
+  // the numbers' meaning in the map's standard (ISOM 2000 numbers its symbols otherwise)
+  const standard = standardOf(map), std = STANDARDS[standard];
+  counts.standard = standard;
   const crossings = [];
   for (const d of map.symdefs) {
     if (!d.visible) continue;
     const isArea = d.kind === "area", isLine = d.kind === "line";
     if (d.kind === "point") {
       const n = Math.floor(parseFloat(d.id));
-      if (n === CROSSING || (iso2000 && n === CROSSING_2000)) for (const s of d.symbols) if (s.visible !== false && Number.isFinite(s.x)) crossings.push([s.x, s.y, s.bbox ? Math.max(s.bbox[2] - s.bbox[0], s.bbox[3] - s.bbox[1]) / 2 : 0]);
+      if (std.crossing && n === std.crossing) for (const s of d.symbols) if (s.visible !== false && Number.isFinite(s.x)) crossings.push([s.x, s.y, s.bbox ? Math.max(s.bbox[2] - s.bbox[0], s.bbox[3] - s.bbox[1]) / 2 : 0]);
       continue;
     }
     if (!isArea && !isLine) continue;
     for (const s of d.symbols) {
       if (s.visible === false) continue;
       if (isArea && s.area) {
-        const cls = areaClass(d, map), col = areaColour(d, map);
+        // stony or sandy ground, a boulder field: over the vegetation, not in its place (a fill of its own still counts)
+        const sl = slowOf(d, std);
+        if (sl !== undefined) { if (sl) { slowAreas[sl].push(s.area); counts.slows++; } if (!d.fill) continue; }
+        const cls = classByNumber(d, std) ?? areaClass(d, map), col = areaColour(d, map);
         if (cls == null || !col) continue;
         const key = `${z.get(col) ?? -1}|${cls}`;
         if (!groups.has(key)) groups.set(key, { z: z.get(col) ?? -1, cls, list: [] });
         groups.get(key).list.push(s.area);
         counts.areas++;
       } else if (isLine && s.path) {
-        const role = lineRole(d);
+        // passable but slow to get over: at the line's own width (an earth bank's tags, a fence's ticks are not the line)
+        if (crossLine(d, std)) {
+          if (!groups.has("line|cross")) groups.set("line|cross", { role: "cross", list: [] });
+          groups.get("line|cross").list.push({ path: s.path, width: Math.max(d.color && d.width > 0 ? d.width : d.maxThick || d.width || 0.25, 0.1) });
+          counts.crosses++;
+        }
+        const role = lineRole(d, std);
         if (!role) continue;
         const key = `line|${role}`;
         if (!groups.has(key)) groups.set(key, { role, list: [] });
@@ -207,7 +291,7 @@ export function layers(v, T, W, H, extra = null) {
   // the lines, each at least one and a half pixels wide
   const minMm = 1.5 / pxPerMm;
   // the paths from the slowest kind to the fastest: where two meet, the faster is kept
-  for (const [role, into, value] of [["path1", path, 1], ["path2", path, 2], ["path3", path, 3], ["block", block, 1], ["hand", hand, 1], ["blue", blue, 1]]) {
+  for (const [role, into, value] of [["path1", path, 1], ["path2", path, 2], ["path3", path, 3], ["block", block, 1], ["hand", hand, 1], ["blue", blue, 1], ["cross", cross, 1]]) {
     const grp = groups.get(`line|${role}`);
     if (!grp) continue;
     begin(); g.lineCap = "round"; g.lineJoin = "round";
@@ -224,7 +308,14 @@ export function layers(v, T, W, H, extra = null) {
     for (let i = 0; i < N; i++) if (hole[i] && block[i]) block[i] = 0;
     counts.crossings = crossings.length;
   }
-  for (let i = 0; i < N; i++) if (block[i]) path[i] = 0;
+  for (let i = 0; i < N; i++) if (block[i]) { path[i] = 0; cross[i] = 0; }
+  // the slowing ground, the stronger over the weaker
+  for (let lv = 1; lv <= 3; lv++) {
+    if (!slowAreas[lv].length) continue;
+    begin();
+    for (const ar of slowAreas[lv]) g.fill(path2d(ar.commands()), "evenodd");
+    read(slow, lv);
+  }
   // the setter's out-of-bounds areas over everything, their boundaries as walls (a path stays closed across them)
   const poly = (pts, close) => { const p = new Path2D(); pts.forEach(([x, y], i) => (i ? p.lineTo(x, y) : p.moveTo(x, y))); if (close) p.closePath(); return p; };
   if (extra?.areas?.length) {
@@ -240,15 +331,16 @@ export function layers(v, T, W, H, extra = null) {
     counts.bounds = read(mark, 1);
     for (let i = 0; i < N; i++) if (mark[i]) { block[i] = 1; path[i] = 0; }
   }
-  return { area, path, blue, block, hand, counts, ms: Date.now() - t0 };
+  return { area, path, blue, block, hand, cross, slow, counts, ms: Date.now() - t0 };
 }
 
 // ---- the layers kept with a map analysis's circuit (owner, 2026-11-05) ---------------------------------------------------------
 // Drawn once by the organiser's browser at publication, from the OCAD or Mapper map the course was set on, on the pixels of the
 // circuit's image; the runners' pages read them instead of the image's colours (exact, and the map need not be read). The map
-// file itself is not sent: only what the routes need. « OZL1 », the width and height (u32, little-endian), then two planes deflated:
-// area | path << 4 | blue << 6 | block << 7, and hand.
-const MAGIC = [0x4f, 0x5a, 0x4c, 0x31];
+// file itself is not sent: only what the routes need. « OZL2 », the width and height (u32, little-endian), then two planes deflated:
+// area | path << 4 | blue << 6 | block << 7, and hand | cross << 1 | slow << 2 (2026-11-10; « OZL1 », read still, had hand alone:
+// layers kept before have no crossings nor slowing ground until the analysis is published again).
+const MAGIC = [0x4f, 0x5a, 0x4c, 0x32], MAGIC_1 = [0x4f, 0x5a, 0x4c, 0x31];
 async function stream(bytes, how, compress) {
   const s = new Blob([bytes]).stream().pipeThrough(compress ? new CompressionStream(how) : new DecompressionStream(how));
   return new Uint8Array(await new Response(s).arrayBuffer());
@@ -258,30 +350,38 @@ export async function packLayers(L, W, H) {
   const N = W * H, planes = new Uint8Array(2 * N);
   for (let i = 0; i < N; i++) {
     planes[i] = (L.area[i] & 15) | ((L.path[i] & 3) << 4) | ((L.blue[i] ? 1 : 0) << 6) | ((L.block[i] ? 1 : 0) << 7);
-    planes[N + i] = L.hand[i] ? 1 : 0;
+    planes[N + i] = (L.hand[i] ? 1 : 0) | ((L.cross?.[i] ? 1 : 0) << 1) | ((L.slow?.[i] || 0) << 2);
   }
   const head = new Uint8Array(12);
   head.set(MAGIC); new DataView(head.buffer).setUint32(4, W, true); new DataView(head.buffer).setUint32(8, H, true);
   return new Blob([head, await stream(planes, "deflate", true)], { type: "application/octet-stream" });
 }
-/** The stored layers read back: { w, h, area, path, blue, block, hand }, or null (not this format). */
+/** The stored layers read back: { w, h, area, path, blue, block, hand, cross, slow }, or null (not this format). */
 export async function unpackLayers(buf) {
-  const u8 = new Uint8Array(buf);
-  if (u8.length < 12 || MAGIC.some((b, i) => u8[i] !== b)) return null;
+  const u8 = new Uint8Array(buf), is = (m) => m.every((b, i) => u8[i] === b);
+  if (u8.length < 12 || !(is(MAGIC) || is(MAGIC_1))) return null;
+  const two = is(MAGIC);
   const dv = new DataView(u8.buffer, u8.byteOffset), w = dv.getUint32(4, true), h = dv.getUint32(8, true), N = w * h;
   const planes = await stream(u8.subarray(12), "deflate", false);
   if (planes.length !== 2 * N) return null;
-  const area = new Uint8Array(N), path = new Uint8Array(N), blue = new Uint8Array(N), block = new Uint8Array(N), hand = planes.slice(N);
-  for (let i = 0; i < N; i++) { const v = planes[i]; area[i] = v & 15; path[i] = (v >> 4) & 3; blue[i] = (v >> 6) & 1; block[i] = v >> 7; }
-  return { w, h, area, path, blue, block, hand };
+  const area = new Uint8Array(N), path = new Uint8Array(N), blue = new Uint8Array(N), block = new Uint8Array(N), hand = new Uint8Array(N), cross = new Uint8Array(N), slow = new Uint8Array(N);
+  for (let i = 0; i < N; i++) {
+    const v = planes[i], u = planes[N + i];
+    area[i] = v & 15; path[i] = (v >> 4) & 3; blue[i] = (v >> 6) & 1; block[i] = v >> 7;
+    hand[i] = u & 1;
+    if (two) { cross[i] = (u >> 1) & 1; slow[i] = (u >> 2) & 3; }
+  }
+  return { w, h, area, path, blue, block, hand, cross, slow };
 }
+/** The planes a vector map's layers carry. */
+export const LAYER_KEYS = ["area", "path", "blue", "block", "hand", "cross", "slow"];
 /** Layers of W0 × H0 taken to W × H, nearest pixel (a map too large for the routes' grid is read smaller). */
 export function resampleLayers(L, W, H) {
   if (L.w === W && L.h === H) return L;
   const out = { w: W, h: H };
   const xs = Int32Array.from({ length: W }, (_, x) => Math.min(L.w - 1, Math.floor(((x + 0.5) * L.w) / W)));
-  for (const k of ["area", "path", "blue", "block", "hand"]) {
-    const src = L[k], dst = new Uint8Array(W * H);
+  for (const k of LAYER_KEYS) {
+    const src = L[k] || new Uint8Array(L.w * L.h), dst = new Uint8Array(W * H);
     for (let y = 0; y < H; y++) { const r = Math.min(L.h - 1, Math.floor(((y + 0.5) * L.h) / H)) * L.w, o = y * W; for (let x = 0; x < W; x++) dst[o + x] = src[r + xs[x]]; }
     out[k] = dst;
   }

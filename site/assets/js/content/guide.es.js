@@ -313,11 +313,22 @@ export function build(X) {
             en tu navegador con el motor del trazado de recorridos y dibuja cada símbolo en su lugar exacto.</p>
           ${list([
             html`Las <b>superficies</b> según su color de relleno (o de rayado: azul para un pantano, oliva o violeta para una zona prohibida), capa por
-              capa como en el mapa: un verde sobre un amarillo prevalece. El color mejor que el número: la ISOM 2000, la ISOM 2017 y la ISSprOM no
-              numeran igual.`,
-            html`Las <b>líneas</b> según su número: carreteras y pistas (501 a 504), senderos (505), sendas pequeñas y cortafuegos (506 a 508) son los tres tipos de camino, continuos incluso cuando el mapa los
-              dibuja discontinuos; los cortados, muros y vallas infranqueables (201, 515, 518; 521 y 524 en ISOM 2000) detienen la carrera, salvo
-              donde un camino los atraviesa; los muros y vallas franqueables y los límites de vegetación son pasamanos; las líneas azules, arroyos.`,
+              capa como en el mapa: un verde sobre un amarillo prevalece. El color mejor que el número, salvo cuando el número dice más: vegetación, andar, buena
+              visibilidad (409), pantano infranqueable (307; 309 en ISOM 2000), vegetación infranqueable (411 en ISSprOM).`,
+            html`Las <b>líneas</b> según su número, en la norma del mapa, reconocida por sus símbolos (ISOM 2017 e ISSprOM, ISOM 2000 e ISSOM 2007):
+              carreteras y pistas (501 a 504), senderos (505), sendas pequeñas y cortafuegos (506 a 508) son los tres tipos de camino, continuos
+              incluso cuando el mapa los dibuja discontinuos; los cortados, muros y vallas infranqueables (201, 515, 518; 201, 521 y 524 en ISOM
+              2000) detienen la carrera, salvo en un punto de paso (519; 525 en ISOM 2000); los muros y vallas franqueables y los límites de
+              vegetación son pasamanos; las líneas azules, arroyos.`,
+            html`Las <b>líneas que cruzar</b>: taludes, muros de tierra y cárcavas (104 a 108), cortados franqueables (202), muros y vallas franqueables
+              (513, 514, 516, 517 — en ISOM 2000: 106 a 110, 203, 519, 520, 522, 523) cuestan cada una un tiempo de cruce, 10 s por defecto para un
+              corredor a 6:00 min/km (en proporción al ritmo), calibrado con los tiempos de los corredores cuando sus itinerarios cruzan al menos 5
+              en 3 tramos; donde un camino las atraviesa, nada. Así, los itinerarios las rodean cuando el rodeo cuesta menos.`,
+            html`El <b>terreno lento</b>: las superficies de zona de bloques densa (209), terreno pedregoso (210 carrera lenta, 211 andar, 212
+              progresión difícil) y terreno arenoso (213) frenan la carrera además de la vegetación (70, 40 y 15 % del bosque limpio por defecto);
+              una zona de bloques (208) no frena, como dice la ISOM. Un terreno pedregoso dibujado con puntos sueltos, muy por debajo de la
+              densidad de la norma, no cuenta. Los análisis de mapa publicados antes del 10 de noviembre de 2026 solo tienen estas líneas y este
+              terreno una vez publicados de nuevo.`,
             html`Las curvas de nivel, los símbolos puntuales, los textos y el recorrido se dejan de lado.`,
           ])}
           <p>En el Análisis individual, un archivo OCAD o Mapper soltado solo <b>es</b> el mapa: se dibuja aquí y el track se calibra por su

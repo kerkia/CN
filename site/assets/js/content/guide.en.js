@@ -305,10 +305,20 @@ export function build(X) {
             your browser with the course setter's engine and draws each symbol exactly where it is.</p>
           ${list([
             html`<b>Areas</b> by their fill colour (or hatching: blue for a marsh, olive or purple for out of bounds), layer by layer as on the map
-              — a green over a yellow wins. The colour rather than the number: ISOM 2000, ISOM 2017 and ISSprOM number differently.`,
-            html`<b>Lines</b> by their number: roads and vehicle tracks (501 to 504), footpaths (505), small paths and rides (506 to 508) are the three kinds of path, solid even where the map dashes them; impassable
-              cliffs, walls and fences (201, 515, 518; 521 and 524 in ISOM 2000) stop the runner, except where a path crosses them; passable walls
-              and fences and vegetation boundaries are handrails; blue lines are streams.`,
+              — a green over a yellow wins. The colour rather than the number, except where the number says more: vegetation, walk, good
+              visibility (409), uncrossable marsh (307; 309 in ISOM 2000), impassable vegetation (411 in ISSprOM).`,
+            html`<b>Lines</b> by their number, in the map's standard, recognised from its symbols (ISOM 2017 and ISSprOM, ISOM 2000 and ISSOM 2007):
+              roads and vehicle tracks (501 to 504), footpaths (505), small paths and rides (506 to 508) are the three kinds of path, solid even where
+              the map dashes them; impassable cliffs, walls and fences (201, 515, 518; 201, 521 and 524 in ISOM 2000) stop the runner, except at a
+              crossing point (519; 525 in ISOM 2000); passable walls and fences and vegetation boundaries are handrails; blue lines are streams.`,
+            html`<b>Lines to cross</b>: earth banks, earth walls and erosion gullies (104 to 108), passable cliffs (202), passable walls and fences
+              (513, 514, 516, 517 — in ISOM 2000: 106 to 110, 203, 519, 520, 522, 523) each cost a crossing time, 10 s by default for a runner at
+              6:00 min/km (in proportion to the pace), calibrated on the runners' times when their routes cross at least 5 of them over 3 legs;
+              where a path crosses them, nothing. So the routes go round them when the detour costs less.`,
+            html`<b>Slow ground</b>: areas of dense boulder field (209), stony ground (210 slow running, 211 walk, 212 fight) and sandy ground (213)
+              slow the runner on top of the vegetation (70, 40 and 15% of runnable forest by default); a boulder field (208) does not, as ISOM says.
+              Stony ground drawn as single dots, far below the standard's density, does not count. Map analyses published before 10 November
+              2026 have these lines and this ground only once published again.`,
             html`Contours, point symbols, text and the course are left out.`,
           ])}
           <p>In Solo analysis, an OCAD or Mapper file dropped alone <b>is</b> the map: drawn here, the track placed by its georeferencing. Dropped
