@@ -1,7 +1,9 @@
 // Generated from the Wikimedia Commons picks of 2026-11-10 (learntest.js): one photo a feature, its author, licence and page.
 // Each photo reduced to 760 × 600 px at most and saved as WebP (« photo réduite » in the credit).
 // « boulderField »: the club quiz's own photo, by Emmanuel Roiné, used with his permission (given to the owner, 2026-11-10).
-// An entry with `permission` is credited « avec son autorisation » instead of a licence.
+// An entry with `permission` is credited « avec son autorisation » instead of a licence. A feature may have several photos:
+// an entry whose key is not the feature's names it in `k` (the test draws one of them at random). Emmanuel Roiné's five of
+// 2026-11-10 (owner: « ajoute-les toutes »), the control's streamer in the picture, their EXIF (place, date) left out.
 export const PHOTOS = {
   stump: {"w": 400, "h": 600, "author": "Lotte76", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Nationalpark_Jasmund_-_Wurzel_im_Stubnitz-Wald_(1).jpg", "title": "Nationalpark Jasmund - Wurzel im Stubnitz-Wald (1)"},
   boulder: {"w": 760, "h": 504, "author": "Jim Barton", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Erratic_boulder,_Abernethy_Forest_-_geograph.org.uk_-_3179085.jpg", "title": "Erratic boulder, Abernethy Forest - geograph.org.uk - 3179085"},
@@ -23,4 +25,9 @@ export const PHOTOS = {
   cairn: {"w": 760, "h": 570, "author": "Lutz Lange", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Forstgrenzstein_Falkenstruth_(09286376)_(2).jpg", "title": "Forstgrenzstein Falkenstruth (09286376) (2)"},
   ditch: {"w": 506, "h": 600, "author": "Panek", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Wyschni%C4%99ty_r%C3%B3w_w_d%C4%85br%C3%B3wce_szlacheckiej.jpg", "title": "Wyschnięty rów w dąbrówce szlacheckiej"},
   pathJunction: {"w": 760, "h": 570, "author": "Deutschereditor", "licence": "CC0", "licenceUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en", "page": "https://commons.wikimedia.org/wiki/File:Schulenberger_Wald_(Hattingen)_Weggabelung.jpg", "title": "Schulenberger Wald (Hattingen) Weggabelung"},
+  "road-er": {"k": "road", "w": 421, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Route goudronnée"},
+  "stump-er": {"k": "stump", "w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Souche"},
+  earthWall: {"k": "earthWall", "w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Levée de terre"},
+  "boulder-er": {"k": "boulder", "w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Grand rocher"},
+  "rockFace-er": {"k": "rockFace", "w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Falaise (petite)"},
 };

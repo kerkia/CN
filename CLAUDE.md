@@ -861,7 +861,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   list under the game (`lt.credit.maps`): which is on it?
   **The photos** are not the quiz's (two carry Dreamstime / iStock watermarks, one a photographer's signature, the rest no source):
   20 photos — 19 freely licensed from Wikimedia Commons (CC0 / CC BY / CC BY-SA), and the quiz's own « zone rocheuse » by
-  Emmanuel Roiné, used with his permission (owner, 2026-11-10; `permission` in the entry, credited « avec son autorisation ») —, `site/assets/learn/<key>.webp` (760 × 600 at most), their
+  Emmanuel Roiné, used with his permission (owner, 2026-11-10; `permission` in the entry, credited « avec son autorisation »), and five more of his the same evening (route goudronnée, souche, levée de terre — the earth wall's only photo —, grand rocher, petite falaise; `<feature>-er` with `k` naming the feature, their EXIF left out): 25 photos for 21 features, a question drawing one of its feature's photos at random —, `site/assets/learn/<key>.webp` (760 × 600 at most), their
   author, licence and page in `games/learnphotos.js`, credited under the photo (the file's page, whose name gives the answer away,
   linked after the answer) and listed under the test. **A photo must be unambiguous** (owner, 2026-11-10: the « petite colline »
   was a big wooded hill behind a vegetation boundary): the feature at a control's scale, nothing else of the list in the frame;

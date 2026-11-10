@@ -15,7 +15,9 @@
 // boundary): 20 of 28, none for the boulder cluster (many boulders too close to map one by one: those found showed two or three
 // big ones, each a boulder of its own), the earth wall (a linear bank: those found showed their ditch, or a hedge), re-entrant,
 // spur, small hill, path crossing, thicket and earth bank —, each credited in the list under the game; one by its author, with
-// his permission: Emmanuel Roiné's « zone rocheuse », the quiz's own. Replace one by dropping site/assets/learn/<key>.webp and
+// his permission: Emmanuel Roiné's « zone rocheuse », the quiz's own, and five more of his (owner, 2026-11-10: route goudronnée,
+// souche, levée de terre — the earth wall's only photo —, grand rocher, petite falaise; a second photo where the feature had
+// one, the question drawing one of them at random). Replace one by dropping site/assets/learn/<key>.webp and
 // changing its credit in learnphotos.js. The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the
 // impassable cliff, and its « zone rocheuse » the boulder field.
 
@@ -81,8 +83,11 @@ export const SHOW = ["photo", "name", "sym"];
 export const LIMITS = [5, 10, 15, 20, 30, 45, 60];
 /** The defaults (owner, 2026-11-10): 20 questions, 10 s each. */
 export const DEFAULTS = { count: 20, limit: 10 };
-/** The features with a photo (games/learnphotos.js: Wikimedia Commons, free licences, credited under the photo). */
-export const PHOTO_KEYS = BANK.filter((f) => PHOTOS[f.k]).map((f) => f.k);
+/** Each feature's photos (games/learnphotos.js: an entry names its feature in `k`, else by its key), and the features that
+ *  have one. */
+const PHOTOS_OF = {};
+for (const [key, ph] of Object.entries(PHOTOS)) (PHOTOS_OF[ph.k || key] ||= []).push(key);
+export const PHOTO_KEYS = BANK.filter((f) => PHOTOS_OF[f.k]).map((f) => f.k);
 
 const nameOf = (f) => t(`lt.q.${f.k}`);
 const sig = (f) => f.sym.join("+");
@@ -100,12 +105,12 @@ export const credit = (ph, page = true) => ph.permission
   : html`<span class="lt-credit">${t("lt.credit", { a: ph.author })} ·
   <a href="${ph.licenceUrl}" target="_blank" rel="noopener">${ph.licence}</a> ·
   ${page ? html`<a href="${ph.page}" target="_blank" rel="noopener">Wikimedia Commons</a>` : "Wikimedia Commons"} · ${t("lt.credit.cut")}</span>`;
-/** A feature's photo (its credit in the list under the game, `creditsHtml`: owner, 2026-11-10, not under each photo). */
-const photo = (f) => { const ph = PHOTOS[f.k];
-  return html`<figure class="lt-photo"><img src="/assets/learn/${f.k}.webp" width="${ph.w}" height="${ph.h}" alt="${t("lt.photo.alt")}" decoding="async"></figure>`; };
+/** A photo, by its key (its credit in the list under the game, `creditsHtml`: owner, 2026-11-10, not under each photo). */
+const photo = (key) => { const ph = PHOTOS[key];
+  return html`<figure class="lt-photo"><img src="/assets/learn/${key}.webp" width="${ph.w}" height="${ph.h}" alt="${t("lt.photo.alt")}" decoding="async"></figure>`; };
 /** Every photo's credit, a folded list (under the test in « Apprendre » and under the game in « Jeux »). */
 export const creditsHtml = () => html`<details class="lt-credits"><summary>${t("lt.credits")}</summary><p class="muted">${t("lt.credits.hint")}</p>
-  <ul>${PHOTO_KEYS.map((k) => html`<li><b>${t(`lt.q.${k}`)}</b> — ${credit(PHOTOS[k])}</li>`)}</ul>
+  <ul>${PHOTO_KEYS.flatMap((k) => PHOTOS_OF[k].map((key) => html`<li><b>${t(`lt.q.${k}`)}</b> — ${credit(PHOTOS[key])}</li>`))}</ul>
   <p class="muted">${t("lt.credit.maps")}</p></details>`;
 
 /**
@@ -133,7 +138,7 @@ export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show 
     make(i, r) {
       if (i === 0) {
         const all = shuffle(r, BANK.slice());
-        order = (show.includes("photo") ? [...all.filter((f) => PHOTOS[f.k]), ...all.filter((f) => !PHOTOS[f.k])] : all).slice(0, count);
+        order = (show.includes("photo") ? [...all.filter((f) => PHOTOS_OF[f.k]), ...all.filter((f) => !PHOTOS_OF[f.k])] : all).slice(0, count);
         order = shuffle(r, order);
       }
       const f = order[i], mode = r() < 0.5 ? "random" : "easy";
@@ -145,14 +150,16 @@ export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show 
       // the pictures alone answer (owner, 2026-11-10: no letters): the result and the summary say the features' names
       const labels = Object.fromEntries(opts.map((o, k) => [LETTERS[k], o.name]));
       // what this question shows: the choice, a missing photo replaced by the name
-      const withPhoto = show.includes("photo") && !!PHOTOS[f.k];
+      const withPhoto = show.includes("photo") && !!PHOTOS_OF[f.k];
+      // one of the feature's photos, at random
+      const shot = withPhoto ? PHOTOS_OF[f.k][Math.floor(r() * PHOTOS_OF[f.k].length)] : null;
       const withName = show.includes("name") || (show.includes("photo") && !withPhoto) ;
       const withSym = show.includes("sym");
       const puzzle = {
         options: LETTERS.slice(0, 4), answer,
         text: withName ? nameOf(f) : "", labels,
         render(stage) {
-          if (withPhoto || withSym) stage.insertAdjacentHTML("beforeend", html`<div class="lt-ask">${withPhoto ? photo(f) : ""}${withSym ? symbols(f) : ""}</div>`);
+          if (withPhoto || withSym) stage.insertAdjacentHTML("beforeend", html`<div class="lt-ask">${withPhoto ? photo(shot) : ""}${withSym ? symbols(f) : ""}</div>`);
           const box = (g, k) => { const d = document.createElement("div"); d.className = "lt-pic"; d.innerHTML = extract(g); return framed(d, "", `g-pick-${LETTERS[k]}`); };
           grid(stage, opts.map(box), 4).classList.add("lt-grid");
           stage.dataset.mode = mode;
