@@ -158,6 +158,11 @@ export const body = (SITE, { world = false } = {}) => `
         celui-ci supprime son compte, il passe au premier traceur (à défaut, contrôleur) de l'équipe qui a un compte, sinon il est
         supprimé. Le calcul de la dénivelée envoie au service d'altitude de l'IGN (Géoplateforme, France) les seules coordonnées des
         postes et des coudes des circuits, sans nom ni code.</p>
+      <h2 style="font-size:16px">Palmarès des jeux</h2>
+      <p>Quand vous êtes connecté, chaque partie terminée d'un jeu (« Jeux », le test d'« Apprendre ») envoie son résultat : il est
+        gardé sous le nom de votre compte si c'est l'un de vos 20 meilleurs pour ce jeu, et montré aux autres comptes s'il est parmi les
+        20 meilleurs de tous. Le résultat, ses réglages et la date seulement ; rien n'est gardé des parties d'un visiteur sans compte.
+        Ces résultats sont supprimés avec votre compte.</p>
       <h2 style="font-size:16px">Questions à l'IA</h2>
       <p>Sur la page « IA », votre question est envoyée au modèle de langage qui écrit la requête, avec la description des tables du
         site, la date du jour, votre numéro de licence et la méthode et la discipline choisies : par défaut le modèle d'Ozimut, exécuté
@@ -257,5 +262,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Crédits :</b> les symboles et les textes des définitions de postes (Coach › Définitions de postes, le tracé des circuits)
         viennent de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         sous <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licence BSD</a>.</p>
-      <p class="muted">Dernière mise à jour : 6 novembre 2026.</p>
+      <p class="muted">Dernière mise à jour : 10 novembre 2026.</p>
 `;

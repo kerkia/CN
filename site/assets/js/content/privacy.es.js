@@ -155,6 +155,11 @@ export const body = (SITE, { world = false } = {}) => `
         este elimina su cuenta, pasa al primer trazador (o, en su defecto, controlador) del equipo que tenga cuenta; si no, se
         elimina. El cálculo del desnivel envía al servicio de altitud del IGN (Géoplateforme, Francia) solo las coordenadas de los
         controles y de los vértices de los recorridos, sin nombre ni código.</p>
+      <h2 style="font-size:16px">Clasificación de los juegos</h2>
+      <p>Cuando estás conectado, cada partida terminada de un juego (« Juegos », el test de « Aprender ») envía su resultado: se
+        guarda con el nombre de tu cuenta si es uno de tus 20 mejores en ese juego, y se muestra a las demás cuentas si está entre los
+        20 mejores de todos. Solo el resultado, sus ajustes y la fecha; no se guarda nada de las partidas de un visitante sin cuenta.
+        Estos resultados se borran con tu cuenta.</p>
       <h2 style="font-size:16px">Preguntas a la IA</h2>
       <p>En la página «IA», tu pregunta se envía al modelo de lenguaje que escribe la consulta, junto con la descripción de las tablas del
         sitio, la fecha del día, tu número de licencia y el método y la disciplina elegidos: por defecto el modelo de Ozimut, ejecutado
@@ -254,5 +259,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Créditos:</b> los símbolos y los textos de las descripciones de control (Coach › Descripciones de control, el trazado de recorridos)
         proceden de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         bajo <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licencia BSD</a>.</p>
-      <p class="muted">Última actualización: 6 de noviembre de 2026.</p>
+      <p class="muted">Última actualización: 10 de noviembre de 2026.</p>
 `;

@@ -171,6 +171,26 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
       await forgetUser(env, user.id);
     }
   } catch (e) { /* the account goes all the same */ }
+  // the games' palmarès (api/games/scores.js): its own runs of every game, and its runs among everyone's best
+  try {
+    if (env.BUCKET) {
+      let cursor;
+      do {
+        const r = await env.BUCKET.list({ prefix: "games/", cursor, limit: 1000 });
+        for (const o of r.objects) {
+          if (o.key.endsWith(`/u/${user.id}.json`)) await env.BUCKET.delete(o.key);
+          else if (o.key.endsWith("/top.json")) {
+            const top = await env.BUCKET.get(o.key);
+            const runs = top ? await top.json().catch(() => []) : [];
+            if (Array.isArray(runs) && runs.some((x) => x.uid === user.id)) {
+              await env.BUCKET.put(o.key, JSON.stringify(runs.filter((x) => x.uid !== user.id)), { httpMetadata: { contentType: "application/json" } });
+            }
+          }
+        }
+        cursor = r.truncated ? r.cursor : undefined;
+      } while (cursor);
+    }
+  } catch (e) { /* the account goes all the same */ }
   // « Nutrition »'s articles stay, under the name they were published with (migration 0017)
   try { await env.DB.prepare("UPDATE nut_posts SET author_id = NULL WHERE author_id = ?").bind(user.id).run(); } catch (e) {}
   try { await env.DB.prepare("DELETE FROM nut_likes WHERE user_id = ?").bind(user.id).run(); } catch (e) {}      // its likes go

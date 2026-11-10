@@ -18,7 +18,7 @@
 // The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the impassable cliff (201), and its
 // « zone rocheuse » the boulder field (208).
 
-import { html } from "../util.js";
+import { html, fmt } from "../util.js";
 import { t } from "../i18n.js";
 import { isomInCircle } from "../isom.js";
 import { loadSymbols, symbol } from "../tracer/symbols.js";
@@ -69,7 +69,9 @@ export const MAX = BANK.length;
 /** What a question shows (owner, 2026-11-10: the photo of the terrain the most interesting, so chosen by default): any of a
  *  photo of the feature, its name, its description symbols. A feature without a photo shows its name instead. */
 export const SHOW = ["photo", "name", "sym"];
-export const LIMITS = [10, 15, 20, 30, 45, 60];
+export const LIMITS = [5, 10, 15, 20, 30, 45, 60];
+/** The defaults (owner, 2026-11-10): 20 questions, 10 s each. */
+export const DEFAULTS = { count: 20, limit: 10 };
 /** The features with a photo (games/learnphotos.js: Wikimedia Commons, free licences, credited under the photo). */
 export const PHOTO_KEYS = BANK.filter((f) => PHOTOS[f.k]).map((f) => f.k);
 
@@ -98,17 +100,25 @@ export const creditsHtml = () => html`<details class="lt-credits"><summary>${t("
 
 /**
  * The test's spec for the games' engine (games/quiz.js runGame): `count` features at random (those with a photo first when
- * photos are shown), each answered among four whose wrong ones are the quiz's (`modes[i]` "easy") or drawn at random
- * ("random"), `limit` seconds each, showing `show` (SHOW). `onState`: the engine's (the page hides its settings).
+ * photos are shown), each answered among four whose wrong ones are, question by question at random, the quiz's own or three
+ * other features (owner, 2026-11-10: that mode alone for now), `limit` seconds each, showing `show` (SHOW). `onState`: the
+ * engine's (the page hides its settings); a finished run goes to the palmarès when signed in (`record`).
  */
-export function testSpec({ count = 10, modes = [], limit = 20, show = ["photo"], key = "learntest", onState, onStop } = {}) {
+export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show = ["photo"], key = "learntest", onState, onStop } = {}) {
   count = Math.max(1, Math.min(MAX, count | 0));
   show = SHOW.filter((x) => show.includes(x));
   if (!show.length) show = ["photo"];
   let order = [];
   return {
-    key, count, limit, scoring: "count", onState, pickOnly: true, scrollOnPlay: true,
+    key, count, limit, scoring: "count", pickOnly: true, scrollOnPlay: true, onState,
     topAction: onStop ? { label: t("lt.stop"), onClick: onStop } : null,
+    // the palmarès: one for every setting, best = the larger share of right answers, then the shorter mean time a question
+    palmKey: "learntest", palmTitle: t("lt.tab"),
+    palmScore: (R) => {
+      const right = R.filter((x) => x.ok).length, mean = R.reduce((a, x) => a + (x.ms || 0), 0) / Math.max(1, R.length);
+      return { value: (right / Math.max(1, R.length)) * 1e6 - mean, higher: true,
+        label: `${right} / ${R.length} · ${fmt(mean / 1000, 1)} s`, extra: `${t("lt.seconds", { n: limit })} · ${show.map((s) => t(`lt.sh.${s}`)).join(" + ")}` };
+    },
     intro: html`<p>${t("lt.rules", { n: count, s: limit })}</p><p class="muted">${t("lt.rules.how")}</p>`,
     make(i, r) {
       if (i === 0) {
@@ -116,7 +126,7 @@ export function testSpec({ count = 10, modes = [], limit = 20, show = ["photo"],
         order = (show.includes("photo") ? [...all.filter((f) => PHOTOS[f.k]), ...all.filter((f) => !PHOTOS[f.k])] : all).slice(0, count);
         order = shuffle(r, order);
       }
-      const f = order[i], mode = modes[i] === "random" ? "random" : "easy";
+      const f = order[i], mode = r() < 0.5 ? "random" : "easy";
       const wrong = mode === "easy" ? f.easy.map((k) => BY[k])
         : shuffle(r, BANK.filter((g) => g !== f && sig(g) !== sig(f))).slice(0, 3);
       const opts = shuffle(r, [f, ...wrong]);
@@ -154,8 +164,7 @@ export function testSpec({ count = 10, modes = [], limit = 20, show = ["photo"],
   };
 }
 
-/** « Jeux » (games.js): ten features, 20 s each, shown by their photo, the quiz's wrong answers (« easy ») or random ones. */
-export function spec(level = "easy") {
-  const mode = level === "random" ? "random" : "easy";
-  return testSpec({ count: 10, limit: 20, modes: Array(10).fill(mode), key: `learntest-${mode}` });
+/** « Jeux » (games.js): the test with its defaults, shown by the photos. */
+export function spec() {
+  return testSpec({ key: "learntest-game" });
 }

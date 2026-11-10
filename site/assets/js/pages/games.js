@@ -22,8 +22,8 @@ const ALL = [
   ["photo", "photomemory.js", "spec"],
   ["trailo", "trailo.js", "spec"],
   ["maze", "maze.js", "spec", [["small", "g.lvl.small"], ["medium", "g.lvl.medium"], ["large", "g.lvl.large"]]],
-  // « Quel poste ? » (2026-11-10): « Apprendre »'s test, ten features; shown as « Apprendre » is (auth.owner, for now)
-  ["learntest", "learntest.js", "spec", [["easy", "g.lvl.easy"], ["random", "g.lvl.random"]], () => auth.owner()],
+  // « Quel poste ? » (2026-11-10): « Apprendre »'s test with its defaults; shown as « Apprendre » is (auth.owner, for now)
+  ["learntest", "learntest.js", "spec", null, () => auth.owner()],
 ];
 
 export async function render(main, { query }) {
@@ -57,6 +57,8 @@ export async function render(main, { query }) {
       const mod = await import(`../games/${file}`);
       if (!root.isConnected) return;
       const spec = mod[name](level ?? levels?.[0]?.[0]);
+      const lv = levels?.find(([lk]) => lk === (level ?? levels[0][0]));
+      spec.palmTitle = lv ? `${t(`g.${k}.tab`)} · ${t(lv[1])}` : t(`g.${k}.tab`);
       running.set(k, runGame(root, spec));
       // a game whose pictures need credits (« Quel poste ? »'s photos) lists them under it
       if (mod.creditsHtml && !$(".lt-credits", root.closest(".g-panel"))) root.closest(".g-root").insertAdjacentHTML("afterend", mod.creditsHtml());

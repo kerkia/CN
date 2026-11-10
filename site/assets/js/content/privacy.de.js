@@ -160,6 +160,11 @@ export const body = (SITE, { world = false } = {}) => `
         dieser sein Konto, geht es an den ersten Bahnleger (ersatzweise Kontrolleur) des Teams mit einem Konto über, andernfalls wird es
         gelöscht. Die Berechnung der Steigung sendet an den Höhendienst des IGN (Géoplateforme, Frankreich) nur die Koordinaten der
         Posten und der Knickpunkte der Bahnen, ohne Namen oder Code.</p>
+      <h2 style="font-size:16px">Bestenliste der Spiele</h2>
+      <p>Wenn du angemeldet bist, sendet jedes beendete Spiel (« Spiele », der Test von « Lernen ») sein Ergebnis: Es wird unter dem
+        Namen deines Kontos gespeichert, wenn es eines deiner 20 besten für dieses Spiel ist, und den anderen Konten gezeigt, wenn es
+        zu den 20 besten aller gehört. Nur das Ergebnis, seine Einstellungen und das Datum; von den Spielen eines Besuchers ohne Konto
+        wird nichts gespeichert. Diese Ergebnisse werden mit deinem Konto gelöscht.</p>
       <h2 style="font-size:16px">Fragen an die KI</h2>
       <p>Auf der Seite „KI“ wird deine Frage an das Sprachmodell gesendet, das die Abfrage schreibt, zusammen mit der Beschreibung der Tabellen der
         Website, dem heutigen Datum, deiner Lizenznummer sowie der gewählten Methode und Disziplin: standardmäßig das Modell von Ozimut, ausgeführt
@@ -259,5 +264,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
         stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
-      <p class="muted">Letzte Aktualisierung: 6. November 2026.</p>
+      <p class="muted">Letzte Aktualisierung: 10. November 2026.</p>
 `;

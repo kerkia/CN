@@ -870,9 +870,17 @@ Every multiple-choice game was played through to its score page at phone size, w
   short paragraph — checked at 1366 × 650, 375 × 812 and 375 × 667. The 28 features and each one's three wrong answers (« Facile ») come from a club's
   Wayground quiz the owner gave (« définitions carte course d'orientation »; its photos and map extracts not used, its wrong options
   mapped to the other questions' features by image matching, the nine others read by eye); « Aléatoire » draws three of the 28,
-  never one with the same symbols. The user sets the number of questions, the time each (`runGame`'s new `limit`: a countdown, wrong
-  at zero) and easy/random question by question (`localStorage ocn.learn.test`). Also « Quel poste ? » in Jeux (10 questions, 20 s,
-  levels Facile / Aléatoire), shown as « Apprendre » is. `runGame` now stops a question's clock at the answer (its interval had run on).
+  never one with the same symbols; **every question draws one or the other at random** (owner, 2026-11-10: that mode alone for
+  now, the per-question choice gone). The user sets the number of questions (20 by default) and the time each (10 s by default, 5 to
+  60; `runGame`'s `limit`: a countdown, wrong at zero), `localStorage ocn.learn.test.v2`; « Commencer », its rules and « Palmarès »
+  above the settings. Also « Quel poste ? » in Jeux (the test's defaults, one palmarès with the test, `palmKey`
+  « learntest »), shown as « Apprendre » is. **The games' palmarès** (owner, 2026-11-10: every game, not only the test;
+  `games/palmares.js`, `functions/api/games/scores.js`): a signed-in account's finished runs are kept under its name, for each game and
+  level (`spec.key`, the server's `GAME` list) its 20 best and everyone's 20 best, in R2 `games/<key>/u/<account>.json` and
+  `games/<key>/top.json` (the account's number kept there, never answered); nothing kept for a visitor, and the best score the
+  browser kept (`ocn.games.best`) is gone; a « Palmarès » button beside « Commencer » and « Rejouer » opens both lists; the test's
+  ranking (`palmScore`) is the share of right answers, then the mean time a question, its settings shown; account deletion removes
+  them; the privacy page says so (10 November 2026). `runGame` now stops a question's clock at the answer (its interval had run on).
 - **Santé / Health** (« Nutrition » until 2026-11-01, owner: more general — the name only: the code, the tables `nut_*`, the right
   `users.nutrition` and the route key `nutrition` keep it; `#/sante`, the old `#/nutrition` still opens it), formerly **Nutrition**
   (`pages/nutrition.js`, and its authors' « Rédaction » / Authoring, `#/redaction`, `pages/nutritionwrite.js` — out of the menu since

@@ -1,5 +1,6 @@
 // The games' common engine: a run of puzzles with a timer, answer buttons (or a puzzle that handles its own play),
-// the solution shown after each answer, a scoring rule, a summary and the best score kept in the browser.
+// the solution shown after each answer, a scoring rule, a summary and the palmarès (games/palmares.js: a signed-in account's
+// runs kept on the server under its name, its best and everyone's; owner, 2026-11-10 — the best score the browser kept is gone).
 // Each game gives: key, count, make(i, r) → puzzle, scoring, and a few options. A puzzle: render(stage, api),
 // options (labels), answer (a label, or the labels of a multi-select), solution(stage, choice), times (for the
 // « added time » rule), text (a question), memorise (a first view to remember before the options show), answerText and
@@ -10,15 +11,7 @@
 import { html, raw, $, $$ } from "../util.js";
 import { t } from "../i18n.js";
 import { rng, newSeed } from "./rng.js";
-
-const BEST = "ocn.games.best";
-/** The best scores by game key: {value, label}. */
-export function bests() { try { return JSON.parse(localStorage.getItem(BEST) || "{}"); } catch (e) { return {}; } }
-function saveBest(key, value, label, higher) {
-  const b = bests();
-  if (!b[key] || (higher ? value > b[key].value : value < b[key].value)) { b[key] = { value, label, date: new Date().toISOString().slice(0, 10) }; try { localStorage.setItem(BEST, JSON.stringify(b)); } catch (e) {} }
-  return b[key];
-}
+import * as palm from "./palmares.js";
 
 /** A canvas of w × h logical units that fits its container (at most maxCss px wide), crisp on dense screens. */
 export function makeCanvas(w, h, maxCss = 600) {
@@ -58,13 +51,18 @@ const SCORING = {
  * onState, pickOnly, topAction, scrollOnPlay} — onState("intro" | "play" | "done") as the run starts and ends (« Apprendre » hides
  * its settings meanwhile); pickOnly: the answers are the pictures alone, no buttons under them (their `labels` name them in the
  * result and the summary); topAction {label, onClick}: a button at the end of the puzzle's top line; scrollOnPlay: the game
- * brought to the window's top when a run starts (owner, 2026-11-10: a question whole on a laptop's screen).
+ * brought to the window's top when a run starts (owner, 2026-11-10: a question whole on a laptop's screen); onState("done", results,
+ * total) gives the run; palmKey (else `key`), palmTitle (the game's name over its palmarès), palmScore(results, total) →
+ * {value, label, higher, extra} (else the scoring rule's total): what the palmarès keeps of a finished run.
  * A puzzle's render(stage, api) draws it; an interactive puzzle calls api.done({ok, choice}) itself and has no options.
  */
 export function runGame(root, spec) {
   let seed = spec.seed ?? newSeed();
   const S = SCORING[spec.scoring] || SCORING.count;
-  const bestBox = () => { const b = bests()[spec.key]; return b ? html`<span class="g-best">${t("ui.colon", { a: t("g.best") })} <b>${b.label}</b></span>` : ""; };
+  // « Palmarès » beside « Commencer » and « Rejouer », for a signed-in account
+  const palmKey = spec.palmKey || spec.key;
+  const extraBtn = () => (palm.signedIn() ? html`<button class="btn" type="button" id="g-extra">${t("g.palm")}</button>` : "");
+  const bindExtra = () => $("#g-extra", root)?.addEventListener("click", () => palm.openPalmares(palmKey, spec.palmTitle));
 
   // The puzzles are made before the run (owner, 2026-10-31: some games took seconds, the page frozen, and on Edge without
   // its JIT — its « enhanced security » on a site it does not know — ten times longer: nothing seemed to happen). They are
@@ -108,10 +106,11 @@ export function runGame(root, spec) {
     spec.onState?.("intro");
     root.innerHTML = html`<div class="g-intro">
       <div class="g-rules">${raw(spec.intro)}</div>
-      <div class="row"><button class="btn btn-primary" type="button" id="g-start">${t("g.start")}</button>${bestBox()}</div>
+      <div class="row"><button class="btn btn-primary" type="button" id="g-start">${t("g.start")}</button>${extraBtn()}</div>
       <div class="g-prep-slot"></div>
     </div>`;
     $("#g-start", root).addEventListener("click", play);
+    bindExtra();
     // the rules are read while the maps are made; the bar only when it takes a while
     const sd = seed;
     setTimeout(() => {
@@ -258,16 +257,17 @@ export function runGame(root, spec) {
   }
 
   function summary(R) {
-    spec.onState?.("done");
     const tot = S.total(R);
-    const best = saveBest(spec.key, tot.value, tot.label, tot.higher);
+    spec.onState?.("done", R, tot);
+    palm.record(palmKey, spec.palmScore ? spec.palmScore(R, tot) : { value: tot.value, label: tot.label, higher: tot.higher });
     root.innerHTML = html`<div class="g-summary">
       <h3>${t("g.done")} <span class="g-total">${tot.label}</span></h3>
-      <p class="muted">${t("ui.colon", { a: t("g.best") })} ${best.label}${best.label === tot.label ? ` — ${t("g.newBest")}` : ""}</p>
+
       <div class="table-wrap" style="--table-max: 50vh"><table class="data compact"><thead><tr><th>#</th><th>${t("g.yourAnswer")}</th><th>${t("g.answer")}</th><th class="num">${t("g.time")}</th><th class="num">${t("g.pts")}</th></tr></thead>
         <tbody>${R.map((x, i) => html`<tr><td>${i + 1}</td><td class="${x.ok ? "g-ok" : "g-ko"}">${x.label ?? x.choice ?? "—"}</td><td>${x.answer}</td><td class="num">${fmtS(x.ms)}</td><td class="num">${x.points ?? "—"}</td></tr>`)}</tbody></table></div>
       <div class="row"><button class="btn btn-primary" type="button" id="g-again">${t("g.again")}</button>
-        <button class="btn" type="button" id="g-rules">${t("g.rules")}</button></div></div>`;
+        <button class="btn" type="button" id="g-rules">${t("g.rules")}</button>${extraBtn()}</div></div>`;
+    bindExtra();
     $("#g-again", root).addEventListener("click", () => { seed = newSeed(); play(); });
     $("#g-rules", root).addEventListener("click", () => { seed = newSeed(); intro(); });
   }

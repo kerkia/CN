@@ -2523,6 +2523,15 @@ table.vma-methods td { white-space: normal; vertical-align: top; min-width: 120p
 .g-limit i { transition: width .1s linear; }
 .g-time.g-hurry { color: var(--bad); }
 .g-top-act { margin-left: auto; align-self: center; }
+/* the games' palmarès (games/palmares.js): a window over the page */
+dialog.g-palm { border: 0; border-radius: 12px; padding: 0; width: min(760px, calc(100vw - 24px)); max-height: 86vh; overflow: auto;
+  background: var(--surface); color: var(--ink); box-shadow: var(--shadow-pop); }
+dialog.g-palm::backdrop { background: rgba(0, 0, 0, .45); }
+.g-palm-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px 6px; position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.g-palm-head h2 { margin: 0; font-size: 18px; }
+.g-palm-body { padding: 0 18px 16px; }
+.g-palm-body h3 { font-size: 15px; margin: 14px 0 6px; }
+.g-palm-me td { background: var(--accent-wash); font-weight: 600; }
 .g-root { scroll-margin-top: 64px; }
 .g-frame.g-wrong { border-color: var(--bad); }
 

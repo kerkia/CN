@@ -143,6 +143,11 @@ export const body = (SITE, { world = false } = {}) => `
         creator deletes it; if the creator deletes their account, it passes to the team's first course setter (failing that,
         controller) who has an account, otherwise it is deleted. The climb calculation sends to IGN's elevation service
         (Géoplateforme, France) only the coordinates of the controls and of the courses' bends, with no name or code.</p>
+      <h2 style="font-size:16px">Games leaderboard</h2>
+      <p>When you are signed in, each finished game (« Games », the test of « Learning ») sends its result: it is kept under your
+        account's name if it is one of your 20 best for that game, and shown to the other accounts if it is among everyone's 20 best.
+        The result, its settings and the date only; nothing is kept of a visitor's games without an account. These results are
+        deleted with your account.</p>
       <h2 style="font-size:16px">Questions to the AI</h2>
       <p>On the “AI” page, your question is sent to the language model that writes the query, with the description of the site's
         tables, today's date, your licence number and the chosen method and discipline: by default Ozimut's model, run by Cloudflare
@@ -232,5 +237,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Credits:</b> the control description symbols and texts (Coach › Control descriptions, the course setting) come from Purple
         Pen, by Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         under the <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD licence</a>.</p>
-      <p class="muted">Last updated: 6 November 2026.</p>
+      <p class="muted">Last updated: 10 November 2026.</p>
 `;
