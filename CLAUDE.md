@@ -880,7 +880,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   60; `runGame`'s `limit`: a countdown, wrong at zero), `localStorage ocn.learn.test.v3`; « Commencer » and its rules above the settings. Also « Quel poste ? » in Jeux: no settings
   (20 questions of 10 s, the photo when there is one and the name), two levels (owner, 2026-11-10) — « Débutant », the quiz's
   groups, « Avancé », the right extract and three drawn at random, new each time — each its palmarès (`learntest-beginner`,
-  `learntest-advanced`). **The games' palmarès** (owner, 2026-11-10: every game, not only the test;
+  `learntest-advanced`); its line of rules and its levels hidden while a run is under way (owner: no time to read them). **The games' palmarès** (owner, 2026-11-10: every game, not only the test;
   `games/palmares.js`, `functions/api/games/scores.js`): a signed-in account's finished runs are kept under its name, for each game and
   level (`spec.key`, the server's `GAME` list) its 20 best and everyone's 20 best, in R2 `games/<key>/u/<account>.json` and
   `games/<key>/top.json` (the account's number kept there, never answered); nothing kept for a visitor, and the best score the

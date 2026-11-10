@@ -58,6 +58,12 @@ export async function render(main, { query }) {
       const spec = mod[name](level ?? levels?.[0]?.[0]);
       const lv = levels?.find(([lk]) => lk === (level ?? levels[0][0]));
       spec.palmTitle = lv ? `${t(`g.${k}.tab`)} · ${t(lv[1])}` : t(`g.${k}.tab`);
+      // « Quel poste ? »: its line of rules and its levels hidden while a run is under way (owner, 2026-11-10: no time to read
+      // them, and the question needs the room)
+      if (k === "learntest") {
+        const head = $(".g-head", root.closest(".g-panel")), was = spec.onState;
+        spec.onState = (st, ...a) => { if (head) head.hidden = st === "play"; was?.(st, ...a); };
+      }
       running.set(k, runGame(root, spec));
       // a game whose pictures need credits (« Quel poste ? »'s photos) lists them under it
       if (mod.creditsHtml && !$(".lt-credits", root.closest(".g-panel"))) root.closest(".g-root").insertAdjacentHTML("afterend", mod.creditsHtml());
