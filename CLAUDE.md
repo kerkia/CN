@@ -854,8 +854,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only
   for a day, **everyone's since 2026-11-10** (owner; visitors without an account too, `GUEST_ROUTES`: the test plays, without a
   palmarès). **Test** (`games/learntest.js`, on the games' engine): a feature shown — by any of a photo of the
-  terrain (the default, owner: « the whole point »), its name, its description symbols (`cdsymbol.js`) — and four small control
-  circles drawn by `isom.isomInCircle` (ISOM 2017-2; new path scenes « 5.2bend », « 5.2cross », « 5.2junction »): which is on it?
+  terrain (the default, owner: « the whole point »), its name, its description symbols (`cdsymbol.js`) — and four map extracts
+  with a control circle, **the quiz's own** (owner, 2026-11-10: « use those, never invent map extracts »; the circles Ozimut had
+  drawn with `isom.isomInCircle` and its path scenes are gone): each question's right answer as the quiz serves it, 147 × 143 px,
+  `site/assets/learn/map/<key>.png` (exact palette PNGs of its GIFs), a wrong option showing another feature's; credited in the
+  list under the game (`lt.credit.maps`): which is on it?
   **The photos** are not the quiz's (two carry Dreamstime / iStock watermarks, one a photographer's signature, the rest no source):
   20 photos — 19 freely licensed from Wikimedia Commons (CC0 / CC BY / CC BY-SA), and the quiz's own « zone rocheuse » by
   Emmanuel Roiné, used with his permission (owner, 2026-11-10; `permission` in the entry, credited « avec son autorisation ») —, `site/assets/learn/<key>.webp` (760 × 600 at most), their
@@ -867,10 +870,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   2026-11-10): a lean page (no title, its line the menu entry's tooltip), the lede hidden too during a run, « Arrêter le test » on
   the puzzle's line (`topAction`), the game scrolled to the top (`scrollOnPlay`), no question text, no letters (the circles alone
   answer, `pickOnly`), the names in the result's line (« Votre réponse : … ») and the circles' tooltips, the credits only in the
-  list under the game (« Apprendre » and « Jeux »), circles of 92 px, the photo's height from the window's (`100vh − 370px`), the time's bar a thin line under « Énigme n / N »
-  (`.g-n-box`), the result centred under the circles; on a phone the four circles still on one line (up to 76 px) and the result one
+  list under the game (« Apprendre » and « Jeux »), extracts of ~100 px (112 at most), the photo's height from the window's (`100vh − 390px`), the time's bar a thin line under « Énigme n / N »
+  (`.g-n-box`), the result centred under the circles; on a phone the four extracts still on one line (~62 px on a 375 px screen) and the result one
   short paragraph — checked at 1366 × 650, 375 × 812 and 375 × 667. The 28 features and each one's three wrong answers (« Facile ») come from a club's
-  Wayground quiz the owner gave (« définitions carte course d'orientation »; its photos and map extracts not used, its wrong options
+  Wayground quiz the owner gave (« définitions carte course d'orientation »; its photos not used, its map extracts used since the same evening, its wrong options
   mapped to the other questions' features by image matching, the nine others read by eye); « Aléatoire » draws three of the 28,
   never one with the same symbols; **every question draws one or the other at random** (owner, 2026-11-10: that mode alone for
   now, the per-question choice gone). The user sets the number of questions (20 by default) and the time each (10 s by default, 5 to

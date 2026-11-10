@@ -1,26 +1,26 @@
 // « Apprendre › Test » and the game « Quel poste ? » (owner, 2026-11-10, after a club's quiz « définitions carte course
 // d'orientation »: 28 questions, a feature named, four map extracts with a control circle, 20 s each). A feature is shown — its
-// photo (by default), its name, its control description symbols, any of them — and four control circles are drawn on the
-// map: which one is on it? None of the quiz's pictures is used — no photo, no map extract: the circles are drawn by Ozimut from the specifications
-// (isom.js `isomInCircle`, ISOM 2017-2 at 1:15 000, the feature in its own shape where it has one), the symbols are the
-// IOF's (Purple Pen's, cdsymbol.js). From the quiz come its 28 features and, for each, the three wrong answers its author
-// chose (« Facile »: those of another question, mapped feature by feature; the nine pictures that were no other question's
-// answer read as the nearest feature — several boulders as « Gros rocher », small brown rings as « Petite dépression », a
-// green cross as « Souche »). « Aléatoire »: three other features of the 28 at random, never one shown by the same symbols.
+// photo (by default), its name, its control description symbols, any of them — and four map extracts with a control circle:
+// which one is on it? **The map extracts are the quiz's own** (owner, 2026-11-10: use those, never invent map extracts):
+// each question's right answer, 147 × 143 px as the quiz serves them, in site/assets/learn/map/<key>.png; a feature's extract
+// is its question's answer, so a wrong option shows another feature's. The symbols are the IOF's (Purple Pen's, cdsymbol.js).
+// From the quiz also come its 28 features and, for each, the three wrong answers its author chose (« Facile »: those of another
+// question, mapped feature by feature; the nine pictures that were no other question's answer read as the nearest feature —
+// several boulders as « Gros rocher », small brown rings as « Petite dépression », a green cross as « Souche » — and shown by
+// that feature's extract). « Aléatoire »: three other features of the 28 at random, never one shown by the same symbols.
 // The photos of the terrain (owner, 2026-11-10: « the whole point »): the quiz's own photos are not used — two carry stock
 // agencies' watermarks (Dreamstime, iStock), one a photographer's signature, the others no source —, but freely licensed
 // ones from Wikimedia Commons, one a feature where an unambiguous one was found — the feature at a control's scale, nothing
 // else of the list in the frame (owner, 2026-11-10: a « petite colline » that was a big wooded hill behind a vegetation
 // boundary): 20 of 28, none for the boulder cluster (many boulders too close to map one by one: those found showed two or three
-// big ones, each a boulder of its own), the earth wall (a linear bank: those found showed their ditch, or a hedge), re-entrant, spur, small hill,
-// path crossing, thicket and earth bank —, each credited under it (author, licence; the file's page, whose name gives the answer away, after the
-// answer); one by its author, with his permission: Emmanuel Roiné's « zone rocheuse », the quiz's own. Replace one by dropping site/assets/learn/<key>.webp and changing its credit in learnphotos.js.
-// The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the impassable cliff (201), and its
-// « zone rocheuse » the boulder field (208).
+// big ones, each a boulder of its own), the earth wall (a linear bank: those found showed their ditch, or a hedge), re-entrant,
+// spur, small hill, path crossing, thicket and earth bank —, each credited in the list under the game; one by its author, with
+// his permission: Emmanuel Roiné's « zone rocheuse », the quiz's own. Replace one by dropping site/assets/learn/<key>.webp and
+// changing its credit in learnphotos.js. The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the
+// impassable cliff, and its « zone rocheuse » the boulder field.
 
 import { html, fmt } from "../util.js";
 import { t } from "../i18n.js";
-import { isomInCircle } from "../isom.js";
 import { loadSymbols, symbol } from "../tracer/symbols.js";
 import { cdSymbolSvg } from "../cdsymbol.js";
 import { grid, framed } from "./common.js";
@@ -31,38 +31,37 @@ export { PHOTOS };
 
 await loadSymbols();
 
-/** The features: key (names `lt.q.<key>`), the description symbols that say it (Purple Pen's ids: column D, then E or G),
- *  the map symbol (ISOM 2017-2) and its scene (isom.js SCENE, by ISCD number; the symbol's first by default), and the
- *  quiz's three wrong answers (« Facile »), in its order. */
+/** The features, in the quiz's order: key (names `lt.q.<key>`, the extract `learn/map/<key>.png`), the description symbols
+ *  that say it (Purple Pen's ids: column D, then E or G), and the quiz's three wrong answers (« Facile »), in its order. */
 export const BANK = [
-  { k: "stump", sym: ["4.10"], code: "419", easy: ["earthBank", "cairn", "pathCross"] },
-  { k: "boulder", sym: ["2.4"], code: "205", easy: ["depression", "knoll", "roughOpen"] },
-  { k: "roughOpen", sym: ["4.4"], code: "403", easy: ["bigTree", "pit", "reentrant"] },
-  { k: "pathBend", sym: ["5.2", "11.7"], code: "505", scene: "5.2bend", easy: ["smallDep", "pathCross", "cliff"] },
-  { k: "rockFace", sym: ["2.1"], code: "202", easy: ["boulder", "smallDep", "boulderField"] },
-  { k: "smallDep", sym: ["1.13"], code: "111", easy: ["spur", "fence", "earthWall"] },
-  { k: "earthWall", sym: ["1.6"], code: "105", easy: ["pathCross", "hill", "smallDep"] },
-  { k: "bigTree", sym: ["4.9"], code: "417", easy: ["stump", "vegBoundary", "ruin"] },
-  { k: "road", sym: ["5.1"], code: "502", easy: ["pathCross", "knoll", "pathJunction"] },
-  { k: "boulderCluster", sym: ["2.6"], code: "207", easy: ["impFence", "ruin", "boulder"] },
-  { k: "pathCross", sym: ["5.2", "10.1"], code: "505", scene: "5.2cross", easy: ["fence", "pathJunction", "road"] },
-  { k: "pit", sym: ["1.14"], code: "112", easy: ["stump", "smallDep", "knoll"] },
-  { k: "knoll", sym: ["1.10"], code: "109", easy: ["boulder", "roughOpen", "earthBank"] },
-  { k: "depression", sym: ["1.12"], code: "101", easy: ["knoll", "vegBoundary", "hill"] },
-  { k: "ruin", sym: ["5.13"], code: "523", easy: ["impFence", "cairn", "pathBend"] },
-  { k: "reentrant", sym: ["1.3"], code: "101", easy: ["earthBank", "smallDep", "boulderField"] },
-  { k: "boulderField", sym: ["2.5"], code: "208", easy: ["depression", "stump", "cliff"] },
-  { k: "cliff", sym: ["2.1"], code: "201", easy: ["boulderField", "depression", "fence"] },
-  { k: "fence", sym: ["5.9"], code: "516", easy: ["earthWall", "pathCross", "cairn"] },
-  { k: "spur", sym: ["1.2"], code: "101", easy: ["depression", "earthBank", "roughOpen"] },
-  { k: "impFence", sym: ["5.9"], code: "518", easy: ["earthWall", "pathCross", "pit"] },
-  { k: "vegBoundary", sym: ["4.7"], code: "416", easy: ["fence", "bigTree", "impFence"] },
-  { k: "cairn", sym: ["5.17"], code: "526", easy: ["bigTree", "stump", "cliff"] },
-  { k: "thicket", sym: ["4.5"], code: "410", easy: ["ditch", "vegBoundary", "roughOpen"] },
-  { k: "ditch", sym: ["3.5"], code: "306", easy: ["spur", "fence", "pathBend"] },
-  { k: "pathJunction", sym: ["5.2", "10.2"], code: "505", scene: "5.2junction", easy: ["pathCross", "pathBend", "fence"] },
-  { k: "hill", sym: ["1.9"], code: "101", easy: ["smallDep", "knoll", "depression"] },
-  { k: "earthBank", sym: ["1.4"], code: "104", easy: ["spur", "cairn", "rockFace"] },
+  { k: "stump", sym: ["4.10"], easy: ["earthBank", "cairn", "pathCross"] },
+  { k: "boulder", sym: ["2.4"], easy: ["depression", "knoll", "roughOpen"] },
+  { k: "roughOpen", sym: ["4.4"], easy: ["bigTree", "pit", "reentrant"] },
+  { k: "pathBend", sym: ["5.2", "11.7"], easy: ["smallDep", "pathCross", "cliff"] },
+  { k: "rockFace", sym: ["2.1"], easy: ["boulder", "smallDep", "boulderField"] },
+  { k: "smallDep", sym: ["1.13"], easy: ["spur", "fence", "earthWall"] },
+  { k: "earthWall", sym: ["1.6"], easy: ["pathCross", "hill", "smallDep"] },
+  { k: "bigTree", sym: ["4.9"], easy: ["stump", "vegBoundary", "ruin"] },
+  { k: "road", sym: ["5.1"], easy: ["pathCross", "knoll", "pathJunction"] },
+  { k: "boulderCluster", sym: ["2.6"], easy: ["impFence", "ruin", "boulder"] },
+  { k: "pathCross", sym: ["5.2", "10.1"], easy: ["fence", "pathJunction", "road"] },
+  { k: "pit", sym: ["1.14"], easy: ["stump", "smallDep", "knoll"] },
+  { k: "knoll", sym: ["1.10"], easy: ["boulder", "roughOpen", "earthBank"] },
+  { k: "depression", sym: ["1.12"], easy: ["knoll", "vegBoundary", "hill"] },
+  { k: "ruin", sym: ["5.13"], easy: ["impFence", "cairn", "pathBend"] },
+  { k: "reentrant", sym: ["1.3"], easy: ["earthBank", "smallDep", "boulderField"] },
+  { k: "boulderField", sym: ["2.5"], easy: ["depression", "stump", "cliff"] },
+  { k: "cliff", sym: ["2.1"], easy: ["boulderField", "depression", "fence"] },
+  { k: "fence", sym: ["5.9"], easy: ["earthWall", "pathCross", "cairn"] },
+  { k: "spur", sym: ["1.2"], easy: ["depression", "earthBank", "roughOpen"] },
+  { k: "impFence", sym: ["5.9"], easy: ["earthWall", "pathCross", "pit"] },
+  { k: "vegBoundary", sym: ["4.7"], easy: ["fence", "bigTree", "impFence"] },
+  { k: "cairn", sym: ["5.17"], easy: ["bigTree", "stump", "cliff"] },
+  { k: "thicket", sym: ["4.5"], easy: ["ditch", "vegBoundary", "roughOpen"] },
+  { k: "ditch", sym: ["3.5"], easy: ["spur", "fence", "pathBend"] },
+  { k: "pathJunction", sym: ["5.2", "10.2"], easy: ["pathCross", "pathBend", "fence"] },
+  { k: "hill", sym: ["1.9"], easy: ["smallDep", "knoll", "depression"] },
+  { k: "earthBank", sym: ["1.4"], easy: ["spur", "cairn", "rockFace"] },
 ];
 const BY = Object.fromEntries(BANK.map((f) => [f.k, f]));
 export const MAX = BANK.length;
@@ -77,8 +76,8 @@ export const PHOTO_KEYS = BANK.filter((f) => PHOTOS[f.k]).map((f) => f.k);
 
 const nameOf = (f) => t(`lt.q.${f.k}`);
 const sig = (f) => f.sym.join("+");
-/** A feature's control circle drawn on the map, `w` px wide. */
-const circle = (f, w) => isomInCircle(f.code, w, "lt-map", false, f.scene || f.sym[0]);
+/** A feature's map extract with its control circle, the quiz's own (147 × 143 px). */
+const extract = (f) => html`<img class="lt-map" src="/assets/learn/map/${f.k}.png" width="147" height="143" alt="${t("lt.map.alt")}" draggable="false">`;
 /** Its description symbols, side by side as on a sheet. */
 const symbols = (f, size = 56) => html`<span class="lt-syms" role="img" aria-label="${t("lt.symbols")}">${f.sym.map((id) => {
   const s = symbol(id);
@@ -96,7 +95,8 @@ const photo = (f) => { const ph = PHOTOS[f.k];
   return html`<figure class="lt-photo"><img src="/assets/learn/${f.k}.webp" width="${ph.w}" height="${ph.h}" alt="${t("lt.photo.alt")}" decoding="async"></figure>`; };
 /** Every photo's credit, a folded list (under the test in « Apprendre » and under the game in « Jeux »). */
 export const creditsHtml = () => html`<details class="lt-credits"><summary>${t("lt.credits")}</summary><p class="muted">${t("lt.credits.hint")}</p>
-  <ul>${PHOTO_KEYS.map((k) => html`<li><b>${t(`lt.q.${k}`)}</b> — ${credit(PHOTOS[k])}</li>`)}</ul></details>`;
+  <ul>${PHOTO_KEYS.map((k) => html`<li><b>${t(`lt.q.${k}`)}</b> — ${credit(PHOTOS[k])}</li>`)}</ul>
+  <p class="muted">${t("lt.credit.maps")}</p></details>`;
 
 /**
  * The test's spec for the games' engine (games/quiz.js runGame): `count` features at random (those with a photo first when
@@ -142,7 +142,7 @@ export function testSpec({ count = DEFAULTS.count, limit = DEFAULTS.limit, show 
         text: withName ? nameOf(f) : "", labels,
         render(stage) {
           if (withPhoto || withSym) stage.insertAdjacentHTML("beforeend", html`<div class="lt-ask">${withPhoto ? photo(f) : ""}${withSym ? symbols(f) : ""}</div>`);
-          const box = (g, k) => { const d = document.createElement("div"); d.className = "lt-pic"; d.innerHTML = circle(g, 100); return framed(d, "", `g-pick-${LETTERS[k]}`); };
+          const box = (g, k) => { const d = document.createElement("div"); d.className = "lt-pic"; d.innerHTML = extract(g); return framed(d, "", `g-pick-${LETTERS[k]}`); };
           grid(stage, opts.map(box), 4).classList.add("lt-grid");
           stage.dataset.mode = mode;
         },

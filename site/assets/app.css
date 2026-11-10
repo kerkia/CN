@@ -2557,14 +2557,15 @@ dialog.g-palm::backdrop { background: rgba(0, 0, 0, .45); }
 /* a phone: the four circles still on one line, a little smaller */
 @media (max-width: 560px) {
   .lt-grid { gap: 6px; max-width: 100%; }
-  .lt-pic svg { max-width: 76px; }
+  .lt-pic img { max-width: 84px; }
   /* the result one short paragraph, its parts in a row (a flex row put each on a line of its own) */
   .lt-game .g-result.g-result { display: block; width: auto; margin-left: -4px; margin-right: -4px; text-align: center; font-size: 14px; line-height: 1.4; }
   .lt-game .g-result > * { margin: 0 4px; }
   .lt-game .g-result .btn { vertical-align: middle; }
 }
 .lt-pic { width: 100%; display: flex; justify-content: center; }
-.lt-pic svg { display: block; width: 100%; max-width: 92px; height: auto; border: 1px solid var(--border-strong); border-radius: 8px; }   /* half the area of 130 px (owner, 2026-11-10) */
+/* the quiz's own map extracts (147 × 143 px; owner, 2026-11-10: never drawn ones), a little under their size */
+.lt-pic img { display: block; width: 100%; max-width: 112px; height: auto; border: 1px solid var(--border-strong); border-radius: 6px; background: #fff; user-select: none; }
 .lt-ask { flex-wrap: wrap; align-items: flex-end; gap: 12px; }
 .lt-game .g-top { margin-bottom: 6px; align-items: center; gap: 6px 14px; }
 .lt-game .g-time { font-size: 17px; min-width: 0; }
@@ -2575,7 +2576,7 @@ dialog.g-palm::backdrop { background: rgba(0, 0, 0, .45); }
 .lt-grid .g-caption:empty { display: none; }
 .lt-photo { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 /* the photo as tall as a laptop's window leaves: the bar, the puzzle's line, the circles and the result fit under it */
-.lt-photo img { display: block; width: auto; height: auto; max-width: min(100%, 560px); max-height: clamp(150px, calc(100vh - 370px), 420px); border-radius: 8px; border: 1px solid var(--border-strong); }
+.lt-photo img { display: block; width: auto; height: auto; max-width: min(100%, 560px); max-height: clamp(150px, calc(100vh - 390px), 420px); border-radius: 8px; border: 1px solid var(--border-strong); }
 .lt-credit a { color: inherit; }
 .lt-show { border: 0; margin: 0; padding: 0; min-width: 0; }
 .lt-show legend { padding: 0; margin-bottom: 4px; font-size: 12px; color: var(--ink-3); font-weight: 550; }

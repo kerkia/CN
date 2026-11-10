@@ -762,12 +762,6 @@ function contoured(code, k, lines) {
     return k.stroke(style, pts, closed) + (slope ? k.slope(pts, slope[0], slope[1], slope[2] ?? 1) : "");
   }).join("");
 }
-// the arms of the path scenes, from the centre (in radii)
-const PATH_ARMS = {
-  bend: [[[0, 0], [-0.7, 0.32], [-1.8, 0.75]], [[0, 0], [0.35, -0.7], [0.7, -1.8]]],
-  cross: [[[0, 0], [-0.9, -0.2], [-1.8, -0.45]], [[0, 0], [0.9, 0.22], [1.8, 0.4]], [[0, 0], [-0.2, 0.9], [-0.4, 1.8]], [[0, 0], [0.18, -0.9], [0.45, -1.8]]],
-  junction: [[[0, 0], [-0.9, 0.15], [-1.8, 0.35]], [[0, 0], [0.9, -0.12], [1.8, -0.3]], [[0, 0], [0.3, 0.85], [0.7, 1.8]]],
-};
 /** Each feature's scene, by ISCD number: (map symbol, kit) → SVG, or null to show the symbol itself. */
 const SCENE = {
   // terrace: a level shelf on a slope, the contour pushed out round it
@@ -827,11 +821,6 @@ const SCENE = {
     return line(`M${X0},${n(cy() - g)}H${n(X1())}M${X0},${n(cy() + g)}H${n(X1())}`, C.black, 0.14) + line(`M${cx()},${n(cy() - b)}V${n(cy() + b)}`, C.black, 0.2)
       + (sprint ? `<rect x="${n(cx() - 0.3)}" y="${n(cy() - 0.3)}" width="0.6" height="0.6" fill="${C.paper}" stroke="${C.black}" stroke-width="0.2"/>` : "");
   },
-  // a path's bend, crossing and junction at the circle's centre (« Apprendre › Test », 2026-11-10): each arm drawn from the
-  // centre outward, so that a dash, not a gap, marks the point where they meet
-  "5.2bend": (c, k) => (c === "505" ? PATH_ARMS.bend.map((a) => k.stroke(c, curve(a))).join("") : null),
-  "5.2cross": (c, k) => (c === "505" ? PATH_ARMS.cross.map((a) => k.stroke(c, curve(a))).join("") : null),
-  "5.2junction": (c, k) => (c === "505" ? PATH_ARMS.junction.map((a) => k.stroke(c, curve(a))).join("") : null),
 };
 /** A feature's scene for a map symbol, its body for a square `side` mm wide, or "" when the symbol alone shows it. */
 function sceneOf(ref, code, sprint, side) {
