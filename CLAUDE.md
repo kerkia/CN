@@ -861,7 +861,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   linked after the answer) and listed under the test. **A photo must be unambiguous** (owner, 2026-11-10: the « petite colline »
   was a big wooded hill behind a vegetation boundary): the feature at a control's scale, nothing else of the list in the frame;
   none kept for boulder cluster (many boulders too close to map one by one), earth wall (a linear bank; those found showed their ditch or a hedge), re-entrant, spur, small hill, path crossing, thicket and earth bank (their name shows instead). Replace one with a photo Ozimut may use: the file and its credit. The settings hide while a run is under way
-  (`runGame`'s `onState`), « Arrêter le test » brings them back. The 28 features and each one's three wrong answers (« Facile ») come from a club's
+  (`runGame`'s `onState`), « Arrêter le test » brings them back. **Compact, a question whole on a laptop's screen** (owner,
+  2026-11-10): a lean page (no title, its line the menu entry's tooltip), the lede hidden too during a run, « Arrêter le test » on
+  the puzzle's line (`topAction`), the game scrolled to the top (`scrollOnPlay`), no question text, no letters (the circles alone
+  answer, `pickOnly`), the names in the result's line (« Votre réponse : … ») and the circles' tooltips, the credits only in the
+  list under the game (« Apprendre » and « Jeux »), circles of 92 px, the photo's height from the window's (`100vh − 385px`). The 28 features and each one's three wrong answers (« Facile ») come from a club's
   Wayground quiz the owner gave (« définitions carte course d'orientation »; its photos and map extracts not used, its wrong options
   mapped to the other questions' features by image matching, the nine others read by eye); « Aléatoire » draws three of the 28,
   never one with the same symbols. The user sets the number of questions, the time each (`runGame`'s new `limit`: a countdown, wrong
