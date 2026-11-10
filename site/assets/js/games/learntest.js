@@ -9,8 +9,11 @@
 // green cross as « Souche »). « Aléatoire »: three other features of the 28 at random, never one shown by the same symbols.
 // The photos of the terrain (owner, 2026-11-10: « the whole point »): the quiz's own photos are not used — two carry stock
 // agencies' watermarks (Dreamstime, iStock), one a photographer's signature, the others no source —, but freely licensed
-// ones from Wikimedia Commons, one a feature where a good one was found (24 of 28; not the re-entrant, spur, thicket and
-// earth bank), each credited under it (author, licence; the file's page, whose name gives the answer away, after the
+// ones from Wikimedia Commons, one a feature where an unambiguous one was found — the feature at a control's scale, nothing
+// else of the list in the frame (owner, 2026-11-10: a « petite colline » that was a big wooded hill behind a vegetation
+// boundary): 20 of 28, none for the boulder cluster (many boulders too close to map one by one: those found showed two or three
+// big ones, each a boulder of its own), the earth wall (a linear bank: those found showed their ditch, or a hedge), re-entrant, spur, small hill,
+// path crossing, thicket and earth bank —, each credited under it (author, licence; the file's page, whose name gives the answer away, after the
 // answer). Replace one by dropping site/assets/learn/<key>.webp and changing its credit in learnphotos.js.
 // The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the impassable cliff (201), and its
 // « zone rocheuse » the boulder field (208).
