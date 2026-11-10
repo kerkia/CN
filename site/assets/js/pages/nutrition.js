@@ -153,7 +153,7 @@ export async function render(main, { query }) {
 
           ${tr || p.lang !== lang() ? html`<div class="nut-trbar" lang="${lang()}">
             ${showTr ? html`<span>${t(tr.lang === lang() ? "nut.tr.done" : "nut.tr.doneEn", { from: t(`nut.from.${p.lang}`) })}</span>
-                <button type="button" class="btn btn-sm" data-view="orig">${t("nut.tr.orig")}</button>`
+                <button type="button" class="btn btn-sm" data-view="orig">${t("nut.tr.orig", { lang: langName(p.lang) })}</button>`
               : html`<span>${t("nut.written", { lang: langName(p.lang) })}</span>${tr ? html`<button type="button" class="btn btn-sm" data-view="tr">${t("nut.tr.show", { lang: langName(tr.lang) })}</button>` : ""}`}</div>` : ""}
           ${summary ? html`<p class="nut-lead">${summary}</p>` : ""}
           <div class="nut-body">${raw(sanitize(body))}</div>

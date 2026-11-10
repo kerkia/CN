@@ -129,9 +129,9 @@ export const body = (SITE, { world = false } = {}) => `
         und Autoren geschrieben haben. Ein Artikel wird in der Datenbank der Website (Cloudflare) mit dem Namen seines Autors gespeichert,
         der mit ihm angezeigt wird, seine Bilder im Dateispeicher der Website; er wird gelöscht, wenn sein Autor oder der Herausgeber ihn
         löscht. Löscht der Autor sein Konto, bleiben seine Artikel unter seinem Namen veröffentlicht, es sei denn, er verlangt ihre
-        Entfernung (contact@ozimut.com). „Gefällt mir“ wird pro Konto gespeichert; nur ihre Anzahl wird angezeigt. Ein Artikel, der nicht
-        auf Englisch geschrieben ist, wird vom Sprachmodell von Ozimut, das Cloudflare ausführt (Workers AI) und das ihn nicht speichert,
-        automatisch ins Englische übersetzt; die Übersetzung wird mit dem Artikel gespeichert und als solche gekennzeichnet.</p>
+        Entfernung (contact@ozimut.com). „Gefällt mir“ wird pro Konto gespeichert; nur ihre Anzahl wird angezeigt. Jeder Artikel wird
+        vom Sprachmodell von Ozimut, das Cloudflare ausführt (Workers AI) und das ihn nicht speichert, automatisch ins Englische und ins
+        Französische übersetzt (außer in seine Originalsprache); die Übersetzung wird mit dem Artikel gespeichert und als solche gekennzeichnet.</p>
       <p><b>Urheberrecht.</b> Jeder Autor behält alle Urheberrechte an seinen Artikeln (den Texten und Bildern, die er geschaffen hat),
         einschließlich des Urheberpersönlichkeitsrechts, und kann sie frei anderswo veröffentlichen, in der Form und zu den Bedingungen
         seiner Wahl. Mit der Veröffentlichung eines Artikels auf ${SITE} gewährt er dem Herausgeber nur eine unentgeltliche, nicht

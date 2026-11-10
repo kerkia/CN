@@ -5,7 +5,7 @@
 // articles (_lib/api.js nutritionRole), the author apart, gets one e-mail (users.nut_mail, with the administrator's e-mail
 // right, users.alerts_allowed, as every alert) and one notification (users.nut_push) for the articles announced together;
 // both are queued, then a few are sent at once (the rest by the next /api/notify, after a deploy, or the next announcement).
-// Also here: the articles' English translations, made by Workers AI and kept, ahead of the readers (translateDue, below).
+// Also here: the articles' English and French translations, made by Workers AI and kept, ahead of the readers (translateDue, below).
 
 import { adminEmails, allow, nowIso, nutritionRole, userLang } from "./api.js";
 import { queueStatement, flushQueue } from "./mail.js";
@@ -123,18 +123,20 @@ export async function saveTranslation(env, p, to, t) {
   return row;
 }
 
-// Every published article not written in English is translated into English ahead of time, and into nothing else (owner,
-// 2026-11-01: translating every article into every language was too costly; a reader sees their own language when a
-// translation into it exists, else English): at once when it is published or changed, in the background of that request, and
+// Every published article is kept in its original, in English and in French (owner, 2026-11-10; English only from 2026-11-01,
+// translating into every language being too costly): each one is translated ahead of time into those of the two it is not
+// written in (`TARGETS`), and into nothing else — a reader sees their own language when the original or a translation is in
+// it, else English: at once when it is published or changed, in the background of that request, and
 // whatever is still missing — a translation cut short, an article changed since — one at a time in the background of the page
 // views (/api/track) and of « Santé »'s list, at most every 10 minutes an isolate. Each (article, version) is claimed for 15
 // minutes so that two requests do not make it twice, and at most AUTO_PER_DAY are made a day (the account's free AI allowance,
 // 10 000 neurons, shared with « IA »).
 const AUTO_PER_DAY = 40;
+export const TARGETS = ["en", "fr"];
 let lastTranslate = 0;
 
-/** Make up to `max` missing translations (of one article, or of any); -> how many were made. */
-export async function translateDue(env, { postId = null, max = 1 } = {}) {
+/** Make up to `max` missing translations (of one article — all it lacks by default —, or of any); -> how many were made. */
+export async function translateDue(env, { postId = null, max = postId ? TARGETS.length : 1 } = {}) {
   if (!env.DB || !env.AI) return 0;
   let posts, done;
   try {
@@ -143,7 +145,7 @@ export async function translateDue(env, { postId = null, max = 1 } = {}) {
     ({ results: done } = await env.DB.prepare("SELECT post_id, lang, version FROM nut_translations").all());
   } catch (e) { return 0; }
   const have = new Set(done.map((d) => `${d.post_id}:${d.lang}:${d.version}`));
-  const todo = posts.filter((p) => p.lang !== "en" && !have.has(`${p.id}:en:${p.version}`)).map((p) => [p, "en"]);
+  const todo = posts.flatMap((p) => TARGETS.filter((l) => p.lang !== l && !have.has(`${p.id}:${l}:${p.version}`)).map((l) => [p, l]));
   const picked = [];
   for (const [p, l] of todo) {
     if (picked.length >= max) break;
@@ -155,7 +157,7 @@ export async function translateDue(env, { postId = null, max = 1 } = {}) {
   return made.filter((r) => r.status === "fulfilled").length;
 }
 
-/** translateDue in the background: an article's English at once (`postId`), or one missing translation, at most every
+/** translateDue in the background: an article's translations at once (`postId`), or one missing translation, at most every
  *  10 minutes in this isolate (`now` skips the wait). */
 export function translateSoon(ctx, { postId = null, now = false } = {}) {
   if (postId) { ctx.waitUntil(translateDue(ctx.env, { postId }).catch(() => 0)); return; }

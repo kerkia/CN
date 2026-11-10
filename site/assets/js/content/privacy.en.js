@@ -115,7 +115,7 @@ export const body = (SITE, { world = false } = {}) => `
         kept in the site's database (Cloudflare) with its author's name, shown with it, and its images in the site's file storage; it
         is erased when its author or the publisher deletes it. If the author deletes their account, their articles stay published
         under their name, unless they ask for them to be withdrawn (contact@ozimut.com). Likes are recorded per account; only their
-        number is shown. An article not written in English is translated automatically into English by Ozimut's language model, run
+        number is shown. Each article is translated automatically into English and French (except its own language) by Ozimut's language model, run
         by Cloudflare (Workers AI), which does not keep it; the translation is kept with the article and marked as such.</p>
       <p><b>Copyright.</b> Each author keeps all the copyright in their articles (the texts and images they created), moral rights
         included, and remains free to publish them elsewhere, in the form and on the terms they choose. By publishing an article on

@@ -127,7 +127,7 @@ export const body = (SITE, { world = false } = {}) => `
         conservé dans la base du site (Cloudflare) avec le nom de son auteur, affiché avec lui, et ses images dans l'espace de stockage
         du site ; il est effacé quand son auteur ou l'éditeur le supprime. Si l'auteur supprime son compte, ses articles restent publiés
         sous son nom, sauf s'il en demande le retrait (contact@ozimut.com). Les « j'aime » sont enregistrés par compte ; seul leur nombre
-        est affiché. Un article qui n'est pas écrit en anglais est traduit automatiquement en anglais par le modèle de langage d'Ozimut,
+        est affiché. Chaque article est traduit automatiquement en anglais et en français (sauf dans sa langue d'origine) par le modèle de langage d'Ozimut,
         exécuté par Cloudflare (Workers AI), qui ne le conserve pas ; la traduction est conservée avec l'article et signalée comme
         telle.</p>
       <p><b>Droits d'auteur.</b> Chaque auteur reste titulaire de tous les droits d'auteur sur ses articles (les textes et les images

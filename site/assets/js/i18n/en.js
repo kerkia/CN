@@ -5093,7 +5093,7 @@ export default {
   "nut.tr.doneEn": "Translated automatically {from} into English by Ozimut.",
   "nut.tr.show": "Show the translation ({lang})",
   "nut.shownIn": "Shown in {lang}",
-  "nut.tr.orig": "Show the original",
+  "nut.tr.orig": "Show the original ({lang})",
   "nut.prev": "‹ Previous article",
   "nut.next": "Next article ›",
   "nut.lang.fr": "French",

@@ -5311,7 +5311,7 @@ export default {
   "nut.tr.doneEn": "Automatisch {from} ins Englische übersetzt von Ozimut.",
   "nut.tr.show": "Übersetzung anzeigen ({lang})",
   "nut.shownIn": "Angezeigt auf {lang}",
-  "nut.tr.orig": "Original anzeigen",
+  "nut.tr.orig": "Original anzeigen ({lang})",
   "nut.prev": "‹ Vorheriger Artikel",
   "nut.next": "Nächster Artikel ›",
   "nut.lang.fr": "Französisch",

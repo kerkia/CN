@@ -4264,7 +4264,7 @@ export default {
   "nut.tr.doneEn": "Traduit automatiquement {from} en anglais par Ozimut.",
   "nut.tr.show": "Voir la traduction ({lang})",
   "nut.shownIn": "Affiché en {lang}",
-  "nut.tr.orig": "Voir l'original",
+  "nut.tr.orig": "Voir l'original ({lang})",
   "nut.prev": "‹ Article précédent",
   "nut.next": "Article suivant ›",
   "nut.lang.fr": "français",

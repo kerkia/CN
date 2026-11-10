@@ -3,10 +3,10 @@
 // Who: an administrator (always an author), an account whose users.nutrition is 'author' (set on the admin page) writes;
 // 'reader' reads; NUTRITION_OPEN "1" (wrangler.toml) would let every account read. An author changes and deletes their own
 // articles, an administrator anyone's (and gives an article to another author); authors and administrators manage the themes.
-// An article is shown in the reader's language when a translation into it is kept, else in English (each article not written
-// in English is translated into English when published or changed: _lib/nutrition.js translateDue), the original one click
-// away; nut_translations keeps one per article, language and version (those into French, German or Spanish made on request
-// before 2026-11-01 are still used).
+// An article is shown in the reader's language when its original or a translation into it is kept, else in English (each
+// article is translated into English and French, those it is not written in, when published or changed: _lib/nutrition.js
+// translateDue), the original one click away; nut_translations keeps one per article, language and version (those into German
+// or Spanish made on request before 2026-11-01 are still used).
 //
 //   GET    /api/nutrition[?manage=1][?lang=xx]          { role, categories, posts } — the published articles (manage: also the drafts
 //                                             one may change, and the authors an administrator may choose)
