@@ -23,8 +23,9 @@ import * as auth from "../auth.js";
 import * as data from "../data.js";
 
 const API = "/api/virtual/";
-export const LEVELS = ["blue", "yellow", "orange_md", "orange_ld", "violet_md", "violet_ld"];
-const LEVEL_COLOUR = { blue: "#2b6fd6", yellow: "#e2bd12", orange_md: "#f08a1c", orange_ld: "#f08a1c", violet_md: "#8e3fbf", violet_ld: "#8e3fbf" };
+// a sprint has no violet nor middle and long distances: its orange courses are short and long (orange_s, orange_l)
+export const LEVELS = ["blue", "yellow", "orange_s", "orange_l", "orange_md", "orange_ld", "violet_md", "violet_ld"];
+const LEVEL_COLOUR = { blue: "#2b6fd6", yellow: "#e2bd12", orange_s: "#f08a1c", orange_l: "#f08a1c", orange_md: "#f08a1c", orange_ld: "#f08a1c", violet_md: "#8e3fbf", violet_ld: "#8e3fbf" };
 
 export const clock = (s) => {
   if (s == null || !Number.isFinite(s)) return "—";
@@ -140,7 +141,7 @@ export async function render(main, { query }) {
           ${r.thumb ? html`<img src="${r.event ? `${API}events/${r.id}/pkg/` : `${API}${r.id}/`}thumb.webp" alt="" loading="lazy">` : html`<span class="vtp-nothumb"></span>`}
           <b>${mapName(r.id)}</b><span class="muted">${t("vt.tr.mapLine", { scale: fmt(r.race.scale), std: r.race.std || "", n: r.race.courses.length })}</span>
           ${r.event ? html`<span><span class="tag ${r.event.type === "competition" ? "vo-comp" : ""}">${t(`vo.type.${r.event.type}`)}</span> <span class="muted">${r.event.org}</span></span>` : ""}
-          <span class="muted">${t(`vt.src.${r.race.source}`)}</span></button>`)}</div>
+          <span class="muted">${t(`vt.src.${r.race.source}`, { authors: (r.race.photoAuthors || []).join(", ") || "—" })}</span></button>`)}</div>
         ${race ? html`<h2 class="vtp-h">${t("vt.tr.courses", { map: mapName(race.id) })}</h2>
           ${race.event?.type === "competition" ? html`<p class="muted">${t(race.event.open ? "vo.compRule" : "vo.compClosed")}</p>` : ""}
           <div class="vtp-courses">${courses.map((c) => html`<button type="button" class="vtp-course" data-course="${c.id}" aria-pressed="${c.id === sel.course}"

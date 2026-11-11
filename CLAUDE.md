@@ -959,31 +959,60 @@ Every multiple-choice game was played through to its score page at phone size, w
   2018 file with Cartographier's own modules: the ISSprOM set at the map's scale, `writeOcadDoc`; it opens in Cartographier) →
   `dump.mjs` → `build.py` (**now reads ISSprOM**: `SPRINT` by a scale of 1:5000 or larger, or symbol 533; 520/709/714 forbidden,
   411, the impassable walls/fences 515/518/529 and the railway 509 blocking, 522 canopies paved, a `stairs` class at 0.55; mown
-  lawns: few low plants) → `town_3d.py` → `course_sprint.py`. Python: the venv `C:\Kerkia\Ozimut\work\vr3d\venv` (laspy, shapely,
+  lawns: few low plants) → `town_panoramax.py` → `town_3d.py` → `course_sprint.py`. Python: the venv `C:\Kerkia\Ozimut\work\vr3d\venv` (laspy, shapely,
   rasterio, scikit-image added). **`town_3d.py`** writes `town.json` + `town.bin` (arrays per 64 m chunk, listed in town.json:
   roofs `rpos/rcol/ridx`, walls `wpos/wuv/wseg/wcol/widx`, indices 16-bit when they fit) and replaces `ground.jpg` by the
   photograph at 0.25 m (the shade lightened, the class colours under tree crowns, ×0.8: the photo is lit already): each BD TOPO
-  building's **roof fitted to the LiDAR's class-6 points** (RANSAC, up to 8 planes under 51°, each roof node — a 0.9 m lattice and
-  the outline — taking its nearest points' plane, the points' local median where the plane is over 0.7 m off; no points: flat at
-  BD TOPO's height), walls from the lowest ground to the roof's edge (Douglas-Peucker on the edge's height: gables), the façade
+  building's **roof fitted to the LiDAR's class-6 points** (RANSAC, up to 8 planes under 51°; each roof node — a 0.9 m lattice and
+  the outline — at the **lowest of its candidate planes**, those of its 8 nearest labelled points within 3 m, so a gable's or a
+  hip's ridge comes out exact; the points' local median where that is 0.8 m off — a step, a dormer; the creases where two planes
+  meet inserted as vertices on every lattice edge they cross; the eaves 0.35 m beyond the walls on a pitched roof, drawn both
+  sides; chimneys — 5 points or more standing 0.9-3.5 m above their plane, 1.4 m across at most, 3 a building — as boxes; no
+  points: flat at BD TOPO's height), walls from the lowest ground to the roof's edge (Douglas-Peucker on the edge's height: gables), the façade
   counted from the ground's median, its kind from `usage_1` / `nature` (housing, shops, church, sport, industry, annexe) and its
-  material from `materiaux_des_murs`' first digit (1 stone, 2 meulière, 4 brick, 6 wood, else plaster), the roof's colour the
+  material from `materiaux_des_murs`' first digit (1 stone, 2 meulière, 4 brick, 6 wood, else plaster), its **colour read on
+  Panoramax's street photos** (below; else a plaster of the palette), a shop front where OpenStreetMap places a shop, café, bank…
+  within 2.5 m of the outline, the roof's colour the
   photograph's over it blended with its material's (`materiaux_de_la_toiture`: tiles, slates, zinc); walls, fences, hedges and
   stairways (town_map's `walls.json`, heights measured); OSM's street furniture (benches, bins, bollards, bike racks, post boxes,
   lamps, signals, bus stops, cabinets, Morris columns…) and lamps every 26 m along BD TOPO's town roads where OSM has none within
-  15 m. **`games/vtown.js`** (`loadTown`, `Town`; vworld.js's only hooks: `loadRace` loads it when `race.town`, `World.town`,
+  15 m. **The ground** (owner, 2026-11-11: « address all known flaws »): `surf.png` (0.5 m: 1 asphalt — BD TOPO's carriageways at
+  their width and the parkings —, 2 paving stones — OSM's `surface` paving_stones / sett / cobblestone —, 3 concrete, 4 grass, 5
+  gravel, 6 forest floor, 7 water, 8 building), and `ground.jpg` the photograph at 0.25 m with its **asphalt cleaned**: the
+  road's own colour blurred over ~4 m from its plain pixels only (the cars, people and shade the photograph shows flat on the road
+  gone), its markings kept (a white top-hat 0.75 m across, nothing over 1 m wide) and OSM's marked crossings painted as zebras;
+  **kerbs** 13 cm along the carriageways (walls of kind `kerb`); **parked cars** where the LiDAR saw them (2023: objects 1.1-2.3 m
+  tall on paved ground, 3.2-5.8 × 1.3-2.5 m, by their principal axes; town.json `cars` [x, z, angle, length, width, colour]), which
+  stop the runner. **Façade colours from Panoramax** (`town_panoramax.py`; owner, 2026-11-11: « do use Panoramax »): the street
+  photos of the area (panoramax.openstreetmap.fr, 360° panoramas and phone photos with their field of view; 457 of 741 in Gif),
+  downloaded one at a time into `src/panoramax/` (never in git, never uploaded; the server answered ~30 s a photo on
+  2026-11-11: 286 read, the rest at the next run, `PX_NODL=1` fits those already there); each photo's position (± 4 m), heading
+  (± 25°) and pitch corrected by matching its skyline to the one the LiDAR's roof points draw from there (a building predicted where
+  the photo shows sky costs most, something above a roof — a tree — a quarter; a photo still showing sky over buildings left out);
+  every wall it sees 3-35 m away, facing it, nothing between, sampled from 2.3 m above the ground (over the gardens' gates and
+  hedges) to under the eaves, sky, deep shade and greenery dropped; a building's colour the median over its walls and photos
+  (`src/facades.json`, by BD TOPO's `cleabs`), a brick or meulière hint where the registry gives no material. The photos are read
+  in shade under an overcast sky (lightness ~0.35, some blue casts): `town_3d.py` `_fac_colours` takes them as relative colours —
+  one gain bringing their median lightness to a plaster's 0.68, lightness kept in 0.42-0.88, blue casts neutral — for buildings
+  read on two walls at least (Gif: 67 of 380 read, 45 used). **Data only**: Panoramax's photos are CC BY-SA 4.0, the data derived from them allowed under Licence Ouverte
+  2.0 / CC BY 4.0 / ODbL; the authors are named in the race's credit (`race.photoAuthors`, `vt.src.town`'s `{authors}`). **`games/vtown.js`** (`loadTown`, `Town`; vworld.js's only hooks: `loadRace` loads it when `race.town`, `World.town`,
   `hits()` asks it, `build()` hands it each chunk; virtually.js keeps the third-person camera out of buildings with `town.clear`):
   roofs and façades drawn by shaders (floors, bays, windows with frames and bars, shutters, doors, shop fronts, a church's stone and
   arched windows, stone courses, meulière, brick; tiles in rows at constant height, slates, zinc seams), walls/hedges as boxes,
-  fences a wire mesh, stairways treads at their ground's height, furniture instanced; the runner is stopped by the buildings'
-  outlines, impassable walls/fences/hedges and posts (8 m cells; the ground classes `building` / `block` then run as paving).
+  fences a wire mesh, hedges a dark core with the forest's leafy crowns along it (`world.K.bush`), kerbs, stairways treads at
+  their ground's height, cars and chimneys and furniture instanced; **its own ground material** (`Town.ground`: the world's map,
+  vertex shade and normal map, the grain drawn by the surface code — asphalt grain, paving stones staggered, concrete slabs and
+  their joints, grass blades, gravel —, faded by the texel's footprint, the world's position from the vertex); the runner is
+  stopped by the buildings' outlines, impassable walls/fences/hedges, cars and posts (8 m cells; the ground classes `building` /
+  `block` then run as paving); the camera by the buildings alone.
   **`course_sprint.py`**: sites on outer building corners (the flag 1.1 m out), monuments, fountains, lone trees and bushes,
   impassable walls' ends, stairways' feet; legs 60-260 m timed on the speeds grid (skimage `MCP_Geometric`, a 130 m window), a leg
-  scoring for its route choice (a second route kept 10 m off the best, within 12 % of its time); four courses at the Coach
-  page's levels, `race.courses` [{ id: blue|yellow|orange_md|violet_md, controls, length, climb }] (6, 8, 12, 16 controls, 1.0 to
-  2.6 km), review pictures `course_review_<id>.png`; then `thumb.mjs <race>` and `upload.py <race> [--remote]`. New feature names `vt.f.corner|monument|fountain|bush|stairs|wallend`, the credit `vt.src.town`
-  (IGN LiDAR HD, BD TOPO, BD ORTHO, Licence Ouverte 2.0; OpenStreetMap ODbL; cadastre). Measured 60 fps in headless Edge at
-  1400 × 860. **Not usable** (study of 2026-11-11, notes `virtually-sprint-report.md` in the sessions' notes folder): Google's
+  scoring for its route choice (a second route kept 10 m off the best, within 12 % of its time); four courses at the sprint's
+  levels (owner, 2026-11-11: « in Sprint there is no violet, and middle makes no sense »), `race.courses` [{ id:
+  blue|yellow|orange_s|orange_l, controls, length, climb }] (6, 8, 10, 14 controls, 0.85 to 2.7 km in Gif; the orange ones searched 200
+  times), `orange_s` / `orange_l` the Coach page's « Orange court » / « Orange long » (`LEVELS`, `vt.lvl.*`), review pictures `course_review_<id>.png`; then `thumb.mjs <race>` and `upload.py <race> [--remote]`. New feature names `vt.f.corner|monument|fountain|bush|stairs|wallend`, the credit `vt.src.town`
+  (IGN LiDAR HD, BD TOPO, BD ORTHO, Licence Ouverte 2.0; OpenStreetMap ODbL; cadastre; Panoramax's authors). Measured 60 fps in
+  headless Edge at 1400 × 860 and at a phone's 390 × 844. **Not usable** (study of 2026-11-11, notes `virtually-sprint-report.md` in the sessions' notes folder): Google's
   Photorealistic 3D Tiles (refused with 403 to an EEA project since 2025-07-08, and no storing, deriving or « with any map »
   anywhere), Street View (not « with any map »), Cesium ion's Google and Bing, Apple Look Around; Panoramax's photos are CC BY-SA
   (facts read from them may be used freely; crops as textures would carry the share-alike). If Virtually opens to the public, the

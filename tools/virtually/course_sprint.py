@@ -5,8 +5,8 @@ standing alone, stairways' feet, impassable walls' ends — never in a building,
 Legs are timed on the ground classes' speeds (buildings, gardens, impassable walls, fences and hedges block; 1 m grid,
 skimage's geometric MCP). A leg scores for its route choice: the best route and a second one kept 10 m away from it, within
 12 % of its time; legs 60-260 m, controls 25 m apart, no dog-leg, no leg through another control's circle. Four courses
-(FFCO's levels as course.py names them: blue, yellow, orange_md, violet_md — few to many controls, short to long legs, route
-choice weighed more and more) into pkg/race.json `courses`; a review picture per course beside the package."""
+(blue, yellow, orange short and orange long — a sprint has no violet, nor middle and long distances; few to many controls,
+short to long legs, route choice weighed more and more) into pkg/race.json `courses`; a review picture per course beside the package."""
 import json, math, os, sys
 from pathlib import Path
 
@@ -163,9 +163,10 @@ def seg_cross(a, b, c, d):
     return o(a, b, c) != o(a, b, d) and o(c, d, a) != o(c, d, b)
 
 
-# FFCO's colour levels as course.py names them (games/virtually's page names them, vt.lvl.<id>), at a sprint's lengths
+# the colour levels at a sprint's lengths (the Coach page names them, vt.lvl.<id>): no violet in sprint, and its orange is short
+# or long, not middle or long distance (owner, 2026-11-11)
 LEVELS = {"blue": dict(n=6, km=1.0, lo=50, hi=170, rc=0.0), "yellow": dict(n=8, km=1.4, lo=60, hi=200, rc=0.3),
-          "orange_md": dict(n=12, km=2.0, lo=70, hi=240, rc=1.0), "violet_md": dict(n=16, km=2.6, lo=70, hi=260, rc=2.0)}
+          "orange_s": dict(n=10, km=1.8, lo=60, hi=220, rc=1.0), "orange_l": dict(n=14, km=2.8, lo=80, hi=280, rc=2.0)}
 
 
 def make(level, tries=60):
@@ -225,7 +226,7 @@ out = []
 used_starts = set()
 HG = (lambda a: R["base"] + (a[..., 0] * 256 + a[..., 1]) / 100)(np.asarray(Image.open(P / "h.png").convert("RGB")).astype(np.float32))
 for level in LEVELS:
-    b = make(level)
+    b = make(level, 60 if level in ("blue", "yellow") else 200)                 # the orange courses searched longer: route choices
     if b is None:
         print(level, "no course found"); continue
     score, seq, fin, length, legs_ = b

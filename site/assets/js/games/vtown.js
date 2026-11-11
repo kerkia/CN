@@ -2,8 +2,9 @@
 // « Virtually »'s towns, for sprint races (vworld.js hands each chunk to it): the buildings of a race package's town.json /
 // town.bin (made offline by tools/virtually/town_3d.py from IGN's BD TOPO footprints and LiDAR HD roofs), their façades drawn by
 // a shader (floors, windows, shutters, doors, shop fronts, a church's stone), the roofs' tiles, walls, fences and hedges at the
-// heights the LiDAR measured, street furniture from OpenStreetMap. The town also stops the runner: buildings, impassable walls,
-// fences and hedges by their outlines (more exactly than the 1 m ground classes, which it opens for that).
+// heights the LiDAR measured, kerbs, chimneys, the cars parked where the LiDAR saw them, street furniture from OpenStreetMap, and
+// the ground's grain by its surface (asphalt, paving, concrete, grass, gravel: surf.png). The town also stops the runner: buildings,
+// impassable walls, fences, hedges, cars and posts by their outlines (more exactly than the 1 m ground classes, which it opens for that).
 // World frame as vworld.js: the map's paper frame in metres, x right, z down.
 
 const CELL = 8;                     // m: the collision index's cells
@@ -17,10 +18,13 @@ export async function loadTown(base, town, onFile = () => {}) {
     onFile(f);
     return v;
   };
-  const [meta, bin] = await Promise.all([get(town.file, "json"), get(town.bin, "buf")]);
+  const [meta, bin, surfBlob] = await Promise.all([get(town.file, "json"), get(town.bin, "buf"),
+    town.surf ? fetch(base + town.surf, { credentials: "same-origin" }).then((r) => (r.ok ? r.blob() : null)).catch(() => null) : null]);
   const T = { f32: Float32Array, u8: Uint8Array, u16: Uint16Array, u32: Uint32Array }, arrays = {};
   for (const [k, [tp, off, n]] of Object.entries(meta.arrays)) arrays[k] = new T[tp](bin, off, n);
-  return { meta, arrays };
+  // the surfaces' codes, read exactly (no colour management): the ground's material reads them by nearest texel
+  const surf = surfBlob ? await createImageBitmap(surfBlob, { colorSpaceConversion: "none", premultiplyAlpha: "none" }) : null;
+  return { meta, arrays, surf };
 }
 
 const NOISE = /* glsl */`
@@ -37,6 +41,10 @@ export class Town {
     for (const k of ["building", "block"]) if (C[k] != null) sp[C[k]] = sp[C.paved] || 1;
     this.index();
     this.materials();
+    if (data.surf) this.ground(data.surf);
+    const byChunk = (list, xi, zi) => { const m = new Map(); for (const v of list || []) { const k = `${Math.floor(v[xi] / 64)},${Math.floor(v[zi] / 64)}`; (m.get(k) || m.set(k, []).get(k)).push(v); } return m; };
+    this.carsBy = byChunk(this.m.cars, 0, 1);
+    this.chimBy = byChunk(this.m.chimneys, 0, 1);
     this.props = new Map();
     for (const p of this.m.props || []) { const k = `${Math.floor(p[1] / 64)},${Math.floor(p[2] / 64)}`; (this.props.get(k) || this.props.set(k, []).get(k)).push(p); }
     this.wallsBy = new Map();
@@ -73,12 +81,17 @@ export class Town {
       const r = PROP_R[p[0]]; if (!r) continue;
       put(p[1] - r, p[2] - r, p[1] + r, p[2] + r, { dot: [p[1], p[2], r] });
     }
+    for (const [x, z, ang, L, Wd] of this.m.cars || []) {              // a car: its axis, as wide as the car
+      const a = (ang * Math.PI) / 180, h = Math.max(0, L / 2 - Wd / 2), ex = Math.sin(a) * h, ez = Math.cos(a) * h;
+      put(x - L, z - L, x + L, z + L, { seg: [x - ex, z - ez, x + ex, z + ez], t: Wd / 2, car: true });
+    }
   }
   /** Is a body of radius r at (x, z) inside a building or against an impassable wall, fence, hedge or post? */
-  hits(x, z, r = 0.3) {
+  hits(x, z, r = 0.3, buildingsOnly = false) {
     const l = this.cells.get(Math.floor(x / CELL) * 65536 + Math.floor(z / CELL));
     if (!l) return false;
     for (const it of l) {
+      if (buildingsOnly && !it.ring) continue;
       if (it.ring) {
         const g = it.ring; let inside = false;
         for (let i = 0, j = g.length - 1; i < g.length; j = i++) {
@@ -95,7 +108,7 @@ export class Town {
   /** How far along from (ax, az) to (bx, bz) a camera may go before a building (0-1): the third-person camera stays outside. */
   clear(ax, az, bx, bz) {
     const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.4);
-    for (let i = 1; i <= n; i++) { const t = i / n; if (this.hits(ax + (bx - ax) * t, az + (bz - az) * t, 0.25)) return Math.max(0, (i - 1) / n); }
+    for (let i = 1; i <= n; i++) { const t = i / n; if (this.hits(ax + (bx - ax) * t, az + (bz - az) * t, 0.25, true)) return Math.max(0, (i - 1) / n); }
     return 1;
   }
 
@@ -109,7 +122,7 @@ export class Town {
         sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vF = aUv; vS = aSeg; vSty = aSty;");
       sh.fragmentShader = "varying vec2 vF; varying vec4 vS; varying float vSty;\n" + NOISE + sh.fragmentShader.replace("#include <color_fragment>", FACADE);
     };
-    this.roof = new T.MeshLambertMaterial({ vertexColors: true, flatShading: true });
+    this.roof = new T.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: T.DoubleSide });   // the eaves' underside
     this.roof.onBeforeCompile = (sh) => {
       sh.vertexShader = "attribute float aKind; varying vec3 vWP; varying float vKind;\n" +
         sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vKind = aKind;");
@@ -122,6 +135,21 @@ export class Town {
     const tex = new T.CanvasTexture(c); tex.wrapS = tex.wrapT = T.RepeatWrapping;
     this.mesh = new T.MeshLambertMaterial({ color: 0x3d4a3c, map: tex, alphaTest: 0.5, side: T.DoubleSide, transparent: false });
     this.propGeo = propGeometries(T);
+  }
+
+  /** The town's ground: the world's own ground material (the aerial photograph, the canopy's shade), its grain drawn by the
+   *  surface (surf.png's codes: 1 asphalt, 2 paving stones, 3 concrete, 4 grass, 5 gravel, 6 forest floor), faded with distance. */
+  ground(img) {
+    const T = this.T, w = this.w, old = w.groundMat;
+    const tex = new T.Texture(img); tex.magFilter = tex.minFilter = T.NearestFilter; tex.generateMipmaps = false; tex.colorSpace = T.NoColorSpace;
+    tex.needsUpdate = true;
+    const m = new T.MeshLambertMaterial({ map: old.map, normalMap: old.normalMap, normalScale: new T.Vector2(0.25, 0.25), vertexColors: true });
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.surf = { value: tex }; sh.uniforms.wsize = { value: new T.Vector2(w.W, w.H) };
+      sh.vertexShader = "varying vec2 vWxz;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWxz = (modelMatrix * vec4(transformed, 1.0)).xz;");
+      sh.fragmentShader = "uniform sampler2D surf; uniform vec2 wsize; varying vec2 vWxz;\n" + NOISE + sh.fragmentShader.replace("#include <map_fragment>", GROUND);
+    };
+    w.groundMat = m;
   }
 
   // ---- a chunk ---------------------------------------------------------------------------------------------------------------
@@ -150,12 +178,34 @@ export class Town {
     }
     this.lines(g, a, b);
     this.furniture(g, a, b);
+    this.parked(g, a, b);
+  }
+
+  /** The cars parked where the LiDAR saw them, and the chimneys on the roofs. */
+  parked(g, a, b) {
+    const T = this.T, k = `${a},${b}`, M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), V = new T.Vector3(), UP = new T.Vector3(0, 1, 0), C = new T.Color();
+    const cars = this.carsBy.get(k);
+    if (cars) {
+      const im = new T.InstancedMesh(this.propGeo.car, this.solid, cars.length), cols = this.m.carColours || [[120, 120, 120]];
+      cars.forEach(([x, z, ang, L, Wd, ci], i) => {
+        Q.setFromAxisAngle(UP, (ang * Math.PI) / 180);
+        im.setMatrixAt(i, M.compose(V.set(x, this.w.heightAt(x, z), z), Q, S.set(Wd, 1, L)));
+        const c = cols[ci % cols.length]; im.setColorAt(i, C.setRGB(c[0] / 255, c[1] / 255, c[2] / 255, T.SRGBColorSpace));
+      });
+      im.userData.shadow = true; im.receiveShadow = true; im.computeBoundingSphere(); g.add(im);
+    }
+    const ch = this.chimBy.get(k);
+    if (ch) {
+      const im = new T.InstancedMesh(this.propGeo.chimney, this.solid, ch.length);
+      ch.forEach(([x, z, y, h, sx, sz], i) => { im.setMatrixAt(i, M.compose(V.set(x, y, z), Q.identity(), S.set(sx, h, sz))); });
+      im.userData.shadow = true; im.receiveShadow = true; im.computeBoundingSphere(); g.add(im);
+    }
   }
 
   /** Walls, hedges (boxes along their lines) and fences (posts and a wire mesh). */
   lines(g, a, b) {
     const list = this.wallsBy.get(`${a},${b}`); if (!list) return;
-    const T = this.T, w = this.w, P = [], N = [], C = [], fp = [], fu = [];
+    const T = this.T, w = this.w, P = [], N = [], C = [], fp = [], fu = [], leaves = [];
     const box = (ax, az, bx, bz, th, y0a, y0b, h, c, jitter = 0) => {
       const L = Math.hypot(bx - ax, bz - az); if (L < 0.05) return;
       const ux = (bx - ax) / L, uz = (bz - az) / L, nx = -uz * th / 2, nz = ux * th / 2;
@@ -185,13 +235,28 @@ export class Town {
           const y = Math.max(w.heightAt(xa, za), w.heightAt(xb, zb)) + 0.04;
           box(xa, za, xb, zb, 2.2, y - 0.6, y - 0.6, 0.6, k % 2 ? [0.62, 0.6, 0.57] : [0.66, 0.64, 0.61]);
         }
-      } else if (kind === "hedge") box(p[0], p[1], q[0], q[1], 0.9, ya - 0.1, yb - 0.1, Math.min(3, Math.max(0.8, h)), col.hedge, 0.35);
+      } else if (kind === "kerb") box(p[0], p[1], q[0], q[1], 0.16, ya - 0.08, yb - 0.08, 0.21, [0.74, 0.73, 0.7], 0.04);
+      else if (kind === "hedge") {                                       // a hedge: a dark core, leafy crowns every 0.55 m along it
+        const hh = Math.min(2.6, Math.max(0.8, h)), L = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        box(p[0], p[1], q[0], q[1], 0.55, ya - 0.1, yb - 0.1, hh * 0.9, [0.12, 0.2, 0.08], 0.2);
+        for (let s_ = 0.25; s_ < L; s_ += 0.55) {
+          const t = s_ / L, x = p[0] + (q[0] - p[0]) * t, z = p[1] + (q[1] - p[1]) * t, y = ya + (yb - ya) * t, r = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453 % 1;
+          leaves.push([x, y + hh * 0.5, z, 0.55 + 0.15 * Math.abs(r), hh * 0.55, 0.55 + 0.15 * Math.abs(r), r * 6.28, 0.75 + 0.3 * Math.abs(r)]);
+        }
+      }
       else box(p[0], p[1], q[0], q[1], 0.3, ya - 0.2, yb - 0.2, Math.min(4, Math.max(0.5, h)) + 0.2, col.wall, 0.08);
     }
     if (P.length) {
       const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(P, 3));
       geo.setAttribute("normal", new T.Float32BufferAttribute(N, 3)); geo.setAttribute("color", new T.Float32BufferAttribute(C, 3));
       const m = new T.Mesh(geo, this.solid); m.receiveShadow = true; m.userData.shadow = true; g.add(m);
+    }
+    const K = w.K?.bush;
+    if (leaves.length && K) {
+      const im = new T.InstancedMesh(K.geo, K.mat, leaves.length), M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), V = new T.Vector3(), UP = new T.Vector3(0, 1, 0);
+      const base = (w.bushC && w.bushC[0]) || new T.Color(0x4a6a33), c = new T.Color();
+      leaves.forEach(([x, y, z, sx, sy, sz, rot, f], i) => { Q.setFromAxisAngle(UP, rot); im.setMatrixAt(i, M.compose(V.set(x, y, z), Q, S.set(sx, sy, sz))); im.setColorAt(i, c.copy(base).multiplyScalar(f)); });
+      im.userData.shadow = true; im.receiveShadow = true; im.computeBoundingSphere(); g.add(im);
     }
     if (fp.length) {
       const geo = new T.BufferGeometry(); geo.setAttribute("position", new T.Float32BufferAttribute(fp, 3)); geo.setAttribute("uv", new T.Float32BufferAttribute(fu, 2));
@@ -248,8 +313,43 @@ function propGeometries(T) {
     phone: merge([part(bx(0.8, 2.2, 0.8), [0.5, 0.55, 0.6], 0, 1.1)]),
     recycling: merge([part(bx(1.4, 1.6, 1.4), [0.25, 0.42, 0.25], 0, 0.8)]),
     tap: merge([part(cyl(0.1, 0.12, 1.0, 8), [0.2, 0.35, 0.3], 0, 0.5)]),
+    // a car one metre wide and one long, scaled by each one's width and length; its colour the instance's (the glass and tyres dark)
+    car: merge([part(bx(1, 0.5, 1), [1, 1, 1], 0, 0.6), part(bx(0.96, 0.12, 0.96), [0.15, 0.15, 0.16], 0, 0.3),
+      part(bx(0.86, 0.44, 0.52), [0.42, 0.5, 0.58], 0, 1.07, -0.05), part(bx(0.88, 0.05, 0.54), [1, 1, 1], 0, 1.31, -0.05),
+      part(bx(0.9, 0.08, 0.04), [0.95, 0.92, 0.8], 0, 0.72, 0.5), part(bx(0.9, 0.08, 0.04), [0.7, 0.08, 0.06], 0, 0.72, -0.5),
+      ...[[-0.47, 0.32], [0.47, 0.32], [-0.47, -0.32], [0.47, -0.32]].map(([x, z]) => part(cyl(0.3, 0.3, 0.2, 10).rotateZ(Math.PI / 2), [0.06, 0.06, 0.06], x, 0.3, z))]),
+    chimney: merge([part(bx(1, 1, 1), [0.62, 0.42, 0.34], 0, 0.5), part(bx(1.15, 0.08, 1.15), [0.5, 0.48, 0.46], 0, 1.0)]),
   };
 }
+
+// the ground: the photograph (map) times a grain by the surface, faded where a texel covers more than the grain
+const GROUND = /* glsl */`
+#include <map_fragment>
+{
+  vec2 wp = vWxz;                                                    // world metres (the surfaces share the photo's coordinates)
+  float code = floor(texture2D(surf, vMapUv).r * 255.0 + 0.5);
+  float fw = max(fwidth(wp.x), fwidth(wp.y));
+  float near = clamp(1.0 - fw * 9.0, 0.0, 1.0), mid = clamp(1.0 - fw * 2.5, 0.0, 1.0);
+  float g = 1.0;
+  if (code < 1.5 && code > 0.5) {                                   // asphalt: fine grain, a few darker patches
+    g = (0.93 + 0.14 * tHash(floor(wp * 30.0)) * near) * (0.95 + 0.08 * tNoise(wp * 0.9) * mid);
+  } else if (code < 2.5 && code > 0.5) {                            // paving stones, rows staggered
+    vec2 q = wp / vec2(0.21, 0.14); q.x += 0.5 * mod(floor(q.y), 2.0);
+    vec2 f = fract(q); float joint = step(f.x, 0.07) + step(f.y, 0.1);
+    g = mix(1.0, (joint > 0.0 ? 0.72 : 0.9 + 0.2 * tHash(floor(q))), near * 0.9 + mid * 0.1);
+  } else if (code < 3.5 && code > 0.5) {                            // concrete slabs, 1.5 m, their joints
+    vec2 f = fract(wp / 1.5); float joint = step(f.x, 0.012) + step(f.y, 0.012);
+    g = mix(1.0, (joint > 0.0 ? 0.8 : 0.95 + 0.08 * tHash(floor(wp * 25.0))), mid);
+  } else if (code < 4.5 && code > 0.5) {                            // grass: blades, clumps
+    g = (0.86 + 0.26 * tHash(floor(wp * 33.0)) * near) * (0.9 + 0.2 * tNoise(wp * 1.7) * mid);
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.9, 1.06, 0.82), tNoise(wp * 0.6));
+  } else if (code < 5.5 && code > 0.5) {                            // gravel
+    g = 0.84 + 0.3 * tHash(floor(wp * 22.0)) * near;
+  } else if (code < 6.5 && code > 0.5) {                            // forest floor
+    g = (0.8 + 0.35 * tNoise(wp * 4.0) * near) * (0.9 + 0.2 * tNoise(wp * 0.7));
+  }
+  diffuseColor.rgb *= g;
+}`;
 
 // the façade: floors, bays, windows with frames and shutters, doors on the ground floor, a shop front, a church's stone
 const FACADE = /* glsl */`
