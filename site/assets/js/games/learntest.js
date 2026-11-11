@@ -17,7 +17,8 @@
 // spur, small hill, path crossing, thicket and earth bank —, each credited in the list under the game; one by its author, with
 // his permission: Emmanuel Roiné's « zone rocheuse », the quiz's own, and five more of his (owner, 2026-11-10: route goudronnée,
 // souche, levée de terre, grand rocher, petite falaise; his photo replaces the web's wherever he has one — owner: a professional
-// orienteering coach, his photos are best). A feature may have several photos (`k` in learnphotos.js), drawn at random. Replace one by dropping site/assets/learn/<key>.webp and
+// orienteering coach, his photos are best), and nine more on 2026-11-11 (abrupt de terre, borne, butte, coude, croisement and
+// jonction de chemins, falaise, grillage, petite ruine: the path crossing and the earth bank have a photo since). A feature may have several photos (`k` in learnphotos.js), drawn at random. Replace one by dropping site/assets/learn/<key>.webp and
 // changing its credit in learnphotos.js. The quiz's « face/paroi rocheuse (petite falaise) », a second rock face, is here the
 // impassable cliff, and its « zone rocheuse » the boulder field.
 // Its « fossé (sec) » is ISOM 108, brown dots (« petite ravine, fossé sec ou tranchée »), so described by 1.8 « Petite ravine »,

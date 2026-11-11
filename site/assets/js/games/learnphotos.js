@@ -4,27 +4,30 @@
 // An entry with `permission` is credited « avec son autorisation » instead of a licence. A feature may have several photos:
 // an entry whose key is not the feature's names it in `k` (the test draws one of them at random). Emmanuel Roiné's five of
 // 2026-11-10 (owner: « ajoute-les toutes »), the control's streamer in the picture, their EXIF (place, date) left out; his
-// photo replaces the web's wherever he has one (owner: a professional orienteering coach, his photos are best).
+// photo replaces the web's wherever he has one (owner: a professional orienteering coach, his photos are best). Nine more of
+// his on 2026-11-11 (abrupt de terre, borne, butte, coude, croisement et jonction de chemins, falaise, grillage, petite ruine).
 export const PHOTOS = {
   roughOpen: {"w": 760, "h": 570, "author": "John Ferguson", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Small_clearing_in_the_forest_-_geograph.org.uk_-_1822289.jpg", "title": "Small clearing in the forest - geograph.org.uk - 1822289"},
-  pathBend: {"w": 760, "h": 571, "author": "Keith Evans", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Bend_On_Forest_Track_-_geograph.org.uk_-_5334874.jpg", "title": "Bend On Forest Track - geograph.org.uk - 5334874"},
+  pathBend: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Coude de chemin"},
   smallDep: {"w": 760, "h": 506, "author": "Photobits", "licence": "CC BY 4.0", "licenceUrl": "https://creativecommons.org/licenses/by/4.0", "page": "https://commons.wikimedia.org/wiki/File:NSG_Kalkkuppen_Eschweiler_bei_Pesch_29.jpg", "title": "NSG Kalkkuppen Eschweiler bei Pesch 29"},
   bigTree: {"w": 400, "h": 600, "author": "Puusterke", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Naturdenkmal_Eiche_im_Misburger_Wald_(ND-H_220).jpg", "title": "Naturdenkmal Eiche im Misburger Wald (ND-H 220)"},
   pit: {"w": 760, "h": 570, "author": "Im Fokus", "licence": "CC BY 4.0", "licenceUrl": "https://creativecommons.org/licenses/by/4.0", "page": "https://commons.wikimedia.org/wiki/File:Sprockh%C3%B6vel,_BbWw_Alte-Haase-Weg_Nord_(3),_im_Wald_westl._H%C3%B6lteregge_32,_Pinge.jpg", "title": "Sprockhövel, BbWw Alte-Haase-Weg Nord (3), im Wald westl. Hölteregge 32, Pinge"},
-  knoll: {"w": 760, "h": 570, "author": "Hajotthu", "licence": "CC BY-SA 3.0", "licenceUrl": "http://creativecommons.org/licenses/by-sa/3.0/", "page": "https://commons.wikimedia.org/wiki/File:H%C3%BCgelgrab_i_Wald_b_Wohlde-20210912-_(5).JPG", "title": "Hügelgrab i Wald b Wohlde-20210912- (5)"},
+  knoll: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Butte"},
   depression: {"w": 760, "h": 504, "author": "Olga Ernst", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Doline_%C3%B6stlich_von_Obernheim_2.jpg", "title": "Doline östlich von Obernheim 2"},
-  ruin: {"w": 760, "h": 507, "author": "Olivier S", "licence": "CC BY 3.0", "licenceUrl": "https://creativecommons.org/licenses/by/3.0", "page": "https://commons.wikimedia.org/wiki/File:Forest_Ruins_(257333247).jpeg", "title": "Forest Ruins (257333247)"},
+  ruin: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Petite ruine"},
   boulderField: {"w": 354, "h": 336, "author": "Emmanuel Roiné", "permission": true, "title": "Zone rocheuse"},
-  cliff: {"w": 760, "h": 570, "author": "Sipalius", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Felswand_bei_der_DAV-Hutte_im_Helletal_bei_Benniehausen.jpg", "title": "Felswand bei der DAV-Hutte im Helletal bei Benniehausen"},
+  cliff: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Falaise"},
   fence: {"w": 760, "h": 570, "author": "Richard Webb", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Fence_in_woodland_-_geograph.org.uk_-_4613926.jpg", "title": "Fence in woodland - geograph.org.uk - 4613926"},
-  impFence: {"w": 760, "h": 507, "author": "DS Pugh", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Fence_in_woodland_-_geograph.org.uk_-_7396869.jpg", "title": "Fence in woodland - geograph.org.uk - 7396869"},
+  impFence: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Grillage infranchissable"},
   vegBoundary: {"w": 760, "h": 504, "author": "Steven Brown", "licence": "CC BY-SA 2.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/2.0", "page": "https://commons.wikimedia.org/wiki/File:Field_and_trees_at_the_edge_of_Brightmony_Wood_-_geograph.org.uk_-_1900103.jpg", "title": "Field and trees at the edge of Brightmony Wood - geograph.org.uk - 1900103"},
-  cairn: {"w": 760, "h": 570, "author": "Lutz Lange", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Forstgrenzstein_Falkenstruth_(09286376)_(2).jpg", "title": "Forstgrenzstein Falkenstruth (09286376) (2)"},
+  cairn: {"w": 438, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Borne"},
   ditch: {"w": 506, "h": 600, "author": "Panek", "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0", "page": "https://commons.wikimedia.org/wiki/File:Wyschni%C4%99ty_r%C3%B3w_w_d%C4%85br%C3%B3wce_szlacheckiej.jpg", "title": "Wyschnięty rów w dąbrówce szlacheckiej"},
-  pathJunction: {"w": 760, "h": 570, "author": "Deutschereditor", "licence": "CC0", "licenceUrl": "http://creativecommons.org/publicdomain/zero/1.0/deed.en", "page": "https://commons.wikimedia.org/wiki/File:Schulenberger_Wald_(Hattingen)_Weggabelung.jpg", "title": "Schulenberger Wald (Hattingen) Weggabelung"},
+  pathJunction: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Jonction de chemins"},
   road: {"w": 421, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Route goudronnée"},
   stump: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Souche"},
   earthWall: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Levée de terre"},
   boulder: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Grand rocher"},
   rockFace: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Falaise (petite)"},
+  earthBank: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Abrupt de terre"},
+  pathCross: {"w": 450, "h": 600, "author": "Emmanuel Roiné", "permission": true, "title": "Croisement de chemins"},
 };
