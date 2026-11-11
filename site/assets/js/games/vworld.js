@@ -356,7 +356,7 @@ export class World {
       pos[q * 3] = x; pos[q * 3 + 1] = y; pos[q * 3 + 2] = z;
       const ex = this.heightAt(x - 1, z) - this.heightAt(x + 1, z), ez = this.heightAt(x, z - 1) - this.heightAt(x, z + 1), l = Math.hypot(ex, 2, ez);
       nor[q * 3] = ex / l; nor[q * 3 + 1] = 2 / l; nor[q * 3 + 2] = ez / l;
-      uv[q * 2] = x / this.W; uv[q * 2 + 1] = 1 - z / this.H;
+      uv[q * 2] = x / this.W; uv[q * 2 + 1] = z / this.H;      // an ImageBitmap is never flipped: its first row (north) at v = 0
       // a hollow (lower than the ground 3 m around) darker, a crest a little lighter
       const hollow = (this.heightAt(x - 3, z) + this.heightAt(x + 3, z) + this.heightAt(x, z - 3) + this.heightAt(x, z + 3)) / 4 - y;
       const ao = Math.max(0.72, Math.min(1.06, 1 - 0.16 * hollow));
@@ -483,35 +483,61 @@ export class World {
 /** The runner: an articulated figure (hips, thighs, shins, feet; torso, upper arms, forearms, head) whose walk and run cycles
  *  blend with the speed — the cadence rising with it, the knees lifting, the elbows bent when running —, the body bobbing
  *  twice a stride, leaning forward with the speed and into the turns. The group's rotation.y is set by the game (its heading);
- *  userData.animate(speed m/s, dt s) moves the rest. The figure faces its local +z. */
-export function runnerFigure(T, shirtColor = 0x1f6fd1) {
+ *  userData.animate(speed m/s, dt s) moves the rest. The figure faces its local +z.
+ *  `look` is the player's avatar (games/vavatar.js): sex "f" | "m", skin, hair, hairStyle "short" | "ponytail" | "bun", legs
+ *  "shorts" | "long", and the colours of shirt, shorts, socks and shoes (a bare number: the shirt's colour, as before). */
+export function runnerFigure(T, look = {}) {
+  if (typeof look === "number") look = { shirt: look };
+  const A = { sex: "m", skin: "#d9a07a", hair: "#3a2a1e", hairStyle: "short", legs: "shorts", shirt: "#1f6fd1", shorts: "#1d232c",
+    socks: "#1d232c", shoes: "#e0662a", ...look };
+  const f = A.sex === "f";
   const g = new T.Group(), body = new T.Group(); g.add(body);
-  const M = (color) => new T.MeshLambertMaterial({ color });
-  const shirt = M(shirtColor), skin = M(0xd9a07a), tights = M(0x1d232c), shoe = M(0xe0662a), sole = M(0xeeeeee), hair = M(0x3a2a1e);
-  const cap = (r, l, mat, y = -l / 2 - r) => new T.Mesh(new T.CapsuleGeometry(r, l, 4, 10).translate(0, y, 0), mat);
+  if (f) body.scale.setScalar(0.95);
+  const M = (color) => new T.MeshLambertMaterial({ color: new T.Color(color) });
+  const shirt = M(A.shirt), skin = M(A.skin), shorts = M(A.shorts), socks = M(A.socks), shoe = M(A.shoes), sole = M(0xeeeeee), hair = M(A.hair);
+  const long = A.legs === "long";
+  // a limb's piece from y0 down to y1 (y1 < y0) in its joint's frame, a capsule of radius r
+  const seg = (parent, r, y0, y1, mat, r1 = r) => {
+    const L = Math.max(0.01, y0 - y1 - r - r1 * 0.2);
+    const m = new T.Mesh(new T.CapsuleGeometry((r + r1) / 2, L, 4, 10).translate(0, (y0 + y1) / 2, 0), mat);
+    parent.add(m); return m;
+  };
   const joint = (parent, x, y, z = 0) => { const j = new T.Group(); j.position.set(x, y, z); parent.add(j); return j; };
   const hips = joint(body, 0, 0.96);
-  hips.add(new T.Mesh(new T.SphereGeometry(0.15, 12, 8).scale(1.05, 0.75, 0.8), tights));
+  hips.add(new T.Mesh(new T.SphereGeometry(0.15, 12, 8).scale(f ? 1.14 : 1.05, 0.75, 0.82), shorts));
   const torso = joint(hips, 0, 0.02);
-  const chest = new T.Mesh(new T.CapsuleGeometry(0.15, 0.3, 4, 12).scale(1.08, 1, 0.72).translate(0, 0.28, 0), shirt); torso.add(chest);
-  const neck = joint(torso, 0, 0.55); neck.add(new T.Mesh(new T.CylinderGeometry(0.045, 0.05, 0.08, 8).translate(0, 0.04, 0), skin));
+  torso.add(new T.Mesh(new T.CapsuleGeometry(0.15, 0.3, 4, 12).scale(f ? 0.98 : 1.08, 1, f ? 0.76 : 0.72).translate(0, 0.28, 0), shirt));
+  if (f) torso.add(new T.Mesh(new T.SphereGeometry(0.15, 12, 8).scale(0.88, 0.42, 0.62).translate(0, 0.36, 0.045), shirt));
+  const neck = joint(torso, 0, 0.55); neck.add(new T.Mesh(new T.CylinderGeometry(0.043, 0.05, 0.08, 8).translate(0, 0.04, 0), skin));
   const head = joint(neck, 0, 0.08);
   head.add(new T.Mesh(new T.SphereGeometry(0.105, 14, 10).scale(0.92, 1.1, 1).translate(0, 0.1, 0), skin));
-  head.add(new T.Mesh(new T.SphereGeometry(0.108, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55).scale(0.95, 1.05, 1.05).translate(0, 0.12, -0.012), hair));
+  head.add(new T.Mesh(new T.SphereGeometry(0.108, 14, 8, 0, Math.PI * 2, 0, Math.PI * (A.hairStyle === "short" && !f ? 0.5 : 0.58))
+    .scale(0.95, 1.05, 1.05).translate(0, 0.12, -0.014), hair));
+  let tail = null;
+  if (A.hairStyle === "ponytail") {
+    tail = joint(head, 0, 0.17, -0.1);
+    tail.add(new T.Mesh(new T.SphereGeometry(0.03, 8, 6), hair));
+    tail.add(new T.Mesh(new T.CapsuleGeometry(0.035, 0.16, 4, 8).scale(1, 1, 0.8).translate(0, -0.1, -0.02), hair));
+  } else if (A.hairStyle === "bun") {
+    head.add(new T.Mesh(new T.SphereGeometry(0.055, 10, 8).translate(0, 0.19, -0.085), hair));
+  }
   const leg = (side) => {
-    const hip = joint(hips, side * 0.095, -0.03);
-    hip.add(cap(0.072, 0.3, tights));
-    const knee = joint(hip, 0, -0.45); knee.add(cap(0.055, 0.32, tights));
+    const hip = joint(hips, side * (f ? 0.1 : 0.095), -0.03);
+    if (long) seg(hip, 0.074, 0.03, -0.45, shorts, 0.062);
+    else { seg(hip, 0.076, 0.03, -0.2, shorts); seg(hip, 0.066, -0.17, -0.45, skin, 0.058); }
+    const knee = joint(hip, 0, -0.45);
+    if (long) { seg(knee, 0.058, 0.02, -0.33, shorts, 0.048); seg(knee, 0.048, -0.31, -0.44, socks, 0.044); }
+    else { seg(knee, 0.056, 0.02, -0.16, skin, 0.05); seg(knee, 0.051, -0.14, -0.44, socks, 0.044); }
     const ankle = joint(knee, 0, -0.44);
     ankle.add(new T.Mesh(new T.BoxGeometry(0.09, 0.07, 0.24).translate(0, -0.035, 0.05), shoe));
     ankle.add(new T.Mesh(new T.BoxGeometry(0.095, 0.02, 0.25).translate(0, -0.075, 0.05), sole));
     return { hip, knee, ankle };
   };
   const arm = (side) => {
-    const sh = joint(torso, side * 0.2, 0.47);
-    sh.add(cap(0.048, 0.2, shirt)); sh.rotation.z = side * 0.06;
-    const el = joint(sh, 0, -0.28); el.add(cap(0.04, 0.2, skin));
-    el.add(new T.Mesh(new T.SphereGeometry(0.045, 8, 6).translate(0, -0.29, 0), skin));
+    const sh = joint(torso, side * (f ? 0.18 : 0.2), 0.47);
+    seg(sh, 0.05, 0.03, -0.14, shirt); seg(sh, 0.044, -0.12, -0.28, skin, 0.04); sh.rotation.z = side * 0.06;
+    const el = joint(sh, 0, -0.28); seg(el, 0.04, 0.02, -0.25, skin, 0.034);
+    el.add(new T.Mesh(new T.SphereGeometry(0.043, 8, 6).translate(0, -0.29, 0), skin));
     return { sh, el };
   };
   const L = leg(1), R = leg(-1), AL = arm(1), AR = arm(-1);
@@ -527,22 +553,25 @@ export function runnerFigure(T, shirtColor = 0x1f6fd1) {
     // strides a second: ~0.9 walking at 1.4 m/s, ~1.45 running at 3.5 m/s
     const freq = speed < 0.05 ? 0 : (1 - run) * (0.55 + 0.25 * Math.min(speed, 2.2)) + run * Math.min(1.75, 0.95 + 0.15 * speed);
     ph = (ph + dt * freq * Math.PI * 2) % (Math.PI * 8);
-    const pose = (Lg, A, phi) => {
+    const pose = (Lg, Ar, phi) => {
       const s = Math.sin(phi), c = Math.cos(phi);
       const thighW = -0.42 * s, thighR = -(0.22 + 0.68 * s);
       const kneeW = 0.08 + 0.75 * Math.max(0, Math.cos(phi - 0.35)) ** 2, kneeR = 0.25 + 1.45 * Math.max(0, c) ** 1.4;
       const thigh = (thighW * (1 - run) + thighR * run) * amp, kn = (kneeW * (1 - run) + kneeR * run) * amp + 0.04;
       Lg.hip.rotation.x = thigh; Lg.knee.rotation.x = kn; Lg.ankle.rotation.x = -0.35 * (thigh + kn) + 0.15 * amp * s;
       // the arm swings against its own side's leg
-      A.sh.rotation.x = (0.3 * (1 - run) + 0.62 * run) * s * amp + 0.05;
-      A.el.rotation.x = -(0.2 * (1 - run) + (1.35 + 0.18 * s) * run) * Math.max(amp, 0.15) - 0.08;
+      Ar.sh.rotation.x = (0.3 * (1 - run) + 0.62 * run) * s * amp + 0.05;
+      Ar.el.rotation.x = -(0.2 * (1 - run) + (1.35 + 0.18 * s) * run) * Math.max(amp, 0.15) - 0.08;
     };
     pose(L, AL, ph); pose(R, AR, ph + Math.PI);
     // the body: lower and bobbing twice a stride (higher in a run's flight), leaning forward with the speed
-    hips.position.y = 0.96 - 0.03 * run * amp + (0.018 * (1 - run) + 0.045 * run) * amp * Math.cos(2 * ph) + 0.004 * Math.sin(t * 2.2) * (1 - amp);
+    const bob = Math.cos(2 * ph);
+    hips.position.y = 0.96 - 0.03 * run * amp + (0.018 * (1 - run) + 0.045 * run) * amp * bob + 0.004 * Math.sin(t * 2.2) * (1 - amp);
     torso.rotation.x = (0.05 + 0.16 * run) * amp; torso.rotation.y = (0.06 + 0.1 * run) * amp * Math.sin(ph);
     hips.rotation.y = -0.06 * amp * Math.sin(ph);
     head.rotation.x = -torso.rotation.x * 0.7; head.rotation.y = -torso.rotation.y * 0.8;
+    // the ponytail swings with the stride and lifts with the bob
+    if (tail) { tail.rotation.z = 0.35 * amp * Math.sin(ph); tail.rotation.x = 0.15 + 0.3 * run * amp + 0.15 * amp * bob; }
     // into the turns: the heading's rate of change (the game sets it), toward the inside
     if (lastY != null && dt > 0) {
       let dy = g.rotation.y - lastY; dy = Math.atan2(Math.sin(dy), Math.cos(dy));

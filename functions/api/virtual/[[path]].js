@@ -16,7 +16,7 @@
 import { allow, isAdmin, json, nowIso, readBody, withUser } from "../../_lib/api.js";
 import { runnerHash } from "../../_lib/virtual.js";
 
-const FILE = /^([a-z0-9-]{1,40})\/(race\.json|h\.png|cls\.png|veg\.png|ground\.jpg|feats\.json|trees\.bin|map\.ocd|thumb\.webp|town\.json|town\.bin)$/;
+const FILE = /^([a-z0-9-]{1,40})\/(race\.json|h\.png|cls\.png|veg\.png|ground\.jpg|feats\.json|trees\.bin|map\.ocd|map\.webp|thumb\.webp|town\.json|town\.bin)$/;
 const TYPES = { json: "application/json", png: "image/png", jpg: "image/jpeg", webp: "image/webp", bin: "application/octet-stream", ocd: "application/octet-stream" };
 const ID = /^[a-z0-9-]{1,40}$/, COURSE = /^[a-z0-9_]{1,24}$/, RUN = /^[0-9a-f]{12}-[0-9a-z]{6,12}$/;
 const RUNS = "virtual-runs/";

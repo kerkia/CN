@@ -12,7 +12,9 @@
 // - Orga: the organisers' events (pages/virtuallyorga.js): a training or a competition made from their own OCAD map (an
 //   administrator also from the LiDAR alone), built on GitHub; the published ones are offered in Entraînement beside the maps,
 //   their runs kept by api/virtual/events (a competition once per account and course) and read here as the maps' runs.
-// The tab in the address (?onglet=resultats|classement|analyse|orga), the map and course too (?carte=, ?circuit=, ?run=).
+// - Avatar: the runner seen in the race — woman or man, skin, hair, shorts or long legs, the kit's colours (games/vavatar.js,
+//   kept in this browser), shown turning in a small scene.
+// The tab in the address (?onglet=resultats|classement|analyse|avatar|orga), the map and course too (?carte=, ?circuit=, ?run=).
 
 import { html, raw, $, $$, fmt, fmtDate, displayName } from "../util.js";
 import { t, tn, loadArea } from "../i18n.js";
@@ -78,14 +80,14 @@ export async function render(main, { query }) {
   await loadArea("virtually");
   if (location.hash.startsWith("#/jeux")) history.replaceState(null, "", "#/virtually");     // « Jeux »'s tab of before
   const tabs = [["entrainement", t("vt.tab.training")], ["resultats", t("vt.tab.results")], ["classement", t("vt.tab.ranking")], ["analyse", t("vt.tab.analysis")],
-    ...(auth.session()?.orga !== false ? [["orga", t("vt.tab.orga")]] : [])];
+    ["avatar", t("vt.tab.avatar")], ...(auth.session()?.orga !== false ? [["orga", t("vt.tab.orga")]] : [])];
   const tab = tabFrom(tabs, query);
   const sel = { race: query.carte || null, course: query.circuit || null, run: query.run || null };
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("nav.virtually")}</h1><p class="lede">${t("vtp.lede")}</p></div></div>
     ${pageTabs(tabs, tab)}
     ${tabs.map(([k]) => html`<div data-panel="${k}" class="vtp-panel" hidden></div>`)}`;
-  let game = null, drawn = new Set(), stopAn = null, stopOrga = null, trainingPlay = null;
+  let game = null, drawn = new Set(), stopAn = null, stopOrga = null, stopAvatar = null, trainingPlay = null;
   const panel = (k) => $(`[data-panel="${k}"]`, main);
   const setQuery = (q) => {
     const [path, qs] = location.hash.split("?"), p = new URLSearchParams(qs || "");
@@ -99,6 +101,7 @@ export async function render(main, { query }) {
       if (k === "entrainement") await training(panel(k));
       else if (k === "resultats") await results(panel(k));
       else if (k === "classement") await ranking(panel(k));
+      else if (k === "avatar") { stopAvatar?.(); stopAvatar = await (await import("../games/vavatar.js")).renderAvatar(panel(k)); }
       else if (k === "orga") { stopOrga?.(); stopOrga = await (await import("./virtuallyorga.js")).renderOrga(panel(k), { onPlay: (ev, c) => tryEvent(ev, c), onChange: listsChanged }); }
       else stopAn = await analysis(panel(k));
     } catch (e) {

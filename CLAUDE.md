@@ -883,7 +883,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   the centre where the runner stands at every size (app.css `--mw`/`--mh`/`--cw` by `.vt[data-map]`: large = half the width less the
   compass; on a touch screen smaller, the pad at the bottom right; a phone upright: map ≤ 36 % of the width, the compass above the pad;
   the game's box fits under the site's bar, so a phone on its side sees it whole; « full » is the finish's map beside the card); the
-  course, time and next control top left; top right « Ma position », the speed (×1 / ×2, `SPEEDS`), pause, full screen — the start
+  course, time and next control top left; top right « Ma position », the speed (×1 / ×2, `SPEEDS`; the race clock runs twice the wall clock at ×1 — `PLAY`, owner 2026-11-11: the real pace looked like walking on a screen —, four times at ×2, the times staying real ones), pause, full screen — the start
   screen's speed and position options are gone. « Ma position » shows the runner on the map for 10 s of play (`POS_S`, paused with
   the game; the button counts down and cannot be pressed again meanwhile) and adds 20 s to the race time (`POS_PEN`; `st.pen`,
   `st.legPen` per leg, the time shown `total()`): the splits, the finish card (a line and a « Pénalité » column) and the palmarès hold
@@ -1069,6 +1069,15 @@ Every multiple-choice game was played through to its score page at phone size, w
   running, the body bobbing twice a stride, leaning forward with the speed and into the turns (from the heading's rate). SSAO was not
   taken (a phone's budget). Granites, headless Edge, same PC and moment: 1400 × 860 34.3 → 34.7 fps, 390 × 844 54.7 → 57.0 (Foley
   Mountain 40 at 1400 × 860).
+  **The ground picture was mirrored north–south until 2026-11-11** (the sprint session found it, the owner met it on Trois Pignons:
+  standing on a map's path junction, the path drawn on the ground lay further on): `ground.jpg` is an ImageBitmap, which three.js never
+  flips, so its first row (north) is at v = 0 — `build()`'s ground uv is `z / H`. **« Avatar »** (Coach › Virtually's tab between
+  Analyse and Orga; owner, 2026-11-11; `games/vavatar.js`): the runner seen in the race — woman or man (narrower shoulders, wider hips,
+  a little smaller), seven skin tones, eight hair colours, short hair, a ponytail (swinging with the stride) or a bun, shorts or long
+  trousers, and the shirt's, the shorts', the socks' and the shoes' colours (14 swatches and any colour); « Au hasard », « Par
+  défaut »; kept in this browser (`localStorage ocn.vt.avatar`, `loadAvatar`), shown turning in a small scene standing, walking or
+  running; `runnerFigure(T, look)` takes it (`mount`'s `opts.avatar` else the stored one). The built-in maps also serve `map.webp`
+  (a LiDAR race kept as a map: `api/virtual` `FILE`).
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
   open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only

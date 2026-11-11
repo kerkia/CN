@@ -11,11 +11,15 @@ import { html, $ } from "../util.js";
 import { t, tn, loadArea, lang } from "../i18n.js";
 import { THREE as THREE_URL } from "../vendor.js";
 import { loadRace, World, runnerFigure } from "./vworld.js";
+import { loadAvatar } from "./vavatar.js";
 
 await loadArea("virtually");
 
 const BASE = "/api/virtual/";
 const RUN = 3.7;                    // m/s on flat open ground (about 4:30 a km)
+// the race's clock runs twice as fast as the wall clock at « ×1 » (owner, 2026-11-11: the real pace, seen on a screen, looked like
+// walking; « ×2 » then four times): the times stay a runner's real times, only the play is shorter
+const PLAY = 2;
 const REACH = 6;                    // m: a control within reach (its cue, the punch)
 const PURPLE = "rgba(181, 23, 158, 0.9)";
 const fmt = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? `${h}:${String(m).padStart(2, "0")}` : `${m}`) + `:${String(x).padStart(2, "0")}`; };
@@ -98,7 +102,7 @@ export function mount(root, raceId, opts = {}) {
     const SUN = new T.Vector3(...(B.sun || [-0.5, 0.6, 0.6])).normalize();
     const world = new World(T, data, scene, renderer);
     world.addCourse(course);
-    const me = runnerFigure(T); scene.add(me);
+    const me = runnerFigure(T, opts.avatar || loadAvatar()); scene.add(me);
     // ---- the runner's state ----
     const st = { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, pitch: -0.08, next: 1, splits: [], track: [], dist: 0,
       view: "third", speedX: 1, maxSpeedX: 1, speed: 0, lastTrack: -1, msgUntil: 0,
@@ -306,7 +310,7 @@ export function mount(root, raceId, opts = {}) {
     const step = (now) => {
       raf = requestAnimationFrame(step);
       const dt = Math.min(0.1, (now - last) / 1000); last = now;
-      const run = st.phase === "run", sdt = dt * (run ? st.speedX : 1);
+      const run = st.phase === "run", sdt = dt * (run ? st.speedX * PLAY : 1);
       if (run) {
         st.t += sdt;
         if (st.posLeft > 0) { st.posLeft = Math.max(0, st.posLeft - dt); showPosBtn(); if (!st.posLeft) drawMapPanel(); }
