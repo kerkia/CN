@@ -39,15 +39,23 @@ export async function render(main, { query = {}, embedded = false } = {}) {
   let tab = tabFrom(tabs, query);
   await loadSymbols();
   const langs = languages();
-  let L = langs[query.langue] ? query.langue : langs[lang()] ? lang() : "en";
+  const uiLang = lang();
+  // « Noms aussi en… » (owner, 2026-11-11: « Langue des textes » read as the page's language): none by default, else a
+  // language of the symbol file other than the site's, whose sheet names show under the names (kept in this browser)
+  const stored = () => { try { return localStorage.getItem("ocn.cd.alt") || ""; } catch { return ""; } };
+  const valid = (k) => (k && langs[k] && k !== uiLang ? k : "");
+  let L = valid(query.langue) || valid(stored());
+  // the worked line's words: the language chosen, else the site's (English when the symbol file has not the site's)
+  const textLang = () => L || (langs[uiLang] ? uiLang : "en");
   let practice = FROM_QUERY[query.mode] || "";
-  if (L !== "fr" && L !== "en") await loadAllTexts();
+  if (textLang() !== "fr" && textLang() !== "en") await loadAllTexts();
   main.innerHTML = html`
     ${embedded ? html`<p class="lede learn-lede">${t("cd.lede")}</p>` : html`<div class="page-head"><div><h1>${t("cd.title")}</h1><p class="lede">${t("cd.lede")}</p></div></div>`}
     <ul class="ms-stds"><li>${t("cd.std")}</li><li>${t("cd.std.maps")}</li></ul>
     ${pageTabs(tabs, tab)}
     <div class="filters cd-filters">
-      <label class="field"><span>${t("cd.lang")}</span><select id="cd-lang">${Object.entries(langs).sort((a, b) => a[1].name.localeCompare(b[1].name))
+      <label class="field" title="${t("cd.lang.tip")}"><span>${t("cd.lang")}</span><select id="cd-lang"><option value="">${t("cd.lang.none")}</option>${Object.entries(langs)
+        .filter(([k]) => k !== uiLang).sort((a, b) => a[1].name.localeCompare(b[1].name))
         .map(([k, v]) => html`<option value="${k}" ${raw(k === L ? "selected" : "")}>${v.name}</option>`)}</select></label>
       <label class="field" style="flex:1 1 220px"><span>${t("cd.search")}</span><input type="search" id="cd-q" placeholder="${t("cd.search.ph")}"></label>
       <label class="field"><span>${t("cd.practice")}</span><select id="cd-practice">${Object.entries(MODES)
@@ -60,9 +68,8 @@ export async function render(main, { query = {}, embedded = false } = {}) {
     <p class="muted" style="font-size:12.5px;margin-top:18px">${t("cd.source")}</p>`;
 
   const sheet = (kind) => symbolsFor(kind);
-  const uiLang = lang();
   // a symbol's name and description: the specification's (ISCD 2024), in the site's language; directional ones made from
-  // their pattern. When the sheet's language is another, the name a sheet prints in it (Purple Pen's) under it.
+  // their pattern. With a language chosen in « Noms aussi en… », the name a sheet prints in it (Purple Pen's) under it.
   const nameOf = (r) => (r.dir && r.ref.startsWith("0.") ? t(`cd.cdir.${r.dir}`) : t(`cd.s.${r.ref}`, { d: r.dir ? t(`cd.gdir.${r.dir}`) : "" }));
   // a family drawn in eight directions (columns C and G) says its description once, on its first card
   let described = new Set();
@@ -70,7 +77,7 @@ export async function render(main, { query = {}, embedded = false } = {}) {
     const r = iscdRef(s.id);
     const name = nameOf(r), desc = described.has(r.ref) ? "" : t(`cd.d.${r.ref}`);
     described.add(r.ref);
-    const alt = L !== uiLang ? symbolName(s, L) : "";
+    const alt = L ? symbolName(s, L) : "";
     const d = s.k === "D";
     const map = d ? mapSwatches(r.ref, sprint) : "";
     const words = normalise(`${name} ${t(`cd.d.${r.ref}`)} ${alt} ${r.ref}${d ? ` ${mapCodes(r.ref, sprint).join(" ")}` : ""}`);
@@ -86,7 +93,7 @@ export async function render(main, { query = {}, embedded = false } = {}) {
     const cell = (id) => (id ? svg(symbol(id), 40, "cd-cell-sym") : "");
     const [c, d, e, , g, h] = EXAMPLE.symbols;
     const cells = [EXAMPLE.num, EXAMPLE.code, cell(c), cell(d), cell(e), EXAMPLE.colF.replace("x", "×"), cell(g), cell(h)];
-    const words = textifier({ controls: { x: { kind: "normal", ...EXAMPLE } }, descStandard: "2018" }, L).control("x");
+    const words = textifier({ controls: { x: { kind: "normal", ...EXAMPLE } }, descStandard: "2018" }, textLang()).control("x");
     return html`<section class="card cd-intro"><div class="card-head"><div><h2>${t("cd.intro")}</h2><div class="hint">${t("cd.intro.hint")}</div></div></div>
       <div class="cd-intro-body">
         <div class="cd-row" role="img" aria-label="${words}">${LETTERS.map((l, i) => html`<div class="cd-rc"><span class="cd-rl">${l}</span><span class="cd-rv${i < 2 || i === 5 ? " txt" : ""}">${cells[i]}</span></div>`)}</div>
@@ -138,7 +145,8 @@ export async function render(main, { query = {}, embedded = false } = {}) {
   bindPageTabs(main, tabs, tab, (k) => { tab = k; if (!drawn[k]) { drawTab(k); filter(); } });
   $("#cd-lang").addEventListener("change", async (e) => {
     L = e.target.value;
-    if (L !== "fr" && L !== "en") await loadAllTexts();
+    try { if (L) localStorage.setItem("ocn.cd.alt", L); else localStorage.removeItem("ocn.cd.alt"); } catch { /* private window */ }
+    if (textLang() !== "fr" && textLang() !== "en") await loadAllTexts();
     draw();
   });
   $("#cd-q").addEventListener("input", filter);

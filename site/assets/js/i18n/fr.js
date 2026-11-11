@@ -3135,7 +3135,9 @@ export default {
   // « Définitions de postes » (Coach; owner, 2026-10-30)
   "nav.descriptions": "Définitions de postes", "cd.title": "Définitions de postes",
   "cd.lede": "Les symboles des définitions de postes de l'IOF, colonne par colonne, avec leur numéro, leur nom et leur description tels que la spécification les donne et, pour l'objet du poste, les symboles de carte qu'elle lui fait correspondre.",
-  "cd.lang": "Langue des textes", "cd.search": "Rechercher", "cd.search.ph": "un nom, un mot, un numéro",
+  "cd.lang": "Noms aussi en…", "cd.lang.none": "—",
+  "cd.lang.tip": "Affiche sous chaque nom celui qu'imprime une feuille de définitions dans une autre langue (23 langues) : utile pour une course à l'étranger aux définitions en texte. La page reste dans la langue du site.",
+  "cd.search": "Rechercher", "cd.search.ph": "un nom, un mot, un numéro",
   "cd.practice": "S'entraîner", "cd.practice.off": "Non", "cd.practice.names": "Masquer les noms", "cd.practice.map": "Masquer les symboles", "cd.practice.sym": "Masquer les dessins de carte",
   "cd.practice.hint": "Les noms sont masqués : touchez un symbole pour le découvrir, une seconde fois pour le masquer de nouveau.",
   "cd.practice.hint.map": "Seuls les dessins de carte sont montrés : imaginez la définition, puis touchez le dessin pour découvrir le symbole et son nom, une seconde fois pour les masquer de nouveau.",

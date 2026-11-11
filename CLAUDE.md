@@ -406,8 +406,9 @@ a control », not in ISCD, and Purple Pen's second forms of one symbol are left 
 their swatch's band through its centre, `AREA`, `LIFT`; `mapSwatches`) — **the feature drawn with the symbol** where its shape matters (owner, 2026-11-04: « a Colline would show contour lines that draw a colline »; `isom.js` `SCENE` by ISCD number: terrace, spur, re-entrant, hill, saddle and depression in contours — the feature's own line in the symbol shown, the others 101, slope lines 0.14 × 0.4 OM —, quarry, narrow passage, lake, pond, river, marsh, firm ground, forest corner, clearing, thicket, copse, vegetation boundary, ride, pylon…: the specs' line widths, tags and fills along our shapes, areas cut to a shape with their edge, greens without the running-direction stripes, `PLAIN`); the other columns have no map
 equivalent in ISCD, so none. Names and descriptions: ISCD 2024's (`cd.s.<ref>`, `cd.d.<ref>`; directional families from
 `cd.cdir.<D>` / `cd.gdir.<D>` patterns, the description on the family's first card only); French from FFCO's 2018 terms,
-the 2024 text translated faithfully; when the sheet language chosen differs from the site's, Purple Pen's name in it under the
-name (`cd.alt`). Column F's sizes and the instructions' distances, which Purple Pen draws as text, print ISCD's own examples
+the 2024 text translated faithfully; « Noms aussi en… » (`cd.lang`; « Langue des textes » until 2026-11-11, owner: it read as
+the page's language) chooses none by default, else one of the symbol file's languages other than the site's, kept in
+`localStorage ocn.cd.alt`: Purple Pen's name in it under each name (`cd.alt`) and the worked line in it. Column F's sizes and the instructions' distances, which Purple Pen draws as text, print ISCD's own examples
 (`PRINTED`: 2.5, 8 × 4, 0.5/3, 2|3, 60 m…). Practice (owner, 2026-10-30): the names hidden (`?mode=pratique`), « Masquer les symboles »
 (`?mode=carte`, the maps alone) or « Masquer les dessins de carte » (`?mode=symbole`; « Imaginer … » until 2026-10-31, owner: « Masquer » as the other choices), the rest shown by a tap. At the top,
 « Lire une ligne de définitions »: our own worked line (`EXAMPLE`: 7, 145, the eastern stony depression 8×4, north part,

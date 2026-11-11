@@ -3964,7 +3964,9 @@ export default {
   // « Définitions de postes » (Coach; owner, 2026-10-30)
   "nav.descriptions": "Control descriptions", "cd.title": "Control descriptions",
   "cd.lede": "The IOF control description symbols, column by column, with their number, name and description as the specification gives them and, for the control feature, the map symbols it matches them with.",
-  "cd.lang": "Language of the texts", "cd.search": "Search", "cd.search.ph": "a name, a word, a number",
+  "cd.lang": "Also show names in…", "cd.lang.none": "—",
+  "cd.lang.tip": "Shows under each name the one a description sheet prints in another language (23 languages): useful for a race abroad with text descriptions. The page stays in the site's language.",
+  "cd.search": "Search", "cd.search.ph": "a name, a word, a number",
   "cd.practice": "Practise", "cd.practice.off": "No", "cd.practice.names": "Hide the names", "cd.practice.map": "Hide the symbols", "cd.practice.sym": "Hide the map drawings",
   "cd.practice.hint": "The names are hidden: tap a symbol to reveal it, tap again to hide it.",
   "cd.practice.hint.map": "Only the map drawings are shown: imagine the description, then tap the drawing to reveal the symbol and its name, tap again to hide them.",
