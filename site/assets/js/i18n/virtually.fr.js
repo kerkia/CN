@@ -229,4 +229,9 @@ export default {
   "vo.err.too_many_events": "Vous avez atteint le nombre d'événements permis.",
   "vo.err.forbidden": "Vous n'avez pas le droit de faire cela.",
   "vo.err.demo": "Un compte de démonstration ne peut rien changer.",
+  "vo.lidarOcd.title": "La carte en OCAD",
+  "vo.lidarOcd.get": "Télécharger la carte générée (.ocd)",
+  "vo.lidarOcd.hint": "La même carte en objets ISOM 2017 (courbes, végétation, chemins, rochers) : corrigez-la dans OCAD ou dans Cartographier, puis renvoyez-la ici. La course sera reconstruite sur votre carte.",
+  "vo.lidarOcd.using": "Votre carte modifiée est envoyée : « Reconstruire » fera la course sur elle, avec le LiDAR dessous.",
+  "vo.lidarOcd.edited": "Carte modifiée (.ocd)",
 };

@@ -113,8 +113,18 @@ export async function onRequestGet(ctx) {
       extra.error = ev.error || "";
       extra.files = Object.fromEntries(await Promise.all(Object.keys(INPUTS).map(async (f) => [f, (await env.BUCKET.head(`${EV}${ev.id}/${f}`))?.size || 0])));
       extra.area = ev.area || null; extra.coursesFrom = ev.coursesFrom || "proposed";
+      extra.lidarOcd = !!ev.lidarOcd; extra.edited = !!ev.edited;
     }
     return json(view(ev, extra), 200, { "Cache-Control": "private, no-store" });
+  }
+  // the generated map as an OCAD file (a race from the LiDAR alone), for its organisers to edit before building again
+  if (path[1] === "file" && path.length === 3 && path[2] === "lidar.ocd") {
+    if (!isOrganiser(env, user, ev)) return json({ error: "forbidden" }, 403);
+    const o = await env.BUCKET.get(`${EV}${ev.id}/lidar.ocd`);
+    if (!o) return json({ error: "not found" }, 404);
+    const name = `${ev.name.replace(/[^\p{L}\p{N} _-]+/gu, "").trim().replace(/\s+/g, "-") || ev.id}-lidar.ocd`;
+    return new Response(o.body, { headers: { "Content-Type": "application/octet-stream", "Cache-Control": "private, no-store",
+      "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(name)}` } });
   }
   if (path[1] === "pkg" && path.length === 3 && PFILES.test(path[2])) {
     const key = `${PKG}${ev.id}/${path[2]}`, etag = request.headers.get("If-None-Match");
@@ -219,7 +229,8 @@ export async function onRequestPut(ctx) {
   if (!ev) return json({ error: "not found" }, 404);
   if (!isOrganiser(env, user, ev)) return json({ error: "forbidden" }, 403);
   if (path[1] === "file" && path.length === 3 && INPUTS[path[2]]) {
-    if (ev.source !== "ocad") return json({ error: "bad request" }, 400);
+    // a race from the LiDAR alone takes back its generated map, edited (map.ocd only)
+    if (ev.source !== "ocad" && !(ev.source === "lidar" && path[2] === "map.ocd")) return json({ error: "bad request" }, 400);
     const size = Number(request.headers.get("Content-Length") || 0);
     if (!size || size > INPUTS[path[2]]) return json({ error: "size", max: INPUTS[path[2]] }, 413);
     await env.BUCKET.put(`${EV}${ev.id}/${path[2]}`, request.body, { httpMetadata: { contentType: "application/octet-stream" } });

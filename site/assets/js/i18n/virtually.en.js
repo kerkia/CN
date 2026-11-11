@@ -229,4 +229,9 @@ export default {
   "vo.err.too_many_events": "You have reached the number of events allowed.",
   "vo.err.forbidden": "You may not do that.",
   "vo.err.demo": "A demo account cannot change anything.",
+  "vo.lidarOcd.title": "The map as an OCAD file",
+  "vo.lidarOcd.get": "Download the generated map (.ocd)",
+  "vo.lidarOcd.hint": "The same map as ISOM 2017 objects (contours, vegetation, paths, boulders): correct it in OCAD or in Cartographier, then send it back here. The race will be built again on your map.",
+  "vo.lidarOcd.using": "Your edited map is sent: “Build again” makes the race on it, with the LiDAR under it.",
+  "vo.lidarOcd.edited": "Edited map (.ocd)",
 };

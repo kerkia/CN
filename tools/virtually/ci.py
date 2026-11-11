@@ -179,14 +179,18 @@ def build_one(req: dict, work: Path, kp: str):
     ev = json.load(open(ev_path, encoding="utf-8"))
     prog("files")
     extra = None
-    if ev.get("source") == "lidar":
+    # a race from the LiDAR alone whose organiser sent back the generated OCAD map, edited: built from that map as any OCAD event
+    edited = ev.get("source") == "lidar" and get(f"virtual-events/{eid}/map.ocd", rd / "map.ocd")
+    if ev.get("source") == "lidar" and not edited:
         a = ev["area"]
         prog("lidar", 0, "mapgen")
         run([PY, HERE / "lidarrace.py", eid, str(a["lat"]), str(a["lon"]), str(a.get("size", 2000)), "--kp", kp,
              "--work", work / "mapgen"], prog, "lidar", est=900, env=env)
         prog("map", 1)
+        if (rd / "lidar.ocd").exists():                   # the same map as an OCAD file, for the organiser to edit (never published)
+            aws("cp", str(rd / "lidar.ocd"), f"{BUCKET}/virtual-events/{eid}/lidar.ocd")
     else:
-        if not get(f"virtual-events/{eid}/map.ocd", rd / "map.ocd"):
+        if not edited and not get(f"virtual-events/{eid}/map.ocd", rd / "map.ocd"):
             raise RuntimeError("no map")
         for f in ("courses.xml", "courses.ocd"):
             if get(f"virtual-events/{eid}/{f}", rd / f):
@@ -204,7 +208,7 @@ def build_one(req: dict, work: Path, kp: str):
     prog("build", 0)
     run([PY, HERE / "build.py", eid], prog, "build", est=300, env=env)
     prog("courses", 0)
-    if ev.get("source") != "lidar" and ev.get("coursesFrom") == "file":
+    if not (ev.get("source") == "lidar" and not edited) and ev.get("coursesFrom") == "file":
         run(["node", "--import", (ROOT / "tools/mapper/shim.mjs").as_uri(), HERE / "coursefile.mjs", rd / "map.ocd", rd / "courses.json"]
             + ([extra] if extra else []), prog, "courses", est=20)
         run([PY, HERE / "filecourses.py", eid, rd / "courses.json"], prog, "courses", est=20, env=env)
@@ -229,7 +233,8 @@ def build_one(req: dict, work: Path, kp: str):
     ev.update(status="ready", error="", std=race.get("std", ""), scale=race.get("scale", 0), lonlat=race.get("lonlat"),
               courses=[{"id": c["id"], "name": c.get("name", ""), "controls": c["controls"], "length": c.get("length", 0),
                         "climb": c.get("climb", 0)} for c in race["courses"]],
-              thumb=(rd / "pkg" / "thumb.webp").exists(), built=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
+              thumb=(rd / "pkg" / "thumb.webp").exists(), lidarOcd=bool(ev.get("lidarOcd") or (rd / "lidar.ocd").exists()),
+              edited=bool(edited), built=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
     return ev
 
 

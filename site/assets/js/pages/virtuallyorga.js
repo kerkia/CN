@@ -117,7 +117,11 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
             ${ev.coursesFrom === "file" ? html`${fileRow("courses.xml", t("vo.file.xml"), files["courses.xml"], ".xml")}${fileRow("courses.ocd", t("vo.file.cocd"), files["courses.ocd"], ".ocd")}
               <p class="muted">${t("vo.file.coursesNote")}</p>` : ""}
           </div>
-          <p class="muted">${t("vo.privacy")}</p>` : html`<p class="muted">${t("vo.lidarArea", { lat: fmt(ev.area?.lat ?? 0, 5), lon: fmt(ev.area?.lon ?? 0, 5), km: fmt((ev.area?.size || 0) / 1000, 1) })}</p>`}
+          <p class="muted">${t("vo.privacy")}</p>` : html`<p class="muted">${t("vo.lidarArea", { lat: fmt(ev.area?.lat ?? 0, 5), lon: fmt(ev.area?.lon ?? 0, 5), km: fmt((ev.area?.size || 0) / 1000, 1) })}</p>
+          ${ev.lidarOcd ? html`<h3>${t("vo.lidarOcd.title")}</h3>
+            <p><a class="btn btn-sm" href="${API}/${ev.id}/file/lidar.ocd" download>${t("vo.lidarOcd.get")}</a></p>
+            <p class="muted">${t(files["map.ocd"] ? "vo.lidarOcd.using" : "vo.lidarOcd.hint")}</p>
+            <div class="vo-files">${fileRow("map.ocd", t("vo.lidarOcd.edited"), files["map.ocd"], ".ocd")}</div>` : ""}`}
         <div id="vo-build">${building ? progressHtml(ev.build) : ""}</div>
         <div class="vtp-go vo-actions">
           <button type="button" class="btn ${ready ? "" : "btn-primary"}" id="vo-buildbtn" ${raw(building || (ev.source === "ocad" && !files["map.ocd"]) ? "disabled" : "")}>${t(ready ? "vo.rebuild" : "vo.build")}</button>

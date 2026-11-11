@@ -189,6 +189,7 @@ rk = np.array(rockm)
 lab, n = ndimage.label(ndimage.binary_dilation(rk > 0, iterations=1))
 rng = np.random.default_rng(5)
 idx = ndimage.find_objects(lab)
+outm = np.zeros((H, W), bool)                                         # the outcrops: one area each in the editable OCAD (206)
 for k, sl in enumerate(idx, start=1):
     if sl is None:
         continue
@@ -197,8 +198,11 @@ for k, sl in enumerate(idx, start=1):
     big = (rk[zz, xx] == 2).any()
     if len(zz) < 30:
         mx, mz = xx.mean() + 0.5, zz.mean() + 0.5
-        objs.append({"sym": 205000 if len(zz) > 10 or big else 204000, "otp": 1, "ang": 0, "c": [mm(GX0 + mx, GY1 - mz)]}); rocks += 1
+        # an isolated boulder: drawn on the map as ISOM's dot, at the very spot the world's boulder stands (build.py places a
+        # 204/205 point without spreading it)
+        objs.append({"sym": 205000 if len(zz) > 10 or big else 204000, "otp": 1, "ang": 0, "c": [mm(GX0 + mx, GY1 - mz)], "dot": True}); rocks += 1
         continue
+    outm[zz, xx] = True
     pts = np.c_[xx, zz].astype(float) + rng.uniform(0, 1, (len(xx), 2))
     kept = []
     tree = None
@@ -222,6 +226,80 @@ for t in ids:
             if GX0 <= gx <= GX1 and GY0 <= gy <= GY1:
                 objs.append({"sym": sym, "otp": 1, "ang": 0, "c": [mm(gx, gy)]}); knolls += 1
 log(f"objects {len(objs)}: boulders {rocks} (outcrops {cliffs}), knolls and depressions {knolls}")
+
+# ---- the isolated boulders on the player's map: ISOM 2017-2's dots at 1:10 000 (204 ø 0.6 mm, 205 ø 0.9 mm: 150 % of 1:15 000) ----
+dmap = ImageDraw.Draw(mapimg)
+for o in objs:
+    if o.get("dot"):
+        x, y = o["c"][0][0] / 100 * K / MPX, (H - o["c"][0][1] / 100 * K) / MPX
+        r = (0.45 if o["sym"] == 205000 else 0.3) * K / MPX
+        dmap.ellipse([x - r, y - r, x + r, y + r], fill=(0, 0, 0))
+log("boulder dots", sum(1 for o in objs if o.get("dot")))
+
+
+# ---- an OCAD file of the same map, for an organiser to edit before building (Cartographier's own writer, mkocd.mjs) -------------
+def editable_ocd():
+    """map_objects.json in mkocd's shape (map mm, y up): the contours, the vegetation as areas, OpenStreetMap's ways and areas,
+    the boulders, knolls and depressions — then lidar.ocd, ISOM 2017-2 at 1:10 000, in the race's grid."""
+    import rasterio.features
+    from rasterio.transform import Affine
+    from shapely.geometry import shape
+    from scipy.ndimage import median_filter
+    out = []
+    for o in objs:                                                    # what map.json holds (dump.mjs units: mm × 100)
+        if o["sym"] == 205000 and not o.get("dot"):
+            continue                                                  # an outcrop's boulders: its area below instead
+        out.append({"sym": o["sym"], "otp": o["otp"], "ang": 0, "rings": [[[c[0] / 100, c[1] / 100] for c in o["c"]]]})
+    # the contours, form lines and index contours karttapullautin drew
+    CSYM = {"contour": 101000, "contour_index": 102000, "formline": 103000, "small_depression": 101000, "depression_intermed": 103000}
+    for t in ids:
+        p = tiles / "t" / f"{t}.forest.vec.json"
+        if not p.exists():
+            continue
+        v = json.loads(p.read_text(encoding="utf-8"))
+        x0, y0, q = v["x0"], v["y0"], v["q"]
+        for layer, lines in v.get("lines", {}).items():
+            sym = CSYM.get(layer)
+            if not sym:
+                continue
+            for enc in lines:
+                pts = [((gx - GX0) / K, (gy - GY0) / K) for gx, gy in decode(enc, x0, y0, q, True)]
+                pts = [pt for pt in pts if -2 <= pt[0] <= W / K + 2 and -2 <= pt[1] <= H / K + 2]
+                if len(pts) >= 2:
+                    out.append({"sym": sym, "otp": 2, "ang": 0, "rings": [pts]})
+    # the vegetation, from the classes the world uses: each class's patches as areas (a 3 m median first, the smallest left out)
+    VSYM = {C["rough"]: 403000, C["slow_vis"]: 406000, C["slow"]: 406000, C["walk_vis"]: 408000, C["walk"]: 408000, C["fight"]: 410000}
+    code = np.zeros_like(cls)
+    for c_, s_ in VSYM.items():
+        code[cls == c_] = {403000: 1, 406000: 2, 408000: 3, 410000: 4}[s_]
+    code = median_filter(code, size=3)
+    tr = Affine(1 / K, 0, 0, 0, -1 / K, H / K)                         # world pixel (x right, z down) -> map mm (y up)
+    back = {1: 403000, 2: 406000, 3: 408000, 4: 410000}
+    for geom, val in rasterio.features.shapes(code, mask=code > 0, transform=tr):
+        poly = shape(geom).simplify(0.08, preserve_topology=True)       # 0.08 mm = 0.8 m
+        if poly.is_empty or poly.area * K * K < (150 if val == 1 else 80):
+            continue
+        for part in getattr(poly, "geoms", [poly]):
+            rings = [list(part.exterior.coords)] + [list(r.coords) for r in part.interiors if r.area * K * K >= 40]
+            out.append({"sym": back[int(val)], "otp": 3, "ang": 0, "rings": [[list(pt) for pt in r] for r in rings]})
+    # the outcrops as gigantic boulders / rock pillars (206: a black area), as karttapullautin draws them
+    for geom, val in rasterio.features.shapes(outm.astype(np.uint8), mask=outm, transform=tr):
+        poly = shape(geom).simplify(0.05, preserve_topology=True)
+        for part in getattr(poly, "geoms", [poly]):
+            if not part.is_empty and part.area * K * K >= 4:
+                out.append({"sym": 206000, "otp": 3, "ang": 0, "rings": [[list(pt) for pt in part.exterior.coords]]})
+    J = {"title": f"{A.race} (LiDAR)", "scale": SCALE, "set": "isom2017-2", "realWorld": {"x": GX0, "y": GY0, "epsg": EPSG}, "objects": out}
+    json.dump(J, open(RD / "map_objects.json", "w"))
+    shim = (ROOT / "tools" / "mapper" / "shim.mjs").as_uri()
+    r = subprocess.run(["node", "--import", shim, str(ROOT / "tools" / "virtually" / "mkocd.mjs"), str(RD / "map_objects.json"),
+                        str(RD / "lidar.ocd")], cwd=ROOT / "tools" / "virtually", capture_output=True, text=True, encoding="utf-8", errors="replace")
+    log("editable OCAD:", (r.stdout or r.stderr).strip()[-300:])
+
+
+try:
+    editable_ocd()
+except Exception as ex:                                               # never a reason to fail the race
+    log("editable OCAD not written:", ex)
 
 # ---- write ---------------------------------------------------------------------------------------------------------------
 lat_c, lon_c = grids.to_latlon(EPSG, cx, cy)

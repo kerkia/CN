@@ -229,4 +229,9 @@ export default {
   "vo.err.too_many_events": "Du hast die erlaubte Anzahl Veranstaltungen erreicht.",
   "vo.err.forbidden": "Das darfst du nicht.",
   "vo.err.demo": "Ein Demokonto kann nichts ändern.",
+  "vo.lidarOcd.title": "Die Karte als OCAD-Datei",
+  "vo.lidarOcd.get": "Erzeugte Karte herunterladen (.ocd)",
+  "vo.lidarOcd.hint": "Dieselbe Karte als ISOM-2017-Objekte (Höhenlinien, Vegetation, Wege, Felsen): korrigiere sie in OCAD oder im Kartografieren, dann sende sie hier zurück. Das Rennen wird auf deiner Karte neu erstellt.",
+  "vo.lidarOcd.using": "Deine geänderte Karte ist gesendet: „Neu erstellen“ baut das Rennen auf ihr, mit dem LiDAR darunter.",
+  "vo.lidarOcd.edited": "Geänderte Karte (.ocd)",
 };

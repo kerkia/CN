@@ -229,4 +229,9 @@ export default {
   "vo.err.too_many_events": "Has alcanzado el número de eventos permitido.",
   "vo.err.forbidden": "No puedes hacer eso.",
   "vo.err.demo": "Una cuenta de demostración no puede cambiar nada.",
+  "vo.lidarOcd.title": "El mapa en OCAD",
+  "vo.lidarOcd.get": "Descargar el mapa generado (.ocd)",
+  "vo.lidarOcd.hint": "El mismo mapa en objetos ISOM 2017 (curvas, vegetación, caminos, rocas): corrígelo en OCAD o en Cartografiar y vuelve a enviarlo aquí. La carrera se volverá a construir sobre tu mapa.",
+  "vo.lidarOcd.using": "Tu mapa modificado está enviado: «Volver a construir» hace la carrera sobre él, con el LiDAR debajo.",
+  "vo.lidarOcd.edited": "Mapa modificado (.ocd)",
 };
