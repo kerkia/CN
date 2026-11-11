@@ -1,7 +1,7 @@
 """France's individual championships for Stats' « Palmarès » (owner, 2026-11-05): on foot the Championnat de France Moyenne
 Distance (CFMD), Longue Distance (CFLD), de Sprint (CFS) and de Nuit (CFN, formerly the Championnat National de Nuit, CNN), and
-the VTT and ski championships (middle, long, sprint), every edition the results database holds — FFCO's archive starts in 2011, so
-the editions before are not there. A championship's key is its discipline and its format: « fmd », « fld », « fsp », « fnu »,
+the VTT and ski championships (middle, long, sprint), every edition the results database holds — FFCO's archive starts in 2011 —
+and those of 2001-2010 from the archives (`old_editions`, below). A championship's key is its discipline and its format: « fmd », « fld », « fsp », « fnu »,
 « vmd », « vld », « vsp », « smd », « sld », « ssp » (the race's « specialite » says the discipline: a VTT or ski championship's
 title names the same formats as a foot one's).
 
@@ -134,15 +134,153 @@ def compile_(db: sqlite3.Connection, anon: privacy.Anon) -> tuple[dict, dict]:
     return index, files
 
 
+# ---- The editions before 2011 (owner, 2026-11-11) ----------------------------------------------------------------------------
+# FFCO's results database starts in 2011. The editions of 2001-2010 were gathered from FFCO's former site (www.ffco.asso.fr, on
+# the Wayback Machine), LIFCO's and the organisers' copies and WinSplits, into one CSV — results, so outside the repository: R2
+# `champs/old.csv`, which the workflow copies to `$CN_DATA_DIR/champs/`. Columns:
+# champ;year;date;at;cat;src_place;name;club;club_name;time;status;foreign;source (one row a runner; `foreign` 1 = not eligible
+# for a French title). Before 2008 FFCO's categories were age groups, already turned into today's codes there (Senior → 21,
+# Vétéran 1 → 40 for 40-49…). A database edition of the same championship and year wins. Runners are linked to their page
+# when the site's index holds one runner of that name, of that sex and of an age that fits both categories (`_linker`).
+
+
+def _secs(t: str | None) -> int | None:
+    m = re.fullmatch(r"(?:(\d+):)?(\d{1,2}):(\d{2})", (t or "").strip())
+    return int(m.group(1) or 0) * 3600 + int(m.group(2)) * 60 + int(m.group(3)) if m else None
+
+
+def _ages(cat: str, year: int) -> tuple[int, int] | None:
+    """The birth years a category of `year` holds: before 2008 FFCO's age groups (21 = 21-39, then ten-year bands), after it
+    today's (21 = 21-34, then five-year bands); the youths' two-year bands both ways."""
+    m = re.fullmatch(r"[HD](\d+)", cat or "")
+    if not m:
+        return None
+    a = int(m.group(1))
+    if a <= 20:
+        lo, hi = (0 if a <= 12 else a - 1), a
+    elif a == 21:
+        lo, hi = 21, 39 if year < 2008 else 34
+    else:
+        lo, hi = a, a + (9 if year < 2008 else 4)
+    return year - hi, year - lo
+
+
+def _linker(fr_out: Path):
+    """name (folded) → licence, for the runners of the site's index whose name is theirs alone, whose sex and age fit."""
+    try:
+        idx = json.loads((fr_out / "runners.json").read_text(encoding="utf-8"))
+        cols = idx["cols"]
+        rows = [dict(zip(cols, r)) for r in idx["rows"]]
+    except (OSError, ValueError, KeyError):
+        return lambda name, cat, year: None
+    by: dict[str, list] = {}
+    for r in rows:
+        by.setdefault(fold(r.get("nom") or "").strip(), []).append(r)
+
+    def link(name: str, cat: str, year: int):
+        cands = by.get(fold(name).strip()) or []
+        if len(cands) != 1:
+            return None
+        r = cands[0]
+        if (r.get("sexe") or "") != cat[:1]:
+            return None
+        mine, now = _ages(cat, year), _ages(r.get("cat") or "", int((r.get("last") or "0000")[:4] or 0))
+        if not mine or not now or max(mine[0], now[0]) > min(mine[1], now[1]):
+            return None
+        return int(r["licence"]) if str(r.get("licence") or "").isdigit() else None
+    return link
+
+
+def old_editions(path: Path, fr_out: Path, anon: privacy.Anon) -> dict[tuple[str, int], tuple[dict, dict]]:
+    """(champ, year) → (its index entry, its file) from the CSV of the editions before 2011."""
+    import csv
+    try:
+        text = path.read_text(encoding="utf-8-sig")
+    except OSError:
+        return {}
+    link = _linker(fr_out)
+    groups: dict[tuple, list] = {}
+    for r in csv.DictReader(text.splitlines(), delimiter=";"):
+        ch, y, cat = (r.get("champ") or "").strip(), (r.get("year") or "").strip(), (r.get("cat") or "").strip().upper()
+        if ch not in CHAMPS or not y.isdigit() or not re.fullmatch(r"[HD]\d{2}", cat):
+            continue
+        groups.setdefault((ch, int(y)), []).append({**r, "cat": cat})
+    out = {}
+    for (ch, y), rs in groups.items():
+        cats: dict[str, list] = {}
+        for r in rs:
+            cats.setdefault(r["cat"], []).append(r)
+        body = {}
+        for cat, lst in cats.items():
+            for r in lst:
+                r["sp"] = int(r["src_place"]) if str(r.get("src_place") or "").strip().isdigit() else None
+                r["t"] = _secs(r.get("time"))
+                r["st"] = (r.get("status") or "").strip().lower()
+                r["fx"] = (r.get("foreign") or "").strip() == "1"
+            ok = [r for r in lst if not r["st"] and (r["sp"] is not None or r["t"] is not None)]
+            # the place among the runners who may hold the title: the printed place less the foreigners ahead; without a
+            # printed place, by time
+            if all(r["sp"] is not None for r in ok):
+                ok.sort(key=lambda r: (r["sp"], r["t"] or 0))
+                for r in ok:
+                    r["pl"] = None if r["fx"] else r["sp"] - sum(1 for o in ok if o["fx"] and o["sp"] < r["sp"])
+            else:
+                ok.sort(key=lambda r: (r["t"] is None, r["t"] or 0, r["sp"] or 0))
+                n = 0
+                prev = None
+                for i, r in enumerate(x for x in ok if not x["fx"]):
+                    n = n if prev is not None and r["t"] == prev else i + 1
+                    prev = r["t"]
+                    r["pl"] = n
+                for r in ok:
+                    if r["fx"]:
+                        r["pl"] = None
+            rest = [r for r in lst if r not in ok]
+            rows = []
+            for r in ok + rest:
+                name = (r.get("name") or "").strip()
+                lic = link(name, cat, y)
+                shown = anon.lic(lic) if lic is not None else None
+                if anon.has(lic) or (lic is None and anon.named(name)):
+                    name = privacy.label(shown if anon.has(lic) else None)
+                club = (r.get("club") or "").strip()
+                club = club if re.fullmatch(r"\d{4}", club) else ""
+                if r in ok and r["pl"] is not None:
+                    rows.append([r["pl"], shown, name, club, _time(r.get("time")) if r["t"] is not None else None, ""])
+                else:
+                    st = "hc" if r["fx"] and r in ok else STATUS.get(r["st"], r["st"] if r["st"] in STATUS.values() else "nc")
+                    rows.append([None, shown, name, club, _time(r.get("time")) if st == "hc" else None, st])
+            body[cat] = rows
+        if not any(x[0] for v in body.values() for x in v):
+            continue
+        dates = sorted(r["date"] for r in rs if re.fullmatch(r"\d{4}-\d{2}-\d{2}", (r.get("date") or "").strip()))
+        ats = [r["at"].strip() for r in rs if (r.get("at") or "").strip()]
+        main = max(set(ats), key=ats.count) if ats else ""
+        order = sorted(body, key=cat_key)
+        out[(ch, y)] = ({"at": main, "date": dates[0] if dates else f"{y}-01-01", "races": [], "old": 1,
+                         "n": sum(sum(1 for x in v if x[0]) for v in body.values()),
+                         "cats": {c: [x for x in body[c] if x[0] and x[0] <= 3] for c in order}},
+                        {"v": VERSION, "cats": {c: body[c] for c in order}})
+    return out
+
+
 def build(db_path: Path, fr_out: Path, anon: privacy.Anon | None = None) -> bool:
     """Write fr_out/champs.json and fr_out/champs/*.json from the database; True when anything changed."""
     if not Path(db_path).exists():
         return False
+    anon = anon if anon is not None else privacy.load()
     db = sqlite3.connect(f"file:{Path(db_path).as_posix()}?mode=ro", uri=True)
     try:
-        index, files = compile_(db, anon if anon is not None else privacy.load())
+        index, files = compile_(db, anon)
     finally:
         db.close()
+    import paths
+    for (ch, y), (entry, body) in sorted(old_editions(paths.DATA_DIR / "champs" / "old.csv", fr_out, anon).items()):
+        if str(y) not in index["editions"][ch]:
+            index["editions"][ch][str(y)] = entry
+            files[f"{ch}-{y}"] = body
+    for ch in index["editions"]:
+        index["editions"][ch] = dict(sorted(index["editions"][ch].items()))
     changed = False
     folder = fr_out / "champs"
     folder.mkdir(parents=True, exist_ok=True)
