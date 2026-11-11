@@ -354,36 +354,46 @@ export function mount(root, raceId, opts = {}) {
       } catch (e) { /* no sound */ }
     }
     // ---- the loop ----
+    const MAX_FRAME = 0.25, SUB = 1 / 40;
+    /** One sub-step of the race: `dt` seconds of real time (turning), `sdt` of race time (the clock and the running). */
+    function move(dt, sdt) {
+      st.t += sdt;
+      const turn = (keys.has("ArrowLeft") || keys.has("KeyA") ? -1 : 0) + (keys.has("ArrowRight") || keys.has("KeyD") ? 1 : 0);
+      st.yaw += turn * 1.9 * dt;
+      const fwd = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0);
+      const side = (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
+      let v = 0;
+      if (fwd || side) {
+        const walk = keys.has("ShiftLeft") || keys.has("ShiftRight");
+        const f = world.terrainSpeed(st.x, st.z) || 0.3;
+        const dx0 = Math.sin(st.yaw) * fwd + Math.cos(st.yaw) * side, dz0 = -Math.cos(st.yaw) * fwd + Math.sin(st.yaw) * side, l = Math.hypot(dx0, dz0);
+        const ahead = world.heightAt(st.x + (dx0 / l) * 2, st.z + (dz0 / l) * 2) - world.heightAt(st.x, st.z), grade = ahead / 2;
+        const slope = grade > 0 ? 1 / (1 + 7 * grade) : 1 / (1 + 2.5 * Math.max(0, -grade - 0.12));
+        v = RUN * f * slope * (walk ? 0.4 : 1) * (fwd < 0 ? 0.45 : 1) * (fwd === 0 ? 0.6 : 1);
+        const d = v * sdt, nx = st.x + (dx0 / l) * d, nz = st.z + (dz0 / l) * d;
+        const free = (x, z) => world.terrainSpeed(x, z) > 0 && !world.hits(x, z, 0.3);
+        if (free(nx, nz)) { st.x = nx; st.z = nz; }
+        else if (free(nx, st.z)) st.x = nx;
+        else if (free(st.x, nz)) st.z = nz;
+        else v = 0;
+        st.dist += v * sdt;
+      }
+      st.speed = v;
+      if (st.t - st.lastTrack >= 1) { st.track.push([st.t, st.x, st.z]); st.lastTrack = st.t; }
+    }
     let last = performance.now(), camPos = null, mapTick = 0;
     const step = (now) => {
       raf = requestAnimationFrame(step);
-      const dt = Math.min(0.1, (now - last) / 1000); last = now;
+      // The game keeps real time whatever the frame rate (owner, 2026-11-11: « the speed does not seem to have changed »):
+      // until then a frame counted 0.1 s at most, so under 10 fps the race ran slower than the clock. A frame now counts up to
+      // MAX_FRAME s (a longer gap is a hiccup or a hidden tab), and the movement is done in sub-steps of SUB s of real time,
+      // so that a fast frame at ×2 never jumps through a trunk.
+      const dt = Math.min(MAX_FRAME, (now - last) / 1000); last = now;
       const run = st.phase === "run", sdt = dt * (run ? st.speedX * PLAY : 1);
       if (run) {
-        st.t += sdt;
         if (st.posLeft > 0) { st.posLeft = Math.max(0, st.posLeft - dt); showPosBtn(); if (!st.posLeft) drawMapPanel(); }
-        const turn = (keys.has("ArrowLeft") || keys.has("KeyA") ? -1 : 0) + (keys.has("ArrowRight") || keys.has("KeyD") ? 1 : 0);
-        st.yaw += turn * 1.9 * dt;
-        const fwd = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0);
-        const side = (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
-        let v = 0;
-        if (fwd || side) {
-          const walk = keys.has("ShiftLeft") || keys.has("ShiftRight");
-          const f = world.terrainSpeed(st.x, st.z) || 0.3;
-          const dx0 = Math.sin(st.yaw) * fwd + Math.cos(st.yaw) * side, dz0 = -Math.cos(st.yaw) * fwd + Math.sin(st.yaw) * side, l = Math.hypot(dx0, dz0);
-          const ahead = world.heightAt(st.x + (dx0 / l) * 2, st.z + (dz0 / l) * 2) - world.heightAt(st.x, st.z), grade = ahead / 2;
-          const slope = grade > 0 ? 1 / (1 + 7 * grade) : 1 / (1 + 2.5 * Math.max(0, -grade - 0.12));
-          v = RUN * f * slope * (walk ? 0.4 : 1) * (fwd < 0 ? 0.45 : 1) * (fwd === 0 ? 0.6 : 1);
-          const d = v * sdt, nx = st.x + (dx0 / l) * d, nz = st.z + (dz0 / l) * d;
-          const free = (x, z) => world.terrainSpeed(x, z) > 0 && !world.hits(x, z, 0.3);
-          if (free(nx, nz)) { st.x = nx; st.z = nz; }
-          else if (free(nx, st.z)) st.x = nx;
-          else if (free(st.x, nz)) st.z = nz;
-          else v = 0;
-          st.dist += v * sdt;
-        }
-        st.speed = v;
-        if (st.t - st.lastTrack >= 1) { st.track.push([st.t, st.x, st.z]); st.lastTrack = st.t; }
+        const n = Math.max(1, Math.ceil(dt / SUB));
+        for (let i = 0; i < n; i++) move(dt / n, sdt / n);
       }
       // the world around the runner
       world.update(st.x, st.z, dt < 0.03 ? 1 : 0);   // a chunk a frame at most, none when the frame was already slow
