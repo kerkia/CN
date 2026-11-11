@@ -945,6 +945,49 @@ Every multiple-choice game was played through to its score page at phone size, w
   finish, two competition runs posted). Races: **Granites** (Victoria,
   Australia, ISOM 2017 1:15 000; no open LiDAR: the map and the worldwide relief) and **Foley Mountain** (Ontario, Canada, ISOM 2000
   1:10 000; NRCan CanElevation LiDAR). The work of the day (Desquinemarre's movies, `C:\kerkia\Ozimut\work\vr3d`) stays outside git.
+  **Sprint in a town** (owner, 2026-11-11: « LiDAR + OpenStreetMap, as realistic as possible »; race **Gif-sur-Yvette**, `gif`, its
+  centre 600 × 600 m between the RER station and the church, 48.7006 N 2.1357 E): a race made from open data alone, no club map.
+  `tools/virtually/town_fetch.py <race> <lat> <lon> <w> <h>` fetches IGN's LiDAR HD tiles (into `lidar/laz/`, where build.py reads
+  them), BD TOPO V3's layers (WFS), BD ORTHO colour and infrared at 0.2 m (WMS), the cadastre's parcels (Etalab) and OpenStreetMap
+  (Overpass), 60 m beyond the area, into `DATA/<race>/src/`; `town_all.py <race> [--courses] [--from <step>]` then runs
+  `town_map.py` (the **ISSprOM 2019-2 map at 1:4000**: 521 BD TOPO's buildings, 501 roads at their carriageway width plus sidewalks,
+  OSM's pedestrian areas, squares, parkings, paved footways and sidewalks, bare unbuilt ground by the infrared; 401/402/405 the
+  LiDAR's canopy over the infrared's grass; **520 olive for the cadastre's parcels holding a house** (under 6 000 m², no church or
+  sports building), schools and the railway's corridor; 411 hedges; 513/515 walls and 516/518 fences passable or not by the
+  LiDAR's height along them, 1.5 m; 505/506 paths, 532 stairways, 509 railway, 301/305 water; contours every 2.5 m from the
+  LiDAR; 417/418 lone trees from its crowns; 526 monuments, 311 fountains; north lines) → `mkocd.mjs` (the objects into an OCAD
+  2018 file with Cartographier's own modules: the ISSprOM set at the map's scale, `writeOcadDoc`; it opens in Cartographier) →
+  `dump.mjs` → `build.py` (**now reads ISSprOM**: `SPRINT` by a scale of 1:5000 or larger, or symbol 533; 520/709/714 forbidden,
+  411, the impassable walls/fences 515/518/529 and the railway 509 blocking, 522 canopies paved, a `stairs` class at 0.55; mown
+  lawns: few low plants) → `town_3d.py` → `course_sprint.py`. Python: the venv `C:\Kerkia\Ozimut\work\vr3d\venv` (laspy, shapely,
+  rasterio, scikit-image added). **`town_3d.py`** writes `town.json` + `town.bin` (arrays per 64 m chunk, listed in town.json:
+  roofs `rpos/rcol/ridx`, walls `wpos/wuv/wseg/wcol/widx`, indices 16-bit when they fit) and replaces `ground.jpg` by the
+  photograph at 0.25 m (the shade lightened, the class colours under tree crowns, ×0.8: the photo is lit already): each BD TOPO
+  building's **roof fitted to the LiDAR's class-6 points** (RANSAC, up to 8 planes under 51°, each roof node — a 0.9 m lattice and
+  the outline — taking its nearest points' plane, the points' local median where the plane is over 0.7 m off; no points: flat at
+  BD TOPO's height), walls from the lowest ground to the roof's edge (Douglas-Peucker on the edge's height: gables), the façade
+  counted from the ground's median, its kind from `usage_1` / `nature` (housing, shops, church, sport, industry, annexe) and its
+  material from `materiaux_des_murs`' first digit (1 stone, 2 meulière, 4 brick, 6 wood, else plaster), the roof's colour the
+  photograph's over it blended with its material's (`materiaux_de_la_toiture`: tiles, slates, zinc); walls, fences, hedges and
+  stairways (town_map's `walls.json`, heights measured); OSM's street furniture (benches, bins, bollards, bike racks, post boxes,
+  lamps, signals, bus stops, cabinets, Morris columns…) and lamps every 26 m along BD TOPO's town roads where OSM has none within
+  15 m. **`games/vtown.js`** (`loadTown`, `Town`; vworld.js's only hooks: `loadRace` loads it when `race.town`, `World.town`,
+  `hits()` asks it, `build()` hands it each chunk; virtually.js keeps the third-person camera out of buildings with `town.clear`):
+  roofs and façades drawn by shaders (floors, bays, windows with frames and bars, shutters, doors, shop fronts, a church's stone and
+  arched windows, stone courses, meulière, brick; tiles in rows at constant height, slates, zinc seams), walls/hedges as boxes,
+  fences a wire mesh, stairways treads at their ground's height, furniture instanced; the runner is stopped by the buildings'
+  outlines, impassable walls/fences/hedges and posts (8 m cells; the ground classes `building` / `block` then run as paving).
+  **`course_sprint.py`**: sites on outer building corners (the flag 1.1 m out), monuments, fountains, lone trees and bushes,
+  impassable walls' ends, stairways' feet; legs 60-260 m timed on the speeds grid (skimage `MCP_Geometric`, a 130 m window), a leg
+  scoring for its route choice (a second route kept 10 m off the best, within 12 % of its time); three courses written as
+  `race.courses` [{ id, level: yellow|orange|violet, name, controls, length }], the orange one also as `race.course`; review
+  pictures `course_<level>.png`. New feature names `vt.f.corner|monument|fountain|bush|stairs|wallend`, the credit `vt.src.town`
+  (IGN LiDAR HD, BD TOPO, BD ORTHO, Licence Ouverte 2.0; OpenStreetMap ODbL; cadastre). Measured 60 fps in headless Edge at
+  1400 × 860. **Not usable** (study of 2026-11-11, notes `virtually-sprint-report.md` in the sessions' notes folder): Google's
+  Photorealistic 3D Tiles (refused with 403 to an EEA project since 2025-07-08, and no storing, deriving or « with any map »
+  anywhere), Street View (not « with any map »), Cesium ion's Google and Bing, Apple Look Around; Panoramax's photos are CC BY-SA
+  (facts read from them may be used freely; crops as textures would carry the share-alike). If Virtually opens to the public, the
+  OSM-derived layers of a package must be offered under the ODbL.
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
   open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only

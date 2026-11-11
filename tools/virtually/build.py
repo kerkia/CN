@@ -64,16 +64,38 @@ desc = {s["sym"]: (s["desc"] or "") for s in D["syms"]}
 num = lambda s: s // 1000
 ISO2000 = any(num(s) == 206 and "oulder" in v and "igantic" not in v for s, v in desc.items()) or \
           any(num(s) == 529 and "aved" in v for s, v in desc.items())
-STD = "ISOM 2000" if ISO2000 else "ISOM 2017"
+# a sprint map (ISSprOM 2019-2): its scale, or a symbol only ISSprOM has (533 area with obstacles)
+SPRINT = SCALE <= 5000 or any(num(s) == 533 for s in desc)
+ISO2000 = ISO2000 and not SPRINT
+STD = "ISSprOM 2019" if SPRINT else "ISOM 2000" if ISO2000 else "ISOM 2017"
 CL = ["forest", "open", "open_t", "rough", "rough_t", "slow", "slow_vis", "walk", "walk_vis", "fight", "paved", "rock",
       "building", "path", "road", "stony", "bfield", "water", "track", "marsh", "marsh_x", "shallow", "cliff", "oob",
-      "cultivated", "stream", "rockstep", "outside", "block", "small_path"]
+      "cultivated", "stream", "rockstep", "outside", "block", "small_path", "stairs"]
 C = {n: i for i, n in enumerate(CL)}
 SPEED = {"forest": 0.82, "open": 1.0, "open_t": 0.95, "rough": 0.78, "rough_t": 0.74, "slow": 0.6, "slow_vis": 0.68,
          "walk": 0.4, "walk_vis": 0.46, "fight": 0.2, "paved": 1.05, "rock": 0.7, "path": 1.0, "road": 1.05, "stony": 0.62,
          "bfield": 0.42, "track": 1.02, "marsh": 0.5, "shallow": 0.3, "cultivated": 0.8, "stream": 0.55, "rockstep": 0.3,
-         "small_path": 0.95, "building": 0, "water": 0, "marsh_x": 0, "cliff": 0, "oob": 0, "outside": 0, "block": 0}
-if ISO2000:
+         "small_path": 0.95, "stairs": 0.55, "building": 0, "water": 0, "marsh_x": 0, "cliff": 0, "oob": 0, "outside": 0, "block": 0}
+if SPRINT:
+    # ISSprOM 2019-2: 520 (olive) and 709/714 shall not be entered, 411 impassable vegetation, 522 canopies run as paving
+    AREA = {401: "open", 402: "open_t", 403: "rough", 404: "rough_t", 405: "forest", 406: "slow", 407: "slow_vis", 408: "walk",
+            409: "walk_vis", 410: "fight", 411: "block", 412: "cultivated", 413: "cultivated", 414: "cultivated", 113: "rough",
+            206: "cliff", 208: "bfield", 210: "stony", 213: "open", 214: "rock", 301: "water", 302: "shallow", 307: "marsh_x",
+            308: "marsh", 310: "marsh", 501: "paved", 512: "paved", 520: "oob", 521: "building", 522: "paved", 533: "slow",
+            709: "oob", 714: "oob"}
+    LINE = {505: ("path", 1.6), 506: ("small_path", 1.0), 507: ("small_path", 0.7), 508: ("small_path", 0.7), 201: ("cliff", 1.4),
+            202: ("rockstep", 1.0), 305: ("stream", 1.2), 306: ("stream", 0.7), 309: ("marsh", 2.5), 509: ("block", 3.0),
+            515: ("block", 0.8), 518: ("block", 0.6), 529: ("block", 1.0), 532: ("stairs", 2.5), 708: ("block", 0.8)}
+    WALL = {201: ("cliff", 3.0), 202: ("rockface", 1.6), 513: ("stonewall", 0.9), 515: ("stonewall", 2.0), 516: ("fence", 1.1),
+            518: ("fence", 2.0), 510: ("powerline", 9), 511: ("powerline", 12), 104: ("bank", 1.2)}
+    POINT = {109: "knoll", 110: "eknoll", 111: "depression", 112: "pit", 115: "landform", 203: "rockpit", 204: "boulder",
+             205: "bigboulder", 207: "cluster", 303: "waterhole", 311: "fountain", 312: "waterhole", 313: "fountain",
+             417: "bigtree", 418: "bush", 419: "vegspec", 524: "tower", 525: "tower", 526: "monument", 527: "manmade",
+             530: "manmade", 531: "manmade"}
+    TICK = lambda s: s in (101009, 102009, 103009)
+    MINI = {}
+    CONTOUR = {101: "c", 102: "c", 103: "f"}
+elif ISO2000:
     AREA = {401: "open", 402: "open_t", 403: "rough", 404: "rough_t", 405: "forest", 406: "slow", 407: "slow_vis", 408: "walk",
             409: "walk_vis", 410: "fight", 411: "slow", 412: "cultivated", 413: "cultivated", 415: "cultivated",
             202: "cliff", 211: "open", 212: "rock", 301: "water", 302: "water", 309: "marsh_x", 310: "marsh", 311: "marsh",
@@ -110,7 +132,7 @@ else:
     TICK = lambda s: s in (101001, 103001)
     MINI = {101002: 1.6, 101003: -1.6, 103002: 0.9, 103003: -0.9}
     CONTOUR = {101: "c", 102: "c", 103: "f"}
-if ISO2000:
+if ISO2000 or SPRINT:
     MINI = {}
 log(RACE, STD, "scale 1:%d" % SCALE, "EPSG", EPSG)
 
@@ -599,6 +621,9 @@ BUSH = {"forest": 1 / 400, "rough": 1 / 160, "rough_t": 1 / 140, "slow": 1 / 9, 
         "marsh": 1 / 90, "stony": 1 / 200, "open_t": 1 / 600}
 LOW = {"forest": 1 / 35, "open": 1 / 18, "open_t": 1 / 14, "rough": 1 / 2.6, "rough_t": 1 / 2.8, "slow_vis": 1 / 1.6,
        "walk_vis": 1 / 0.9, "marsh": 1 / 1.8, "marsh_x": 1 / 1.2, "slow": 1 / 6, "walk": 1 / 5, "cultivated": 1 / 25}
+if SPRINT:                                                 # a town's lawns are mown; its parks' ground is clear
+    LOW.update({"open": 1 / 400, "open_t": 1 / 120, "forest": 1 / 60, "paved": 0})
+    BUSH.update({"forest": 1 / 900, "open_t": 1 / 2000})
 TREE_K, BUSH_K, LOW_K = 255 / 0.05, 255 / 0.5, 255 / 1.2
 
 
@@ -689,11 +714,13 @@ for p in points:
                       round(s_ * rng.uniform(0.55, 0.85) * (1.4 if k == "rockface" else 1), 2), round(rng.uniform(0, 6.28), 2), sink,
                       1 if k in ("bigboulder", "rockface") or (k == "boulder" and s_ > 1.1) else 0])
 other = [{"k": p["k"], "x": round(p["x"], 2), "z": round(p["z"], 2), "a": p["a"]} for p in points
-         if p["k"] in ("bigtree", "vegspec", "tower", "manmade", "smallbuilding", "waterhole", "footbridge", "cave", "orchard")]
+         if p["k"] in ("bigtree", "vegspec", "tower", "manmade", "smallbuilding", "waterhole", "footbridge", "cave", "orchard")
+         and not (SPRINT and lid is not None and p["k"] in ("bigtree", "vegspec"))]      # a town's trees: the LiDAR's
 json.dump({"rocks": rocks, "walls": walls, "points": other,
            "features": [{"k": p["k"], "x": round(p["x"], 1), "z": round(p["z"], 1)} for p in points
                         if p["k"] in ("boulder", "bigboulder", "cluster", "knoll", "eknoll", "depression", "pit", "rockpit", "rockface",
-                                      "cairn", "mini", "vegspec", "bigtree", "manmade", "tower", "waterhole", "cave", "landform")]},
+                                      "cairn", "mini", "vegspec", "bigtree", "manmade", "tower", "waterhole", "cave", "landform",
+                                      "fountain", "bush", "monument")]},
           open(OUT / "feats.json", "w"))
 shutil.copy(RD / "map.ocd", OUT / "map.ocd")
 

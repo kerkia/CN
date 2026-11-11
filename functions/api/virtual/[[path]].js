@@ -1,7 +1,7 @@
 // /api/virtual/… — « Virtually » (Coach › Virtually, pages/virtually.js), administrators only for now (owner, 2026-11-10/11).
 //   GET  races                         the maps: [{ id, race }] (each race.json, read here so that the page asks once)
 //   GET  <race>/<file>                 a map's package (made offline by tools/virtually: race.json — its courses —, h.png,
-//                                      cls.png, veg.png, ground.jpg, feats.json, trees.bin when LiDAR, map.ocd, thumb.webp)
+//                                      cls.png, veg.png, ground.jpg, feats.json, trees.bin when LiDAR, map.ocd, thumb.webp; a town's town.json and town.bin, tools/virtually/town_3d.py)
 //   GET  runs?race=<id>                every finished run of that map: [{ id, u, name, course, t, sp, d, at, help, seed, mine }]
 //   GET  runs/<race>/<run>             one run with its route (the analysis)
 //   POST runs { race, course, kind, event, t, sp, d, help, seed, route }   a run just finished, kept under the account's name;
@@ -16,7 +16,7 @@
 import { allow, isAdmin, json, nowIso, readBody, withUser } from "../../_lib/api.js";
 import { runnerHash } from "../../_lib/virtual.js";
 
-const FILE = /^([a-z0-9-]{1,40})\/(race\.json|h\.png|cls\.png|veg\.png|ground\.jpg|feats\.json|trees\.bin|map\.ocd|thumb\.webp)$/;
+const FILE = /^([a-z0-9-]{1,40})\/(race\.json|h\.png|cls\.png|veg\.png|ground\.jpg|feats\.json|trees\.bin|map\.ocd|thumb\.webp|town\.json|town\.bin)$/;
 const TYPES = { json: "application/json", png: "image/png", jpg: "image/jpeg", webp: "image/webp", bin: "application/octet-stream", ocd: "application/octet-stream" };
 const ID = /^[a-z0-9-]{1,40}$/, COURSE = /^[a-z0-9_]{1,24}$/, RUN = /^[0-9a-f]{12}-[0-9a-z]{6,12}$/;
 const RUNS = "virtual-runs/";

@@ -12,6 +12,7 @@ export default {
   "vt.info": "{n} balizas · {km} km · mapa a 1:{scale}",
   "vt.src.map": "Terreno dibujado según el mapa: su relieve leído en sus curvas, su vegetación, rocas y caminos.",
   "vt.src.lidar": "Terreno dibujado según el mapa y el LiDAR del país: el suelo y los árboles medidos, la vegetación, rocas y caminos del mapa.",
+  "vt.src.town": "Ciudad dibujada según datos abiertos: edificios, tejados y árboles medidos por el LiDAR HD del IGN francés, BD TOPO y BD ORTHO del IGN (Licence Ouverte 2.0), calles, mobiliario urbano y jardines de OpenStreetMap (© colaboradores de OpenStreetMap, ODbL) y del catastro (Etalab).",
   "vt.keys.move": "W o ↑: correr · S o ↓: retroceder",
   "vt.keys.turn": "A D o ← →: girar",
   "vt.keys.strafe": "Q E: paso lateral",
@@ -61,6 +62,7 @@ export default {
   "vt.tab.analysis": "Análisis",
   "vt.map.granites": "Granites (Australia)",
   "vt.map.foley": "Foley Mountain (Canadá)",
+  "vt.map.gif": "Gif-sur-Yvette, sprint (Francia)",
   "vt.lvl.blue": "Azul",
   "vt.lvl.yellow": "Amarillo",
   "vt.lvl.orange_md": "Naranja media",
@@ -139,4 +141,5 @@ export default {
   "vt.an.runCell": "{pct} % más que la línea recta",
   "vt.an.legNote": "Puesto, mejor tiempo y tiempo perdido sobre {n} corredores de este recorrido (la primera carrera de cada uno). Un clic en un tramo lo muestra y lo reproduce.",
   "vt.finishShort": "M",
+  "vt.f.corner": "Esquina de edificio", "vt.f.monument": "Monumento", "vt.f.fountain": "Fuente", "vt.f.bush": "Arbusto", "vt.f.stairs": "Escalera", "vt.f.wallend": "Extremo de muro",
 };

@@ -12,6 +12,7 @@ export default {
   "vt.info": "{n} controls · {km} km · map at 1:{scale}",
   "vt.src.map": "Terrain drawn from the map: its relief read from its contours, its vegetation, rocks and paths.",
   "vt.src.lidar": "Terrain drawn from the map and the country's LiDAR: the ground and the trees measured, the map's vegetation, rocks and paths.",
+  "vt.src.town": "Town drawn from open data: buildings, roofs and trees measured by IGN's LiDAR HD, IGN's BD TOPO and BD ORTHO (Licence Ouverte 2.0), streets, street furniture and gardens from OpenStreetMap (© OpenStreetMap contributors, ODbL) and the cadastre (Etalab).",
   "vt.keys.move": "W or ↑: run · S or ↓: step back",
   "vt.keys.turn": "A D or ← →: turn",
   "vt.keys.strafe": "Q E: sidestep",
@@ -61,6 +62,7 @@ export default {
   "vt.tab.analysis": "Analysis",
   "vt.map.granites": "Granites (Australia)",
   "vt.map.foley": "Foley Mountain (Canada)",
+  "vt.map.gif": "Gif-sur-Yvette, sprint (France)",
   "vt.lvl.blue": "Blue",
   "vt.lvl.yellow": "Yellow",
   "vt.lvl.orange_md": "Orange middle",
@@ -139,4 +141,5 @@ export default {
   "vt.an.runCell": "{pct}% more than the straight line",
   "vt.an.legNote": "Rank, best time and time lost over {n} runners of this course (each one's first race). A click on a leg shows and replays it.",
   "vt.finishShort": "F",
+  "vt.f.corner": "Building corner", "vt.f.monument": "Monument", "vt.f.fountain": "Fountain", "vt.f.bush": "Bush", "vt.f.stairs": "Stairway", "vt.f.wallend": "Wall end",
 };

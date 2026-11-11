@@ -41,7 +41,10 @@ export async function loadRace(base, onFile = () => {}) {
     veg[i * 3] = vp.d[i * 4]; veg[i * 3 + 1] = vp.d[i * 4 + 1]; veg[i * 3 + 2] = vp.d[i * 4 + 2];
   }
   const groundImg = await createImageBitmap(gb);
-  return { race, W, H, h, cls, veg, groundImg, feats, trees: trees ? new DataView(trees) : null, ocd: new Uint8Array(ocd) };
+  // a sprint race's town (games/vtown.js: buildings, walls, street furniture), when the package has one
+  let town = null;
+  if (race.town) { const V = await import("./vtown.js"); town = { ...(await V.loadTown(base, race.town, onFile)), Town: V.Town }; }
+  return { race, W, H, h, cls, veg, groundImg, feats, trees: trees ? new DataView(trees) : null, ocd: new Uint8Array(ocd), town };
 }
 
 export class World {
@@ -62,6 +65,7 @@ export class World {
     this.trunks = new Map();                       // 8 m cell -> [[x, z, r]]
     this.makeMaterials(renderer);
     this.bucketFeatures();
+    this.town = data.town ? new data.town.Town(THREE, this, data.town) : null;
   }
 
   // ---- the ground's values ---------------------------------------------------------------------------------------------------
@@ -80,6 +84,7 @@ export class World {
   className(x, z) { return this.race.classes[this.classAt(x, z)]; }
   /** Is a body of radius r at (x, z) against a trunk or a large rock? */
   hits(x, z, r = 0.3) {
+    if (this.town?.hits(x, z, r)) return true;
     const ci = Math.floor(x / 8), cj = Math.floor(z / 8);
     for (let a = ci - 1; a <= ci + 1; a++) for (let b = cj - 1; b <= cj + 1; b++) {
       const list = this.trunks.get(`${a},${b}`);
@@ -304,6 +309,7 @@ export class World {
         const m = new T.Mesh(wg, this.wallMat); m.receiveShadow = true; m.userData.shadow = true; g.add(m);
       }
     }
+    this.town?.buildChunk(g, a, b);
     this.scene.add(g); this.chunks.set(k, g);
   }
   /** A trunk (or a large rock) for the collisions, kept with its chunk. */

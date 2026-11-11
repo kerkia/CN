@@ -341,6 +341,7 @@ export function mount(root, raceId, opts = {}) {
       let want;
       if (st.view === "first") want = new T.Vector3(st.x, y + 1.7, st.z);
       else { want = new T.Vector3(st.x - dx * 4.6, y + 2.5, st.z - dz * 4.6); want.y = Math.max(want.y, world.heightAt(want.x, want.z) + 1.2); }
+      if (world.town && st.view === "third") { const f = world.town.clear(st.x, st.z, want.x, want.z); if (f < 1) { want.x = st.x + (want.x - st.x) * f; want.z = st.z + (want.z - st.z) * f; } }  // a town's walls: the camera stays in the street
       camPos = camPos && st.view === "third" ? camPos.lerp(want, Math.min(1, dt * 8)) : want.clone();
       camera.position.copy(camPos);
       const look = st.view === "first" ? 10 : 4;

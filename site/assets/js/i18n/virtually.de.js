@@ -12,6 +12,7 @@ export default {
   "vt.info": "{n} Posten · {km} km · Karte im Maßstab 1:{scale}",
   "vt.src.map": "Gelände nach der Karte gezeichnet: das Relief aus ihren Höhenlinien gelesen, ihre Vegetation, Felsen und Wege.",
   "vt.src.lidar": "Gelände nach der Karte und dem LiDAR des Landes gezeichnet: Boden und Bäume gemessen, Vegetation, Felsen und Wege der Karte.",
+  "vt.src.town": "Stadt nach offenen Daten gezeichnet: Gebäude, Dächer und Bäume vom LiDAR HD des IGN gemessen, BD TOPO und BD ORTHO des IGN (Licence Ouverte 2.0), Straßen, Stadtmobiliar und Gärten aus OpenStreetMap (© OpenStreetMap-Mitwirkende, ODbL) und dem Kataster (Etalab).",
   "vt.keys.move": "W oder ↑: laufen · S oder ↓: zurück",
   "vt.keys.turn": "A D oder ← →: drehen",
   "vt.keys.strafe": "Q E: seitwärts",
@@ -61,6 +62,7 @@ export default {
   "vt.tab.analysis": "Analyse",
   "vt.map.granites": "Granites (Australien)",
   "vt.map.foley": "Foley Mountain (Kanada)",
+  "vt.map.gif": "Gif-sur-Yvette, Sprint (Frankreich)",
   "vt.lvl.blue": "Blau",
   "vt.lvl.yellow": "Gelb",
   "vt.lvl.orange_md": "Orange Mitteldistanz",
@@ -139,4 +141,5 @@ export default {
   "vt.an.runCell": "{pct} % mehr als die Luftlinie",
   "vt.an.legNote": "Rang, Bestzeit und Zeitverlust über {n} Läufer dieser Bahn (jeweils ihr erster Lauf). Ein Klick auf eine Teilstrecke zeigt sie und spielt sie ab.",
   "vt.finishShort": "Z",
+  "vt.f.corner": "Gebäudeecke", "vt.f.monument": "Denkmal", "vt.f.fountain": "Brunnen", "vt.f.bush": "Busch", "vt.f.stairs": "Treppe", "vt.f.wallend": "Mauerende",
 };
