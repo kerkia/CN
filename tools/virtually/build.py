@@ -46,7 +46,8 @@ rng = np.random.default_rng(hash(RACE) % 2**32)
 
 # ---- the map's grid -----------------------------------------------------------------------------------------------------------
 zone = RW.get("zone") or 0
-EPSG = (32700 + (-zone - 2000)) if zone < -2000 else (32600 + zone - 2000) if 2000 < zone < 2100 else 2154
+EPSG = D.get("epsg") or ((32700 + (-zone - 2000)) if zone < -2000 else (32600 + zone - 2000) if 2000 < zone < 2100 else 2154)
+LIDAR_ONLY = bool(D.get("lidarOnly"))                     # lidarrace.py's: no organiser's map, the generated one
 ga = -(RW.get("angle") or 0) * math.pi / 180
 cga, sga = math.cos(ga), math.sin(ga)
 
@@ -140,8 +141,11 @@ log(RACE, STD, "scale 1:%d" % SCALE, "EPSG", EPSG)
 objs = [o for o in D["objs"] if 100 <= num(o["sym"]) < 600]
 allx = np.array([c[0] / 100 for o in objs for c in o["c"]]); ally = np.array([c[1] / 100 for o in objs for c in o["c"]])
 MARGIN_MM = 40 / K
-X0, X1 = np.percentile(allx, 0.1) - MARGIN_MM, np.percentile(allx, 99.9) + MARGIN_MM
-Y0, Y1 = np.percentile(ally, 0.1) - MARGIN_MM, np.percentile(ally, 99.9) + MARGIN_MM
+if D.get("frame"):                                        # a frame given (lidarrace.py): the map's square, no margin
+    X0, Y0, X1, Y1 = D["frame"]
+else:
+    X0, X1 = np.percentile(allx, 0.1) - MARGIN_MM, np.percentile(allx, 99.9) + MARGIN_MM
+    Y0, Y1 = np.percentile(ally, 0.1) - MARGIN_MM, np.percentile(ally, 99.9) + MARGIN_MM
 W, H = int(math.ceil((X1 - X0) * K)), int(math.ceil((Y1 - Y0) * K))
 log(f"world {W} x {H} m")
 wx = lambda mx: (mx - X0) * K
@@ -184,6 +188,8 @@ def node_field(fn, step=8):
 
 # ---- classes ------------------------------------------------------------------------------------------------------------------
 cls = np.full((H, W), C["forest"], np.uint8)
+if (RD / "cls_base.png").exists():                        # the ground's classes under the map's objects (lidarrace.py)
+    cls = np.array(Image.open(RD / "cls_base.png"))[:H, :W].copy()
 ORDER = ["cultivated", "open", "open_t", "rough", "rough_t", "marsh", "slow_vis", "slow", "walk_vis", "walk", "fight", "stony",
          "bfield", "rock", "paved", "shallow", "water", "marsh_x", "building", "cliff", "oob"]
 
@@ -255,6 +261,8 @@ cov = np.array(cover, bool)
 inside = distance_transform_edt(~cov) < 60
 from scipy.ndimage import binary_fill_holes
 inside = binary_fill_holes(inside)
+if LIDAR_ONLY:
+    inside = cls != C["outside"]
 cls[~inside] = C["outside"]
 log("classes", {CL[i]: int(n) // 10000 for i, n in zip(*np.unique(cls, return_counts=True)) if n > 20000}, "ha",
     "walls", len(walls), "points", len(points), "ticks", len(ticks), "contour lines", len(lines_c))
@@ -554,7 +562,7 @@ def map_relief(E, verbose=False):
 
 # the contour interval: the one whose relief best matches the coarse relief's large shapes
 best = None
-for E in (2.5, 5.0):
+for E in (() if LIDAR_ONLY or not lines_c else (2.5, 5.0)):
     h, lv, ln, _ = map_relief(E)
     a = gaussian_filter(h, 40); b = gaussian_filter(coarse, 40)
     m = cls != C["outside"]
@@ -562,8 +570,11 @@ for E in (2.5, 5.0):
     log(f"interval {E} m: large-scale difference to the coarse relief {e:.2f} m")
     if best is None or e < best[0]:
         best = (e, E)
-E = best[1]
-hmap, levels, clines, clab = map_relief(E, verbose=True)
+if best:
+    E = best[1]
+    hmap, levels, clines, clab = map_relief(E, verbose=True)
+else:                                                     # no contour lines to read: the coarse relief (the LiDAR's ground)
+    E, hmap, levels, clines = 5.0, coarse.copy(), np.zeros(0), []
 
 
 def bump(add, x, z, rx, rz, height, ang=0.0, power=2.0):
@@ -594,7 +605,7 @@ for w_ in walls:
         for x, z in densify(w_["pts"], 1.0):
             bump(small, x, z, 1.4, 1.4, 0.3)
 hmap = hmap + small
-if lid is not None:
+if lid is not None and len(clines):
     m = (~lid["holes"]) & (cls != C["outside"])
     dd = (hmap - lid["dtm"])[m]
     lid_lv = np.array([np.nanmedian(sample(lid["dtm"], l["d"][:, 0], l["d"][:, 1])) for l in clines])
@@ -602,8 +613,9 @@ if lid is not None:
     log(f"map relief vs LiDAR: {100 * (np.abs(q) < 0.6 * E / 2.5 + 0.05).mean():.0f} % of lines at their level, "
         f"RMS {np.sqrt(((dd - dd.mean()) ** 2).mean()):.2f} m; coarse relief RMS "
         f"{np.sqrt((((coarse - lid['dtm'])[m] - (coarse - lid['dtm'])[m].mean()) ** 2).mean()):.2f} m")
+if lid is not None:
     ground = lid["dtm"]
-    SOURCE = "lidar"
+    SOURCE = "lidaronly" if LIDAR_ONLY else "lidar"
 else:
     ground = hmap
     SOURCE = "map"
@@ -722,13 +734,18 @@ json.dump({"rocks": rocks, "walls": walls, "points": other,
                                       "cairn", "mini", "vegspec", "bigtree", "manmade", "tower", "waterhole", "cave", "landform",
                                       "fountain", "bush", "monument")]},
           open(OUT / "feats.json", "w"))
-shutil.copy(RD / "map.ocd", OUT / "map.ocd")
+for old in ("map.ocd", "map.webp"):
+    (OUT / old).unlink(missing_ok=True)
+MAPFILE = "map.webp" if LIDAR_ONLY else "map.ocd"
+shutil.copy(RD / MAPFILE, OUT / MAPFILE)
 
 # the map's frame for the game: world = (mm - [X0, Y1]) * K, z down; the map drawn from its own mm
 race = json.load(open(OUT / "race.json")) if (OUT / "race.json").exists() else {}
 race.update({"id": RACE, "scale": SCALE, "std": STD, "W": W, "H": H, "res": 1, "base": base, "mm0": [X0, Y1], "k": K,
              "interval": E, "source": SOURCE, "lidarTrees": trees_out, "classes": CL, "speed": [SPEED[n] for n in CL],
              "vegK": [TREE_K, BUSH_K, LOW_K], "biome": BIOME,
-             "lonlat": list(TO_LL.transform(*world_to_proj(W / 2, H / 2)))})
+             "lonlat": list(TO_LL.transform(*world_to_proj(W / 2, H / 2))),
+             # the player's map: the club's OCAD file, or the generated map's image over the world (0.5 m a pixel)
+             "map": "webp" if LIDAR_ONLY else "ocd", **({"mapPx": 0.5, "credits": D.get("sources", {})} if LIDAR_ONLY else {})})
 json.dump(race, open(OUT / "race.json", "w"), indent=1)
 log("done:", {f.name: f"{f.stat().st_size / 1e6:.1f} MB" for f in OUT.iterdir()})
