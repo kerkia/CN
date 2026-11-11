@@ -1970,7 +1970,7 @@ export default {
   "os.err.type": "Format not accepted: IOF XML, CSV, HTML or PDF.",
   "os.err.read": "No start time could be read in this file. Check its format opposite: a header row with at least the time and the name.",
   "os.err.pdf": "No start time could be read in this PDF. Only OE's and MeOS's lists are read; an IOF XML or CSV export from your software is safer.",
-  "os.err.past": "The race is over: upload its results now (“Organising › Results”).",
+  "os.err.past": "The race is over: upload its results now (the “Results” tab).",
   "os.by.circuit": "List by course",
   "os.by.cat": "List by class",
   "os.t.runners": "Runners",
@@ -2025,7 +2025,7 @@ export default {
   "os.oc.note": "A CSV file (UTF-8, commas): name, club, class, bib, start time, card, start, one runner a line in start order. It stays on your device: nothing is sent.",
   "os.oc.note.nocard": "A CSV file (UTF-8, commas): name, club, class, bib, start time, card, start, one runner a line in start order. This file gives no card numbers: an IOF XML or CSV export of your software has them. It stays on your device: nothing is sent.",
   "prov.oc": "O Checklist file",
-  "prov.oc.hint": "For the start: the O Checklist app imports this file (without card numbers: deposit your start list under “Organisation › Start times” to have them).",
+  "prov.oc.hint": "For the start: the O Checklist app imports this file (without card numbers: deposit your start list in your event's “Starts” tab, in “Orga › Manage”, to have them).",
   "os.consent": "I organise this race, or its organiser allowed me to publish these start times.",
   "os.publish": "Publish the start times",
   "os.privacy": "Your account is recorded with the upload (seen by the administrator only). The file is deleted after 60 days; names, clubs, classes and start times are published, not years of birth, chip numbers or bibs.",
@@ -3321,7 +3321,7 @@ export default {
   "vma.col.use": "Use",
   // En direct: the organisers' broadcasts (pages/live.js)
   "lv.org.title": "Broadcast by their organiser",
-  "lv.org.hint": "From their timing software, through “Organising › Live feed”",
+  "lv.org.hint": "From their timing software, through the “Live” tab of “Orga › Manage”",
   "lv.org.last": "last sent {t}",
   "lv.org.none": "nothing sent yet",
   // Formats and disciplines, word by word (util.fmtFormat)

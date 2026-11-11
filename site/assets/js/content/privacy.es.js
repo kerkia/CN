@@ -69,13 +69,24 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Al subir un archivo de resultados, se registran la cuenta de quien lo sube, la carrera, el nombre y el tamaño del
         archivo y la fecha de subida. El archivo se conserva 60 días en el espacio de almacenamiento del sitio (Cloudflare) y después se
         borra; los resultados que contiene siguen mostrándose. El administrador ve quién ha subido cada archivo y puede retirar un
-        archivo. Los horarios de salida que un organizador sube antes de la carrera («Organización › Horarios») siguen las mismas
+        archivo. Los horarios de salida que un organizador sube antes de la carrera (pestaña «Salidas» de un evento, en «Orga › Gestionar») siguen las mismas
         reglas; solo se publican los nombres, clubes, categorías y horas de salida, y los organizadores de la carrera pueden
-        retirarlos. Fuera de Francia, un organizador declara las competiciones de su club («Organización»): su nombre, fecha, lugar, club,
-        disciplina y web se publican en el Calendario; el sitio guarda además la cuenta que las declaró, la única que puede modificarlas
-        o retirarlas, y no la publica. Un organizador también puede indicar el enlace del seguimiento GPS de su competición en otro
-        servicio («Organización › Emisión en directo»): solo se publica ese enlace, y la cuenta que lo indicó se guarda sin publicarse; Ozimut no
+        retirarlos. Una competición que un organizador crea fuera del calendario de la federación (ver «Eventos de los organizadores») se publica en
+        el Calendario con su nombre, fecha, lugar, club, disciplina y web, sin que se publique quién la creó. Un organizador también puede indicar el enlace del seguimiento GPS de su competición en otro
+        servicio (pestaña «Directo» de su evento): solo se publica ese enlace, y la cuenta que lo indicó se guarda sin publicarse; Ozimut no
         recibe ninguna posición.</p>
+      <h2 style="font-size:16px">Eventos de los organizadores («Orga › Gestionar»)</h2>
+      <p>Una cuenta que crea un evento —una carrera o un entrenamiento— en «Orga › Gestionar» forma su equipo. El sitio guarda: la
+        descripción del evento (nombre, fecha, lugar, club, disciplina, formato, sitio web) y la cuenta que lo creó; su posible vinculación
+        a una competición del calendario de la federación; su equipo (las cuentas miembros, la fecha en que entró cada una y el miembro que
+        la aceptó); las solicitudes para unirse a él (la cuenta que lo pide, un mensaje opcional de 300 caracteres como máximo, la fecha, la
+        respuesta y el miembro que la dio). Nadie es añadido a un equipo por su nombre, su licencia o su correo electrónico: se pide entrar,
+        y un miembro acepta o rechaza; los miembros reciben una notificación de cada solicitud, y la persona, de la respuesta. Los miembros de
+        un equipo ven los nombres y los clubes de los demás y de las personas que piden entrar; las demás cuentas solo ven de un equipo el
+        nombre de pila y la inicial del apellido de dos de sus miembros como máximo. Los administradores del sitio ven los eventos y
+        confirman las vinculaciones que piden cuentas que no son miembros del club organizador. Base jurídica: la ejecución del servicio
+        solicitado. Al eliminar una cuenta, esta sale de sus equipos y sus solicitudes se borran; un evento del que era el último miembro
+        queda en manos de los administradores, y lo que el evento publicó se mantiene.</p>
       <h2 style="font-size:16px">Análisis de tracks GPS</h2>
       <p>La página «Análisis individual» lee el mapa y el track GPS en tu navegador: no se transmite ningún dato al sitio, y esos
         archivos solo se conservan durante la visita.</p>

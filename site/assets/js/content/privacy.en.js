@@ -63,12 +63,22 @@ export const body = (SITE, { world = false } = {}) => `
       <p>When a results file is uploaded, the uploader's account, the race, the file's name and size and the date of the upload are
         recorded. The file is kept for 60 days in the site's storage (Cloudflare), then erased; the results it contains remain on
         display. The administrator sees who made each upload and can remove an upload. The start lists an organiser uploads before
-        the race (“Organising › Start times”) follow the same rules; only the names, clubs, classes and start times are published,
-        and the race's organisers can remove them. Outside France, an organiser declares their club's competitions (“Organising”):
-        their name, date, place, club, discipline and website are published in the Calendar; the site also keeps the account that
-        declared them, which alone can change or remove them, and does not publish it. An organiser can also give the link to their
-        competition's GPS tracking on another service (“Organising › Live feed”): only that link is published, the account that gave it
+        the race (an event's “Starts” tab, in “Orga › Manage”) follow the same rules; only the names, clubs, classes and start times are published,
+        and the race's organisers can remove them. A competition an organiser creates off the federation's calendar (see “Organisers' events”) is
+        published in the Calendar with its name, date, place, club, discipline and website, without who created it being published. An organiser can also give the link to their
+        competition's GPS tracking on another service (their event's “Live” tab): only that link is published, the account that gave it
         is kept and not published; Ozimut receives no position.</p>
+      <h2 style="font-size:16px">Organisers' events (“Orga › Manage”)</h2>
+      <p>An account that creates an event — a race or a training session — in “Orga › Manage” forms its team. The site keeps: the event's
+        description (name, date, place, club, discipline, format, website) and the account that created it; its link, if any, to a
+        competition of the federation's calendar; its team (the member accounts, the date each joined and the member who accepted them);
+        the requests to join it (the account asking, an optional message of up to 300 characters, the date, the answer and the member who
+        gave it). Nobody is added to a team by their name, licence or e-mail address: people ask to join, and a member accepts or declines;
+        the members are told of a request, and the person of the answer, by notification. A team's members see each other's names and
+        clubs, and those of the people asking to join; other accounts see of a team only the first name and initial of up to two of its
+        members. The site's administrators see the events and confirm the links asked for by accounts that are not members of the
+        organising club. Legal basis: the performance of the service requested. When an account is deleted, it leaves its teams and its
+        requests are erased; an event whose last member it was stays in the administrators' hands, and what the event published stays.</p>
       <h2 style="font-size:16px">GPS track analyses</h2>
       <p>The “Solo analysis” page reads the map and the GPS track in your browser: no data is sent to the site, and these files are
         kept only for the duration of the visit.</p>

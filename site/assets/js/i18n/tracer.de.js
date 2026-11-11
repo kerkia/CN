@@ -795,7 +795,7 @@ export default {
   "trc.page.noEvents": "Noch keine Veranstaltungen: Erstelle eine oder importiere eine Datei.",
   "trc.page.del": "„{title}“ löschen",
   "trc.page.delTitle": "„{title}“ löschen?",
-  "trc.page.delBody": "Die Veranstaltung wird für ihr ganzes Team gelöscht: ihre Bahnen, Karte, Versionen, Kommentare und Fotos. Das lässt sich nicht rückgängig machen; um sie zu behalten, exportiere sie vorher (Ozimut-Datei oder .ppen). Eine aus dieser Veranstaltung bereits veröffentlichte Analyse bleibt erhalten, unter Orga › Analysen.",
+  "trc.page.delBody": "Die Veranstaltung wird für ihr ganzes Team gelöscht: ihre Bahnen, Karte, Versionen, Kommentare und Fotos. Das lässt sich nicht rückgängig machen; um sie zu behalten, exportiere sie vorher (Ozimut-Datei oder .ppen). Eine aus dieser Veranstaltung bereits veröffentlichte Analyse bleibt erhalten, unter Orga › Verwalten (Reiter „Analyse“).",
   "trc.page.delOk": "Endgültig löschen",
   "trc.page.delErr": "Das Löschen ist fehlgeschlagen ({err}).",
   "trc.page.kindRaceOpt": "Ein Wettkampf, den du verwaltest",

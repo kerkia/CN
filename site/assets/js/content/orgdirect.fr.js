@@ -69,8 +69,8 @@ export const after = `
       <b>Courses › Résultats</b> : les résultats, les temps intermédiaires (dans « Analyse ») et, avant le départ, la liste
       de départ. Les coureurs reçoivent l'alerte « une de mes courses est en ligne » une fois la course finie.</li>
     <li>« Publier maintenant » l'enregistre tout de suite, sans attendre la mise à jour suivante.</li>
-    <li>Un fichier de résultats déposé ensuite sous <b>Organisation › Résultats</b> passe avant la diffusion, de même que la liste de
-      départ déposée sous « Horaires ».</li>
-    <li>Une course créée sans compétition peut y être liée plus tard, ici même : seuls les membres du club organisateur le
-      peuvent. Sans compétition, elle n'est visible que dans « En direct ».</li>
+    <li>Un fichier de résultats déposé ensuite dans l'onglet <b>Résultats</b> de l'événement passe avant la diffusion, de même que la
+      liste de départ déposée dans son onglet « Départs ».</li>
+    <li>Ouverte dans l'onglet « Direct » d'un événement, une diffusion est liée d'office à la compétition qu'il porte. Sans
+      compétition, elle n'est visible que dans « En direct ».</li>
   </ul>`;

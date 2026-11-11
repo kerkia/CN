@@ -794,7 +794,7 @@ export default {
   "trc.page.noEvents": "Aucun événement pour l'instant : créez-en un, ou importez un fichier.",
   "trc.page.del": "Supprimer « {title} »",
   "trc.page.delTitle": "Supprimer « {title} » ?",
-  "trc.page.delBody": "L'événement est effacé pour toute son équipe : ses circuits, sa carte, ses versions, ses commentaires et ses photos. C'est définitif ; pour le garder, exportez-le d'abord (fichier Ozimut ou .ppen). Une analyse déjà publiée depuis cet événement reste, dans Orga › Analyses.",
+  "trc.page.delBody": "L'événement est effacé pour toute son équipe : ses circuits, sa carte, ses versions, ses commentaires et ses photos. C'est définitif ; pour le garder, exportez-le d'abord (fichier Ozimut ou .ppen). Une analyse déjà publiée depuis cet événement reste, dans Orga › Gérer (onglet « Analyse »).",
   "trc.page.delOk": "Supprimer définitivement",
   "trc.page.delErr": "La suppression a échoué ({err}).",
   "trc.page.kindRaceOpt": "Une compétition que vous gérez",

@@ -63,8 +63,8 @@ export const after = `
       results, the split times (in “Analysis”) and, before the start, the start list. Runners get the “one of my races is
       online” alert once the race is over.</li>
     <li>“Publish now” saves it at once, without waiting for the next update.</li>
-    <li>A results file deposited later under <b>Organising › Results</b> comes before the broadcast, as does a start list
-      deposited under “Start times”.</li>
-    <li>A race created without a competition can be tied to it later, here: only members of the organising club can. Without a
-      competition, it only shows in “Live”.</li>
+    <li>A results file deposited later in the event's <b>Results</b> tab comes before the broadcast, as does a start list
+      deposited in its “Starts” tab.</li>
+    <li>Opened in an event's “Live” tab, a broadcast is tied to the competition the event holds. Without a competition, it
+      only shows in “Live”.</li>
   </ul>`;

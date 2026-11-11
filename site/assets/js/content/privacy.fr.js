@@ -70,13 +70,24 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Lors du dépôt d'un fichier de résultats, sont enregistrés le compte de l'auteur du dépôt, la course, le nom et la taille du
         fichier ainsi que la date du dépôt. Le fichier est conservé 60 jours dans l'espace de stockage du site (Cloudflare), puis
         effacé ; les résultats qu'il contient restent affichés. L'administrateur voit l'auteur de chaque dépôt et peut retirer un
-        dépôt. Les horaires de départ qu'un organisateur dépose avant la course (« Organisation › Horaires ») suivent les mêmes
+        dépôt. Les horaires de départ qu'un organisateur dépose avant la course (onglet « Départs » d'un événement, dans « Orga › Gérer ») suivent les mêmes
         règles ; seuls les noms, clubs, catégories et heures de départ en sont publiés, et les organisateurs de la course peuvent les
-        retirer. Hors de France, un organisateur déclare les compétitions de son club (« Organisation ») : leur nom, date, lieu, club,
-        discipline et site sont publiés dans l'Agenda ; le site garde en plus le compte qui les a déclarées, qui seul peut les modifier
-        ou les retirer, et ne le publie pas. Un organisateur peut aussi donner le lien du suivi GPS de sa compétition sur un autre
-        service (« Organisation › Direct ») : seul ce lien est publié, avec le compte qui l'a donné gardé et non publié ; Ozimut ne
+        retirer. Une compétition qu'un organisateur crée hors du calendrier de la fédération (voir « Événements des organisateurs ») est publiée
+        dans l'Agenda avec son nom, sa date, son lieu, son club, sa spécialité et son site, sans que soit publié qui l'a créée. Un organisateur peut aussi donner le lien du suivi GPS de sa compétition sur un autre
+        service (onglet « Direct » de son événement) : seul ce lien est publié, avec le compte qui l'a donné gardé et non publié ; Ozimut ne
         reçoit aucune position.</p>
+      <h2 style="font-size:16px">Événements des organisateurs (« Orga › Gérer »)</h2>
+      <p>Un compte qui crée un événement — une course ou un entraînement — dans « Orga › Gérer » en forme l'équipe. Le site garde : la
+        description de l'événement (nom, date, lieu, club, spécialité, format, site web) et le compte qui l'a créé ; son éventuel rattachement
+        à une compétition du calendrier de la fédération ; son équipe (les comptes membres, la date où chacun y est entré et le membre qui
+        l'a accepté) ; les demandes pour la rejoindre (le compte qui demande, un message facultatif de 300 caractères au plus, la date, la
+        réponse et le membre qui l'a donnée). Personne n'est ajouté à une équipe par son nom, sa licence ou son adresse e-mail : on demande à
+        y entrer, et un membre accepte ou refuse ; les membres sont prévenus d'une demande, et la personne de la réponse, par notification. Les
+        membres d'une équipe voient les noms et les clubs les uns des autres et des personnes qui demandent à entrer ; les autres comptes ne
+        voient d'une équipe que le prénom et l'initiale du nom de deux de ses membres au plus. Les administrateurs du site voient les
+        événements et confirment les rattachements demandés par des comptes qui ne sont pas membres du club organisateur. Base légale :
+        l'exécution du service demandé. À la suppression d'un compte, il quitte ses équipes et ses demandes sont effacées ; un événement
+        dont il était le dernier membre reste aux mains des administrateurs, et ce que l'événement a publié reste en place.</p>
       <h2 style="font-size:16px">Analyses de traces GPS</h2>
       <p>La page « Analyse solo » lit la carte et la trace GPS dans votre navigateur : aucune donnée n'est transmise au site, et ces
         fichiers ne sont conservés que le temps de la visite.</p>

@@ -69,8 +69,8 @@ export const after = `
       <b>Carreras › Resultados</b>: los resultados, los tiempos parciales (en «Análisis») y, antes de la salida, la lista
       de salida. Los corredores reciben la alerta «una de mis carreras está en línea» una vez terminada la carrera.</li>
     <li>«Publicar ahora» la guarda al instante, sin esperar a la siguiente actualización.</li>
-    <li>Un archivo de resultados subido después en <b>Organización › Resultados</b> tiene prioridad sobre la emisión, al igual que la lista de
-      salida subida en «Horarios».</li>
-    <li>Una carrera creada sin competición puede vincularse a una más tarde, aquí mismo: solo los miembros del club organizador
-      pueden hacerlo. Sin competición, solo es visible en «En directo».</li>
+    <li>Un archivo de resultados subido después en la pestaña <b>Resultados</b> del evento tiene prioridad sobre la emisión, al igual que la
+      lista de salida subida en su pestaña «Salidas».</li>
+    <li>Abierta en la pestaña «Directo» de un evento, una emisión queda vinculada a la competición que lleva el evento. Sin
+      competición, solo es visible en «En directo».</li>
   </ul>`;

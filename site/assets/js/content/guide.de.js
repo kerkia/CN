@@ -20,7 +20,7 @@ export function build(X) {
     arena: html`Die Wettkämpfe: der Kalender, die Ergebnisse der Veranstalter, die Live-Ergebnisse und die Analyse der Zwischenzeiten.`,
     coach: owner ? html`Trainieren: die Analysen von GPS-Tracks, die Postenbeschreibungen, die Kartensymbole, die Spiele und die MAG.`
       : html`Trainieren: die Analysen von GPS-Tracks, die Spiele und die MAG.`,
-    orga: html`Die Werkzeuge der Veranstalter: Ergebnisse, Startzeiten, Live-Übertragung, GPS-Tracking, Analysen und Bahnlegung.`,
+    orga: html`Die Werkzeuge der Veranstalter: ihre Veranstaltungen (Starts, Live, Ergebnisse, Analyse, Team), die Bahnlegung und das Kartieren.`,
   };
 
   // ======================================================================================================
@@ -340,7 +340,7 @@ export function build(X) {
             Georeferenzierung kalibriert. Zusammen mit einem Bild der Karte abgelegt – oder im Feld „Berechnete Routen“ gewählt, in beiden Analysen –
             dient sie den Routen und wird über ihre Georeferenzierung auf das Bild gelegt: Sie muss eine haben und die angezeigte Karte abdecken.</p>
           <p>Eine Analyse, die aus der Bahnlegung veröffentlicht wurde oder deren Bahnen aus einem OCAD-Projekt stammen (Orga ›
-            Analysen), behält, was die OCAD-Karte des Veranstalters über das Gelände sagt: Ihre Routen lesen deren Symbole, ohne dass du
+            Verwalten, Reiter „Analyse“), behält, was die OCAD-Karte des Veranstalters über das Gelände sagt: Ihre Routen lesen deren Symbole, ohne dass du
             eine Datei ablegen musst, und die Sperrgebiete und nicht zu überquerenden Grenzen, die der Bahnleger auf der Bahn gezeichnet hat,
             gehören dazu. Nur diese Zeichnung des Geländes wird mit der Bahn gesendet, nie die OCAD-Datei.</p>`)}
         ${slide("Coach · Test", "2. Die Zeit eines Schritts", html`
@@ -418,38 +418,76 @@ export function build(X) {
   // ======================================================================================================
   // Orga (« Die Bahnlegung », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
-  const ORGA = [["qui", "Wer veranstaltet"], ["resultats", "Ergebnisse"], ["horaires", "Startzeiten"], ["direct", "Live-Übertragung"], ["suivi", "GPS-Tracking"],
-    ["analyses", "Analysen"], ["declarer", "Erstellte Wettkämpfe"]];
+  const ORGA = [["qui", "Verwalten"], ["evenement", "Eine Veranstaltung anlegen"], ["equipe", "Das Team"], ["horaires", "Starts"], ["direct", "Live"],
+    ["resultats", "Ergebnisse"], ["analyses", "Analyse"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
-        ${slide("Orga", "Die Seiten der Veranstalter", html`
+        ${slide("Orga", "Deine Veranstaltungen verwalten", html`
           <p>Orga ist für Vereine, die veranstalten; es wird bei der Registrierung, in den Einstellungen oder auf der Modulseite aktiviert und am Computer
-            genutzt. Veranstalter eines Wettkampfs ist ${fr ? "jedes Mitglied seines veranstaltenden Vereins – des Vereins seines letzten bekannten Laufs – oder" : ""}
-            das Konto, das ihn eingetragen hat, außerhalb Frankreichs. Ein Training dagegen kann jedes Konto anlegen.</p>
+            genutzt. Sein Menü hat drei Einträge:</p>
           ${list([
-            html`${P("#/orga-analyses", "Analysen")}: die Analyse der Wettkämpfe des Vereins und seiner Trainings vorbereiten.`,
-            html`${P("#/orga-resultats", "Ergebnisse")} und ${P("#/orga-horaires", "Startzeiten")}: die Ergebnisse und die Startliste hochladen.`,
-            html`${P("#/orga-direct", "Live-Übertragung")}: die Ergebnisse live aus der Zeitmessungssoftware übertragen und den Link zum GPS-Tracking angeben.`,
+            html`${P("#/gerer", "Verwalten")}: deine Veranstaltungen – jede ein Lauf oder ein Training – mit den Werkzeugen des Veranstalters für jede.`,
             html`${P("#/orga-tracer", "Bahnlegung")}: die Bahnen legen; die Anleitung dazu ist der Reiter ${D("tracer", "Die Bahnlegung")}.`,
-          ])}`)}`,
-      resultats: () => html`
-        ${slide("Orga", "Die Ergebnisse hochladen", html`
-          <p>Für einen Wettkampf deines Vereins zeigt ${P("#/orga-resultats", "Orga › Ergebnisse")}, was Arena schon davon hat, und
-            „Ergebnisse hochladen“ fügt deine Datei hinzu, in drei Schritten:</p>
+            html`${P("#/orga-carto", "Kartieren")}: eine OL-Karte zeichnen oder deine eigene aktualisieren.`,
+          ])}
+          <p>„Verwalten“ öffnet sich auf der Liste deiner Veranstaltungen, vergangene, heutige und kommende. Jede hat ihre Reiter, je nach ihrer Art:</p>
+          ${list([
+            html`<b>Einzelwettkampf</b> und <b>Score</b>: Starts, Live, Ergebnisse, Analyse, Team.`,
+            html`<b>Staffel</b>: Live, Analyse, Team (Ergebnisse und Startliste einer Staffel lassen sich noch nicht hochladen).`,
+            html`<b>Training</b>: Analyse, Team.`,
+          ])}
+          <p>Eine Veranstaltung öffnet sich auf dem Reiter, der zu ihrem Tag passt: Starts vor dem Lauf, Live am Tag selbst, danach Ergebnisse; ein
+            Training auf seiner Analyse.</p>
+          <p>Nur das Team einer Veranstaltung – und die Administratoren von Ozimut – handelt als Veranstalter des Wettkampfs, den sie trägt:
+            Startliste, Reservierung der Startzeiten, Live-Ergebnisse, Link zum GPS-Tracking, Ergebnisse, aus der Bahnlegung gesendete Bahnen,
+            Kartenanalyse. Ein Wettkampf, den keine Veranstaltung trägt, hat auf Ozimut keinen Veranstalter: Um es zu werden, lege seine
+            Veranstaltung an oder bitte darum, dem Team der Veranstaltung beizutreten, die ihn trägt.</p>`)}`,
+      evenement: () => html`
+        ${slide("Orga", "Eine Veranstaltung anlegen", html`
+          <p>„Veranstaltung anlegen“, oben in „Verwalten“, geht in drei Schritten:</p>
           <div class="mx-steps">
-            <div class="mx-step"><b>Die Datei</b>Ein IOF-XML-Export deiner Software (am besten: Er enthält die Bahnen und die Zwischenzeiten),
-              das HTML von OE oder MeOS oder ein PDF; gezippt oder nicht, höchstens 30 MB.</div>
-            <div class="mx-step"><b>Die Prüfung</b>Die Datei wird in deinem Browser gelesen, nichts wird gesendet: Zusammenfassung, Ergebnisse Bahn für Bahn,
-              Zeitkontrolle (falsch gestellte Stationen, nicht gelöschte Chips) und alle Ansichten der Analyse.</div>
-            <div class="mx-step"><b>Die Veröffentlichung</b>„Veröffentlichen“ sendet sie: Der Lauf erscheint innerhalb weniger Minuten in Arena, als vom
-              Veranstalter hochgeladen markiert, und wird nicht mehr anderswo gesucht. Ein neuer Upload ersetzt den vorherigen.</div>
-          </div>`)}`,
+            <div class="mx-step"><b>Art, Land und Datum</b>Einzelwettkampf, Score (die Posten in beliebiger Reihenfolge, nach Punkten gewertet),
+              Staffel oder Training; ein Land, dem du beigetreten bist; ein Datum in den letzten 60 oder den nächsten 400 Tagen.</div>
+            <div class="mx-step"><b>Im Kalender des Verbands?</b>In Frankreich wird ein Wettkampf mit seinem Eintrag im Kalender des Verbands
+              verknüpft: Die Seite bietet die Wettkämpfe des gewählten Tages an, die deines Vereins zuerst, oder „Er steht nicht im Kalender“.</div>
+            <div class="mx-step"><b>Die Veranstaltung</b>Ihr Name, Ort, Verein, Disziplin, Format und Website, aus dem Kalender übernommen, wenn der
+              Wettkampf darin steht.</div>
+          </div>
+          ${list([
+            html`<b>Die Verknüpfung</b>: Bist du Mitglied des veranstaltenden Vereins – des Vereins deines letzten bekannten Laufs –, wird sie sofort
+              hergestellt. Sonst bestätigt sie ein Administrator von Ozimut; bis dahin kann sich das Team bilden, die Werkzeuge des Wettkampfs
+              bleiben aber geschlossen.`,
+            html`<b>Ein Wettkampf, eine Veranstaltung</b>: Einen Wettkampf aus dem Kalender trägt höchstens eine Veranstaltung. Verwaltet ihn schon ein
+              Team, sagt die Seite es und bietet an, um den Beitritt zu bitten. Sobald eine Veranstaltung ihn trägt, können Läufer keine
+              Ergebnisdateien mehr dafür hochladen: Seine Ergebnisse sind die seines Teams.`,
+            html`<b>Außerhalb des Kalenders</b>: Ein Wettkampf, der nicht oder noch nicht darin steht, wird ohne Verknüpfung angelegt; er erscheint dann
+              in Arena bei den Wettkämpfen seines Landes (eine Staffel noch nicht), ohne dass veröffentlicht wird, wer ihn angelegt hat. Er kann
+              später verknüpft werden, solange unter seinem eigenen Namen noch nichts veröffentlicht wurde.`,
+            html`„✎ Bearbeiten“, oben in der Veranstaltung, ändert ihre Beschreibung, verknüpft sie mit dem Kalender oder trennt sie davon, oder löscht sie.`,
+          ])}`)}`,
+      equipe: () => html`
+        ${slide("Orga", "Das Team", html`
+          <p>Jede Veranstaltung hat ihr Team, und alle Mitglieder haben dieselben Rechte: Sie verwalten die ganze Veranstaltung, nehmen Mitglieder auf
+            oder entfernen sie, verknüpfen sie mit dem Kalender oder trennen sie davon und können sie löschen. Wer die Veranstaltung anlegt, ist ihr
+            erstes Mitglied.</p>
+          ${list([
+            html`<b>Niemand wird von anderen hinzugefügt</b>, weder über den Namen noch über die Lizenz noch über die E-Mail-Adresse: Eine Person bittet
+              um Beitritt, in „Einem Team beitreten“ (oben in „Verwalten“) oder indem sie die Adresse der Veranstaltung öffnet, die der Reiter „Team“
+              zum Weitergeben angibt. Sie kann ein Wort an das Team dazuschreiben.`,
+            html`<b>Ein Mitglied antwortet</b>: Jedes Mitglied kann die Anfrage im Reiter „Team“ annehmen oder ablehnen. Die Mitglieder werden über
+              eine Anfrage per Push-Mitteilung informiert, die Person über die Antwort.`,
+            html`<b>Wer was sieht</b>: Die Mitglieder sehen gegenseitig ihre Namen und Vereine sowie die derer, die um Beitritt bitten; außerhalb des
+              Teams sind nur Vorname und Initiale von höchstens zwei Mitgliedern zu sehen.`,
+            html`<b>Verlassen</b>: Ein Mitglied verlässt das Team, wann es will; das letzte Mitglied löscht stattdessen die Veranstaltung. Bei einem
+              Wettkampf aus dem Kalender bleibt, was veröffentlicht wurde; ein auf Ozimut angelegter Wettkampf verschwindet aus Arena, mit allem,
+              was er dort veröffentlicht hat.`,
+          ])}`)}`,
       horaires: () => html`
-        ${slide("Orga", "Die Startzeiten veröffentlichen", html`
-          <p>${P("#/orga-horaires", "Orga › Startzeiten")} veröffentlicht die Startliste eines kommenden Wettkampfs deines Vereins, bis zum Wettkampftag.
-            Gelesene Dateien: IOF XML „StartList“ (am besten), CSV, eine Tabelle mit einem Spaltenpaar pro Bahn, HTML, PDF von OE oder MeOS oder ein
-            geteilter Google-Sheets-Link.</p>
+        ${slide("Orga", "Starts: die Startzeiten", html`
+          <p>Der Reiter „Starts“ eines kommenden Wettkampfs veröffentlicht seine Startliste, bis zum Wettkampftag. Gelesene Dateien: IOF XML
+            „StartList“ (am besten), CSV, eine Tabelle mit einem Spaltenpaar pro Bahn, HTML, PDF von OE oder MeOS oder ein geteilter
+            Google-Sheets-Link.</p>
           ${list([
             html`Die Datei wird zuerst in deinem Browser gelesen und geprüft: zwei Läufer desselben Vereins direkt nacheinander, eine geteilte Startminute,
               Läufer ohne Startzeit, ohne Chip oder ohne Bahn, die Intervalle und die freien Startplätze.`,
@@ -464,27 +502,34 @@ export function build(X) {
           ])}`)}`,
       direct: () => html`
         ${slide("Orga", "Live übertragen", html`
-          <p>${P("#/orga-direct", "Orga › Live-Übertragung")} lässt deine Ergebnisse live in Arena erscheinen, ohne Umweg über liveresultat. Eine Übertragung
-            wird mit einem Namen, einem Datum und, wenn möglich, dem Wettkampf eröffnet, zu dem sie gehört. Dann, nach Wahl:</p>
+          <p>Der Reiter „Live“ lässt deine Ergebnisse live in Arena erscheinen, ohne Umweg über liveresultat. Dort wird eine Übertragung eröffnet,
+            von Anfang an mit dem Wettkampf der Veranstaltung verknüpft. Dann, nach Wahl:</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Aus MeOS</h3><p>Der MeOS-Dienst „Online-Ergebnisse“ sendet seine Ergebnisse selbst an
               die Adresse, die Nummer und das Passwort, die die Seite angibt; die Zwischenzeiten der Funkposten folgen.</p></div>
             <div class="mx-box" style="--c:var(--s3)"><h3>Aus einer Datei</h3><p>Deine Software exportiert die Ergebnisliste alle paar Sekunden
               (IOF XML, HTML von OE oder MeOS); die Seite, geöffnet auf dem Computer im Wettkampfzentrum in Chrome oder Edge, liest diese Datei erneut und sendet, was sich ändert.</p></div>
           </div>
-          <p>Einem Wettkampf zugeordnet, bleibt eine Übertragung nach dem Lauf erhalten: Ihre Ergebnisse, Zwischenzeiten und Startliste bleiben
-            in Arena. Es ist noch eine Testversion: zuerst bei einem Training ausprobieren oder parallel zum üblichen Live-Dienst.</p>`)}`,
-      suivi: () => html`
-        ${slide("Orga", "Das GPS-Tracking", html`
-          <p>Ozimut verfolgt keinen Läufer per GPS. Wenn dein Wettkampf einen Tracking-Dienst nutzt (Loggator, GPSSeuranta, TracTrac, Livelox,
-            Routechoices …), gib seinen Link in ${P("#/orga-direct", "Orga › Live-Übertragung")} an: Er erscheint beim Wettkampf in Arena, mit seinen Ergebnissen
-            und seinem Live-Bereich. Nur der Link wird veröffentlicht.</p>`)}`,
+          <p>Die Übertragung bleibt nach dem Lauf erhalten: Ihre Ergebnisse, Zwischenzeiten und Startliste bleiben in Arena. Es ist noch eine
+            Testversion: zuerst bei einem Training ausprobieren oder parallel zum üblichen Live-Dienst.</p>
+          <p><b>Das GPS-Tracking</b>: Ozimut verfolgt keinen Läufer per GPS. Wenn dein Wettkampf einen Tracking-Dienst nutzt (Loggator, GPSSeuranta,
+            TracTrac, Livelox, Routechoices …), gib seinen Link im selben Reiter an: Er erscheint beim Wettkampf in Arena, mit seinen Ergebnissen und
+            seinem Live-Bereich. Nur der Link wird veröffentlicht.</p>`)}`,
+      resultats: () => html`
+        ${slide("Orga", "Die Ergebnisse hochladen", html`
+          <p>Der Reiter „Ergebnisse“ öffnet sich am Wettkampftag; „Ergebnisse hochladen“ fügt dort deine Datei hinzu, in drei Schritten:</p>
+          <div class="mx-steps">
+            <div class="mx-step"><b>Die Datei</b>Ein IOF-XML-Export deiner Software (am besten: Er enthält die Bahnen und die Zwischenzeiten),
+              das HTML von OE oder MeOS oder ein PDF; gezippt oder nicht, höchstens 30 MB.</div>
+            <div class="mx-step"><b>Die Prüfung</b>Die Datei wird in deinem Browser gelesen, nichts wird gesendet: Zusammenfassung, Ergebnisse Bahn für Bahn,
+              Zeitkontrolle (falsch gestellte Stationen, nicht gelöschte Chips) und alle Ansichten der Analyse.</div>
+            <div class="mx-step"><b>Die Veröffentlichung</b>„Veröffentlichen“ sendet sie: Der Lauf erscheint innerhalb weniger Minuten in Arena, als vom
+              Veranstalter hochgeladen markiert, und wird nicht mehr anderswo gesucht. Ein neuer Upload ersetzt den vorherigen.</div>
+          </div>`)}`,
       analyses: () => html`
-        ${slide("Orga", "Eine Analyse vorbereiten", html`
-          <p>${P("#/orga-analyses", "Analysen")} hat vier Reiter: „Geöffnete Analysen“ (die bereits geöffneten, dort öffnet die Seite: eine
-            wählen, dann „Analyse verwalten“), „Wettkampf öffnen“ (die Wettkämpfe deines Vereins der letzten 60 Tage, deren Analyse noch nicht geöffnet
-            ist: einen wählen, dann „Analyse öffnen“), „Neuer Wettkampf“ (außerhalb Frankreichs) und „Neues Training“. Eine Analyse wird
-            dann Bahn für Bahn vorbereitet:</p>
+        ${slide("Orga", "Die Analyse vorbereiten", html`
+          <p>Der Reiter „Analyse“ öffnet die Kartenanalyse der Veranstaltung („Kartenanalyse öffnen“) und dient danach dazu, sie zu verwalten. Sie
+            wird Bahn für Bahn vorbereitet:</p>
           ${list([
             html`<b>Die Karte</b>: ein Bild, ein PDF oder ein KMZ, unverändert gespeichert, ohne Qualitätsverlust.`,
             html`<b>Ihre Kalibrierung</b>: aus einem KMZ, einer Georeferenzierungsdatei, einem IOF XML mit Koordinaten oder deinem eigenen Track.`,
@@ -499,12 +544,6 @@ export function build(X) {
             abgespielt hat, ohne einen Track zu teilen — nur Zahlen, nie wer.</p>
           <p>Die Läufer finden sie in Coach („Analyse › Mit den anderen vergleichen“). Die Bahnlegung kann ihre Bahnen auch samt Karte in eine Analyse veröffentlichen (bei einem
             Wettkampf nach dem Lauf).</p>`)}`,
-      declarer: () => html`
-        ${slide("Orga", "Einen Wettkampf erstellen, außerhalb Frankreichs", html`
-          <p>Die französischen Wettkämpfe kommen aus dem Kalender ${fr ? "der FFCO" : "des französischen Verbands"}. In den anderen Ländern erstellt ein Konto, das Mitglied des Landes ist, seinen
-            Wettkampf selbst, im Kasten „Meine erstellten Wettkämpfe“ der Seiten Ergebnisse und Startzeiten und im Reiter „Neuer Wettkampf“ der Analysen: Land, Verein, Name, Datum, Ort,
-            Disziplin, Format, Website. Er erscheint dann in Arena bei den Wettkämpfen seines Landes, und sein Veranstalter kann dort Startliste,
-            Ergebnisse und Analysen hochladen. Wer ihn erstellt hat, wird nicht veröffentlicht.</p>`)}`,
     });
   }
 

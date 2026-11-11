@@ -1426,7 +1426,7 @@ export default {
   "os.err.type": "Format non accepté : IOF XML, CSV, HTML ou PDF.",
   "os.err.read": "Aucun horaire n'a pu être lu dans ce fichier. Vérifiez son format ci-contre : une ligne d'en-tête avec au moins l'heure et le nom.",
   "os.err.pdf": "Aucun horaire n'a pu être lu dans ce PDF. Seules les listes d'OE et de MeOS sont lues ; un export IOF XML ou CSV de votre logiciel est plus sûr.",
-  "os.err.past": "La course est passée : déposez maintenant ses résultats (« Organisation › Résultats »).",
+  "os.err.past": "La course est passée : déposez maintenant ses résultats (onglet « Résultats »).",
   "os.by.circuit": "Liste par circuit",
   "os.by.cat": "Liste par catégorie",
   "os.t.runners": "Coureurs",
@@ -1481,7 +1481,7 @@ export default {
   "os.oc.note": "Un fichier CSV (UTF-8, virgules) : nom, club, classe, dossard, heure de départ, puce, départ, un coureur par ligne dans l'ordre des départs. Il reste sur votre appareil : rien n'est envoyé.",
   "os.oc.note.nocard": "Un fichier CSV (UTF-8, virgules) : nom, club, classe, dossard, heure de départ, puce, départ, un coureur par ligne dans l'ordre des départs. Ce fichier ne donne pas les numéros de puce : un export IOF XML ou CSV de votre logiciel les contient. Il reste sur votre appareil : rien n'est envoyé.",
   "prov.oc": "Fichier O Checklist",
-  "prov.oc.hint": "Pour le départ : l'application O Checklist (« Vérifie moi ») importe ce fichier (sans numéros de puce : déposez vos horaires dans « Organisation › Horaires » pour les avoir).",
+  "prov.oc.hint": "Pour le départ : l'application O Checklist (« Vérifie moi ») importe ce fichier (sans numéros de puce : déposez vos horaires dans l'onglet « Départs » de votre événement, dans « Orga › Gérer », pour les avoir).",
   "os.consent": "J'organise cette course, ou l'organisateur m'a autorisé à publier ces horaires.",
   "os.publish": "Publier les horaires",
   "os.privacy": "Votre compte est enregistré avec le dépôt (visible de l'administrateur seulement). Le fichier est effacé après 60 jours ; les noms, clubs, catégories et heures de départ sont publiés, pas les années de naissance, numéros de puce ni dossards.",
@@ -2491,7 +2491,7 @@ export default {
   "vma.col.use": "Usage",
   // En direct: the organisers' broadcasts (pages/live.js)
   "lv.org.title": "Diffusées par leur organisateur",
-  "lv.org.hint": "Depuis leur logiciel de chronométrage, par « Organisation › Direct »",
+  "lv.org.hint": "Depuis leur logiciel de chronométrage, par l'onglet « Direct » d'« Orga › Gérer »",
   "lv.org.last": "dernier envoi {t}",
   "lv.org.none": "pas encore d'envoi",
   // Formats and disciplines, word by word (util.fmtFormat)

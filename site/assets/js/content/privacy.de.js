@@ -71,13 +71,25 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Beim Hochladen einer Ergebnisdatei werden das Konto des Hochladenden, der Lauf, Name und Größe der
         Datei sowie das Datum des Hochladens gespeichert. Die Datei wird 60 Tage im Speicher der Website (Cloudflare) aufbewahrt und dann
         gelöscht; die darin enthaltenen Ergebnisse bleiben angezeigt. Der Administrator sieht, wer jede Datei hochgeladen hat, und kann
-        eine Datei entfernen. Die Startzeiten, die ein Veranstalter vor dem Lauf hochlädt („Organisation › Startzeiten“), folgen denselben
+        eine Datei entfernen. Die Startzeiten, die ein Veranstalter vor dem Lauf hochlädt (Reiter „Starts“ einer Veranstaltung, in „Orga › Verwalten“), folgen denselben
         Regeln; veröffentlicht werden nur Namen, Vereine, Kategorien und Startzeiten, und die Veranstalter des Laufs können sie
-        entfernen. Außerhalb Frankreichs meldet ein Veranstalter die Wettkämpfe seines Vereins selbst an („Organisation“): Name, Datum, Ort, Verein,
-        Disziplin und Website werden im Kalender veröffentlicht; die Website speichert zusätzlich das Konto, das sie angemeldet hat und als einziges sie ändern
-        oder entfernen kann, und veröffentlicht es nicht. Ein Veranstalter kann auch den Link zum GPS-Tracking seines Wettkampfs bei einem anderen
-        Dienst angeben („Organisation › Live-Übertragung“): Nur dieser Link wird veröffentlicht; das Konto, das ihn angegeben hat, wird gespeichert und nicht veröffentlicht; Ozimut
+        entfernen. Ein Wettkampf, den ein Veranstalter außerhalb des Kalenders des Verbands anlegt (siehe „Veranstaltungen der Veranstalter“), wird
+        mit Name, Datum, Ort, Verein, Disziplin und Website im Kalender veröffentlicht, ohne dass veröffentlicht wird, wer ihn angelegt hat. Ein Veranstalter kann auch den Link zum GPS-Tracking seines Wettkampfs bei einem anderen
+        Dienst angeben (Reiter „Live“ seiner Veranstaltung): Nur dieser Link wird veröffentlicht; das Konto, das ihn angegeben hat, wird gespeichert und nicht veröffentlicht; Ozimut
         erhält keine Positionen.</p>
+      <h2 style="font-size:16px">Veranstaltungen der Veranstalter („Orga › Verwalten“)</h2>
+      <p>Ein Konto, das in „Orga › Verwalten“ eine Veranstaltung anlegt – einen Lauf oder ein Training –, bildet ihr Team. Die Website
+        speichert: die Beschreibung der Veranstaltung (Name, Datum, Ort, Verein, Disziplin, Format, Website) und das Konto, das sie angelegt
+        hat; ihre etwaige Verknüpfung mit einem Wettkampf aus dem Kalender des Verbands; ihr Team (die Konten der Mitglieder, das Datum, an
+        dem jedes beigetreten ist, und das Mitglied, das es aufgenommen hat); die Beitrittsanfragen (das anfragende Konto, eine freiwillige
+        Nachricht von höchstens 300 Zeichen, das Datum, die Antwort und das Mitglied, das sie gegeben hat). Niemand wird über seinen Namen,
+        seine Lizenz oder seine E-Mail-Adresse zu einem Team hinzugefügt: Man bittet um Beitritt, und ein Mitglied nimmt an oder lehnt ab;
+        die Mitglieder werden über eine Anfrage, die Person über die Antwort per Push-Mitteilung informiert. Die Mitglieder eines Teams sehen
+        gegenseitig ihre Namen und Vereine sowie die der Personen, die um Beitritt bitten; andere Konten sehen von einem Team nur Vorname und
+        Initiale des Nachnamens von höchstens zwei Mitgliedern. Die Administratoren der Website sehen die Veranstaltungen und bestätigen die
+        Verknüpfungen, die Konten anfragen, die nicht Mitglied des veranstaltenden Vereins sind. Rechtsgrundlage: die Erbringung des
+        angeforderten Dienstes. Wird ein Konto gelöscht, verlässt es seine Teams und seine Anfragen werden gelöscht; eine Veranstaltung,
+        deren letztes Mitglied es war, bleibt in den Händen der Administratoren, und was die Veranstaltung veröffentlicht hat, bleibt.</p>
       <h2 style="font-size:16px">Analysen von GPS-Tracks</h2>
       <p>Die Seite „Einzelanalyse“ liest Karte und GPS-Track in deinem Browser: Es werden keine Daten an die Website übertragen, und diese
         Dateien werden nur für die Dauer des Besuchs aufbewahrt.</p>

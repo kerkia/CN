@@ -1329,7 +1329,7 @@ export function build(X) {
               ihren GPS-Track hochladen. Dasselbe Fenster stellt die ganze Analyse ein: ihren Namen (der vom Namen der Veranstaltung abweichen kann), ihr Datum, wer sie
               öffnet (alle Konten, mit oder ohne Besucher, der Verein, ein Passwort), die für die Läufer aktivierten Aktionen; dann „Veröffentlichen“ oder „Als Entwurf
               speichern“ (nur ihre Veranstalter sehen sie). Ein Fenster zeigt den Fortschritt — jede Bahn wird auf ihre Karte gedruckt und gesendet — und öffnet danach
-              die Analyse mit einem Klick, ebenso ihre Verwaltungsseite (Orga › Analysen, wo alles änderbar bleibt). Eine neue Veröffentlichung legt eine weitere
+              die Analyse mit einem Klick, ebenso ihre Verwaltungsseite (Orga › Verwalten, Reiter „Analyse“, wo alles änderbar bleibt). Eine neue Veröffentlichung legt eine weitere
               Analyse an oder aktualisiert, nach Wahl, eine der aus der Veranstaltung schon veröffentlichten (ihre Bahnen und Einstellungen ersetzt, die geteilten Tracks
               bleiben); ein Wettkampf hat nur eine Analyse;</li>
             <li><b>die Bahnen an „Ergebnisse“ senden</b> (${W("send-results")}): eine Ergänzung der Ergebnisse, keine Ergebnisse. Die Ergebnisdatei, die die

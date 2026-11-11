@@ -795,7 +795,7 @@ export default {
   "trc.page.noEvents": "Aún no hay eventos: crea uno o importa un archivo.",
   "trc.page.del": "Eliminar «{title}»",
   "trc.page.delTitle": "¿Eliminar «{title}»?",
-  "trc.page.delBody": "El evento se borra para todo su equipo: sus recorridos, su mapa, sus versiones, sus comentarios y sus fotos. Es definitivo; para conservarlo, expórtalo antes (archivo Ozimut o .ppen). Un análisis ya publicado desde este evento se mantiene, en Orga › Análisis.",
+  "trc.page.delBody": "El evento se borra para todo su equipo: sus recorridos, su mapa, sus versiones, sus comentarios y sus fotos. Es definitivo; para conservarlo, expórtalo antes (archivo Ozimut o .ppen). Un análisis ya publicado desde este evento se mantiene, en Orga › Gestionar (pestaña «Análisis»).",
   "trc.page.delOk": "Eliminar definitivamente",
   "trc.page.delErr": "No se pudo eliminar ({err}).",
   "trc.page.kindRaceOpt": "Una competición que gestionas",

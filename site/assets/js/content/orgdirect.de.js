@@ -69,8 +69,8 @@ export const after = `
       <b>Läufe › Ergebnisse</b> veröffentlicht: die Ergebnisse, die Zwischenzeiten (in der „Analyse“) und vor dem Start die
       Startliste. Die Läufer erhalten die Benachrichtigung „einer meiner Läufe ist online“, sobald der Lauf beendet ist.</li>
     <li>„Jetzt veröffentlichen“ speichert ihn sofort, ohne auf die nächste Aktualisierung zu warten.</li>
-    <li>Eine danach unter <b>Organisation › Ergebnisse</b> hochgeladene Ergebnisdatei hat Vorrang vor der Übertragung, ebenso die unter
-      „Startzeiten“ hochgeladene Startliste.</li>
-    <li>Ein ohne Wettkampf erstellter Lauf kann später mit einem verknüpft werden, genau hier: Nur die Mitglieder des veranstaltenden Vereins
-      können das. Ohne Wettkampf ist er nur unter „Live“ sichtbar.</li>
+    <li>Eine danach im Reiter <b>Ergebnisse</b> der Veranstaltung hochgeladene Ergebnisdatei hat Vorrang vor der Übertragung, ebenso die im
+      Reiter „Starts“ hochgeladene Startliste.</li>
+    <li>Im Reiter „Live“ einer Veranstaltung eröffnet, ist eine Übertragung mit dem Wettkampf verknüpft, den die Veranstaltung trägt.
+      Ohne Wettkampf ist sie nur unter „Live“ sichtbar.</li>
   </ul>`;

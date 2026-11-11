@@ -794,7 +794,7 @@ export default {
   "trc.page.noEvents": "No events yet: create one, or import a file.",
   "trc.page.del": "Delete “{title}”",
   "trc.page.delTitle": "Delete “{title}”?",
-  "trc.page.delBody": "The event is erased for its whole team: its courses, map, versions, comments and photos. This cannot be undone; to keep it, export it first (Ozimut file or .ppen). An analysis already published from this event stays, in Orga › Analyses.",
+  "trc.page.delBody": "The event is erased for its whole team: its courses, map, versions, comments and photos. This cannot be undone; to keep it, export it first (Ozimut file or .ppen). An analysis already published from this event stays, in Orga › Manage (the “Analysis” tab).",
   "trc.page.delOk": "Delete for good",
   "trc.page.delErr": "The deletion failed ({err}).",
   "trc.page.kindRaceOpt": "A competition you manage",

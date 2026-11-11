@@ -20,7 +20,7 @@ export function build(X) {
     arena: html`Las competiciones: el calendario, los resultados de los organizadores, el directo y el análisis de los tiempos parciales.`,
     coach: owner ? html`Entrenar: los análisis de tracks GPS, las descripciones de control, los símbolos del mapa, los juegos y la VAM.`
       : html`Entrenar: los análisis de tracks GPS, los juegos y la VAM.`,
-    orga: html`Las herramientas de los organizadores: resultados, horarios, emisión en directo, seguimiento GPS, análisis y trazado de recorridos.`,
+    orga: html`Las herramientas de los organizadores: sus eventos (salidas, directo, resultados, análisis, equipo), el trazado de recorridos y la cartografía.`,
   };
 
   // ======================================================================================================
@@ -334,8 +334,8 @@ export function build(X) {
           <p>En el Análisis individual, un archivo OCAD o Mapper soltado solo <b>es</b> el mapa: se dibuja aquí y el track se calibra por su
             georreferenciación. Soltado con una imagen del mapa —o elegido en el recuadro «Rutas calculadas», en los dos análisis—, sirve para
             las rutas, colocado sobre la imagen por su georreferenciación: debe tenerla y cubrir el mapa mostrado.</p>
-          <p>Un análisis publicado desde el trazado de recorridos, o cuyos recorridos vienen de un proyecto OCAD (Orga › Análisis de
-            mapa), conserva lo que el mapa OCAD del organizador dice del terreno: sus itinerarios leen sus símbolos sin ningún archivo que
+          <p>Un análisis publicado desde el trazado de recorridos, o cuyos recorridos vienen de un proyecto OCAD (Orga › Gestionar,
+            pestaña «Análisis»), conserva lo que el mapa OCAD del organizador dice del terreno: sus itinerarios leen sus símbolos sin ningún archivo que
             soltar, y las zonas prohibidas y los límites que no se deben cruzar que el trazador dibujó en el recorrido forman parte de ello.
             Solo ese dibujo del terreno se envía con el recorrido, nunca el archivo OCAD.</p>`)}
         ${slide("Coach · prueba", "2. El tiempo de un paso", html`
@@ -413,38 +413,74 @@ export function build(X) {
   // ======================================================================================================
   // Orga (« El trazado », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
-  const ORGA = [["qui", "Quién organiza"], ["resultats", "Resultados"], ["horaires", "Horarios"], ["direct", "Emisión en directo"], ["suivi", "Seguimiento GPS"],
-    ["analyses", "Análisis"], ["declarer", "Competiciones creadas"]];
+  const ORGA = [["qui", "Gestionar"], ["evenement", "Crear un evento"], ["equipe", "El equipo"], ["horaires", "Salidas"], ["direct", "Directo"],
+    ["resultats", "Resultados"], ["analyses", "Análisis"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
-        ${slide("Orga", "Las páginas de los organizadores", html`
+        ${slide("Orga", "Gestionar tus eventos", html`
           <p>Orga sirve a los clubes que organizan; se activa al registrarte, en los Ajustes o en la página de módulos, y se usa en ordenador.
-            Es organizador de una competición ${fr ? "cualquier miembro de su club organizador —el club de su última carrera conocida— o" : ""}
-            la cuenta que la ha declarado, fuera de Francia. Un entrenamiento, en cambio, puede crearlo cualquier cuenta.</p>
+            Su menú tiene tres entradas:</p>
           ${list([
-            html`${P("#/orga-analyses", "Análisis")}: preparar el análisis de las competiciones del club y de sus entrenamientos.`,
-            html`${P("#/orga-resultats", "Resultados")} y ${P("#/orga-horaires", "Horarios")}: subir los resultados y la lista de salida.`,
-            html`${P("#/orga-direct", "Emisión en directo")}: emitir los resultados en directo desde el programa de cronometraje y dar el enlace del seguimiento GPS.`,
+            html`${P("#/gerer", "Gestionar")}: tus eventos —una carrera o un entrenamiento cada uno— con, para cada uno, las herramientas del organizador.`,
             html`${P("#/orga-tracer", "Trazado")}: trazar los recorridos; su guía es la pestaña ${D("tracer", "El trazado")}.`,
-          ])}`)}`,
-      resultats: () => html`
-        ${slide("Orga", "Subir los resultados", html`
-          <p>Para una competición de tu club, ${P("#/orga-resultats", "Orga › Resultados")} muestra lo que Arena ya tiene de ella, y
-            «Subir los resultados» añade tu archivo, en tres pasos:</p>
+            html`${P("#/orga-carto", "Cartografiar")}: dibujar un mapa de orientación, o actualizar el tuyo.`,
+          ])}
+          <p>«Gestionar» se abre en la lista de tus eventos, pasados, de hoy y próximos. Cada uno tiene sus pestañas, según su tipo:</p>
+          ${list([
+            html`<b>Competición individual</b> y <b>Score</b>: Salidas, Directo, Resultados, Análisis, Equipo.`,
+            html`<b>Relevos</b>: Directo, Análisis, Equipo (los resultados y la lista de salida de un relevo aún no se pueden subir).`,
+            html`<b>Entrenamiento</b>: Análisis, Equipo.`,
+          ])}
+          <p>Un evento se abre en la pestaña que corresponde a su fecha: Salidas antes de la carrera, Directo el mismo día, Resultados después; un
+            entrenamiento, en su análisis.</p>
+          <p>Solo el equipo de un evento —y los administradores de Ozimut— actúa como organizador de la competición que lleva: lista de salida,
+            reserva de horarios, directo, enlace del seguimiento GPS, resultados, recorridos enviados desde el trazado, análisis de mapa. Una
+            competición que ningún evento lleva no tiene organizador en Ozimut: para serlo, crea su evento, o pide unirte al equipo del evento que la
+            lleva.</p>`)}`,
+      evenement: () => html`
+        ${slide("Orga", "Crear un evento", html`
+          <p>«Crear un evento», arriba en «Gestionar», se hace en tres pasos:</p>
           <div class="mx-steps">
-            <div class="mx-step"><b>El archivo</b>Una exportación IOF XML de tu programa (la mejor opción: incluye los recorridos y los tiempos parciales),
-              o el HTML de OE o de MeOS, o un PDF; comprimido en zip o no, 30 MB como máximo.</div>
-            <div class="mx-step"><b>La comprobación</b>El archivo se lee en tu navegador, no se envía nada: resumen, resultados recorrido por recorrido,
-              control de tiempos (bases mal sincronizadas, pinzas sin borrar) y todas las vistas del análisis.</div>
-            <div class="mx-step"><b>La publicación</b>«Publicar» lo envía: la carrera aparece en Arena en pocos minutos, marcada como subida por el
-              organizador, y ya no se busca en otros sitios. Una nueva subida sustituye a la anterior.</div>
-          </div>`)}`,
+            <div class="mx-step"><b>Tipo, país y fecha</b>Competición individual, Score (los controles en el orden que se quiera, clasificados por
+              puntos), Relevos o Entrenamiento; un país al que te hayas unido; una fecha dentro de los últimos 60 días o los próximos 400.</div>
+            <div class="mx-step"><b>¿En el calendario de la federación?</b>En Francia, una competición se vincula a su entrada en el calendario de la
+              federación: la página propone las competiciones del día elegido, las de tu club primero, o «No está en el calendario».</div>
+            <div class="mx-step"><b>El evento</b>Su nombre, lugar, club, disciplina, formato y sitio web, tomados del calendario cuando la competición
+              figura en él.</div>
+          </div>
+          ${list([
+            html`<b>La vinculación</b>: si eres miembro del club organizador de la competición —el club de tu última carrera conocida—, se hace en el
+              acto. Si no, la confirma un administrador de Ozimut; mientras tanto el equipo puede formarse, pero las herramientas de la competición
+              siguen cerradas.`,
+            html`<b>Una competición, un evento</b>: una competición del calendario la lleva un solo evento como máximo. Si un equipo ya la gestiona, la
+              página lo dice y propone pedir unirse a él. En cuanto un evento la lleva, los corredores ya no pueden subir archivos de resultados de
+              ella: sus resultados son los de su equipo.`,
+            html`<b>Fuera del calendario</b>: una competición que no figura en él, o todavía no, se crea sin vincular; aparece entonces en Arena con las
+              competiciones de su país (un relevo, todavía no), sin que se publique quién la creó. Puede vincularse más tarde, mientras no se haya
+              publicado nada con su propio nombre.`,
+            html`«✎ Modificar», en la cabecera del evento, cambia su descripción, lo vincula al calendario o lo desvincula, o lo elimina.`,
+          ])}`)}`,
+      equipe: () => html`
+        ${slide("Orga", "El equipo", html`
+          <p>Cada evento tiene su equipo, y todos sus miembros tienen los mismos derechos: gestionan todo el evento, aceptan o retiran miembros, lo
+            vinculan al calendario o lo desvinculan, y pueden eliminarlo. Quien crea el evento es su primer miembro.</p>
+          ${list([
+            html`<b>Nadie es añadido por otros</b>, ni por su nombre, ni por su licencia, ni por su correo electrónico: una persona pide entrar, en
+              «Unirse a un equipo» (arriba en «Gestionar») o abriendo la dirección del evento, que la pestaña «Equipo» da para compartir. Puede
+              añadir unas palabras para el equipo.`,
+            html`<b>Un miembro responde</b>: cualquiera de ellos acepta o rechaza la solicitud, en la pestaña «Equipo». Los miembros reciben una
+              notificación de cada solicitud, y la persona, de la respuesta.`,
+            html`<b>Quién ve qué</b>: los miembros ven los nombres y los clubes de los demás y de quienes piden entrar; fuera del equipo solo se ven el
+              nombre de pila y la inicial del apellido de dos miembros como máximo.`,
+            html`<b>Salir</b>: un miembro deja el equipo cuando quiere; el último miembro elimina el evento en su lugar. En una competición del
+              calendario, lo publicado se queda; una competición creada en Ozimut desaparece de Arena con lo que publicó allí.`,
+          ])}`)}`,
       horaires: () => html`
-        ${slide("Orga", "Publicar los horarios de salida", html`
-          <p>${P("#/orga-horaires", "Orga › Horarios")} publica la lista de salida de una próxima competición de tu club, hasta el día de la
-            carrera. Archivos que se leen: IOF XML «StartList» (lo mejor), CSV, una tabla con un par de columnas por recorrido, HTML, PDF de OE o de
-            MeOS, o un enlace de Google Sheets compartido.</p>
+        ${slide("Orga", "Salidas: los horarios", html`
+          <p>La pestaña «Salidas» de una próxima competición publica su lista de salida, hasta el día de la carrera. Archivos que se leen: IOF XML
+            «StartList» (lo mejor), CSV, una tabla con un par de columnas por recorrido, HTML, PDF de OE o de MeOS, o un enlace de Google Sheets
+            compartido.</p>
           ${list([
             html`El archivo se lee y se comprueba primero en tu navegador: dos corredores del mismo club seguidos, un minuto de salida compartido,
               corredores sin hora, sin pinza o sin recorrido, los intervalos y los huecos libres.`,
@@ -458,27 +494,34 @@ export function build(X) {
           ])}`)}`,
       direct: () => html`
         ${slide("Orga", "Emitir en directo", html`
-          <p>${P("#/orga-direct", "Orga › Emisión en directo")} hace aparecer tus resultados en directo en Arena sin pasar por liveresultat. Una emisión
-            se abre con un nombre, una fecha y, si es posible, la competición a la que pertenece. Después, a elegir:</p>
+          <p>La pestaña «Directo» hace aparecer tus resultados en directo en Arena sin pasar por liveresultat. Allí se abre una emisión, vinculada desde
+            el principio a la competición del evento. Después, a elegir:</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>Desde MeOS</h3><p>El servicio «Resultados en línea» de MeOS envía él mismo sus resultados a
               la dirección, el número y la contraseña que indica la página; los tiempos parciales de los controles de radio llegan también.</p></div>
             <div class="mx-box" style="--c:var(--s3)"><h3>Desde un archivo</h3><p>Tu programa exporta la lista de resultados cada pocos segundos
               (IOF XML, HTML de OE o de MeOS); la página, abierta en el ordenador de la arena en Chrome o Edge, vuelve a leer ese archivo y envía lo que cambia.</p></div>
           </div>
-          <p>Vinculada a su competición, una emisión se conserva después de la carrera: sus resultados, sus tiempos parciales y su lista de salida se quedan
-            en Arena. Todavía es una versión de prueba: pruébala primero en un entrenamiento, o junto al directo habitual.</p>`)}`,
-      suivi: () => html`
-        ${slide("Orga", "El seguimiento GPS", html`
-          <p>Ozimut no sigue a ningún corredor por GPS. Si tu competición usa un servicio de seguimiento (Loggator, GPSSeuranta, TracTrac, Livelox,
-            Routechoices…), indica su enlace en ${P("#/orga-direct", "Orga › Emisión en directo")}: aparece en la competición en Arena, con sus resultados y
-            su directo. Solo se publica el enlace.</p>`)}`,
+          <p>La emisión se conserva después de la carrera: sus resultados, sus tiempos parciales y su lista de salida se quedan en Arena. Todavía es
+            una versión de prueba: pruébala primero en un entrenamiento, o junto al directo habitual.</p>
+          <p><b>El seguimiento GPS</b>: Ozimut no sigue a ningún corredor por GPS. Si tu competición usa un servicio de seguimiento (Loggator,
+            GPSSeuranta, TracTrac, Livelox, Routechoices…), indica su enlace en esa misma pestaña: aparece en la competición en Arena, con sus
+            resultados y su directo. Solo se publica el enlace.</p>`)}`,
+      resultats: () => html`
+        ${slide("Orga", "Subir los resultados", html`
+          <p>La pestaña «Resultados» se abre el día de la carrera; «Subir los resultados» añade allí tu archivo, en tres pasos:</p>
+          <div class="mx-steps">
+            <div class="mx-step"><b>El archivo</b>Una exportación IOF XML de tu programa (la mejor opción: incluye los recorridos y los tiempos parciales),
+              o el HTML de OE o de MeOS, o un PDF; comprimido en zip o no, 30 MB como máximo.</div>
+            <div class="mx-step"><b>La comprobación</b>El archivo se lee en tu navegador, no se envía nada: resumen, resultados recorrido por recorrido,
+              control de tiempos (bases mal sincronizadas, pinzas sin borrar) y todas las vistas del análisis.</div>
+            <div class="mx-step"><b>La publicación</b>«Publicar» lo envía: la carrera aparece en Arena en pocos minutos, marcada como subida por el
+              organizador, y ya no se busca en otros sitios. Una nueva subida sustituye a la anterior.</div>
+          </div>`)}`,
       analyses: () => html`
-        ${slide("Orga", "Preparar un análisis", html`
-          <p>${P("#/orga-analyses", "Análisis")} tiene cuatro pestañas: «Análisis abiertos» (los ya abiertos, donde se abre la página: elige
-            uno y luego «Gestionar el análisis»), «Abrir una competición» (las competiciones de tu club de los últimos 60 días cuyo análisis aún no está
-            abierto: elige una y luego «Abrir el análisis»), «Nueva competición» (fuera de Francia) y «Nuevo entrenamiento». Después, un
-            análisis se prepara recorrido por recorrido:</p>
+        ${slide("Orga", "Preparar el análisis", html`
+          <p>La pestaña «Análisis» abre el análisis de mapa del evento («Abrir el análisis de mapa») y después sirve para gestionarlo. Se prepara
+            recorrido por recorrido:</p>
           ${list([
             html`<b>El mapa</b>: una imagen, un PDF o un KMZ, guardado tal cual, sin pérdida de calidad.`,
             html`<b>Su calibración</b>: a partir de un KMZ, de un archivo de georreferenciación, de un IOF XML con coordenadas o de tu propio track.`,
@@ -493,12 +536,6 @@ export function build(X) {
             track — solo números, nunca quién.</p>
           <p>Los corredores lo encuentran en Coach («Análisis › Comparar con los demás corredores»). El trazado también puede publicar sus recorridos, mapa incluido, en un análisis de
             mapa (en el caso de una competición, después de la carrera).</p>`)}`,
-      declarer: () => html`
-        ${slide("Orga", "Crear una competición, fuera de Francia", html`
-          <p>Las competiciones francesas proceden del calendario de ${fr ? "la FFCO" : "la federación francesa"}. En los demás países, una cuenta miembro del país crea ella misma su
-            competición, en el recuadro «Mis competiciones creadas» de las páginas Resultados y Horarios, y en la pestaña «Nueva competición» de Análisis: país, club, nombre, fecha, lugar,
-            disciplina, formato, sitio web. Entonces aparece en Arena, con las competiciones de su país, y su organizador puede subir en ella la lista de
-            salida, los resultados y los análisis. No se publica quién la creó.</p>`)}`,
     });
   }
 

@@ -20,7 +20,7 @@ export function build(X) {
     arena: html`The competitions: the calendar, the organisers' results, live results and the split-time analysis.`,
     coach: owner ? html`Training: GPS track analyses, control descriptions, map symbols, games and the MAS.`
       : html`Training: GPS track analyses, games and the MAS.`,
-    orga: html`The organisers' tools: results, start times, live feed, GPS tracking, analyses and course setting.`,
+    orga: html`The organisers' tools: their events (starts, live results, results, analysis, team), course setting and mapping.`,
   };
 
   // ======================================================================================================
@@ -324,7 +324,7 @@ export function build(X) {
           <p>In Solo analysis, an OCAD or Mapper file dropped alone <b>is</b> the map: drawn here, the track placed by its georeferencing. Dropped
             with an image of the map — or chosen in the "Computed routes" box, in both analyses — it serves the routes, placed on the image by its
             georeferencing: it must have one, and cover the map shown.</p>
-          <p>An analysis published from the course setting, or whose courses come from an OCAD project (Orga › Analyses), keeps what
+          <p>An analysis published from the course setting, or whose courses come from an OCAD project (Orga › Manage, the “Analysis” tab), keeps what
             the organiser's OCAD map says of the terrain: its routes read its symbols with no file to drop, and the out-of-bounds areas and the
             boundaries not to be crossed that the setter drew on the course are part of it. Only that drawing of the terrain is sent with the
             course, never the OCAD file.</p>`)}
@@ -399,38 +399,69 @@ export function build(X) {
   // ======================================================================================================
   // Orga (« Course setting », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
-  const ORGA = [["qui", "Who organises"], ["resultats", "Results"], ["horaires", "Start times"], ["direct", "Live feed"], ["suivi", "GPS tracking"],
-    ["analyses", "Analyses"], ["declarer", "Created competitions"]];
+  const ORGA = [["qui", "Manage"], ["evenement", "Creating an event"], ["equipe", "The team"], ["horaires", "Starts"], ["direct", "Live"],
+    ["resultats", "Results"], ["analyses", "Analysis"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
-        ${slide("Orga", "The organisers' pages", html`
-          <p>Orga serves the clubs that organise; it is turned on when registering, in Settings or on the modules page, and is used on a computer. A
-            competition's organiser is ${fr ? "any member of its organising club — the club of their latest known race — or " : ""}the account that
-            declared it, outside France. A training session can be created by any account.</p>
+        ${slide("Orga", "Managing your events", html`
+          <p>Orga serves the clubs that organise; it is turned on when registering, in Settings or on the modules page, and is used on a computer.
+            Its menu has three entries:</p>
           ${list([
-            html`${P("#/orga-analyses", "Analyses")}: preparing the analysis of the club's competitions and of its training sessions.`,
-            html`${P("#/orga-resultats", "Results")} and ${P("#/orga-horaires", "Start times")}: uploading the results and the start list.`,
-            html`${P("#/orga-direct", "Live feed")}: broadcasting the results live from the timing software, and giving the GPS tracking link.`,
+            html`${P("#/gerer", "Manage")}: your events — one race or one training session each — with, for each, the organiser's tools.`,
             html`${P("#/orga-tracer", "Course setting")}: setting the courses; its guide is the ${D("tracer", "Course setting")} tab.`,
-          ])}`)}`,
-      resultats: () => html`
-        ${slide("Orga", "Uploading the results", html`
-          <p>For a competition of your club, ${P("#/orga-resultats", "Orga › Results")} shows what Arena already has of it, and “Upload the
-            results” adds your file, in three steps:</p>
+            html`${P("#/orga-carto", "Mapping")}: drawing an orienteering map, or updating yours.`,
+          ])}
+          <p>“Manage” opens on the list of your events, past, today's and coming. Each has its tabs, by its type:</p>
+          ${list([
+            html`<b>Individual competition</b> and <b>Score</b>: Starts, Live, Results, Analysis, Team.`,
+            html`<b>Relay</b>: Live, Analysis, Team (a relay's results and start list cannot be uploaded yet).`,
+            html`<b>Training</b>: Analysis, Team.`,
+          ])}
+          <p>An event opens on the tab that fits its day: Starts before the race, Live on the day, Results afterwards; a training session on its
+            analysis.</p>
+          <p>Only an event's team — and Ozimut's administrators — act as the organiser of the competition it holds: start list, start-time
+            booking, live results, GPS tracking link, results, courses sent from course setting, map analysis. A competition no event holds has no
+            organiser on Ozimut: to become one, create its event, or ask to join the team of the event that holds it.</p>`)}`,
+      evenement: () => html`
+        ${slide("Orga", "Creating an event", html`
+          <p>“Create an event”, at the top of “Manage”, takes three steps:</p>
           <div class="mx-steps">
-            <div class="mx-step"><b>The file</b>An IOF XML export from your software (the best: it carries the courses and the split times), or OE or MeOS
-              HTML, or a PDF; zipped or not, 30 MB at most.</div>
-            <div class="mx-step"><b>The check</b>The file is read in your browser, nothing is sent: summary, results course by course, the timing check
-              (units set wrong, cards not cleared), and every view of the analysis.</div>
-            <div class="mx-step"><b>Publishing</b>“Publish” sends it: the race appears in Arena within minutes, marked as uploaded by the organiser, and
-              is no longer looked for elsewhere. A new upload replaces the previous one.</div>
-          </div>`)}`,
+            <div class="mx-step"><b>Type, country and date</b>Individual competition, Score (the controls in any order, ranked by points), Relay or
+              Training; a country you have joined; a date within the last 60 days or the next 400.</div>
+            <div class="mx-step"><b>On the federation's calendar?</b>In France, a competition is linked to its entry in the federation's calendar:
+              the page offers the competitions of the day chosen, your club's first, or “It is not on the calendar”.</div>
+            <div class="mx-step"><b>The event</b>Its name, place, club, discipline, format and website, taken from the calendar when the competition
+              is on it.</div>
+          </div>
+          ${list([
+            html`<b>The link</b>: if you are a member of the competition's organising club — the club of your latest known race —, it is made at once.
+              Otherwise an Ozimut administrator confirms it; meanwhile the team can form, but the competition's tools stay closed.`,
+            html`<b>One competition, one event</b>: a calendar competition is held by one event at most. If a team already manages it, the page says
+              so and offers to ask to join it. Once an event holds it, runners can no longer upload results files for it: its results are its team's.`,
+            html`<b>Off the calendar</b>: a competition that is not on it, or not yet, is created without a link; it then appears in Arena among its
+              country's competitions (a relay, not yet), without who created it being published. It can be linked later, as long as nothing has been
+              published under its own name.`,
+            html`“✎ Edit”, at the head of the event, changes its description, links it to the calendar or unlinks it, or deletes it.`,
+          ])}`)}`,
+      equipe: () => html`
+        ${slide("Orga", "The team", html`
+          <p>Each event has its team, and all its members have the same rights: they manage the whole event, accept or remove members, link it to the
+            calendar or unlink it, and can delete it. Whoever creates the event is its first member.</p>
+          ${list([
+            html`<b>Nobody is added by others</b>, neither by name, nor by licence, nor by e-mail address: a person asks to join, in “Join a team” (at
+              the top of “Manage”) or by opening the event's address, which the “Team” tab gives you to pass on. They can add a word for the team.`,
+            html`<b>A member answers</b>: any member accepts or declines the request, in the “Team” tab. The members are told of a request by
+              notification, and the person of the answer.`,
+            html`<b>Who sees what</b>: the members see each other's names and clubs, and those of the people asking to join; outside the team, only
+              the first name and initial of up to two members show.`,
+            html`<b>Leaving</b>: a member leaves the team whenever they wish; the last member deletes the event instead. For a calendar competition,
+              what was published stays; a competition created on Ozimut disappears from Arena with what it published there.`,
+          ])}`)}`,
       horaires: () => html`
-        ${slide("Orga", "Publishing the start times", html`
-          <p>${P("#/orga-horaires", "Orga › Start times")} publishes the start list of a coming competition of your club, up to race day. Files
-            read: IOF XML “StartList” (the best), CSV, a sheet with one pair of columns per course, HTML, OE or MeOS PDF, or a shared Google Sheets
-            link.</p>
+        ${slide("Orga", "Starts: the start times", html`
+          <p>The “Starts” tab of a coming competition publishes its start list, up to race day. Files read: IOF XML “StartList” (the best), CSV, a
+            sheet with one pair of columns per course, HTML, OE or MeOS PDF, or a shared Google Sheets link.</p>
           ${list([
             html`The file is first read and checked in your browser: two runners of one club one after the other, a start minute shared, runners
               without a time, a card or a course, the intervals and the vacant places.`,
@@ -444,27 +475,34 @@ export function build(X) {
           ])}`)}`,
       direct: () => html`
         ${slide("Orga", "Broadcasting live", html`
-          <p>${P("#/orga-direct", "Orga › Live feed")} shows your results live in Arena without going through liveresultat. A broadcast opens with a name,
-            a date and, if possible, the competition it belongs to. Then, either:</p>
+          <p>The “Live” tab shows your results live in Arena without going through liveresultat. A broadcast opens there, tied to the event's
+            competition from the start. Then, either:</p>
           <div class="mx-grid">
             <div class="mx-box" style="--c:var(--s1)"><h3>From MeOS</h3><p>MeOS's “Online Results” service sends its results itself to the address, number
               and password the page gives; the radio controls' split times follow.</p></div>
             <div class="mx-box" style="--c:var(--s3)"><h3>From a file</h3><p>Your software exports the results list every few seconds (IOF XML, OE or
               MeOS HTML); the page, open on the arena computer in Chrome or Edge, reads that file again and sends what changes.</p></div>
           </div>
-          <p>Tied to its competition, a broadcast is kept after the race: its results, split times and start list stay in Arena. It is still a
-            trial version: try it first at a training session, or beside the usual live results.</p>`)}`,
-      suivi: () => html`
-        ${slide("Orga", "GPS tracking", html`
-          <p>Ozimut tracks nobody by GPS. If your competition uses a tracking service (Loggator, GPSSeuranta, TracTrac, Livelox, Routechoices…), give
-            its link in ${P("#/orga-direct", "Orga › Live feed")}: it appears on the competition in Arena, with its results and live page. Only the link is
+          <p>The broadcast is kept after the race: its results, split times and start list stay in Arena. It is still a trial version: try it first
+            at a training session, or beside the usual live results.</p>
+          <p><b>GPS tracking</b>: Ozimut tracks nobody by GPS. If your competition uses a tracking service (Loggator, GPSSeuranta, TracTrac, Livelox,
+            Routechoices…), give its link in the same tab: it appears on the competition in Arena, with its results and live page. Only the link is
             published.</p>`)}`,
+      resultats: () => html`
+        ${slide("Orga", "Uploading the results", html`
+          <p>The “Results” tab opens on race day; “Upload the results” adds your file there, in three steps:</p>
+          <div class="mx-steps">
+            <div class="mx-step"><b>The file</b>An IOF XML export from your software (the best: it carries the courses and the split times), or OE or MeOS
+              HTML, or a PDF; zipped or not, 30 MB at most.</div>
+            <div class="mx-step"><b>The check</b>The file is read in your browser, nothing is sent: summary, results course by course, the timing check
+              (units set wrong, cards not cleared), and every view of the analysis.</div>
+            <div class="mx-step"><b>Publishing</b>“Publish” sends it: the race appears in Arena within minutes, marked as uploaded by the organiser, and
+              is no longer looked for elsewhere. A new upload replaces the previous one.</div>
+          </div>`)}`,
       analyses: () => html`
-        ${slide("Orga", "Preparing an analysis", html`
-          <p>${P("#/orga-analyses", "Analyses")} has four tabs: “Opened analyses” (those already opened, where the page opens: choose one,
-            then “Manage the analysis”), “Open a competition” (your club's competitions of the last 60 days whose analysis is not opened yet: choose
-            one, then “Open the analysis”), “New competition” (outside France) and “New training session”. An analysis is then prepared
-            course by course:</p>
+        ${slide("Orga", "Preparing the analysis", html`
+          <p>The “Analysis” tab opens the event's map analysis (“Open the map analysis”), then is where you manage it. It is prepared course by
+            course:</p>
           ${list([
             html`<b>The map</b>: an image, a PDF or a KMZ, kept as it is, with no loss of quality.`,
             html`<b>Its placing</b>: from a KMZ, a world file, an IOF XML with coordinates, or your own track.`,
@@ -477,12 +515,6 @@ export function build(X) {
             opened it, the tracks per course, those who replayed it alone without sharing a track — counts only, never who.</p>
           <p>Runners find it in Coach (“Analysis › Compare with the other runners”). Course setting can also publish its courses, map included, to an analysis (after the race for
             a competition).</p>`)}`,
-      declarer: () => html`
-        ${slide("Orga", "Creating a competition, outside France", html`
-          <p>French competitions come from ${fr ? "FFCO's" : "the French federation's"} calendar. In the other countries, an account that is a member of the country creates its competition
-            itself, in the “My created competitions” box of the Results and Start times pages, and in the “New competition” tab of Analyses: country, club, name, date, place,
-            discipline, format, website. It then appears in Arena among its country's competitions, and its organiser can upload its start list, results
-            and analyses. Who created it is not published.</p>`)}`,
     });
   }
 
