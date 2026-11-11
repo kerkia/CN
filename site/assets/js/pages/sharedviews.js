@@ -25,6 +25,7 @@ import { gapChart, duelChart } from "../charts.js";
 import { variantKey } from "../trace/routes.js";
 import { pace } from "../trace/curves.js";
 import { freezeAttrs } from "../ui.js";
+import { confirmBox, alertBox } from "../askbox.js";
 
 export const signed = (s) => (s == null ? "—" : `${s >= 0 ? "+" : "−"}${clock(Math.abs(s))}`);
 const detour = (dist, straight) => { const p = (100 * dist) / straight - 100; return `${p >= 0 ? "+" : "−"}${pctN(Math.abs(p))}`; };
@@ -217,7 +218,7 @@ function variantsView(el, X) {
   $("#sh-var-colour", el).addEventListener("change", (e) => { X.state.varColour = e.target.checked; X.setColourBy(e.target.checked ? "variant" : "runner"); });
   $("#sh-var-leg", el).addEventListener("change", (e) => X.setLeg(Number(e.target.value)));
   $("#sh-var-reset", el)?.addEventListener("click", () => X.setTags(j, null));
-  $("#sh-var-share", el)?.addEventListener("click", async (e) => { e.target.disabled = true; try { await X.shareTags(j); } catch (err) { e.target.disabled = false; alert(X.errText(err)); } });
+  $("#sh-var-share", el)?.addEventListener("click", async (e) => { e.target.disabled = true; try { await X.shareTags(j); } catch (err) { e.target.disabled = false; alertBox(X.errText(err)); } });
   $$("[data-vname]", el).forEach((inp) => inp.addEventListener("change", () => edit((tags) => { if (inp.value.trim()) tags.names[inp.dataset.vname] = inp.value.trim(); else delete tags.names[inp.dataset.vname]; })));
   $$("[data-vmerge]", el).forEach((s) => s.addEventListener("change", () => { const from = s.dataset.vmerge, into = s.value; if (!into) return;
     edit((tags) => { for (const u of Object.keys(tags.assign)) if (tags.assign[u] === from) tags.assign[u] = into; delete tags.names[from]; }); }));
@@ -281,5 +282,5 @@ function exercisesView(el, X) {
   const wr = $("#sh-ex-wr", el);
   wr.addEventListener("input", () => { $("#sh-ex-wv", el).textContent = `${wr.value} m`; X.setExWidth(ex, Number(wr.value), false); table(); });
   if (X.organiser) wr.addEventListener("change", () => X.setExWidth(ex, Number(wr.value), true));
-  $("#sh-ex-del", el)?.addEventListener("click", async () => { if (!confirm(t("sh.ex.del.confirm"))) return; await X.saveExercises(list.filter((e) => e !== ex)); state.ex = null; X.changed(); });
+  $("#sh-ex-del", el)?.addEventListener("click", async () => { if (!(await confirmBox(t("sh.ex.del.confirm"), { ok: t("sh.remove") }))) return; await X.saveExercises(list.filter((e) => e !== ex)); state.ex = null; X.changed(); });
 }

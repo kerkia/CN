@@ -3835,6 +3835,12 @@ body.nut-ed-open .page { padding-bottom: 10px; }      /* the page's 96 px under 
   max-height: calc(100dvh - 32px); box-shadow: 0 12px 40px rgba(0, 0, 0, .28); }
 .mm-dlg.wide { width: min(680px, calc(100vw - 24px)); }
 .mm-dlg::backdrop { background: rgba(0, 0, 0, .4); }
+/* askbox.js: the page's own confirm() and alert() */
+.ask-dlg { border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px 14px; background: var(--surface); color: var(--ink);
+  width: min(440px, calc(100vw - 24px)); box-shadow: 0 12px 40px rgba(0, 0, 0, .28); }
+.ask-dlg::backdrop { background: rgba(0, 0, 0, .4); }
+.ask-msg { margin: 0 0 14px; white-space: pre-line; line-height: 1.45; }
+.ask-btns { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .mm-dlg-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 10px; font-size: 16px; }
 .mm-form { gap: 10px; }
 .mm-form p { margin: 0; }

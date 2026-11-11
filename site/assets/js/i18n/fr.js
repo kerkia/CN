@@ -784,6 +784,7 @@ export default {
   "err.load": "Impossible de charger les données.", "err.notfound": "Introuvable.",
   "page.methods": "Documentation", "doc.read": "Lire la documentation", "doc.nav": "Documentation des modules", "doc.orgaOff": "Activez Orga (sur ordinateur) pour ouvrir ses pages", "page.all": "Tout afficher", "page.allRows": "Tous", "page.prev": "Précédent", "page.next": "Suivant", "page.of": "sur",
   "misc.yes": "oui", "misc.no": "non", "misc.loading": "Chargement…",
+  "dlg.ok": "OK", "dlg.cancel": "Annuler",
 
   // accounts: e-mail + password
   "ac.email": "Adresse e-mail", "ac.password": "Mot de passe", "ac.password2": "Confirmer le mot de passe",
@@ -1541,6 +1542,7 @@ export default {
   "sh.ocad.err.unreadable": "{f} : ce n'est pas une carte OCAD ou OpenOrienteering Mapper lisible.",
   "sh.ocad.err.noCourses": "{f} : ce fichier ne contient aucun circuit. Seuls les fichiers de traçage OCAD contiennent leurs circuits ; pour une carte seule, tracez les circuits dans « Tracer » puis publiez-les vers l'analyse, ou ajoutez-les un par un avec une image de la carte.",
   "sh.ocad.err.noGeo": "{f} : ce fichier n'est pas géoréférencé, et l'analyse a besoin de savoir où est la carte. Géoréférencez-le dans OCAD, ou ajoutez les circuits un par un avec un KMZ ou un world file.",
+  "sh.ocad.err.needMapAny": "{f} : ce fichier ne contient que les circuits, pas la carte. Déposez aussi le fichier de la carte de fond (OCAD ou Mapper).", "sh.ocad.err.blank": "Les circuits sortiraient sans carte, avec le seul tracé. Déposez aussi le fichier de la carte de fond (OCAD ou Mapper) : une analyse sans carte ne sert à rien.", "sh.e.blankMap": "Cette carte est presque vide : on n'y voit que le tracé, pas la carte de fond. Une analyse sans carte ne sert à rien : déposez la carte avant de créer le circuit.",
   "sh.ocad.err.needMap": "{f} : ce fichier de traçage dessine ses circuits sur la carte « {map} ». Déposez aussi ce fichier de carte.",
   "sh.ocad.col.course": "Circuit du fichier",
   "sh.ocad.replaces": "remplace le circuit du même nom",

@@ -731,6 +731,13 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
 
 ## Conventions and gotchas
 
+- **No `confirm()` or `alert()` of the browser** in new code (owner, 2026-11-11: after a few dialogs in a row a browser may stop
+  showing them — « don't let this site show more dialogs » — and `confirm()` answers « no » at once: removing a map analysis's
+  circuits, then the analysis itself, did nothing). `askbox.js` `confirmBox(message, { ok })` (a promise of true/false, the
+  confirming button worded as the action) and `alertBox(message)` draw them in the page; it answers from its buttons, Escape and
+  a click beside it, never waiting for the dialog's « close » event (not fired in a page that is not drawn). The analyses' pages
+  (`shared.js`, `sharedviews.js`, `mapanalysis.js`) use it; Mes cartes, Santé's authoring, the admin page and a few others still call
+  the browser's.
 - Commit messages: a short title, a body explaining why, ending with the `Co-Authored-By` line the session
   provides. Commit and push only when the owner asks or has agreed to the change; usually: implement locally,
   test, then commit, push and confirm the CI run and the live site.
@@ -2412,6 +2419,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   editor's « Importer des circuits », not twice at the same place; none when the course file is the map: drawn with it). Not done:
   variations keep their first branch only (listed in the dialog; none in the test file), OCAD's circle gaps are left out (classes,
   the advanced level's, for everyone since 2026-11-08), a single file holding both map and courses not met yet.
+  **A courses file holds its own map only with 50 objects or more outside the 7xx symbols** (`vmap/ocad.js holdsMap`, used by
+  `circuits.readCourseFiles` and the Tracer's `ocadCourses`; owner, 2026-11-11: « nuit SO P.ocd » had two stray objects, was taken as
+  its own map, and the analysis's circuits came out as white sheets with the overprint, the background map dropped beside it
+  ignored): another OCAD/Mapper file dropped with more map objects is the map (the template's by name, else the fullest), else
+  « needMap » (`sh.ocad.err.needMapAny` when no template is named). **No circuit of a map analysis is saved on a nearly blank map**
+  (`shared.js nearlyBlank`: under 3 % of pixels neither paper nor purple, read at 1600 px; the blank circuits measured 0.3-0.7 %,
+  the Desquinemarre map 19-24 %): the OCAD import checks its first circuit, the circuit editor a new map (`sh.ocad.err.blank`,
+  `sh.e.blankMap`).
 - **Analyse multi, the owner's review of 2026-11-04** (`pages/shared.js`): the left panel opens on its first tab, « Circuits »
   (`sh.tab.circuits`): the circuit is a drop-down at its top (each with its number of tracks; no chips by the title), the runners'
   list names its columns (Voir, Coureur, Suivre, Temps) instead of a sentence. **First visit**: an account allowed to add a track

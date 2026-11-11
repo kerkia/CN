@@ -9,6 +9,9 @@ import { SymPath, PathWithHoles, K, FLAG_LEFT, FLAG_RIGHT, FLAG_MAIN } from "./s
 import { t } from "../lang.js";
 
 export const isOcad = (u8) => u8.length > 4 && u8[0] === 0xad && u8[1] === 0x0c;
+/** Whether a file read holds a map of its own, not only courses: a courses file's few objects outside the 7xx symbols (a title, a
+ *  frame, two stray objects in « nuit SO P.ocd », 2026-11-11) do not make one. */
+export const holdsMap = (map) => (map?.mapObjects || 0) >= 50;
 
 const cp1252 = new TextDecoder("windows-1252");
 let utf8 = null;

@@ -78,12 +78,17 @@ export async function readCourseFiles(files) {
   const course = read.find((x) => x.src.vmap.courseSetting?.courses?.length);
   if (!course) throw fail("noCourses");
   const base = (n) => String(n || "").split(/[\\/]/).pop().toLowerCase();
-  let map = course;
-  if (!(course.src.vmap.mapObjects > 0)) {
-    const tpl = (course.src.vmap.templates || []).find((x) => /\.(ocd|omap|xmap)$/i.test(x.file));
-    map = read.find((x) => x !== course && tpl && base(x.f.name) === base(tpl.file)) || read.find((x) => x !== course);
-    if (!map) throw Object.assign(fail("needMap"), { name: tpl ? tpl.file.split(/[\\/]/).pop() : "" });
-  }
+  // the map: the background file dropped with it — the template's by name, else the one with most of a map — when it holds more
+  // of a map than the courses file; else the courses file itself only when it really holds a map (owner, 2026-11-11: « nuit SO
+  // P.ocd » had two stray objects outside the 7xx symbols, was taken as its own map, and every circuit came out as a white sheet
+  // with the overprint, the background map dropped beside it ignored)
+  const tpl = (course.src.vmap.templates || []).find((x) => /\.(ocd|omap|xmap)$/i.test(x.file));
+  const own = course.src.vmap.mapObjects || 0;
+  const others = read.filter((x) => x !== course && (x.src.vmap.mapObjects || 0) > own)
+    .sort((a, b) => (b.src.vmap.mapObjects || 0) - (a.src.vmap.mapObjects || 0));
+  let map = others.find((x) => tpl && base(x.f.name) === base(tpl.file)) || others[0] || null;
+  if (!map && (await import("./vmap/ocad.js")).holdsMap(course.src.vmap)) map = course;
+  if (!map) throw Object.assign(fail("needMap"), { name: tpl ? tpl.file.split(/[\\/]/).pop() : "" });
   const { fromOcad, importInto } = await import("./iofin.js");
   const data = fromOcad(course.src.vmap.courseSetting);
   const src = map.src;

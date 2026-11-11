@@ -16,6 +16,7 @@ import * as agendaMap from "../agendamap.js";
 import { getProv, clock } from "./provisional.js";
 import { replaceQuery } from "../app.js";
 import * as SK from "../trace/solokeep.js";
+import { confirmBox } from "../askbox.js";
 
 // the page's address since 2026-11-07 (owner: « Analyse » has been its name since the 5th); #/analyse-carte still opens it
 const HOME = "#/analyses";
@@ -243,8 +244,9 @@ export async function render(main, r) {
       } catch (err) { console.error(err); $("#ma-solo-note").textContent = t("ma.solo.renErr"); $$("button", form).forEach((x) => { x.disabled = false; }); }
     });
     $("#ma-solo-del").addEventListener("click", async (ev) => {
-      if (!confirm(t("ma.solo.delete.confirm", { name: e.name }))) return;
-      ev.currentTarget.disabled = true;
+      const btn = ev.currentTarget;
+      if (!(await confirmBox(t("ma.solo.delete.confirm", { name: e.name })))) return;
+      btn.disabled = true;
       try {
         await SK.remove(a.id);
         all.splice(all.indexOf(e), 1);

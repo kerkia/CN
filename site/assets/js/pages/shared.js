@@ -54,6 +54,7 @@ import * as phone from "../phonelink.js";
 import { replaceQuery } from "../app.js";
 import { clubAsk } from "./mapanalysis.js";
 import { takeInbox } from "../pwa.js";
+import { confirmBox, alertBox } from "../askbox.js";
 
 const ORG_ROUTE = "#/orga-analyses";                     // the organisers' page: competitions and trainings in one list
 /** The club number (4 digits) of a race's organiser ("0109 - O'BUGEY"), as the server's _lib/club.js. */
@@ -316,7 +317,7 @@ async function orgListPage(main, query = {}) {
       const b = $("#sh-go-open");
       b.disabled = true;
       try { const r = await api("", { method: "POST", body: { kind: "race", race: x.key, title: x.name, date: x.date, vis: "public", via: "list" } }); location.hash = `${ORG_ROUTE}?id=${r.id}`; }
-      catch (e) { b.disabled = false; alert(errText(e)); }
+      catch (e) { b.disabled = false; alertBox(errText(e)); }
     } });
   openList.draw();
 
@@ -564,7 +565,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
     viewer?.pause?.();                                     // (pausing writes the replay's state into the address)
     const q = Object.fromEntries(new URLSearchParams(location.hash.split("?")[1] || ""));
     const before = new Set(data.traces.map((x) => `${x.course}:${x.uid}`));
-    try { data = await api(`/${id}`, { key: keyOf(id) }); } catch (e) { alert(errText(e)); return; }
+    try { data = await api(`/${id}`, { key: keyOf(id) }); } catch (e) { alertBox(errText(e)); return; }
     // the runners shown kept, the new ones shown too
     if (q.show) q.show = [q.show, ...data.traces.filter((x) => x.course === courseN && !before.has(`${x.course}:${x.uid}`)).map((x) => x.uid)].join(",");
     freshSig = ""; polled = Date.now(); notice();
@@ -888,10 +889,10 @@ async function managePage(main, id, data, race) {
       <div class="row sh-s-saverow"><button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div></div>`;
     const put = async (body, note) => {
       try { const r = await api(`/${id}`, { method: "PUT", body, key: keyOf(id) }); Object.assign(A, r.analysis); if (note) $(note).textContent = t("sh.saved"); head(); pubCard(); optsCard(); statsCard(); }
-      catch (e) { const el = note ? $(note) : null; if (el) el.textContent = errText(e); else alert(errText(e)); }
+      catch (e) { const el = note ? $(note) : null; if (el) el.textContent = errText(e); else alertBox(errText(e)); }
     };
     $("#sh-m-publish")?.addEventListener("click", () => put({ draft: false }));
-    $("#sh-m-unpublish")?.addEventListener("click", () => { if (confirm(t("sh.m.unpublish.confirm"))) put({ draft: true }); });
+    $("#sh-m-unpublish")?.addEventListener("click", async () => { if (await confirmBox(t("sh.m.unpublish.confirm"), { ok: t("sh.m.unpublish") })) put({ draft: true }); });
     $("#sh-s-save").addEventListener("click", () => {
       const body = { title: $("#sh-s-title").value, date: $("#sh-s-date").value, vis: $("#sh-s-vis").value, visitors: $("#sh-s-vis").value === "public" && $("#sh-s-visitors").checked };
       const org = $("#sh-s-org").value.trim();
@@ -942,9 +943,9 @@ async function managePage(main, id, data, race) {
     });
     $$("[data-del]", box).forEach((b) => b.addEventListener("click", async () => {
       const n = Number(b.dataset.del), s = per.get(n);
-      if (!confirm(s?.traces ? tn("sh.m.remove.traces", s.traces) : t("sh.course.remove.confirm"))) return;
+      if (!(await confirmBox(s?.traces ? tn("sh.m.remove.traces", s.traces) : t("sh.course.remove.confirm"), { ok: t("sh.remove") }))) return;
       try { await api(`/${id}`, { method: "PUT", body: { courses: A.courses.filter((c) => c.n !== n) }, key: keyOf(id) }); reload(); }
-      catch (e) { alert(errText(e)); }
+      catch (e) { alertBox(errText(e)); }
     }));
     const zone = $("#sh-drop", box);
     const open = (list) => {
@@ -1010,7 +1011,7 @@ async function managePage(main, id, data, race) {
   }
 
   async function reload() {
-    try { data = await api(`/${id}`, { key: keyOf(id) }); } catch (e) { alert(errText(e)); return; }
+    try { data = await api(`/${id}`, { key: keyOf(id) }); } catch (e) { alertBox(errText(e)); return; }
     Object.assign(A, data.analysis);
     if (!A.courses.some((c) => c.n === sel)) sel = A.courses[A.courses.length - 1]?.n ?? null;
     editing(false); head(); pubCard(); coursesCard(); optsCard(); statsCard(); showMap(); loadStats(); thumbsDue();
@@ -1034,8 +1035,8 @@ async function managePage(main, id, data, race) {
     } finally { thumbing = false; }
   }
   $("#sh-delete").addEventListener("click", async () => {
-    if (!confirm(t("sh.delete.confirm"))) return;
-    try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ORG_ROUTE; } catch (e) { alert(errText(e)); }
+    if (!(await confirmBox(t("sh.delete.confirm"), { ok: t("sh.delete") }))) return;
+    try { await api(`/${id}`, { method: "DELETE", key: keyOf(id) }); location.hash = ORG_ROUTE; } catch (e) { alertBox(errText(e)); }
   });
   head(); pubCard(); coursesCard(); optsCard(); statsCard(); showMap(); loadStats(); thumbsDue();
   return { title: A.title, cleanup: () => mv.destroy() };
@@ -1092,7 +1093,8 @@ async function ocadImport(box, ctx, preset = null) {
       drawList();
     } catch (e) {
       const f = got.map((x) => x.name).join(", ");
-      state.textContent = ["unreadable", "noCourses", "noGeo", "needMap"].includes(e.code) ? t(`sh.ocad.err.${e.code}`, { f, map: e.name || "?" }) : `${f} — ${e.message || e}`;
+      const code = e.code === "needMap" && !e.name ? "needMapAny" : e.code;
+      state.textContent = ["unreadable", "noCourses", "noGeo", "needMap", "needMapAny"].includes(code) ? t(`sh.ocad.err.${code}`, { f, map: e.name || "?" }) : `${f} — ${e.message || e}`;
     }
   };
   $("#sh-o-in").addEventListener("change", (e) => { take(e.target.files); e.target.value = ""; });
@@ -1119,6 +1121,12 @@ async function ocadImport(box, ctx, preset = null) {
         const old = byName.get(nm(d.name)), n = old ? old.n : next++;
         const c = await read.C.circuitOf(read.E, d, 150);
         if (c.blob.size > MAX_MAP) { $("#sh-o-go").disabled = false; note.textContent = t("sh.e.tooBig", { mb: Math.round(MAX_MAP / 1048576) }); return; }
+        // a map with nothing but the course on it is no map: nothing is saved (the circuits share one map, the first tells)
+        if (j === 0) {
+          const img = await createImageBitmap(c.blob);
+          const blank = nearlyBlank(img); img.close?.();
+          if (blank) { $("#sh-o-go").disabled = false; note.textContent = t("sh.ocad.err.blank"); return; }
+        }
         await api(`/${id}/map/${n}`, { method: "PUT", body: c.blob, type: "image/png", key: keyOf(id) });
         // the route choices' layers from the OCAD map's symbols (owner, 2026-11-05: exact, where the image's colours only suggest)
         const mv = Date.now();
@@ -1207,11 +1215,11 @@ async function editor(box, ctx) {
         <button type="button" class="btn btn-sm" id="sh-e-undo">${t("an.cal.undo")}</button>
         <button type="button" class="btn btn-sm" id="sh-e-clear">${t("an.cal.clear")}</button></div>
       <ol class="sh-e-list">${st.controls.map((p) => html`<li>${p.kind === "start" ? t("an.start") : p.kind === "finish" ? t("an.finish") : p.label}${p.code ? html` <span class="muted">${p.code}</span>` : ""}</li>`)}</ol>`;
-    $("#sh-e-click").addEventListener("click", () => { st.clicking = !st.clicking; if (st.clicking && !confirmClear()) st.clicking = false; side(); });
+    $("#sh-e-click").addEventListener("click", async () => { st.clicking = !st.clicking; if (st.clicking && !(await confirmClear())) st.clicking = false; side(); });
     $("#sh-e-undo").addEventListener("click", () => { st.controls.pop(); if (st.clicking) relabel(); labels(); side(); mv.draw(); });
     $("#sh-e-clear").addEventListener("click", () => { st.controls = []; side(); mv.draw(); });
   }
-  const confirmClear = () => { if (st.controls.length && !confirm(t("sh.e.clear.confirm"))) return false; st.controls = []; mv.draw(); return true; };
+  const confirmClear = async () => { if (st.controls.length && !(await confirmBox(t("sh.e.clear.confirm")))) return false; st.controls = []; mv.draw(); return true; };
   const labels = () => { let k = 0; st.controls.forEach((p) => { p.label = p.kind === "control" ? String(++k) : ""; }); };
   const files = () => { $("#sh-e-files").textContent = Object.values(st.files).filter(Boolean).join(" · "); };
 
@@ -1354,6 +1362,7 @@ async function editor(box, ctx) {
     const note = $("#sh-e-note");
     labels();
     if (!st.image) return (note.textContent = t("sh.e.noMap"));
+    if ((st.mapFile || !course) && nearlyBlank(st.image)) return (note.textContent = t("sh.e.blankMap"));
     if (!validGeo(st.geo)) return (note.textContent = t("sh.e.needGeo"));
     if (st.controls.length < 2) return (note.textContent = t("sh.e.noCtrls"));
     if (st.mapFile && !$("#sh-e-consent").checked) return (note.textContent = t("sh.e.consentNeeded"));
@@ -1384,6 +1393,28 @@ async function editor(box, ctx) {
       onChange();
     } catch (e) { note.textContent = errText(e); }
   });
+}
+
+/** Whether a map image is nearly blank: under 3 % of its pixels neither paper white nor the course's purple (owner, 2026-11-11:
+ *  circuits made from an OCAD courses file without its background map were white sheets with the overprint — 0.3-0.7 % of other
+ *  ink; the club's Desquinemarre map with its course 19-24 %). Read at 1600 px at most. */
+function nearlyBlank(img) {
+  const w0 = img.width, h0 = img.height;
+  if (!w0 || !h0) return true;
+  const k = Math.min(1, 1600 / Math.max(w0, h0)), w = Math.max(1, Math.round(w0 * k)), h = Math.max(1, Math.round(h0 * k));
+  const cv = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : Object.assign(document.createElement("canvas"), { width: w, height: h });
+  const g = cv.getContext("2d", { willReadFrequently: true });
+  g.fillStyle = "#fff"; g.fillRect(0, 0, w, h);                            // transparent counts as paper
+  g.drawImage(img, 0, 0, w, h);
+  const d = g.getImageData(0, 0, w, h).data;
+  let ink = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], gg = d[i + 1], b = d[i + 2];
+    if (Math.min(r, gg, b) > 225) continue;                               // paper
+    if ((r + b) / 2 - gg > 15 && Math.abs(r - b) < 70) continue;           // the course's purple and its soft edges
+    ink++;
+  }
+  return ink < 0.03 * w * h;
 }
 
 /** The course drawn over the map: the start triangle, the circles, the finish's double circle, the legs, the numbers. */
@@ -2039,15 +2070,15 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     if (you.visitor) return;
     $("#sh-mine-vis")?.addEventListener("change", async (e) => {
       try { const r = await api(`/${id}/trace/${course.n}`, { method: "PATCH", body: { visitors: e.target.checked }, key: keyOf(id) }); myRun().visitors = !!r.visitors; }
-      catch (err) { e.target.checked = !e.target.checked; alert(errText(err)); }
+      catch (err) { e.target.checked = !e.target.checked; alertBox(errText(err)); }
     });
     $("#sh-note-save")?.addEventListener("click", () => saveNote($("#sh-note").value));
-    $("#sh-rm")?.addEventListener("click", async () => { if (!confirm(t("sh.trace.remove.confirm"))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); await ownDel(ownKey(id, course.n)); reload(); } catch (e) { alert(errText(e)); } });
+    $("#sh-rm")?.addEventListener("click", async () => { if (!(await confirmBox(t("sh.trace.remove.confirm"), { ok: t("sh.remove") }))) return; try { await api(`/${id}/trace/${course.n}`, { method: "DELETE", key: keyOf(id) }); await ownDel(ownKey(id, course.n)); reload(); } catch (e) { alertBox(errText(e)); } });
     $("#sh-test-add")?.addEventListener("click", () => $("#sh-test-file").click());
     $("#sh-test-file")?.addEventListener("change", (e) => { const fs = [...e.target.files]; e.target.value = ""; if (fs.length) uploadTests(fs); });
     $("#sh-test-rm")?.addEventListener("click", async () => {
-      if (!confirm(t("sh.test.remove.confirm", { n: myTests().length }))) return;
-      try { await api(`/${id}/trace/${course.n}/tests`, { method: "DELETE", key: keyOf(id) }); reload(); } catch (e) { alert(errText(e)); }
+      if (!(await confirmBox(t("sh.test.remove.confirm", { n: myTests().length }), { ok: t("sh.remove") }))) return;
+      try { await api(`/${id}/trace/${course.n}/tests`, { method: "DELETE", key: keyOf(id) }); reload(); } catch (e) { alertBox(errText(e)); }
     });
   }
   // an administrator's test traces: uid 1e9 + account × 1000 + k (api/analyses), each file a runner « <name> #k »
@@ -2105,7 +2136,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
       } catch (e) { errs.push(`${t("ui.colon", { a: file.name })} ${e.code ? errText(e) : e.local ? e.message : t(e.message === "time" ? "an.err.time" : "an.err.gpx")}`); }
     }
     const elsewhere = [...placed].filter(([name]) => name !== course.name);
-    if (errs.length || elsewhere.length) alert([t("sh.test.done", { ok, n: files.length }), ...[...placed].map(([name, n]) => t("sh.test.placed", { course: name, n })), ...errs].join("\n"));
+    if (errs.length || elsewhere.length) alertBox([t("sh.test.done", { ok, n: files.length }), ...[...placed].map(([name, n]) => t("sh.test.placed", { course: name, n })), ...errs].join("\n"));
     // none on the circuit shown: the page goes to the one that got most
     if (ok) reload(placed.has(course.name) ? undefined : A.courses.find((c) => c.name === [...placed].sort((a, b) => b[1] - a[1])[0][0])?.n);
     else boxU.innerHTML = "";
@@ -2895,7 +2926,7 @@ async function replay(box, { A, id, course, race, init = {}, traces, allTraces =
     tabOk: (k) => (score ? k === "splits" : k !== "legs" && (k !== "exercises" || A.kind === "club") && (k !== "variants" || variantsOn)), score, visitsOf, scoreN,
     exercises: () => exercises, exScores, exWidth, get draft() { return draft; },
     setDraft: (d) => { draft = d; mv.draw(); bottom.draw(); },
-    setExWidth: (e, w, save) => { if (save) { saveExercises(exercises.map((x) => (x.id === e.id ? { ...x, w } : x))).then(() => { delete exW[e.id]; bottom.draw(); }).catch((err) => alert(errText(err))); } exW[e.id] = w; mv.draw(); },
+    setExWidth: (e, w, save) => { if (save) { saveExercises(exercises.map((x) => (x.id === e.id ? { ...x, w } : x))).then(() => { delete exW[e.id]; bottom.draw(); }).catch((err) => alertBox(errText(err))); } exW[e.id] = w; mv.draw(); },
     saveExercises: async (list) => { await saveExercises(list); mv.draw(); bottom.draw(); },
     pickExercise: (e) => {
       state.ex = e?.id || null;

@@ -246,8 +246,8 @@ const isPpenFile = (f) => /\.(ppen|xml)$/i.test(f.name);
  *  course. Classes, the advanced level's, for administrators only. */
 async function ocadCourses(file) {
   if (!/\.ocd$/i.test(file.name)) return null;
-  let map;
-  try { ({ map } = (await import("../tracer/vmap/ocad.js")).readOcad(new Uint8Array(await file.arrayBuffer()))); } catch (e) { return null; }
+  let map, holdsMap;
+  try { const O = await import("../tracer/vmap/ocad.js"); holdsMap = O.holdsMap; ({ map } = O.readOcad(new Uint8Array(await file.arrayBuffer()))); } catch (e) { return null; }
   const cs = map.courseSetting;
   if (!cs?.courses.length) return null;
   const iof = await import("../tracer/iofin.js");
@@ -256,7 +256,7 @@ async function ocadCourses(file) {
   const ev = M.newEvent({ lang: lang(), map: { kind: "none", scale: map.scale || 10000 } });
   ev.title = file.name.replace(/\.ocd$/i, "");
   iof.importInto(ev, got, { fileMm: false });
-  const self = map.mapObjects > 0;
+  const self = holdsMap(map);
   // its layout images (logos): drawn with the map when the file is the map, else image objects of the event where OCAD shows them
   const logos = self ? 0 : await iof.addLayoutImages(ev, map, { fileMm: false });
   const tpl = (map.templates || []).find((x) => /\.(ocd|omap|xmap)$/i.test(x.file));
