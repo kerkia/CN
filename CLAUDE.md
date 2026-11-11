@@ -1102,10 +1102,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   standing on a map's path junction, the path drawn on the ground lay further on): `ground.jpg` is an ImageBitmap, which three.js never
   flips, so its first row (north) is at v = 0 — `build()`'s ground uv is `z / H`. **« Avatar »** (Coach › Virtually's tab between
   Analyse and Orga; owner, 2026-11-11; `games/vavatar.js`): the runner seen in the race — woman or man (narrower shoulders, wider hips,
-  a little smaller), seven skin tones, eight hair colours, short hair, a ponytail (swinging with the stride) or a bun, shorts or long
-  trousers, and the shirt's, the shorts', the socks' and the shoes' colours (14 swatches and any colour); « Au hasard », « Par
-  défaut »; kept in this browser (`localStorage ocn.vt.avatar`, `loadAvatar`), shown turning in a small scene standing, walking or
-  running; `runnerFigure(T, look)` takes it (`mount`'s `opts.avatar` else the stored one). The built-in maps also serve `map.webp`
+  a little smaller), eight skin tones (the darkest added the same evening, owner), eight hair colours, short hair, a ponytail (swinging
+  with the stride) or a bun, and **two costumes** (owner, the same evening: « orienteering socks go up to the knee, while shorts go
+  down to the knee… in sprint shorts are shorter and socks shorter »): « Forêt » — shorts down to the knee and socks up to it, no
+  skin showing, or long trousers — and « Sprint » — short shorts and low socks —, each with its own colours of shirt, shorts, socks
+  and shoes (14 swatches and any colour; `loadAvatars` keeps { …, forest: { legs, … }, sprint: { … } }, an avatar kept before
+  giving its colours to both); the race's discipline chooses (`mount`: ISSprOM or 1:5000 and larger → `loadAvatar("sprint")`;
+  `runnerFigure` legs "knee" | "long" | "sprint"); « Au hasard », « Par défaut »; kept in this browser (`localStorage
+  ocn.vt.avatar`), shown turning in a small scene standing, walking or running, the costume being edited. The built-in maps also serve `map.webp`
   (a LiDAR race kept as a map: `api/virtual` `FILE`).
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`

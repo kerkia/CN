@@ -250,7 +250,6 @@ export default {
   "va.hairStyle.ponytail": "Ponytail",
   "va.hairStyle.bun": "Bun",
   "va.legs": "Legs",
-  "va.legs.shorts": "Shorts",
   "va.legs.long": "Long trousers",
   "va.shirt": "Shirt",
   "va.shorts": "Shorts or trousers",
@@ -272,4 +271,10 @@ export default {
   "vt.map.orient.set.leg": "Map: the leg up",
   "vt.map.orient.set.run": "Map: the way you run up",
   "vt.keys.orient": "O: map north up, turned to the leg or to the way you run",
+  "va.kit": "Kit",
+  "va.kit.forest": "Forest",
+  "va.kit.sprint": "Sprint",
+  "va.kit.note.forest": "Worn in forest races. Knee-length shorts and knee-high socks, no bare skin, or long trousers.",
+  "va.kit.note.sprint": "Worn in sprint races. Short shorts and low socks.",
+  "va.legs.knee": "Knee-length shorts",
 };

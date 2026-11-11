@@ -103,7 +103,9 @@ export function mount(root, raceId, opts = {}) {
     const SUN = new T.Vector3(...(B.sun || [-0.5, 0.6, 0.6])).normalize();
     const world = new World(T, data, scene, renderer);
     world.addCourse(course);
-    const me = runnerFigure(T, opts.avatar || loadAvatar()); scene.add(me);
+    // the runner in the avatar's costume for the race's discipline: a sprint map (ISSprOM, or 1:5000 and larger) the sprint's
+    const sprint = /ISSprOM/i.test(race.std || "") || (race.scale && race.scale <= 5000);
+    const me = runnerFigure(T, opts.avatar || loadAvatar(sprint ? "sprint" : "forest")); scene.add(me);
     // ---- the runner's state ----
     const st = { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, pitch: -0.08, next: 1, splits: [], track: [], dist: 0,
       view: "third", speedX: 1, maxSpeedX: 1, speed: 0, lastTrack: -1, msgUntil: 0,

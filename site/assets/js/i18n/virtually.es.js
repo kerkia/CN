@@ -250,7 +250,6 @@ export default {
   "va.hairStyle.ponytail": "Coleta",
   "va.hairStyle.bun": "Moño",
   "va.legs": "Piernas",
-  "va.legs.shorts": "Pantalón corto",
   "va.legs.long": "Pantalón largo",
   "va.shirt": "Camiseta",
   "va.shorts": "Pantalón",
@@ -272,4 +271,10 @@ export default {
   "vt.map.orient.set.leg": "Mapa: el tramo arriba",
   "vt.map.orient.set.run": "Mapa: el sentido de carrera arriba",
   "vt.keys.orient": "O: mapa al norte, orientado al tramo o en el sentido de carrera",
+  "va.kit": "Equipación",
+  "va.kit.forest": "Bosque",
+  "va.kit.sprint": "Sprint",
+  "va.kit.note.forest": "Para las carreras en bosque. Pantalón hasta la rodilla y calcetines altos, sin piel a la vista, o pantalón largo.",
+  "va.kit.note.sprint": "Para las carreras de sprint. Pantalón corto y calcetines bajos.",
+  "va.legs.knee": "Pantalón hasta la rodilla",
 };

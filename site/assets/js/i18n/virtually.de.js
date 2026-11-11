@@ -250,7 +250,6 @@ export default {
   "va.hairStyle.ponytail": "Pferdeschwanz",
   "va.hairStyle.bun": "Dutt",
   "va.legs": "Beine",
-  "va.legs.shorts": "Kurze Hose",
   "va.legs.long": "Lange Hose",
   "va.shirt": "Trikot",
   "va.shorts": "Hose",
@@ -272,4 +271,10 @@ export default {
   "vt.map.orient.set.leg": "Karte: die Teilstrecke oben",
   "vt.map.orient.set.run": "Karte: die Laufrichtung oben",
   "vt.keys.orient": "O: Karte nach Norden, nach der Teilstrecke oder in Laufrichtung",
+  "va.kit": "Ausrüstung",
+  "va.kit.forest": "Wald",
+  "va.kit.sprint": "Sprint",
+  "va.kit.note.forest": "Getragen bei Waldläufen. Knielange Hose und Kniestrümpfe, keine nackte Haut, oder eine lange Hose.",
+  "va.kit.note.sprint": "Getragen bei Sprints. Kurze Hose und kurze Socken.",
+  "va.legs.knee": "Knielange Hose",
 };

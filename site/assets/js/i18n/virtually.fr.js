@@ -250,7 +250,6 @@ export default {
   "va.hairStyle.ponytail": "Queue de cheval",
   "va.hairStyle.bun": "Chignon",
   "va.legs": "Jambes",
-  "va.legs.shorts": "Short",
   "va.legs.long": "Pantalon long",
   "va.shirt": "Maillot",
   "va.shorts": "Short ou pantalon",
@@ -272,4 +271,10 @@ export default {
   "vt.map.orient.set.leg": "Carte : l'interposte en haut",
   "vt.map.orient.set.run": "Carte : le sens de course en haut",
   "vt.keys.orient": "O : carte orientée au nord, sur l'interposte ou dans le sens de course",
+  "va.kit": "Tenue",
+  "va.kit.forest": "Forêt",
+  "va.kit.sprint": "Sprint",
+  "va.kit.note.forest": "Portée dans les courses en forêt. Short au genou et chaussettes montantes : pas de peau à nu, ou un pantalon long.",
+  "va.kit.note.sprint": "Portée dans les courses de sprint. Short court et chaussettes basses.",
+  "va.legs.knee": "Short au genou",
 };
