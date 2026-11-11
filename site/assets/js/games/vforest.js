@@ -1,0 +1,291 @@
+// « Virtually »'s look (games/vworld.js): everything drawn here is procedural — canvases and geometry made in the browser,
+// no image or model from anywhere else. Leaf and needle cards for the crowns, bark, the forest floor's litter and its relief
+// (a normal map), grass tufts, a sky dome with the sun's glow, the wind's sway, and impostors (a tree rendered once to a
+// texture, drawn as two crossed cards) for the trees far from the runner. (Owner, 2026-11-11: « a lot more realistic ».)
+
+/** A seeded generator (mulberry32). */
+export function rng(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+const canvas = (w, h = w) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return [c, c.getContext("2d")]; };
+const grey = (v, a = 1) => `rgba(${v | 0},${v | 0},${v | 0},${a})`;
+
+/** A cluster of broad leaves on a transparent ground, grey (the instance's colour tints it), darker inside. */
+function leafCanvas(seed) {
+  const S = 256, [c, g] = canvas(S), r = rng(seed);
+  for (let k = 0; k < 520; k++) {
+    // denser toward the middle, the cluster's edge ragged
+    const a = r() * 6.283, d = Math.sqrt(r()) * 0.46 * S * (0.75 + 0.25 * Math.sin(a * 5 + seed));
+    const x = S / 2 + Math.cos(a) * d, y = S / 2 + Math.sin(a) * d * 0.92;
+    const L = 9 + r() * 10, W = L * (0.42 + r() * 0.16), ang = r() * 6.283;
+    const v = 120 + (1 - d / (0.5 * S)) * -40 + r() * 135;
+    g.save(); g.translate(x, y); g.rotate(ang);
+    g.fillStyle = grey(Math.min(255, v)); g.beginPath(); g.ellipse(0, 0, L / 2, W / 2, 0, 0, 6.283); g.fill();
+    g.strokeStyle = grey(Math.min(255, v) * 0.72, 0.8); g.lineWidth = 0.8; g.beginPath(); g.moveTo(-L / 2, 0); g.lineTo(L / 2, 0); g.stroke();
+    g.restore();
+  }
+  // a few twigs
+  g.strokeStyle = grey(70, 0.9); g.lineWidth = 1.6;
+  for (let k = 0; k < 6; k++) { const a = r() * 6.283; g.beginPath(); g.moveTo(S / 2, S / 2); g.lineTo(S / 2 + Math.cos(a) * S * 0.3, S / 2 + Math.sin(a) * S * 0.3); g.stroke(); }
+  return c;
+}
+
+/** A conifer's branch seen from the side: a spray of needles, drooping. */
+function needleCanvas(seed) {
+  const S = 256, [c, g] = canvas(S), r = rng(seed);
+  g.lineCap = "round";
+  for (let b = 0; b < 7; b++) {
+    const y0 = S * (0.2 + b * 0.1), len = S * (0.42 - Math.abs(b - 3) * 0.04);
+    let x = S / 2, y = y0;
+    const steps = 16;
+    for (let s = 0; s < steps; s++) {
+      const side = b % 2 ? 1 : -1, nx = x + side * len / steps, ny = y + (s * 0.35) * (len / steps) / 6;
+      g.strokeStyle = grey(80 + r() * 30); g.lineWidth = 2.2 * (1 - s / steps) + 0.8;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(nx, ny); g.stroke();
+      for (let n = 0; n < 9; n++) {
+        const t = r(), px = x + (nx - x) * t, py = y + (ny - y) * t, a = (r() - 0.5) * 2.2 + (side > 0 ? 0.6 : 2.5), l = 7 + r() * 9 * (1 - s / steps * 0.5);
+        g.strokeStyle = grey(140 + r() * 115); g.lineWidth = 1.3;
+        g.beginPath(); g.moveTo(px, py); g.lineTo(px + Math.cos(a) * l, py + Math.sin(a) * l + 3); g.stroke();
+      }
+      x = nx; y = ny;
+    }
+  }
+  return c;
+}
+
+/** Bark: vertical furrows and plates, grey (tinted by the instance). */
+function barkCanvas(seed) {
+  const [c, g] = canvas(64, 256), r = rng(seed);
+  g.fillStyle = grey(170); g.fillRect(0, 0, 64, 256);
+  for (let k = 0; k < 90; k++) {
+    const x = r() * 64, y = r() * 256, h = 20 + r() * 70;
+    g.strokeStyle = grey(70 + r() * 60, 0.8); g.lineWidth = 1 + r() * 2.5;
+    g.beginPath(); g.moveTo(x, y); g.bezierCurveTo(x + (r() - 0.5) * 6, y + h / 3, x + (r() - 0.5) * 6, y + 2 * h / 3, x + (r() - 0.5) * 4, y + h); g.stroke();
+    if (r() < 0.3) { g.fillStyle = grey(200 + r() * 55, 0.5); g.fillRect(x - 3, y, 4 + r() * 4, 6 + r() * 12); }
+  }
+  return c;
+}
+
+/** The forest floor: dead leaves, needles, twigs and moss over a mottled ground, grey (multiplies the ground's colours),
+ *  with its heights for the normal map. */
+function litterCanvas(seed) {
+  const S = 512, [c, g] = canvas(S), r = rng(seed);
+  const img = g.createImageData(S, S);
+  // a mottled base: a few octaves of value noise
+  const oct = [[8, 0.5], [32, 0.3], [128, 0.2]].map(([n, a]) => { const v = new Float32Array(n * n); for (let i = 0; i < v.length; i++) v[i] = r(); return [n, a, v]; });
+  const at = (v, n, x, y) => { const fx = x * n / S, fy = y * n / S, i = Math.floor(fx), j = Math.floor(fy), u = fx - i, w = fy - j, I = (p, q) => v[((q % n) + n) % n * n + ((p % n) + n) % n];
+    return (I(i, j) * (1 - u) + I(i + 1, j) * u) * (1 - w) + (I(i, j + 1) * (1 - u) + I(i + 1, j + 1) * u) * w; };
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    let v = 0; for (const [n, a, t] of oct) v += a * at(t, n, x, y);
+    const q = (y * S + x) * 4, k = 120 + v * 90; img.data[q] = img.data[q + 1] = img.data[q + 2] = k; img.data[q + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  // wrapped drawing (the texture tiles)
+  const wrap = (f) => { for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) { g.save(); g.translate(dx, dy); f(); g.restore(); } };
+  for (let k = 0; k < 1400; k++) {
+    const x = r() * S, y = r() * S, a = r() * 6.283, L = 5 + r() * 9, v = 90 + r() * 165;
+    wrap(() => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = grey(v, 0.85); g.beginPath(); g.ellipse(0, 0, L / 2, L / 4, 0, 0, 6.283); g.fill(); g.restore(); });
+  }
+  for (let k = 0; k < 160; k++) {
+    const x = r() * S, y = r() * S, a = r() * 6.283, L = 14 + r() * 40, v = 50 + r() * 40;
+    wrap(() => { g.strokeStyle = grey(v, 0.9); g.lineWidth = 1 + r() * 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke(); });
+  }
+  return c;
+}
+
+/** A normal map from a grey canvas (its value read as height). */
+function normalCanvas(src, strength = 2.2) {
+  const S = src.width, g0 = src.getContext("2d"), d = g0.getImageData(0, 0, S, S).data, [c, g] = canvas(S), img = g.createImageData(S, S);
+  const h = (x, y) => d[((((y + S) % S) * S + ((x + S) % S)) * 4)] / 255;
+  for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+    const dx = (h(x + 1, y) - h(x - 1, y)) * strength, dy = (h(x, y + 1) - h(x, y - 1)) * strength, l = Math.hypot(dx, dy, 1), q = (y * S + x) * 4;
+    img.data[q] = (-dx / l * 0.5 + 0.5) * 255; img.data[q + 1] = (dy / l * 0.5 + 0.5) * 255; img.data[q + 2] = (1 / l * 0.5 + 0.5) * 255; img.data[q + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  return c;
+}
+
+/** Grass tufts: thin blades from the bottom, a few seed heads. */
+function grassCanvas(seed) {
+  const [c, g] = canvas(128), r = rng(seed);
+  for (let k = 0; k < 46; k++) {
+    const x0 = 20 + r() * 88, h = 50 + r() * 74, lean = (r() - 0.5) * 50, v = 140 + r() * 115;
+    g.strokeStyle = grey(v); g.lineWidth = 1.2 + r() * 1.4;
+    g.beginPath(); g.moveTo(x0, 128); g.quadraticCurveTo(x0 + lean * 0.3, 128 - h * 0.6, x0 + lean, 128 - h); g.stroke();
+  }
+  return c;
+}
+
+/** A fern frond spray (the former sprite, kept for ferns and bracken). */
+function fernCanvas(seed) {
+  const [c, g] = canvas(128), r = rng(seed);
+  for (let f = 0; f < 11; f++) {
+    const a = -1.25 + f * 0.25 + (r() - 0.5) * 0.2, L = 60 + r() * 60;
+    g.strokeStyle = grey(200 + r() * 55); g.lineWidth = 2.2;
+    let x = 64, y = 128;
+    for (let s = 0; s < 12; s++) {
+      const nx = x + Math.sin(a) * L / 12 * (1 + s * 0.06), ny = y - Math.cos(a) * L / 12;
+      g.beginPath(); g.moveTo(x, y); g.lineTo(nx, ny); g.stroke();
+      const w = (12 - s) * 1.1; g.beginPath(); g.moveTo(nx, ny); g.lineTo(nx + Math.cos(a) * w, ny + Math.sin(a) * w - 3); g.moveTo(nx, ny); g.lineTo(nx - Math.cos(a) * w, ny - Math.sin(a) * w - 3); g.stroke();
+      x = nx; y = ny;
+    }
+  }
+  return c;
+}
+
+/** Lichen and grain on stone. */
+function stoneCanvas(seed) {
+  const [c, g] = canvas(128), r = rng(seed);
+  g.fillStyle = grey(175); g.fillRect(0, 0, 128, 128);
+  for (let k = 0; k < 900; k++) { g.fillStyle = grey(110 + r() * 145, 0.5); g.fillRect(r() * 128, r() * 128, 1 + r() * 2, 1 + r() * 2); }
+  for (let k = 0; k < 26; k++) { g.fillStyle = `rgba(${150 + r() * 60 | 0},${170 + r() * 50 | 0},${110 + r() * 40 | 0},0.45)`; g.beginPath(); g.arc(r() * 128, r() * 128, 2 + r() * 7, 0, 6.283); g.fill(); }
+  return c;
+}
+
+export function textures(T, renderer) {
+  const tex = (c, srgb = true, rep = false) => {
+    const t = new T.CanvasTexture(c); if (srgb) t.colorSpace = T.SRGBColorSpace;
+    if (rep) t.wrapS = t.wrapT = T.RepeatWrapping;
+    t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); return t;
+  };
+  const lit = litterCanvas(11);
+  return { leaf: [tex(leafCanvas(3)), tex(leafCanvas(17))], needle: tex(needleCanvas(5)), bark: tex(barkCanvas(7), true, true),
+    litter: tex(lit, false, true), litterN: tex(normalCanvas(lit), false, true), grass: tex(grassCanvas(13)), fern: tex(fernCanvas(5)),
+    stone: tex(stoneCanvas(19)) };
+}
+
+// ---- geometries ----------------------------------------------------------------------------------------------------------------
+/** Merge BufferGeometries (position, normal, uv; indexed or not). */
+export function merge(T, parts) {
+  const pos = [], nor = [], uv = [], idx = []; let base = 0;
+  for (const g of parts) {
+    const p = g.attributes.position, n = g.attributes.normal, u = g.attributes.uv;
+    for (let k = 0; k < p.count; k++) { pos.push(p.getX(k), p.getY(k), p.getZ(k)); nor.push(n.getX(k), n.getY(k), n.getZ(k)); uv.push(u ? u.getX(k) : 0, u ? u.getY(k) : 0); }
+    if (g.index) for (let k = 0; k < g.index.count; k++) idx.push(g.index.getX(k) + base); else for (let k = 0; k < p.count; k++) idx.push(k + base);
+    base += p.count;
+  }
+  const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new T.Float32BufferAttribute(nor, 3));
+  g.setAttribute("uv", new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); return g;
+}
+
+/** A crown of leaf cards inside the unit ellipsoid (x, z in −1…1, y in −1…1): each card faces out from the middle, its
+ *  normals bent outward so that the crown is lit as one soft mass, not as flat cards. */
+export function cardCrown(T, seed, n = 22, ry = 1) {
+  const r = rng(seed), parts = [];
+  for (let k = 0; k < n; k++) {
+    const u = r() * 2 - 1, a = r() * 6.283, s = Math.sqrt(1 - u * u), d = 0.35 + 0.55 * Math.cbrt(r());
+    const c = new T.Vector3(Math.cos(a) * s * d, u * d * ry, Math.sin(a) * s * d), size = 0.85 + r() * 0.45;
+    const p = new T.PlaneGeometry(size, size);
+    const out = c.lengthSq() > 1e-4 ? c.clone().normalize() : new T.Vector3(0, 1, 0);
+    const q = new T.Quaternion().setFromUnitVectors(new T.Vector3(0, 0, 1), out.clone().lerp(new T.Vector3(r() - 0.5, r() - 0.5, r() - 0.5), 0.6).normalize());
+    p.applyQuaternion(q); p.rotateZ(0); p.translate(c.x, c.y, c.z);
+    const P = p.attributes.position, N = p.attributes.normal;
+    for (let i = 0; i < P.count; i++) {
+      const v = new T.Vector3(P.getX(i), P.getY(i) / ry, P.getZ(i)).normalize().lerp(new T.Vector3(0, 1, 0), 0.25).normalize();
+      N.setXYZ(i, v.x, v.y, v.z);
+    }
+    parts.push(p);
+  }
+  return twoSided(T, merge(T, parts));
+}
+
+/** A conifer of needle cards: whorls of branches drooping round the axis, shorter toward the top (unit height 0…1, radius 1). */
+export function cardConifer(T, seed) {
+  const r = rng(seed), parts = [], whorls = 9;
+  for (let w = 0; w < whorls; w++) {
+    const y = 0.06 + (w / whorls) * 0.86, rad = (1 - w / whorls) * 0.95 + 0.08, nb = Math.max(3, Math.round(7 - w * 0.5));
+    for (let b = 0; b < nb; b++) {
+      const a = (b / nb) * 6.283 + r() * 0.5 + w;
+      const p = new T.PlaneGeometry(rad * 1.15, 0.32 + rad * 0.12);
+      p.translate(rad * 0.55, 0, 0); p.rotateZ(-0.12); p.rotateX((r() - 0.5) * 0.9); p.rotateY(-a); p.translate(0, y, 0);
+      const N = p.attributes.normal, P = p.attributes.position;
+      for (let i = 0; i < N.count; i++) { const v = new T.Vector3(P.getX(i), 0.5, P.getZ(i)).normalize(); N.setXYZ(i, v.x, v.y, v.z); }
+      parts.push(p);
+    }
+  }
+  // the top
+  const top = new T.PlaneGeometry(0.22, 0.2).translate(0, 0.96, 0);
+  parts.push(top, top.clone().rotateY(Math.PI / 2));
+  return twoSided(T, merge(T, parts));
+}
+
+/** Crossed cards, unit wide, standing on y = 0 (grass, ferns, impostors). */
+export function crossed(T, n = 3, h = 1) {
+  return twoSided(T, merge(T, Array.from({ length: n }, (_, k) => {
+    const p = new T.PlaneGeometry(1, h).translate(0, h / 2, 0).rotateY((k * Math.PI) / n);
+    const N = p.attributes.normal; for (let i = 0; i < N.count; i++) N.setXYZ(i, 0, 1, 0);   // lit as the ground under them
+    return p;
+  })));
+}
+
+/** Both faces of every triangle, the back one with the same normals (cards lit alike from either side; a material's
+ *  DoubleSide would turn the normals of the face seen from behind and darken half the cards). */
+export function twoSided(T, g) {
+  const idx = g.index.array, n = idx.length, out = new Uint32Array(n * 2);
+  out.set(idx);
+  for (let i = 0; i < n; i += 3) { out[n + i] = idx[i]; out[n + i + 1] = idx[i + 2]; out[n + i + 2] = idx[i + 1]; }
+  g.setIndex(new T.BufferAttribute(out, 1));
+  return g;
+}
+
+// ---- the wind --------------------------------------------------------------------------------------------------------------
+/** Sway a material's vertices with the wind: the higher the vertex (in its own unit), the more it moves; each instance in
+ *  its own phase. `wind` is the shared { value: seconds } uniform. */
+export function sway(material, wind, amount = 0.06, fromY = 0) {
+  const prev = material.onBeforeCompile;
+  material.onBeforeCompile = (sh, r) => {
+    prev?.(sh, r);
+    sh.uniforms.wTime = wind;
+    sh.vertexShader = "uniform float wTime;\n" + sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+        vec2 wOrg = instanceMatrix[3].xz;
+      #else
+        vec2 wOrg = vec2(0.0);
+      #endif
+      float wK = max(position.y - ${fromY.toFixed(2)}, 0.0);
+      float wPh = wTime * 1.3 + wOrg.x * 0.21 + wOrg.y * 0.17;
+      transformed.x += (sin(wPh) + 0.4 * sin(wPh * 2.7 + 1.3)) * ${amount.toFixed(3)} * wK;
+      transformed.z += cos(wPh * 0.8 + 0.7) * ${(amount * 0.7).toFixed(3)} * wK;`);
+  };
+  material.customProgramCacheKey = () => `sway${amount}${fromY}`;
+  return material;
+}
+
+// ---- the sky ---------------------------------------------------------------------------------------------------------------
+/** A dome following the camera: blue above, the haze's colour at the horizon (the fog's), the sun's disc and glow. */
+export function sky(T, sunDir, horizon, zenith) {
+  const mat = new T.ShaderMaterial({
+    side: T.BackSide, depthWrite: false, fog: false,
+    uniforms: { sunDir: { value: sunDir.clone().normalize() }, cH: { value: horizon.clone() }, cZ: { value: zenith.clone() } },
+    vertexShader: "varying vec3 vDir; void main() { vDir = normalize(position); vec4 p = projectionMatrix * modelViewMatrix * vec4(position, 1.0); gl_Position = p.xyww; }",
+    fragmentShader: `uniform vec3 sunDir; uniform vec3 cH; uniform vec3 cZ; varying vec3 vDir;
+      void main() {
+        float h = clamp(vDir.y, -0.1, 1.0);
+        vec3 c = mix(cH, cZ, pow(max(h, 0.0), 0.55));
+        float s = max(dot(normalize(vDir), sunDir), 0.0);
+        c += vec3(1.0, 0.92, 0.75) * (pow(s, 600.0) * 2.5 + pow(s, 40.0) * 0.18 + pow(s, 6.0) * 0.08);
+        gl_FragColor = vec4(c, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }`,
+  });
+  const m = new T.Mesh(new T.SphereGeometry(280, 32, 16), mat);
+  m.frustumCulled = false; m.renderOrder = -1;
+  m.onBeforeRender = (r, s, cam) => m.position.copy(cam.position);
+  return m;
+}
+
+// ---- impostors -------------------------------------------------------------------------------------------------------------
+/** Render a tree (a Group of meshes, standing on y = 0, `h` tall and `w` wide) to a texture from the side, lit as the scene. */
+export function impostor(T, renderer, tree, w, h, lights) {
+  const W = 128, H = Math.round((128 * h) / w / 2) * 2;
+  const rt = new T.WebGLRenderTarget(W, Math.min(512, H), { samples: 4 });   // linear: drawn again through the scene's output
+  const sc = new T.Scene(); sc.add(tree); for (const l of lights) sc.add(l);
+  const cam = new T.OrthographicCamera(-w / 2, w / 2, h, 0, -50, 50); cam.position.set(0, 0, 10); cam.lookAt(0, 0, 0);
+  const prev = { rt: renderer.getRenderTarget(), alpha: renderer.getClearAlpha(), color: renderer.getClearColor(new T.Color()), sh: renderer.shadowMap.enabled };
+  renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.shadowMap.enabled = false; renderer.clear(); renderer.render(sc, cam);
+  renderer.setRenderTarget(prev.rt); renderer.setClearColor(prev.color, prev.alpha); renderer.shadowMap.enabled = prev.sh;
+  return rt.texture;
+}
