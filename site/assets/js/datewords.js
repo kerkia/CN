@@ -1,6 +1,7 @@
 // A date field's day written out in words in the site's language, under the field (owner, 2026-11-11: the browser draws its date
 // fields in its own language's order — 10/11/2026 is 11 October in a browser set to English (US) — so a French reader typed
-// 10/11 for 10 November and saved 11 October, the field showing « 10/11 » again when reopened). The words make the order plain.
+// 10/11 for 10 November and saved 11 October, the field showing « 10/11 » again when reopened). The words make the order plain,
+// whatever order the browser chose.
 import { locale } from "./i18n.js";
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
