@@ -1020,7 +1020,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   cells, 30 949 trees, the map's relief against IGN's: 73 % of contour lines at their exact level, RMS 1.77 m (coarse relief 3.27 m);
   build.py 12 min, most of it reading the point clouds.
   **Races from the LiDAR alone** (owner, 2026-11-11: « not as close to reality as possible, but as close to a good map as possible »;
-  administrators; the study, its pictures and the before/after screenshots in `C:kerkiaOzimutworkstudyirtually-lidar`): `tools/virtually/lidarrace.py <race> <lat> <lon>
+  administrators; the study, its pictures and the before/after screenshots in `C:\kerkia\Ozimut\work\study\virtually-lidar`; Desquinemarre, the same 2 × 2 km
+  from the club's map and from the LiDAR alone, side by side — the geography agrees, the club map alone has the undergrowth,
+  rides, out-of-bounds and small point features): `tools/virtually/lidarrace.py <race> <lat> <lon>
   [size]` — mapgen's tiles (karttapullautin + OpenStreetMap, forest style) for the square, then build.py's inputs made from the same
   sources, so that the forest one runs through is the map one reads: `cls_base.png` from karttapullautin's vegetation raster
   (`.vege.png`: white forest, its greens slow / walk / fight, its yellow rough open), OpenStreetMap's ways and areas as ISOM 2017
