@@ -85,7 +85,7 @@ export class Town {
     }
     for (const w of this.m.walls || []) {
       if (!w.imp) continue;
-      const t = w.kind === "hedge" ? 0.45 : w.kind === "fence" ? 0.08 : 0.16;
+      const t = w.kind === "hedge" ? 0.45 : w.kind === "fence" || w.kind === "net" ? 0.08 : 0.16;
       for (let i = 0; i + 1 < w.pts.length; i++) {
         const [a, b] = [w.pts[i], w.pts[i + 1]];
         put(Math.min(a[0], b[0]) - 1, Math.min(a[1], b[1]) - 1, Math.max(a[0], b[0]) + 1, Math.max(a[1], b[1]) + 1, { seg: [a[0], a[1], b[0], b[1]], t });
@@ -164,7 +164,8 @@ export class Town {
   }
 
   /** The town's ground: the world's own ground material (the aerial photograph, the canopy's shade), its grain drawn by the
-   *  surface (surf.png's codes: 1 asphalt, 2 paving stones, 3 concrete, 4 grass, 5 gravel, 6 forest floor), faded with distance. */
+   *  surface (surf.png's codes: 1 asphalt, 2 paving stones, 3 concrete, 4 grass, 5 gravel, 6 forest floor, 9 clay, 10 synthetic),
+ *  faded with distance. */
   ground(img) {
     const T = this.T, w = this.w, old = w.groundMat;
     const tex = new T.Texture(img); tex.magFilter = tex.minFilter = T.NearestFilter; tex.generateMipmaps = false; tex.colorSpace = T.NoColorSpace;
@@ -256,10 +257,18 @@ export class Town {
     for (const [p, q, kind, h] of list) {
       const ya = w.heightAt(p[0], p[1]), yb = w.heightAt(q[0], q[1]);
       if (kind === "fence") {
-        const L = Math.hypot(q[0] - p[0], q[1] - p[1]), hh = Math.min(2.2, Math.max(1, h));
+        const L = Math.hypot(q[0] - p[0], q[1] - p[1]), hh = Math.min(4, Math.max(1, h));
         for (let s = 0; s <= L; s += 2.5) { const t = L ? s / L : 0, x = p[0] + (q[0] - p[0]) * t, z = p[1] + (q[1] - p[1]) * t, y = ya + (yb - ya) * t; box(x - 0.03, z - 0.03, x + 0.03, z + 0.03, 0.06, y - 0.1, y - 0.1, hh + 0.1, col.fence); }
         fp.push(p[0], ya, p[1], q[0], yb, q[1], q[0], yb + hh, q[1], p[0], ya, p[1], q[0], yb + hh, q[1], p[0], ya + hh, p[1]);
         fu.push(0, 0, L / 0.6, 0, L / 0.6, hh / 0.6, 0, 0, L / 0.6, hh / 0.6, 0, hh / 0.6);
+      } else if (kind === "net") {                                      // a goal's or a tennis net: the wire mesh; a tennis net its tape and posts
+        const L = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        fp.push(p[0], ya, p[1], q[0], yb, q[1], q[0], yb + h, q[1], p[0], ya, p[1], q[0], yb + h, q[1], p[0], ya + h, p[1]);
+        fu.push(0, 0, L / 0.25, 0, L / 0.25, h / 0.25, 0, 0, L / 0.25, h / 0.25, 0, h / 0.25);
+        if (h < 1.3) {
+          box(p[0], p[1], q[0], q[1], 0.03, ya + h - 0.07, yb + h - 0.07, 0.07, [0.95, 0.95, 0.93]);
+          for (const [x, z, y] of [[p[0], p[1], ya], [q[0], q[1], yb]]) box(x - 0.04, z, x + 0.04, z, 0.08, y - 0.05, y - 0.05, 1.12, [0.14, 0.24, 0.18]);
+        }
       } else if (kind === "steps") {                                    // a stairway: treads 0.3 m deep, each a block at its ground's height
         const L = Math.hypot(q[0] - p[0], q[1] - p[1]), n = Math.max(1, Math.round(L / 0.32));
         for (let k = 0; k < n; k++) {
@@ -311,7 +320,7 @@ export class Town {
   }
 }
 
-const PROP_R = { lamp: 0.12, bollard: 0.12, bin: 0.25, postbox: 0.3, column: 0.6, fountain: 1.2, memorial: 0.7, signals: 0.1, cabinet: 0.35, phone: 0.4 };
+const PROP_R = { pole: 0.08, rpole: 0.22, lamp: 0.12, bollard: 0.12, bin: 0.25, postbox: 0.3, column: 0.6, fountain: 1.2, memorial: 0.7, signals: 0.1, cabinet: 0.35, phone: 0.4 };
 
 function segDist(px, pz, ax, az, bx, bz) {
   const dx = bx - ax, dz = bz - az, L = dx * dx + dz * dz;
@@ -328,7 +337,10 @@ function propGeometries(T) {
     const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(P, 3)); g.setAttribute("normal", new T.Float32BufferAttribute(N, 3)); g.setAttribute("color", new T.Float32BufferAttribute(C, 3)); return g;
   };
   const cyl = (r0, r1, h, s = 8) => new T.CylinderGeometry(r0, r1, h, s), bx = (w, h, d) => new T.BoxGeometry(w, h, d);
-  const dark = [0.18, 0.2, 0.22], green = [0.14, 0.26, 0.2], stone = [0.68, 0.65, 0.6], wood = [0.45, 0.32, 0.2];
+  const dark = [0.18, 0.2, 0.22], green = [0.14, 0.26, 0.2], stone = [0.68, 0.65, 0.6], wood = [0.45, 0.32, 0.2], white = [0.95, 0.95, 0.93], steel = [0.55, 0.57, 0.6];
+  const goalGeo = (w, h) => merge([part(cyl(0.06, 0.06, h, 8), white, -w / 2, h / 2), part(cyl(0.06, 0.06, h, 8), white, w / 2, h / 2),
+    part(cyl(0.06, 0.06, w + 0.12, 8).rotateZ(Math.PI / 2), white, 0, h), part(cyl(0.025, 0.025, w, 6).rotateZ(Math.PI / 2), steel, 0, 0.03, -1.6),
+    ...[-w / 2, w / 2].flatMap((x) => [part(cyl(0.025, 0.025, 1.6, 6).rotateX(Math.PI / 2), steel, x, 0.03, -0.8), part(cyl(0.025, 0.025, Math.hypot(1.6, h), 6).rotateX(Math.atan2(1.6, h)), steel, x, h / 2, -0.8)])]);
   return {
     lamp: merge([part(cyl(0.05, 0.08, 4.6), dark, 0, 2.3), part(bx(0.12, 0.08, 0.9), dark, 0, 4.55, 0.4), part(bx(0.3, 0.12, 0.45), [0.85, 0.85, 0.8], 0, 4.5, 0.8)]),
     bench: merge([part(bx(1.7, 0.06, 0.45), wood, 0, 0.45), part(bx(1.7, 0.4, 0.05), wood, 0, 0.75, -0.22), part(bx(0.06, 0.45, 0.45), dark, -0.75, 0.22), part(bx(0.06, 0.45, 0.45), dark, 0.75, 0.22)]),
@@ -350,6 +362,14 @@ function propGeometries(T) {
       part(bx(0.86, 0.44, 0.52), [0.42, 0.5, 0.58], 0, 1.07, -0.05), part(bx(0.88, 0.05, 0.54), [1, 1, 1], 0, 1.31, -0.05),
       part(bx(0.9, 0.08, 0.04), [0.95, 0.92, 0.8], 0, 0.72, 0.5), part(bx(0.9, 0.08, 0.04), [0.7, 0.08, 0.06], 0, 0.72, -0.5),
       ...[[-0.47, 0.32], [0.47, 0.32], [-0.47, -0.32], [0.47, -0.32]].map(([x, z]) => part(cyl(0.3, 0.3, 0.2, 10).rotateZ(Math.PI / 2), [0.06, 0.06, 0.06], x, 0.3, z))]),
+    // sports: a goal (7.32 × 2.44 m; « goal5 » 5 × 2 m), its net drawn as a wall; rugby posts (5.6 m apart, the bar at 3 m, padded);
+    // a multi-sport court's goal with its basket above. Each faces the pitch along +z.
+    goal: goalGeo(7.32, 2.44), goal5: goalGeo(5, 2),
+    rugby: merge([...[-2.8, 2.8].flatMap((x) => [part(cyl(0.07, 0.08, 11, 8), white, x, 5.5), part(cyl(0.24, 0.24, 1.9, 10), [0.12, 0.3, 0.62], x, 0.95)]),
+      part(bx(5.6, 0.12, 0.12), white, 0, 3)]),
+    citygoal: merge([part(bx(0.1, 2, 0.1), steel, -1.5, 1), part(bx(0.1, 2, 0.1), steel, 1.5, 1), part(bx(3.1, 0.1, 0.1), steel, 0, 2),
+      part(bx(3.1, 2, 0.04), [0.32, 0.34, 0.36], 0, 1, -0.9), part(bx(0.12, 3.6, 0.12), steel, 0, 1.8, -1),
+      part(bx(1.8, 1.05, 0.05), [0.92, 0.92, 0.9], 0, 3.4, -0.95), part(new T.TorusGeometry(0.23, 0.02, 4, 12).rotateX(Math.PI / 2), [0.85, 0.35, 0.1], 0, 3.05, -0.65)]),
     chimney: merge([part(bx(1, 1, 1), [0.62, 0.42, 0.34], 0, 0.5), part(bx(1.15, 0.08, 1.15), [0.5, 0.48, 0.46], 0, 1.0)]),
   };
 }
@@ -388,6 +408,10 @@ const GROUND = /* glsl */`
     g = 0.84 + 0.3 * tHash(floor(wp * 22.0)) * near;
   } else if (code < 6.5 && code > 0.5) {                            // forest floor
     g = (0.8 + 0.35 * tNoise(wp * 4.0) * near) * (0.9 + 0.2 * tNoise(wp * 0.7));
+  } else if (code > 8.5 && code < 9.5) {                            // clay (a tennis court): fine, brushed, a few darker grains
+    g = (0.95 + 0.08 * tHash(floor(wp * 40.0)) * near) * (0.96 + 0.06 * tNoise(wp * vec2(0.4, 2.5)) * mid);
+  } else if (code > 9.5 && code < 10.5) {                           // synthetic (a hard court, the track): an even rubber grain
+    g = 0.96 + 0.07 * tHash(floor(wp * 55.0)) * near;
   }
   diffuseColor.rgb *= g;
 }`;

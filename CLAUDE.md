@@ -1027,6 +1027,25 @@ Every multiple-choice game was played through to its score page at phone size, w
   eaves (shader); the runner is
   stopped by the buildings' outlines, impassable walls/fences/hedges, cars and posts (8 m cells; the ground classes `building` /
   `block` then run as paving); the camera by the buildings alone.
+  **Sports grounds** (owner, 2026-11-11: « a rugby field, soccer fields, tennis courts, a track: can the scene show them? »):
+  `town_map.py` reads OpenStreetMap's `leisure=pitch|track` with their `sport` and `surface` (BD TOPO's `terrain_de_sport` where
+  OSM has none, its `nature_detaillee` giving the sport; a filled oval's track 8.5 m wide) into `src/sports.json`; the map (owner,
+  the same evening: « courts and track lanes not crossable, the posts shown ») draws the tennis and multi-sport courts and the
+  athletics track as 520 (not to be entered: impassable in the game, the courses go round; the track's inner field an island),
+  a grass or turf pitch as open land 401, a hard pitch as paved area 501, the goals and rugby posts as 528 (prominent line
+  feature) across the goal mouth, post to post; the
+  tennis and multi-sport courts' outlines are fenced (518, the 3D's wire mesh up to 4 m) where the LiDAR sees 1.5 m along them in
+  2 m pieces (gates and open sides stay open). `town_sports.py` lays each one out in its own frame (the outline's minimum rotated
+  rectangle): football (IFAB: penalty and goal areas, arcs, corners; a pitch under 100 m in proportion), rugby union (in-goal
+  what the length leaves beyond 100 m, 5-22 m; the 22 m, 10 m, 5 m and 15 m lines; H posts 5.6 m apart, padded), tennis (ITF
+  23.77 × 10.97 m, the net across, the court and its run-off each a colour), multi-sport courts (lines, a goal with a basket at
+  each end), the athletics track (lanes every 1.22 m from the kerb, the finish line); `town_3d.py` paints each part in the
+  photograph's clean median colour (players, shadows and worn lines gone; a ±6 % variation over ~3 m kept), mowing stripes on
+  grass, the markings white, surf codes 9 clay and 10 synthetic (vtown.js's grain), the goals, rugby posts and the multi courts'
+  goals as props (`goal`, `goal5`, `rugby`, `citygoal`; their posts `pole` / `rpole`, collision only), the goals' and tennis
+  nets as walls of kind `net` (impassable), no car read inside a sports ground. On Gif: 2 rugby pitches, 2 football (one on
+  artificial turf, mostly outside the area), 11 tennis courts (clay, hard, fine gravel), 2 multi-sport courts, the track, 2
+  boules grounds.
   **`course_sprint.py`**: sites on outer building corners (the flag 1.1 m out), monuments, fountains, lone trees and bushes,
   impassable walls' ends, stairways' feet; legs 60-260 m timed on the speeds grid (skimage `MCP_Geometric`, a 130 m window), a leg
   scoring for its route choice (a second route kept 10 m off the best, within 12 % of its time); four courses at the sprint's

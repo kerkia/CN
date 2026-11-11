@@ -8,6 +8,8 @@
 - the façades' look from BD TOPO's use (housing, shops, church…) and a seed: the shader (games/vtown.js) draws floors, windows,
   shutters and doors on them; the roofs' colour is the photograph's over the roof;
 - walls, fences and hedges (town_map.py's, their heights measured on the LiDAR), street furniture from OpenStreetMap;
+- the sports grounds (town_map.py's src/sports.json, town_sports.py): each one's surface in its clean colour, its markings at the
+  rules' sizes, goals, rugby posts and nets;
 - the ground's texture: IGN's BD ORTHO at 0.25 m, the shade of the buildings lightened.
 Everything in the world frame of build.py (x to the map's right, z down, metres), grouped by 64 m chunks as vworld.js streams.
 
@@ -536,7 +538,8 @@ if True:
                     o = l.interpolate(l.project(q))                    # the lamp's arm over the road
                     props.append(["lamp", round(q.x, 2), round(q.y, 2), round(-math.degrees(math.atan2(o.x - q.x, o.y - q.y)), 0)])
 # ---- the ground's surfaces (surf.png, 0.5 m: what vtown.js draws the ground's grain by) -------------------------------------------
-# 0 earth, 1 asphalt, 2 paving stones, 3 concrete (sidewalks, yards), 4 grass, 5 gravel, 6 forest floor, 7 water, 8 building
+# 0 earth, 1 asphalt, 2 paving stones, 3 concrete (sidewalks, yards), 4 grass, 5 gravel, 6 forest floor, 7 water, 8 building,
+# 9 clay (a tennis court), 10 synthetic (a hard court, the athletics track)
 from rasterio.features import rasterize
 from rasterio.transform import Affine
 from scipy.ndimage import grey_opening, binary_erosion, label as nd_label
@@ -587,9 +590,24 @@ for e in osm:
         elif len(pts) >= 2:
             paving.append(LineString(pts).buffer(1.2, cap_style="flat"))
 burn(paving, 2)
+# sports grounds (town_map.py's src/sports.json, laid out by town_sports.py): their surface; their colours, markings, goals and nets below
+import town_sports
+SPORTS = []
+SPORT_CODE = {"grass": 4, "turf": 4, "clay": 9, "sand": 5, "hard": 10, "asphalt": 1}
+if (SRC / "sports.json").exists():
+    from shapely.geometry import box as _box
+    for s_ in json.load(open(SRC / "sports.json")):
+        for pr_ in s_["polys"]:
+            g_ = to_w(Polygon(pr_[0], pr_[1:])).buffer(0)
+            if g_.is_empty or not g_.intersects(_box(0, 0, W, H)):
+                continue
+            SPORTS.append(town_sports.layout(g_, s_["sport"], s_["surface"]) | {"sport": s_["sport"]})
+    for s_ in SPORTS:
+        burn([s_["g"]], SPORT_CODE.get(s_["surface"], 5))
+    log("sports grounds", len(SPORTS), {k: sum(1 for s_ in SPORTS if s_["sport"] == k) for k in sorted({s_["sport"] for s_ in SPORTS})})
 burn([Polygon(r) for r in foot if len(r) >= 4], 8)
 A_ = surf == 1
-log("surfaces m²", {k: int((surf == k).sum() * GR * GR) for k in range(9)})
+log("surfaces m²", {k: int((surf == k).sum() * GR * GR) for k in range(11)})
 
 # ---- the ground's picture: the photograph's shade lightened, its asphalt cleaned (no car lies flat on it), the road markings kept
 # and the zebra crossings painted; the class colours under the trees' crowns (the photograph shows their tops) and outside it --------
@@ -642,6 +660,52 @@ if bands:
     zm = rasterize([(b, 1) for b in bands], out_shape=(gh, gw), transform=TRW, fill=0, dtype="uint8") == 1
     road_img[zm & A_] = 232
 img[A_] = road_img[A_]
+
+
+def crop_mask(g, pad=2.0, ss=1):
+    """(the image's rows and columns round g, g's mask there), at the ground picture's 0.25 m; with ss > 1 the share of each pixel
+    g covers, drawn ss × ss finer (a 12 cm line is thinner than a pixel: drawn whole it would break into dots)."""
+    if g is None or g.is_empty:
+        return None
+    x0, z0, x1, z1 = g.bounds
+    c0, r0 = max(0, int((x0 - pad) / GR)), max(0, int((z0 - pad) / GR)); c1, r1 = min(gw, int((x1 + pad) / GR) + 1), min(gh, int((z1 + pad) / GR) + 1)
+    if c1 <= c0 or r1 <= r0:
+        return None
+    m = rasterize([(g, 1)], out_shape=((r1 - r0) * ss, (c1 - c0) * ss), transform=Affine(GR / ss, 0, c0 * GR, 0, GR / ss, r0 * GR),
+                  fill=0, dtype="uint8")
+    if ss > 1:
+        return (slice(r0, r1), slice(c0, c1)), m.reshape(r1 - r0, ss, c1 - c0, ss).mean(axis=(1, 3))
+    return (slice(r0, r1), slice(c0, c1)), m == 1
+
+
+# the sports grounds: each part in its own clean colour (the photograph's median there: no player, shadow or worn line), a gentle
+# variation of the photograph's lightness over ~3 m kept, a grass pitch's mowing stripes, the markings painted white
+line_m2 = 0
+for s_ in SPORTS:
+    for reg in s_["regions"]:
+        cm = crop_mask(reg)
+        if not cm or cm[1].sum() < 20:
+            continue
+        sl, m = cm; sub = img[sl]; px = sub[m]; l_ = px.mean(1); ml = float(np.median(l_))
+        ok = (l_ < ml + 22) & (l_ > ml - 45)
+        col = np.median(px[ok] if ok.sum() > 10 else px, axis=0)
+        L_ = sub.mean(2); okm = (m & (np.abs(L_ - ml) < 22)).astype(np.float32)
+        wv = gaussian_filter(okm, 12)
+        var = np.where(wv > 0.05, np.clip(gaussian_filter(L_ * okm, 12) / (wv + 1e-3) / max(ml, 1), 0.94, 1.06), 1.0)
+        new = col[None, None, :] * var[..., None]
+        if s_["stripes"] is not None:
+            F_ = s_["stripes"]
+            zz_, xx_ = (np.mgrid[sl][0] + 0.5) * GR, (np.mgrid[sl][1] + 0.5) * GR
+            su = (xx_ - F_[0][0]) * F_[1][0] + (zz_ - F_[0][1]) * F_[1][1]
+            nb = max(2, int(round(F_[3] / 12)) * 2)
+            new = new * np.where(np.floor((su + F_[3] / 2) / (F_[3] / nb)) % 2 == 1, 1.035, 0.965)[..., None]
+        sub[m] = new[m]
+    cm = crop_mask(s_["lines"], 0.5, ss=4)
+    if cm:
+        sl, cov = cm; sub = img[sl]; a_ = np.clip(cov * 1.8, 0, 0.9)[..., None]
+        sub[...] = sub * (1 - a_) + np.array([236, 236, 230], np.float32) * a_; line_m2 += cov.sum() * GR * GR
+if SPORTS:
+    log("sports grounds painted; markings", int(line_m2), "m²")
 GC = {"paved": (112, 110, 106), "road": (100, 100, 98), "open": (98, 122, 64), "open_t": (92, 114, 60), "forest": (82, 80, 58),
       "oob": (94, 116, 62), "building": (118, 112, 104), "water": (52, 74, 86), "stairs": (130, 128, 124), "path": (150, 132, 100),
       "small_path": (140, 124, 96), "slow": (76, 92, 54), "walk": (70, 86, 50), "block": (70, 90, 50)}
@@ -689,10 +753,14 @@ for k in range(1, n_ + 1):
     if not (3.2 <= Lc <= 5.8 and 1.3 <= Wc <= 2.5 and Lc / Wc > 1.5):
         continue
     ang = math.degrees(math.atan2(evec[0, 1], evec[1, 1]))
-    if 0 < mu[0] < W and 0 < mu[1] < H:
+    if 0 < mu[0] < W and 0 < mu[1] < H and not any(s_["g"].buffer(5).contains(Point(*mu)) for s_ in SPORTS):   # a pitch's dugouts are no cars
         cars.append([round(float(mu[0]), 2), round(float(mu[1]), 2), round(ang, 1), round(min(Lc, 4.8), 2), round(min(Wc, 1.9), 2),
                      int(rng.integers(len(CARCOL)))])
 log("cars", len(cars), "kerbs", sum(1 for w_ in walls if w_["kind"] == "kerb"))
+for s_ in SPORTS:                                                    # goals, rugby posts, nets
+    props += [p_ for p_ in s_["props"] if 0 < p_[1] < W and 0 < p_[2] < H]
+    walls += s_["walls"]
+log("sports props", sum(len(s_["props"]) for s_ in SPORTS), "nets", sum(len(s_["walls"]) for s_ in SPORTS))
 
 json.dump({"arrays": arrays, "chunks": index, "foot": foot, "walls": walls, "props": props, "chunk": CH, "chimneys": chimneys,
            "cars": cars, "carColours": CARCOL, "surfRes": GR * 2, **({"facadeTex": "facades.webp"} if ATLAS is not None else {}),

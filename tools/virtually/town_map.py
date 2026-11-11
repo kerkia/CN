@@ -10,7 +10,11 @@ What each symbol comes from:
   infrared's vegetation index (lawns, parks, woods); 411 hedges (BD TOPO, OpenStreetMap);
 - 520 area not to be entered: the cadastre's parcels holding a house (gardens), schools, the railway's corridor;
 - 505/506 unpaved paths, 532 stairways (OpenStreetMap); 509 railway; 301/305 water (BD TOPO);
-- 513/515 walls and 516/518 fences, passable or not by the height the LiDAR measures along them (1.5 m);
+- 513/515 walls and 516/518 fences, passable or not by the height the LiDAR measures along them (1.5 m); the tennis and
+  multi-sport courts' fences along their outline where the LiDAR sees one;
+- sports grounds (OpenStreetMap's pitches and tracks, else BD TOPO's): grass and turf pitches 401, hard ones 501, the tennis and
+  multi-sport courts and the athletics track 520 (not to be entered), the goals and rugby posts 528 across the goal mouth;
+  their sport, surface and outline in src/sports.json for town_3d.py;
 - 101/102 contours every 2.5 m from the LiDAR's ground; 417/418 trees standing alone (the LiDAR's crowns); 526 monuments,
   311 fountains (OpenStreetMap); 601 north lines.
 Also writes DATA/<race>/src/rasters.npz (the LiDAR's grids, the classes) and src/roofpts.npy (class 6 points) for town_3d.py."""
@@ -258,6 +262,44 @@ for g, kind, ret in walls:
 walls = kept
 log("paved", round(PAVED.area), "m²; walls/fences", len(walls), "hedges", len(hedges), "steps", len(steps), "paths", len(path_lines))
 
+# ---- sports grounds: OpenStreetMap's pitches and tracks (their sport and surface), BD TOPO's « terrains de sport » where OSM has
+# none; the map draws a grass or turf pitch as open land, a hard one (clay, a court, the track) as paved area; town_3d.py draws
+# their surface, markings, goals and nets from src/sports.json ---------------------------------------------------------------------
+SPORT_SURF = {"grass": "grass", "artificial_turf": "turf", "clay": "clay", "tartan": "hard", "acrylic": "hard", "rubber": "hard",
+              "asphalt": "asphalt", "concrete": "asphalt", "paved": "asphalt", "fine_gravel": "sand", "sand": "sand", "gravel": "sand",
+              "dirt": "sand", "ground": "sand", "compacted": "sand"}
+SPORT_DEFAULT = {"soccer": "grass", "rugby": "grass", "tennis": "hard", "athletics": "hard", "multi": "asphalt", "basketball": "asphalt",
+                 "boules": "sand", "handball": "asphalt"}
+NO_ENTRY = ("tennis", "multi", "basketball", "handball", "padel", "athletics")   # ISSprOM 520: courts and the track's lanes
+SPORT_NAME = lambda s: "rugby" if s.startswith("rugby") else "athletics" if s in ("athletics", "running") else s
+sports = []
+for e in osm:
+    t = tags(e)
+    if t.get("leisure") not in ("pitch", "track") or e["type"] == "node" or t.get("indoor") == "yes":
+        continue
+    g = osm_geom(e, area=True)
+    if g is None or g.is_empty or not g.geom_type.endswith("Polygon") or not g.intersects(frame):
+        continue
+    sp = SPORT_NAME((t.get("sport") or ("athletics" if t.get("leisure") == "track" else "multi")).split(";")[0])
+    sports.append({"sport": sp, "surface": SPORT_SURF.get(t.get("surface", ""), SPORT_DEFAULT.get(sp, "sand")), "g": g, "src": "osm"})
+BD_SPORT = {"terrain de rugby": "rugby", "terrain de football": "soccer", "terrain de tennis": "tennis", "stade d'athlétisme": "athletics",
+            "piste de sport": "athletics", "terrain de basket-ball": "basketball", "terrain de handball": "handball"}
+for f in bdtopo("terrain_de_sport"):
+    p = f["properties"]; g = geom2d(f["geometry"])
+    if g is None or not g.geom_type.endswith("Polygon") or not g.intersects(frame):
+        continue
+    g = g.buffer(0)
+    if any(s["g"].intersection(g).area > 0.5 * min(g.area, s["g"].area) for s in sports):
+        continue                                                      # OpenStreetMap has it, with its surface
+    sp = BD_SPORT.get((p.get("nature_detaillee") or p.get("nature") or "").lower(), "multi")
+    if sp == "athletics" and g.buffer(-9).area > 0:
+        g = g.difference(g.buffer(-8.5))                              # a filled oval: its track, ~7 lanes
+    sports.append({"sport": sp, "surface": SPORT_DEFAULT.get(sp, "sand"), "g": g, "src": "bdtopo"})
+json.dump([{"sport": s["sport"], "surface": s["surface"], "src": s["src"],
+            "polys": [[list(map(lambda c: [round(c[0], 2), round(c[1], 2)], p.exterior.coords))] + [[[round(x, 2), round(y, 2)] for x, y in r.coords] for r in p.interiors]
+                      for p in getattr(s["g"], "geoms", [s["g"]])]} for s in sports], open(SRC / "sports.json", "w"))
+log("sports grounds", len(sports), {k: sum(1 for s in sports if s["sport"] == k) for k in sorted({s["sport"] for s in sports})})
+
 # ---- private ground: the cadastre's parcels holding houses, schools, the railway ----------------------------------------------
 parcels = []
 for f in SRC.glob("parcelles_*.json"):
@@ -335,6 +377,8 @@ for k in ("forest", "open_t", "slow", "walk", "paved"):                # no spec
     cl[m & ~m2] = K["open"]; cl[small[lab] & m2] = K["open"]
 burn(PAVED, K["paved"], cl)
 burn(PRIVATE, K["private"], cl)
+for s in sports:                       # a sports ground is no garden: a pitch open or paved, a court and the track not to be entered
+    burn(s["g"], K["private"] if s["sport"] in NO_ENTRY else K["open"] if s["surface"] in ("grass", "turf") else K["paved"], cl)
 burn(unary_union([h.buffer(0.7, cap_style="flat") for h in hedges]) if hedges else None, K["imp_veg"], cl)
 burn(water, K["water"], cl)
 burn(B, K["building"], cl)
@@ -419,6 +463,27 @@ def height_of(line):
     return float(np.median(v)) if len(v) > 3 else 0.0
 
 
+# the courts' enclosures (tennis, multi-sport): their outline, fenced where the LiDAR sees something 1.5 m high along it, in 2 m
+# pieces (a gate, an open side stay open)
+from shapely.ops import linemerge
+encl = [s["g"].boundary for s in sports if s["sport"] in ("tennis", "multi", "basketball", "handball", "padel")]
+n_encl = 0
+if encl:
+    ln = linemerge(unary_union(encl))
+    for l in getattr(ln, "geoms", [ln]):
+        run = []
+        for d in np.arange(0, l.length, 2.0):
+            piece = shapely.ops.substring(l, d, min(l.length, d + 2.0))
+            if piece.length > 0.5 and height_of(piece) >= 1.5:
+                run += list(piece.coords) if not run else list(piece.coords)[1:]
+            elif len(run) >= 2:
+                walls.append((LineString(run), "fence", False)); run = []; n_encl += 1
+            else:
+                run = []
+        if len(run) >= 2:
+            walls.append((LineString(run), "fence", False)); n_encl += 1
+log("courts' fences", n_encl)
+
 wall_out = []
 zo_cache = None
 for g, kind, ret in walls:
@@ -451,6 +516,17 @@ for g in steps:                                                       # stairway
             wall_out.append({"pts": [[round(x - X0, 2), round(Y1 - y, 2)] for x, y in piece.simplify(0.2).coords], "kind": "steps",
                              "h": 2.2, "imp": False, "ret": False})
 log("walls and fences", len(wall_out), "impassable", sum(w["imp"] for w in wall_out))
+# the goals and rugby posts on the pitches one may cross: 528 (prominent line feature) across the goal mouth, post to post
+import town_sports
+n_goals = 0
+for s in sports:
+    if s["sport"] in NO_ENTRY:
+        continue
+    for p_ in getattr(s["g"], "geoms", [s["g"]]):
+        posts = [q for q in town_sports.layout(p_, s["sport"], s["surface"])["props"] if q[0] in ("pole", "rpole")]
+        for a_, b_ in zip(posts[0::2], posts[1::2]):
+            add_line(LineString([(a_[1], a_[2]), (b_[1], b_[2])]), S(528), 1); n_goals += 1
+log("goals on the map", n_goals)
 for g in path_lines:
     add_line(g.difference(PAVED).difference(B), S(505), 3)
 for g in small_lines:
