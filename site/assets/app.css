@@ -1186,7 +1186,8 @@ table.data tbody tr.me .name { font-weight: 700; }
 .agenda-table table.data td.nowrap, .agenda-table table.data td.num { white-space: nowrap; }
 .agenda-table td:nth-child(3) { min-width: 180px; }
 .agenda-detail { position: sticky; top: 76px; max-height: calc(100vh - 100px); overflow: auto; }
-.agenda-detail dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; font-size: 14px; }
+/* the labels' column at most 40 % of a narrow panel: a long label wraps rather than crushing the values beside it */
+.agenda-detail dl { margin: 0; display: grid; grid-template-columns: fit-content(40%) minmax(0, 1fr); gap: 6px 14px; font-size: 14px; }
 .agenda-detail dt { color: var(--ink-3); font-size: 12.5px; padding-top: 1px; }
 .agenda-detail dd { margin: 0; overflow-wrap: anywhere; }
 .agenda-detail .reg { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: var(--surface-2); }
@@ -2358,8 +2359,13 @@ table.data tr.lv-sec td { font-weight: 650; color: var(--ink-2); background: var
 .ev-row.up .ev-ci, .ev-row.up .ev-pt { background: var(--good); }
 .ev-row.down .ev-ci, .ev-row.down .ev-pt { background: var(--bad); }
 @media (max-width: 640px) { .ev-row { grid-template-columns: 44px 1fr; } .ev-track { grid-column: 1 / -1; } }
-.reg-circ { display: flex; flex-wrap: wrap; gap: 4px 12px; }
-.reg-circ span { white-space: nowrap; }
+/* the Agenda's registrations per circuit (or category): the circuit, then its number of entries */
+.reg-circ-box { margin-top: 10px; }
+.reg-circ-h { color: var(--ink-3); font-size: 12.5px; margin-bottom: 4px; }
+.reg-circ { border-collapse: collapse; font-size: 14px; width: auto; max-width: 100%; }
+.reg-circ td { padding: 2px 0; overflow-wrap: anywhere; vertical-align: top; }
+.reg-circ td.num { padding-left: 18px; text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.reg-circ tr + tr td { border-top: 1px solid var(--border); }
 .rl-team + .rl-team { border-top: 1px solid var(--border); }
 /* the first team: a grip to drag a runner onto another leg, arrows for phones; the legs exchange their runners */
 .rl-move { white-space: nowrap; padding-right: 0 !important; }   /* class "c" on the cell keeps it on one line on phones too */

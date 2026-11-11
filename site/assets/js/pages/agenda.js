@@ -572,8 +572,11 @@ export async function render(main, { query }) {
         ${row(t("agd.reg.close"), r.close ? html`<b>${fmtDate(r.close)}</b> <span class="dim">(${when(r.close)})</span>` : "")}
         ${row(t("agd.reg.mods"), r.mods ? html`${fmtDate(r.mods)} <span class="dim">(${when(r.mods)})</span>` : "")}
         ${row(t("agd.reg.count"), r.count != null ? html`<b>${fmt(r.count)}</b>${r.teams != null ? html` <span class="dim">(${tn("agd.reg.teams", r.teams)})</span>` : ""}` : "")}
-        ${row(t(fr ? "agd.reg.byCircuit" : "agd.reg.byCat"), r.circuits ? html`<div class="reg-circ">${r.circuits.map(([c, n]) => html`<span>${c} <b>${fmt(n)}</b></span>`)}</div>` : "")}
       </dl>` : html`<div class="dim">${t("agd.reg.noDates")}</div>`}
+      ${r.circuits && r.circuits.length ? html`<div class="reg-circ-box">
+        <div class="reg-circ-h">${t(fr ? "agd.reg.byCircuit" : "agd.reg.byCat")}</div>
+        <table class="reg-circ">${r.circuits.map(([c, n]) => html`<tr><td>${c}</td><td class="num">${fmt(n)}</td></tr>`)}</table>
+      </div>` : ""}
 
       ${r.url ? html`<p style="margin:10px 0 0"><a class="btn btn-primary btn-sm" href="${r.url}" target="_blank" rel="noopener">${t("agd.reg.link")}</a></p>` : ""}
     </div>`;
