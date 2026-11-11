@@ -95,6 +95,9 @@ export async function render(main, { query }) {
   const past = [], pastIds = new Set();
   // the competitions whose start times their organisers opened to booking (api/booking; 2026-11-03): race key -> status
   const bookingP = fetch("api/booking", { credentials: "same-origin" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  // the announcement and the start-time booking found on the organiser's own site (prov/links.json, run.site_links;
+  // 2026-11-11: COLE's linked both from its post, FFCO's page neither): event id -> { ann, book }
+  const siteLinksP = getProv("links.json").then((x) => x?.events || {}).catch(() => ({}));
   try {
     for (const r of (await getProv("index.json"))?.races || []) {
       const id = String(r.agenda_id || r.key.replace(/^a/, ""));
@@ -108,6 +111,7 @@ export async function render(main, { query }) {
     }
   } catch (e) { /* no start lists then */ }
   const bookings = new Map(((await bookingP)?.events || []).map((x) => [x.key, x]));
+  const siteLinks = await siteLinksP;
   // a day's races by département number (2A and 2B after 20, overseas after 95), those known by their region only last
   const depOrder = (d) => (!d ? 1e6 : /^2A$/i.test(d) ? 20.1 : /^2B$/i.test(d) ? 20.2 : parseFloat(d) || 9e5);
   // the site's country's events (country.js; France's alone until another country's agenda is read)
@@ -606,10 +610,15 @@ export async function render(main, { query }) {
   function actions(e) {
     const l = lives.get(String(e.id)), key = resultsKey.get(String(e.id)), sk = starts.get(String(e.id)), go = accessUrl(e);
     const bk = bookings.get(/^d/.test(String(e.id)) ? String(e.id) : `a${e.id}`);
+    // (FFCO's announcement first; the organiser's site's when FFCO links none; Ozimut's own booking before a sheet's)
+    const sl = (e.id != null && siteLinks[String(e.id)]) || {};
+    const ann = safeUrl(e.invitation) ? e.invitation : safeUrl(sl.ann) ? sl.ann : null;
+    const pdf = ann && /\.pdf(?:$|[?#])/i.test(ann);
     if (l && !key) setTimeout(() => liveSplits(l.id), 0);
     const b = [
       bk ? html`<a class="btn btn-sm ${bk.status === "open" ? "btn-primary" : ""}" href="#/horaire?course=${encodeURIComponent(bk.key)}">${t(bk.status === "open" ? "agd.book" : "agd.booked")}</a>` : "",
-      safeUrl(e.invitation) ? html`<a class="btn btn-sm" href="${e.invitation}" target="_blank" rel="noopener">${t("agd.invitation")}</a>` : "",
+      !bk && safeUrl(sl.book) ? html`<a class="btn btn-sm btn-primary" href="${sl.book}" target="_blank" rel="noopener" title="${t("agd.fromSite")}">${t("agd.bookSite")}</a>` : "",
+      ann ? html`<a class="btn btn-sm" href="${ann}" target="_blank" rel="noopener"${ann !== e.invitation ? html` title="${t("agd.fromSite")}"` : ""}>${t(pdf || ann === e.invitation ? "agd.invitation" : "agd.invitationPage")}</a>` : "",
       l ? html`<a class="btn btn-sm btn-primary" href="#/direct/${l.id}">${l.now ? html`<span class="lv-dot" aria-hidden="true"></span>` : ""}${t("agd.live.go")}</a>` : "",
       key ? html`<a class="btn btn-sm" href="#/resultats?course=${encodeURIComponent(key)}">${t("agd.live.results")}</a>` : l ? html`<span data-lsplits="${l.id}"></span>` : "",
       tracking.button(trackOf(e)),

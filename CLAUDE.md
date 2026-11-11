@@ -595,7 +595,17 @@ name (« …-V2-… », 2026-10-22: the old one, a runner longer, ranked first a
 alerts) replaces the older one when it names 80 % of its runners, and a file a complete look at the site no longer finds
 goes (`run.supersede_starts`). The agenda also keeps the list's rows of the last `RECENT_DAYS` (3) days (`recent`):
 `races.sync` applies them, so a race-day change (CN or not, name, place, format, date) reaches the race once the agenda
-has dropped it. PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
+has dropped it. **The announcement and the start-time booking on the organiser's site** (owner, 2026-11-11: COLE's
+« Régionale LIFCO » of 6 December linked both from its own post, FFCO's page neither): `run.site_links`, after the results
+in each run, looks at France's races of the next `LINK_DAYS` (60) days, `LINK_SITES` (4) a run, each every `LINK_EVERY` (36) h,
+with `ClubSite.find(mode="announce")` (WordPress posts from 75 days before; a post or page about the race's day): the
+announcement a file (PDF, Word, a shared drive) found on the race's page or post, else one whose name gives its day — a word
+in common is no evidence (« liguepaca » took a youth camp's), nor an upload over six months older than the race, nor a page
+(co-paca.info's season table); the booking a Google Sheets / Forms, Framaforms, Framadate, Doodle, Microsoft Forms… link whose
+text or the words just before it say « horaire » / « départ » (`BOOK_LINK`, `BOOK_WORDS`). Kept in `prov_meta` « sitelinks »,
+written to `prov/links.json` (and `pub/`) by agenda id; the Agenda shows « Choisir son horaire de départ ↗ » (unless Ozimut's
+own booking is open) and the site's announcement when FFCO links none, both titled « Trouvé sur le site de l'organisateur ».
+Their circuits' table is kept too (`save_announcements`). PDFs: MeOS's coded split list (`1 (54): 2:32 (2:32) …
 Arrivée:`, CF LD 2026) is read with its control codes. Parsers
 follow `prov/model.py`; bump `parsers.VERSION` when they improve (every known document is read again), and
 `run.COLLECT_VERSION` when finding results improves (every race of the window is looked at once more, finished ones
@@ -1884,8 +1894,17 @@ Every multiple-choice game was played through to its score page at phone size, w
   its kind (read with it). An analysis's settings show the new password only for « mot de passe » and « Ouverte aussi aux visiteurs
   sans compte » only for « tous » (owner, 2026-11-04). **The circuits come in by one drop zone** (owner, 2026-11-04: « Ajouter un
   circuit » and « Importer un fichier OCAD » were two buttons to one place; `setup`'s `#sh-drop`, no « Circuits » heading until there
-  is one): an OCAD/Mapper file among the files dropped opens the OCAD import, anything else the circuit editor with those files
-  (`ctx.files`); the zone hides while its panel is open (`ctx.done` gives it back). **The OCAD import** (`shared.js` `ocadImport`,
+  is one): an OCAD/Mapper file among the files dropped is read in the circuits card, anything else opens the circuit editor with
+  those files (`ctx.files`, the page hidden while it is open, `ctx.done` gives it back). **The OCAD import happens in the card**
+  (owner, 2026-11-11: « this should all happen in one page » — it was a panel replacing the page, its own drop zone, list and
+  « Créer les circuits », then the page again): `managePage`'s `take` reads the files dropped (`imp`, the state kept so the card
+  can be drawn again), the courses found are listed under the circuits (ticked, « remplace » on a name already there, the results'
+  circuit picked for a competition), the first shown at once on the map card as it will be published (`showPending`, `renderOf`:
+  `circuitOf` at 150 dpi, kept for the adding; a click on another row shows it), a missing background map or a blank render said
+  there before anything is sent, a file missing dropped on the same zone (« Il manque un fichier ? »); one consent box and
+  « Ajouter les N circuits » (`addImport`, progress in the card), then the card shows them as circuits, the first chosen. The
+  circuits card is the left column's first, above « Publication et accès ». A file dropped on the circuit editor is handed over
+  (`ctx.ocad`). **The OCAD import** (`shared.js` `take` / `addImport`,
   `tracer/circuits.js` `readCourseFiles`): an OCAD course-setting project —
   the courses file (its `courseSetting`) and the background map it names as its first OCAD/Mapper template (« …P.ocd » over
   « …F.ocd », same OCAD coordinates, as the Tracer's `ocadCourses`), dropped together or one after the other (the panel asks for the

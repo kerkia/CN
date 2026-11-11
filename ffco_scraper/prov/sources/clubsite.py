@@ -36,6 +36,15 @@ START_WORDS = ("depart", "horaire", "startlist", "start list", "start-list", "st
 NOT_START = ("resultat", "result", "classement", "split", "temps inter", "provisoire", "annonce", "invitation", "convocation",
              "reglement", "fleche", "plan d acces", "acces", "covoiturage", "hebergement", "restauration", "bulletin")
 START_DAYS_BEFORE = 21          # a start list (or its announcement) is posted in the weeks before the race
+# mode "announce" (run.site_links): the race's announcement and its start-time booking, posted weeks ahead (COLE's of
+# 6 December 2026 in October) — the race's own page or post on the organiser's site, when FFCO's page links none
+ANNOUNCE_DAYS_BEFORE = 75
+# a start-time booking (« Choisir son horaire de départ : https://docs.google.com/spreadsheets/… »): a shared sheet or
+# form the organiser links on the race's page, said so by the link's text or the words just before it
+BOOK_LINK = re.compile(r"(?i)docs\.google\.com/(?:spreadsheets|forms)/|forms\.gle/|forms\.office\.com/|forms\.microsoft\.com/|"
+                       r"framaforms\.org/|framadate\.org/|framacalc\.org/|ethercalc\.|doodle\.com/|"
+                       r"(?:sharepoint\.com|onedrive\.live\.com|1drv\.ms)/:x:|/#/horaire\?course=")
+BOOK_WORDS = ("horaire", "depart", "heure de", "heures de", "creneau", "start time")
 PAGE_WORDS = ("resultat", "result", "organisation", "competition", "course", "evenement", "event", "actualite", "news",
               "archive", "saison", "orga", "programme")
 STOP = {"de", "la", "le", "du", "des", "et", "co", "course", "orientation", "club", "d", "l", "les", "en", "a", "au",
@@ -82,6 +91,20 @@ def _links(page: str, base: str) -> list[tuple[str, str]]:
         if _host(url) == "res.cloudinary.com":
             url = re.sub(r"/v[0-9]+/", "/", url.split("?", 1)[0])
         out.append((url, text))
+    return out
+
+
+def _link_ctx(page: str, base: str) -> list[tuple[str, str, str]]:
+    """(absolute url, link text, the text just before the link) of a page's links: « Choisir son horaire de départ : »
+    before a bare address says what it is."""
+    out = []
+    for m in re.finditer(r'(?is)<a\b[^>]*?href\s*=\s*["\']([^"\']+)["\'][^>]*>(.*?)</a>', page):
+        href = htmllib.unescape(m.group(1).strip())
+        if href.startswith(("mailto:", "tel:", "javascript:", "#")):
+            continue
+        text = re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"<[^>]+>", " ", m.group(2)))).strip()
+        before = re.sub(r"\s+", " ", htmllib.unescape(re.sub(r"<[^>]+>", " ", page[max(0, m.start() - 600):m.start()]))).strip()
+        out.append((urllib.parse.urljoin(base, href), text, before[-120:]))
     return out
 
 
@@ -273,8 +296,10 @@ class ClubSite:
 
     def find(self, race, sites: list[str], mode: str = "results") -> dict:
         """{'docs': [(url, text, via)], 'platforms': [(kind, url)]} for this race: its result files, or (mode "start",
-        before the race) its start lists and entry lists."""
-        start = mode == "start"
+        before the race) its start lists and entry lists; mode "announce", weeks before it: its announcement
+        ('announcements') and its start-time booking ('bookings': [(url, text, page)])."""
+        announce = mode == "announce"
+        start = mode == "start" or announce
         WANT = START_WORDS if start else RESULT_WORDS
         SKIP = NOT_START if start else NOT_RESULTS
         sites = list(dict.fromkeys(sites + [p for p in map(parent_site, sites) if p]))
@@ -289,6 +314,16 @@ class ClubSite:
         platforms: dict[str, str] = {}
         contexts: dict[str, tuple] = {}                # an O'Live link: (the page holding it, whether it names the race)
         announcements: dict[str, str] = {}             # the race's announcement: its circuits' table
+        ann_rank: dict[str, int] = {}
+        bookings: dict[str, tuple[str, str]] = {}      # mode "announce": the start-time booking -> (its words, the page)
+
+        def booking(url: str, text: str, before: str, page: str) -> None:
+            """A link of the race's own page or post to a shared sheet or form for choosing one's start time."""
+            if not BOOK_LINK.search(url):
+                return
+            said = plain(f"{text} {before}")
+            if any(w in said for w in BOOK_WORDS) and not any(w in plain(text) for w in RESULT_WORDS[:3]):
+                bookings.setdefault(url, (text if text and not text.startswith("http") else before[-80:], page))
 
         def consider(url: str, text: str, via: str, posted_after: bool = False, on_race_page: bool = False,
                      weekend_page: bool = False):
@@ -334,7 +369,15 @@ class ClubSite:
                 return                                          # an ordinary page, not an exported list
             if any(w in low for w in ("annonce", "invitation")) and (names_race or on_race_page or weekend_page) and                     not other_day_named(low, d) and \
                     not path.endswith((".htm", ".html")):
+                # (an upload over six months before the race is an older race's: COLE's 2024 « TROPHEE-SAINT-QUENTIN »
+                # announcement, on a page sharing a word with its race of December 2026)
+                if start and uploaded_before(url, d - timedelta(days=183)):
+                    return
                 announcements.setdefault(url, text)             # the announcement: perhaps the table of its circuits
+                # the race's own page or post first, then a file whose name or link gives its day, last one sharing a
+                # word with it (« liguepaca » for a « Challenge PACA »: a youth camp's announcement)
+                r = 0 if on_race_page or weekend_page else 1 if any(t in low for t in dt) or names_day(low, d) else 2
+                ann_rank[url] = min(ann_rank.get(url, 3), r)
                 return
             if any(w in low for w in SKIP):
                 return                                          # start lists, entries, invitations: their times are not results
@@ -350,7 +393,7 @@ class ClubSite:
                 found.setdefault(url, (text, f"{via} (à vérifier)"))
 
         # 1. WordPress: uploads and posts since the race (a start list: in the weeks before it)
-        after = (d - timedelta(days=START_DAYS_BEFORE if start else 1)).isoformat() + "T00:00:00"
+        after = (d - timedelta(days=ANNOUNCE_DAYS_BEFORE if announce else START_DAYS_BEFORE if start else 1)).isoformat() + "T00:00:00"
         before = (d + timedelta(days=1 if start else 21)).isoformat() + "T00:00:00"
         probed: set[str] = set()
 
@@ -374,7 +417,16 @@ class ClubSite:
                     try:
                         for post in json.loads(p.content.decode("utf-8", "replace")):
                             content = str((post.get("content") or {}).get("rendered", ""))
-                            for u, t in _links(content, post.get("link") or root):
+                            link = post.get("link") or root
+                            title = plain(urllib.parse.unquote(link) + " " + htmllib.unescape(str((post.get("title") or {}).get("rendered", ""))))
+                            # (announce: a post about this race — its title or address names its day or its words —
+                            # holds its announcement and its booking; the club's other posts say nothing of it)
+                            if announce and (names_day(title, d) or any(t in title for t in dt) or any(w in title for w in words))                                     and not other_day_named(title, d):
+                                for u, t, b in _link_ctx(content, link):
+                                    consider(u, t, "wordpress post", True, weekend_page=True)
+                                    booking(u, t, b, link)
+                                continue
+                            for u, t in _links(content, link):
                                 consider(u, t, "wordpress post", True)
                     except ValueError:
                         pass
@@ -433,6 +485,9 @@ class ClubSite:
                 not other_day_named(about, d)
             before = len(found)
             links = _links(page, self.bases.get(url, url))
+            if announce and (weekend_page or (on_race_page and url not in [_root(s) + "/" for s in sites])):
+                for u, t, b in _link_ctx(page, self.bases.get(url, url)):
+                    booking(u, t, b, url)
             for u, t in links:
                 consider(u, t, f"page {url}", on_race_page=on_race_page and url not in [_root(s) + "/" for s in sites],
                          weekend_page=weekend_page)
@@ -469,7 +524,9 @@ class ClubSite:
             if not self.f.out_of_time():
                 wordpress(root)
         return {"docs": [(u, t, v) for u, (t, v) in found.items()], "platforms": sorted(platforms.items(), key=lambda x: x[1]),
-                "announcements": sorted(announcements.items()), "contexts": contexts}
+                "announcements": sorted(announcements.items(), key=lambda x: (ann_rank.get(x[0], 2), x[0])),
+                "ann_rank": ann_rank, "contexts": contexts,
+                "bookings": [(u, t, pg) for u, (t, pg) in bookings.items()]}
 
 
 def download_url(url: str) -> str:

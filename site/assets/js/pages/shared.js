@@ -807,8 +807,9 @@ async function managePage(main, id, data, race) {
     <div class="sh-m" id="sh-m">
       <div class="sh-m-grid">
         <div class="sh-m-left">
-          <section class="card" id="sh-m-pub"></section>
+          <!-- the circuits first, then their publication: the order of the work (owner, 2026-11-11) -->
           <section class="card" id="sh-m-courses"></section>
+          <section class="card" id="sh-m-pub"></section>
         </div>
         <section class="card sh-m-mapcard"><div class="sh-map sh-m-map"><canvas id="sh-m-canvas"></canvas>
             <div class="an-tools"><button type="button" class="btn btn-sm" id="sh-m-zin">+</button><button type="button" class="btn btn-sm" id="sh-m-zout">−</button><button type="button" class="btn btn-sm" id="sh-m-fit" title="${t("an.fitMap")}">▭</button></div>
@@ -920,23 +921,185 @@ async function managePage(main, id, data, race) {
   // project gives every circuit at once, a map (with its georeference, course file or one's trace) one circuit in the editor,
   // which takes the page's width while it is open
   const editing = (on) => { $("#sh-m").hidden = on; if (!on) $("#sh-editor").innerHTML = ""; };
-  const ctx = { A, id, kind, race, onChange: () => reload(), done: () => editing(false) };
+  const ctx = { A, id, kind, race, onChange: () => reload(), done: () => editing(false), ocad: (list) => take(list) };
+
+  // ---- an OCAD course-setting project, read in place (owner, 2026-11-11: « this should all happen in one page »): the files
+  // dropped on the circuits card, the courses they hold listed there, each shown on the map card as it will be published — the
+  // first at once, so a missing background map shows before anything is sent —, then added with one button. Nothing is sent
+  // before « Ajouter ». The state lives here, so the card can be drawn again (the counts arriving) without losing a tick.
+  const isVec = (f) => /\.(ocd|omap|xmap)$/i.test(f.name);
+  const nm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const raceCircuits = race ? [...new Set((race.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))] : [];
+  const imp = { got: [], read: null, err: "", busy: false, note: "", frac: null, on: new Map(), circ: new Map(), renders: new Map(), prev: null, consent: false, token: null };
+  const clearImp = () => { Object.assign(imp, { got: [], read: null, err: "", busy: false, note: "", frac: null, prev: null, token: null }); imp.on.clear(); imp.circ.clear(); imp.renders.clear(); };
+  const picked = () => (imp.read ? imp.read.designs.map((d, i) => ({ d, i })).filter(({ i }) => imp.on.get(i)) : []);
+  async function take(list) {
+    list = [...(list || [])].filter(isVec);
+    if (!list.length || imp.busy) return;
+    imp.got = [...imp.got.filter((g) => !list.some((f) => f.name === g.name)), ...list];   // a file of the same name replaces it
+    const token = (imp.token = {});
+    Object.assign(imp, { read: null, err: "", note: "", prev: null }); imp.on.clear(); imp.circ.clear(); imp.renders.clear();
+    coursesCard();
+    const f = imp.got.map((x) => x.name).join(", ");
+    try {
+      const C = await import("../tracer/circuits.js");
+      const r = await C.readCourseFiles(imp.got);
+      for (const d of r.designs) d.nCtrl = C.controlCount(r.E.ev, d);
+      if (token !== imp.token) return;
+      imp.read = { ...r, C };
+      // ticked: those replacing a circuit of the same name, then the others while the analysis's 12 have room
+      const taken = new Set(A.courses.map((c) => nm(c.name)));
+      let room = 12 - A.courses.length;
+      r.designs.forEach((d, i) => {
+        imp.on.set(i, taken.has(nm(d.name)) || room-- > 0);
+        const k = raceCircuits.find((c) => nm(c) === nm(d.name) || nm(c).split(" ")[0] === nm(d.name).split(" ")[0]);
+        if (k) imp.circ.set(i, k);
+      });
+    } catch (e) {
+      if (token !== imp.token) return;
+      const code = e.code === "needMap" && !e.name ? "needMapAny" : e.code;
+      imp.err = ["unreadable", "noCourses", "noGeo", "needMap", "needMapAny"].includes(code) ? t(`sh.ocad.err.${code}`, { f, map: e.name || "?" }) : `${f} — ${e.message || e}`;
+    }
+    coursesCard();
+    if (imp.read?.designs.length) showPending(0);
+  }
+  /** A course of the project drawn on the map card as it will be published (rendered once, kept for « Ajouter »). */
+  async function renderOf(i) {
+    let r = imp.renders.get(i);
+    if (!r) {
+      r = await imp.read.C.circuitOf(imp.read.E, imp.read.designs[i], 150);
+      r.img = await createImageBitmap(r.blob);
+      r.blank = nearlyBlank(r.img);
+      imp.renders.set(i, r);
+    }
+    return r;
+  }
+  async function showPending(i) {
+    if (!imp.read) return;
+    imp.prev = i;
+    const d = imp.read.designs[i], box = $("#sh-m-courses");
+    $$("tr[data-n]", box).forEach((row) => row.classList.remove("sel"));
+    $$("tr[data-i]", box).forEach((row) => row.classList.toggle("sel", Number(row.dataset.i) === i));
+    const token = (preview = {}), read = imp.read;
+    shown = null;                                                         // the course is printed on the image itself
+    $("#sh-m-cap").textContent = t("sh.imp.preview", { name: d.name, n: d.nCtrl });
+    $("#sh-m-nomap").hidden = false; $("#sh-m-nomap").textContent = t("sh.imp.rendering");
+    let r;
+    try { r = await renderOf(i); } catch (e) { if (token === preview) $("#sh-m-nomap").textContent = errText(e); return; }
+    if (token !== preview || read !== imp.read) return;
+    $("#sh-m-nomap").hidden = true;
+    mv.setImage(r.img);
+    if (r.controls.length) mv.fitPoints(r.controls.map((p) => p.x), r.controls.map((p) => p.y), 30 + r.r * 2);
+    mv.draw();
+    // a white sheet with the overprint alone: said before anything is sent, and nothing can be added
+    if (r.blank && !imp.err) { imp.err = t("sh.ocad.err.blank"); coursesCard(); }
+  }
+  async function addImport() {
+    const note = (s, frac = null) => { imp.note = s; imp.frac = frac; const el = $("#sh-imp-note"); if (el) el.textContent = s; const b = $("#sh-imp-bar"); if (b) { b.hidden = frac == null; setBar(b.querySelector("progress"), frac); } };
+    const pick = picked();
+    if (!pick.length) return note(t("sh.ocad.none"));
+    if (!imp.consent) return note(t("sh.e.consentNeeded"));
+    const byName = new Map(A.courses.map((c) => [nm(c.name), c]));
+    if (A.courses.length + pick.filter(({ d }) => !byName.has(nm(d.name))).length > 12) return note(t("sh.ocad.max"));
+    imp.busy = true; coursesCard();
+    const read = imp.read;
+    try {
+      let next = Math.max(-1, ...A.courses.map((c) => c.n)) + 1;
+      const out = [];
+      for (let j = 0; j < pick.length; j++) {
+        const { d, i } = pick[j];
+        note(t("sh.ocad.busy", { i: j + 1, n: pick.length, name: d.name }), j / pick.length);
+        const old = byName.get(nm(d.name)), n = old ? old.n : next++;
+        const c = await renderOf(i);
+        if (c.blank) throw Object.assign(new Error(t("sh.ocad.err.blank")), { shown: true });
+        if (c.blob.size > MAX_MAP) throw Object.assign(new Error(t("sh.e.tooBig", { mb: Math.round(MAX_MAP / 1048576) })), { shown: true });
+        await api(`/${id}/map/${n}`, { method: "PUT", body: c.blob, type: "image/png", key: keyOf(id) });
+        // the route choices' layers from the OCAD map's symbols (owner, 2026-11-05: exact, where the image's colours only suggest)
+        const mvv = Date.now();
+        let layers = null;
+        try {
+          note(t("sh.ocad.layers", { i: j + 1, n: pick.length, name: d.name }), (j + 0.5) / pick.length);
+          const lb = await read.C.circuitLayers(read.E, d, c);
+          if (lb) { await api(`/${id}/layers/${n}`, { method: "PUT", body: lb, key: keyOf(id) }); layers = { map: mvv, src: read.E.map.format }; }
+        } catch (e) { console.warn(e); }                    // the routes then read the image's colours
+        out.push({ n, name: d.name.slice(0, 60), circuit: imp.circ.get(i) || old?.circuit || "", r: c.r,
+          map: { w: c.w, h: c.h, type: "image/png", v: mvv }, geo: c.geo, controls: c.controls, printed: true, ...(layers ? { layers } : {}),
+          ...(old?.variants ? { variants: old.variants } : {}), ...(old?.exercises ? { exercises: old.exercises } : {}),
+          ...(read.E.ev.courses[d.id]?.kind === "score" ? { score: true } : {}) });
+      }
+      const courses = [...A.courses.filter((c) => !out.some((o) => o.n === c.n)), ...out].sort((a, b) => a.n - b.n);
+      await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
+      clearImp();
+      sel = out[0]?.n ?? sel;
+      reload();
+    } catch (e) {
+      imp.busy = false; imp.note = e.shown ? e.message : errText(e); imp.frac = null;
+      coursesCard();
+    }
+  }
+  function impHtml() {
+    if (!imp.got.length) return "";
+    const files = imp.got.map((f) => f.name).join(", ");
+    if (!imp.read) {
+      return html`<div class="sh-imp">${imp.err ? html`<p class="sh-imp-err">${imp.err}</p>` : html`<p class="muted">${t("sh.ocad.reading", { f: files })}</p>`}
+        <div class="row sh-imp-go"><button type="button" class="btn btn-sm" id="sh-imp-cancel">${t("sh.cancel")}</button></div></div>`;
+    }
+    const { designs, info } = imp.read, taken = new Set(A.courses.map((c) => nm(c.name))), n = picked().length, dis = imp.busy ? "disabled" : "";
+    return html`<div class="sh-imp">
+      <div class="sh-imp-h"><b>${tn("sh.imp.found", designs.length)}</b>
+        <span class="muted">${t("sh.ocad.info", { f: info.courses, map: info.map, format: info.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${info.version}`, scale: fmt(info.scale), n: designs.length, geo: info.geo || "—" })}</span></div>
+      <div class="table-wrap"><table class="data compact sh-m-table sh-imp-table"><thead><tr><th></th><th>${t("sh.ocad.col.course")}</th><th class="r">${t("sh.m.col.ctrls")}</th>
+          ${raceCircuits.length ? html`<th>${t("sh.course.circuit")}</th>` : ""}</tr></thead>
+        <tbody>${designs.map((d, i) => html`<tr data-i="${i}" tabindex="0" class="${imp.prev === i ? "sel" : ""}">
+          <td><input type="checkbox" data-o="${i}" aria-label="${d.name}" ${raw(imp.on.get(i) ? "checked" : "")} ${raw(dis)}></td>
+          <td><b>${d.name}</b>${taken.has(nm(d.name)) ? html` <span class="tag" title="${t("sh.ocad.replaces")}">${t("sh.imp.replaces")}</span>` : ""}</td>
+          <td class="r num">${d.nCtrl}</td>
+          ${raceCircuits.length ? html`<td><select data-k="${i}" ${raw(dis)}><option value="">—</option>${raceCircuits.map((c) => html`<option ${raw(imp.circ.get(i) === c ? "selected" : "")}>${c}</option>`)}</select></td>` : ""}</tr>`)}</tbody></table></div>
+      ${imp.err ? html`<p class="sh-imp-err">${imp.err}</p>` : html`<p class="hint">${t("sh.imp.hint")}</p>`}
+      <label class="an-opt"><input type="checkbox" id="sh-imp-ok" ${raw(imp.consent ? "checked" : "")} ${raw(dis)}> ${t("sh.e.consent")}</label>
+      <div class="row sh-imp-go"><button type="button" class="btn btn-primary" id="sh-imp-add" ${raw(imp.busy || imp.err || !n ? "disabled" : "")}>${n ? tn("sh.imp.add", n) : t("sh.ocad.none")}</button>
+        <button type="button" class="btn btn-sm" id="sh-imp-cancel" ${raw(dis)}>${t("sh.cancel")}</button><span class="muted" id="sh-imp-note">${imp.note}</span></div>
+      <div id="sh-imp-bar" ${raw(imp.frac == null ? "hidden" : "")}>${raw(bar(imp.frac))}</div></div>`;
+  }
+  function bindImp(box) {
+    $("#sh-imp-cancel", box)?.addEventListener("click", () => { clearImp(); coursesCard(); showMap(); });
+    $("#sh-imp-add", box)?.addEventListener("click", addImport);
+    $("#sh-imp-ok", box)?.addEventListener("change", (e) => { imp.consent = e.target.checked; if (imp.consent && imp.note === t("sh.e.consentNeeded")) { imp.note = ""; $("#sh-imp-note").textContent = ""; } });
+    $$("[data-o]", box).forEach((cb) => cb.addEventListener("change", () => {
+      imp.on.set(Number(cb.dataset.o), cb.checked);
+      const n = picked().length, b = $("#sh-imp-add");
+      if (b) { b.textContent = n ? tn("sh.imp.add", n) : t("sh.ocad.none"); b.disabled = imp.busy || !!imp.err || !n; }
+    }));
+    $$("[data-k]", box).forEach((s) => s.addEventListener("change", () => imp.circ.set(Number(s.dataset.k), s.value)));
+    $$("tr[data-i]", box).forEach((row) => {
+      const go = (e) => { if (!e.target.closest("input, select, button")) showPending(Number(row.dataset.i)); };
+      row.addEventListener("click", go);
+      row.addEventListener("keydown", (e) => { if (e.key === "Enter") go(e); });
+    });
+  }
+
   function coursesCard() {
     const box = $("#sh-m-courses"), per = new Map((stats?.courses || []).map((c) => [c.n, c]));
     box.innerHTML = html`<div class="card-body">
       <h2 class="sh-m-h">${t("sh.courses")}</h2>
       ${A.courses.length ? html`<div class="table-wrap"><table class="data compact sh-m-table"><thead><tr><th>${t("sh.m.col.course")}</th><th class="r">${t("sh.m.col.ctrls")}</th><th class="r">${t("sh.m.col.len")}</th>
           <th class="r" title="${t("sh.m.col.traces.tip")}">${t("sh.m.col.traces")}</th><th class="r" title="${t("sh.m.col.solo.tip")}">${t("sh.m.col.solo")}</th><th></th></tr></thead>
-        <tbody>${A.courses.map((c) => { const s = per.get(c.n), len = courseLength(c); return html`<tr data-n="${c.n}" tabindex="0" class="${c.n === sel ? "sel" : ""}">
+        <tbody>${A.courses.map((c) => { const s = per.get(c.n), len = courseLength(c); return html`<tr data-n="${c.n}" tabindex="0" class="${c.n === sel && imp.prev == null ? "sel" : ""}">
           <td><b>${c.name}</b>${c.circuit ? html` <span class="muted">· ${c.circuit}</span>` : ""}${c.score ? html` <span class="tag">${t("sh.score")}</span>` : ""}</td>
           <td class="r num">${c.controls.filter((p) => p.kind === "control").length}</td>
           <td class="r num">${len ? fmt(len / 1000, 1) : "—"}</td>
           <td class="r num">${s ? html`${s.traces}${s.tests ? html` <span class="muted">${tn("sh.m.plusTests", s.tests)}</span>` : ""}` : "…"}</td><td class="r num">${s ? s.solo : "…"}</td>
           <td class="r sh-m-act"><button type="button" class="btn btn-sm" data-edit="${c.n}">${t("sh.edit")}</button> <button type="button" class="btn btn-sm" data-del="${c.n}">${t("sh.remove")}</button></td></tr>`; })}</tbody></table></div>
-        <p class="hint">${t("sh.m.courses.hint")}</p>` : html`<p class="muted">${t("sh.m.courses.none")}</p>`}
-      <label class="dropzone an-drop" id="sh-drop" style="margin-top:10px"><input type="file" id="sh-drop-in" multiple hidden accept=".ocd,.omap,.xmap,.png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,image/*,application/pdf">
-        <strong>${t(A.courses.length ? "sh.drop.more" : "sh.drop")}</strong><span class="muted">${t("sh.drop.hint")}</span></label></div>`;
-    const pick = (n) => { sel = n; $$("tr[data-n]", box).forEach((r) => r.classList.toggle("sel", Number(r.dataset.n) === n)); showMap(); };
+        ${imp.got.length ? "" : html`<p class="hint">${t("sh.m.courses.hint")}</p>`}` : imp.got.length ? "" : html`<p class="muted">${t("sh.m.courses.none")}</p>`}
+      ${raw(impHtml())}
+      <label class="dropzone an-drop" id="sh-drop" style="margin-top:10px" ${raw(imp.busy ? "hidden" : "")}><input type="file" id="sh-drop-in" multiple hidden accept=".ocd,.omap,.xmap,.png,.jpg,.jpeg,.webp,.gif,.bmp,.pdf,.kmz,.kml,.jgw,.pgw,.tfw,.gfw,.wld,.prj,.xml,.gpx,.tcx,.fit,image/*,application/pdf">
+        <strong>${t(imp.got.length ? "sh.drop.imp" : A.courses.length ? "sh.drop.more" : "sh.drop")}</strong><span class="muted">${t(imp.got.length ? "sh.drop.imp.hint" : "sh.drop.hint")}</span></label></div>`;
+    bindImp(box);
+    const pick = (n) => {
+      sel = n; imp.prev = null;
+      $$("tr[data-i]", box).forEach((r) => r.classList.remove("sel"));
+      $$("tr[data-n]", box).forEach((r) => r.classList.toggle("sel", Number(r.dataset.n) === n)); showMap();
+    };
     $$("tr[data-n]", box).forEach((r) => {
       r.addEventListener("click", (e) => { if (!e.target.closest("button")) pick(Number(r.dataset.n)); });
       r.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.target.closest("button")) pick(Number(r.dataset.n)); });
@@ -951,9 +1114,10 @@ async function managePage(main, id, data, race) {
     const open = (list) => {
       list = [...(list || [])];
       if (!list.length) return;
+      // an OCAD or Mapper project is read here, in the card; a map image goes to the circuit editor (its controls placed by hand)
+      if (list.some(isVec)) return take(list);
       editing(true);
-      if (list.some((f) => /\.(ocd|omap|xmap)$/i.test(f.name))) ocadImport($("#sh-editor"), ctx, list);
-      else editor($("#sh-editor"), { ...ctx, course: null, files: list });
+      editor($("#sh-editor"), { ...ctx, course: null, files: list });
     };
     $("#sh-drop-in").addEventListener("change", (e) => { open(e.target.files); e.target.value = ""; });
     zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("over"); });
@@ -1042,114 +1206,6 @@ async function managePage(main, id, data, race) {
   return { title: A.title, cleanup: () => mv.destroy() };
 }
 
-/** An OCAD course-setting file: the map and every course in one file, each course a circuit (owner, 2026-11-04: the circuit
- *  editor took several courses in an IOF XML but one circuit at a time, and an OCAD file dropped there did nothing). The courses
- *  are drawn by the Tracer's engine (tracer/circuits.js), as its « Publier vers l'analyse de carte » does; a circuit of the same
- *  name is replaced, its route choices and exercises kept. */
-async function ocadImport(box, ctx, preset = null) {
-  const { A, id, race, onChange } = ctx;
-  const circuits = race ? [...new Set((race.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))] : [];
-  const nm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
-  let read = null;
-  box.innerHTML = html`<div class="sh-editor">
-    <h2 style="font-size:16px;margin:14px 0 8px">${t("sh.ocad.title")}</h2>
-    <p class="hint" style="max-width:760px">${t("sh.ocad.intro")}</p>
-    <label class="dropzone an-drop" id="sh-o-drop"><input type="file" id="sh-o-in" hidden multiple accept=".ocd,.omap,.xmap">
-      <strong>${t("sh.ocad.drop")}</strong><span class="muted">${t("sh.ocad.drop.hint")}</span></label>
-    <div class="muted" id="sh-o-state" style="font-size:13px;margin:6px 0"></div>
-    <div id="sh-o-list"></div>
-    <label class="an-opt" style="margin-top:8px"><input type="checkbox" id="sh-o-consent"> ${t("sh.e.consent")}</label>
-    <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="btn btn-primary" id="sh-o-go" disabled>${t("sh.ocad.create")}</button>
-      <button type="button" class="btn btn-sm" id="sh-o-cancel">${t("sh.cancel")}</button><span class="muted" id="sh-o-note"></span></div></div>`;
-  const state = $("#sh-o-state"), note = $("#sh-o-note");
-  const drawList = () => {
-    const { designs } = read;
-    const taken = new Set(A.courses.map((c) => nm(c.name)));
-    let room = 12 - A.courses.length;                       // the analysis's 12 circuits: those of the same name are replaced
-    $("#sh-o-list").innerHTML = html`<table class="data compact" style="max-width:760px"><thead><tr><th></th><th>${t("sh.ocad.col.course")}</th><th>${t("prov.controls")}</th>
-        ${circuits.length ? html`<th>${t("sh.course.circuit")}</th>` : ""}<th></th></tr></thead><tbody>
-      ${designs.map((d, i) => {
-        const same = taken.has(nm(d.name)), on = same || room-- > 0;
-        return html`<tr><td><input type="checkbox" data-o="${i}" ${raw(on ? "checked" : "")}></td><td><b>${d.name}</b></td><td class="num">${d.nCtrl}</td>
-          ${circuits.length ? html`<td><select data-k="${i}"><option value="">—</option>${circuits.map((c) => html`<option ${raw(nm(c) === nm(d.name) || nm(c).split(" ")[0] === nm(d.name).split(" ")[0] ? "selected" : "")}>${c}</option>`)}</select></td>` : ""}
-          <td class="muted">${same ? t("sh.ocad.replaces") : ""}</td></tr>`; })}</tbody></table>`;
-    $("#sh-o-go").disabled = false;
-  };
-  // the files dropped so far: the courses file and its background map, together or one after the other (a file of the same
-  // name replaces the one before)
-  let got = [];
-  const take = async (list) => {
-    list = [...(list || [])].filter((f) => /\.(ocd|omap|xmap)$/i.test(f.name));
-    if (!list.length) return;
-    got = [...got.filter((g) => !list.some((f) => f.name === g.name)), ...list];
-    read = null; $("#sh-o-list").innerHTML = ""; $("#sh-o-go").disabled = true; note.textContent = "";
-    state.textContent = t("sh.ocad.reading", { f: got.map((f) => f.name).join(", ") });
-    try {
-      const C = await import("../tracer/circuits.js");
-      const r = await C.readCourseFiles(got);
-      for (const d of r.designs) d.nCtrl = C.controlCount(r.E.ev, d);
-      read = { ...r, C };
-      state.textContent = t("sh.ocad.info", { f: r.info.courses, map: r.info.map, format: r.info.format === "oom" ? "OpenOrienteering Mapper" : `OCAD ${r.info.version}`, scale: fmt(r.info.scale), n: r.designs.length, geo: r.info.geo || "—" });
-      drawList();
-    } catch (e) {
-      const f = got.map((x) => x.name).join(", ");
-      const code = e.code === "needMap" && !e.name ? "needMapAny" : e.code;
-      state.textContent = ["unreadable", "noCourses", "noGeo", "needMap", "needMapAny"].includes(code) ? t(`sh.ocad.err.${code}`, { f, map: e.name || "?" }) : `${f} — ${e.message || e}`;
-    }
-  };
-  $("#sh-o-in").addEventListener("change", (e) => { take(e.target.files); e.target.value = ""; });
-  const drop = $("#sh-o-drop");
-  drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
-  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
-  drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); take(e.dataTransfer.files); });
-  $("#sh-o-cancel").addEventListener("click", () => { box.innerHTML = ""; ctx.done?.(); });
-  $("#sh-o-go").addEventListener("click", async () => {
-    if (!read) return;
-    const pick = read.designs.map((d, i) => ({ d, i })).filter(({ i }) => $(`[data-o="${i}"]`)?.checked);
-    if (!pick.length) return (note.textContent = t("sh.ocad.none"));
-    if (!$("#sh-o-consent").checked) return (note.textContent = t("sh.e.consentNeeded"));
-    const byName = new Map(A.courses.map((c) => [nm(c.name), c]));
-    const fresh = pick.filter(({ d }) => !byName.has(nm(d.name))).length;
-    if (A.courses.length + fresh > 12) return (note.textContent = t("sh.ocad.max"));
-    $("#sh-o-go").disabled = true;
-    try {
-      let next = Math.max(-1, ...A.courses.map((c) => c.n)) + 1;
-      const out = [];
-      for (let j = 0; j < pick.length; j++) {
-        const { d, i } = pick[j];
-        note.textContent = t("sh.ocad.busy", { i: j + 1, n: pick.length, name: d.name });
-        const old = byName.get(nm(d.name)), n = old ? old.n : next++;
-        const c = await read.C.circuitOf(read.E, d, 150);
-        if (c.blob.size > MAX_MAP) { $("#sh-o-go").disabled = false; note.textContent = t("sh.e.tooBig", { mb: Math.round(MAX_MAP / 1048576) }); return; }
-        // a map with nothing but the course on it is no map: nothing is saved (the circuits share one map, the first tells)
-        if (j === 0) {
-          const img = await createImageBitmap(c.blob);
-          const blank = nearlyBlank(img); img.close?.();
-          if (blank) { $("#sh-o-go").disabled = false; note.textContent = t("sh.ocad.err.blank"); return; }
-        }
-        await api(`/${id}/map/${n}`, { method: "PUT", body: c.blob, type: "image/png", key: keyOf(id) });
-        // the route choices' layers from the OCAD map's symbols (owner, 2026-11-05: exact, where the image's colours only suggest)
-        const mv = Date.now();
-        let layers = null;
-        try {
-          note.textContent = t("sh.ocad.layers", { i: j + 1, n: pick.length, name: d.name });
-          const lb = await read.C.circuitLayers(read.E, d, c);
-          if (lb) { await api(`/${id}/layers/${n}`, { method: "PUT", body: lb, key: keyOf(id) }); layers = { map: mv, src: read.E.map.format }; }
-        } catch (e) { console.warn(e); }                    // the routes then read the image's colours
-        out.push({ n, name: d.name.slice(0, 60), circuit: $(`[data-k="${i}"]`)?.value || old?.circuit || "", r: c.r,
-          map: { w: c.w, h: c.h, type: "image/png", v: mv }, geo: c.geo, controls: c.controls, printed: true, ...(layers ? { layers } : {}),
-          ...(old?.variants ? { variants: old.variants } : {}), ...(old?.exercises ? { exercises: old.exercises } : {}),
-          ...(read.E.ev.courses[d.id]?.kind === "score" ? { score: true } : {}) });
-      }
-      const courses = [...A.courses.filter((c) => !out.some((o) => o.n === c.n)), ...out].sort((a, b) => a.n - b.n);
-      await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
-      box.innerHTML = "";
-      onChange();
-    } catch (e) { $("#sh-o-go").disabled = false; note.textContent = errText(e); }
-  });
-  if (preset) take(preset);                                // the files dropped on the circuit editor
-}
-
 /** A circuit: its map, its georeference, its controls in order. */
 async function editor(box, ctx) {
   const { A, id, race, course, onChange } = ctx;
@@ -1233,7 +1289,8 @@ async function editor(box, ctx) {
 
   async function take(list) {
     const vec = [...list].find((f) => /\.(ocd|omap|xmap)$/i.test(f.name));
-    if (vec) { mv.destroy(); return ocadImport(box, ctx, list); }
+    // an OCAD or Mapper project goes to the circuits card, where its courses are listed (managePage's take)
+    if (vec) { mv.destroy(); box.innerHTML = ""; ctx.done?.(); return ctx.ocad?.(list); }
     for (const f of list) {
       const low = f.name.toLowerCase();
       try {

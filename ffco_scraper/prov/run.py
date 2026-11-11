@@ -54,6 +54,12 @@ MAYBE = " (à vérifier)"                   # (clubsite: a file found on the rac
 START_SITES = 8                 # organisers' sites searched for start lists per run (the longest unsearched first)
 START_KINDS = ("startlist", "startfile")       # a start list read, or only linked (a PDF)
 ORG_START_DAYS = 90             # an organiser's start list (« Organisation › Horaires ») is published this far ahead
+# The race's announcement and start-time booking on its organiser's site (2026-11-11: COLE's of 6 December linked
+# both from its own post, FFCO's page neither), for the Agenda: the races of the next LINK_DAYS days, LINK_SITES a run,
+# each at most every LINK_EVERY hours, after the results; kept in prov_meta « sitelinks », written to prov/links.json.
+LINK_DAYS = 60
+LINK_EVERY = 36
+LINK_SITES = 4
 MATCHED = "rapproché automatiquement (date, nom, organisateur)"
 # One address per platform competition, however a club's page spells it (« …?lang=fr&comp=… »): the same document
 # is then kept once, whether matched automatically or linked from the organiser's site.
@@ -1006,6 +1012,73 @@ def supersede_starts(con, key: str, kept: set[str]) -> int:
     return len(gone)
 
 
+def site_links(con, f: Fetcher, cs: ClubSite, today: date) -> int:
+    """The coming races' announcement and start-time booking on their organiser's site (ClubSite.find mode
+    "announce"): {key: {"ann", "book", "page", "date", "agenda_id", "at"}} in prov_meta « sitelinks ». A weekend's
+    announcements go to the race they are about (races.owners), as in save_announcements. Returns the races whose
+    links changed."""
+    hi = (today + timedelta(days=LINK_DAYS)).isoformat()
+    links = store.meta_get(con, "sitelinks", {}) or {}
+    now = datetime.now(timezone.utc)
+    due = [r for r in con.execute(f"SELECT * FROM prov_races WHERE date_iso >= ? AND date_iso <= ? AND COALESCE(country, 'FR') = 'FR' "
+                                  f"AND key NOT LIKE '{RELAY}%' AND key NOT LIKE 'd%' ORDER BY date_iso", (today.isoformat(), hi)).fetchall()
+           if not links.get(r["key"]) or now - datetime.fromisoformat(links[r["key"]]["at"]) >= timedelta(hours=LINK_EVERY)]
+    due.sort(key=lambda r: (links.get(r["key"]) or {}).get("at", ""))
+    changed = 0
+    for race in due[:LINK_SITES]:
+        if f.out_of_time():
+            break
+        sites = [s for s in dict.fromkeys([race["site"], races.club_site(con, race["org_code"])]) if s]
+        old = links.get(race["key"]) or {}
+        entry = {"date": race["date_iso"], "agenda_id": race["agenda_id"] or None, "at": now.isoformat(timespec="seconds")}
+        if sites:
+            f.race = race["key"]
+            try:
+                found = cs.find(race, sites, mode="announce")
+            except Exception:
+                log.exception("site links: %s", race["key"])
+                found = None
+            if found is None:                         # (a failed look keeps what an earlier one found)
+                entry |= {k: old[k] for k in ("ann", "book", "page") if k in old}
+            else:
+                day = date.fromisoformat(race["date_iso"])
+                rivals = con.execute(f"SELECT * FROM prov_races WHERE date_iso BETWEEN ? AND ? AND org_code = ? AND key != ? AND key NOT LIKE '{RELAY}%'",
+                                     ((day - timedelta(days=1)).isoformat(), (day + timedelta(days=1)).isoformat(),
+                                      race["org_code"], race["key"])).fetchall()
+                # (a file, not a page: co-paca.info's season table, its link saying « annonce », is every race's)
+                anns = [(u, t) for u, t in found.get("announcements") or []
+                        if re.search(r"(?i)\.(pdf|docx?|odt)$", urllib.parse.urlsplit(u).path)
+                        or re.search(r"drive\.google\.com/file|docs\.google\.com/document|1drv\.ms|dropbox", u)]
+                if rivals:          # the weekend's other races: an announcement goes to the race it names
+                    anns = [(u, t) for u, t in anns if race["key"] in races.owners(
+                        [race, *rivals], re.sub(r"(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z])", " ",
+                                                f"{urllib.parse.unquote(u.rsplit('/', 1)[-1])} {t}"), False)]
+                # the best placed: the race's own page or post before a file only naming it; two equally placed
+                # with a sister race beside it, neither (the Agenda would show the wrong one)
+                # (only a word in common is no evidence: rank 2 never shown)
+                rank = found.get("ann_rank") or {}
+                anns = [(u, t) for u, t in anns if rank.get(u, 2) <= 1]
+                best = [u for u, _ in anns if rank.get(u, 2) == min((rank.get(x, 2) for x, _ in anns), default=2)]
+                if len(best) == 1 or (best and not rivals):
+                    entry["ann"] = best[0]
+                books = found.get("bookings") or []
+                if books:
+                    entry["book"], entry["page"] = books[0][0], books[0][2]
+                try:
+                    changed += save_announcements(con, race, found, f, rivals)      # their circuits' table, when they have one
+                except Exception:
+                    log.exception("site links: announcement of %s", race["key"])
+        if {k: entry.get(k) for k in ("ann", "book")} != {k: old.get(k) for k in ("ann", "book")}:
+            changed += 1
+        links[race["key"]] = entry
+        con.commit()
+    # the races past (and those gone from prov_races) forgotten
+    keys = {r[0] for r in con.execute("SELECT key FROM prov_races WHERE date_iso >= ?", (today.isoformat(),))}
+    store.meta_set(con, "sitelinks", {k: v for k, v in links.items() if k in keys and v.get("date", "") >= today.isoformat()})
+    con.commit()
+    return changed
+
+
 def site_start_lists(con, f: Fetcher, cs: ClubSite, today: date) -> int:
     """The start lists and entry lists organisers post on their own sites before the race (« horaires de départ »):
     the races of today and the next START_DAYS days, START_SITES a run, each at most every START_EVERY hours. A list
@@ -1244,9 +1317,16 @@ def build(con, out: Path, today: date) -> int:
     whole = {"generated": _now(), "races": index, "relays": relay_index, "runs": store.meta_get(con, "runs", [])[-12:],
              "due": len(races.due(con, today, _now()))}
     (d / "index.json").write_text(dump(whole), encoding="utf-8")
+    # the coming races' announcement and start-time booking found on their organisers' sites (site_links), by the
+    # Agenda's event id: public links, the same for every reader
+    found = {str(v["agenda_id"]): {k: v[k] for k in ("ann", "book") if v.get(k)}
+             for v in (store.meta_get(con, "sitelinks", {}) or {}).values()
+             if v.get("agenda_id") and v.get("date", "") >= today.isoformat() and (v.get("ann") or v.get("book"))}
+    for folder in (d, pub):
+        (folder / "links.json").write_text(dump({"generated": _now(), "events": found}), encoding="utf-8")
     (pub / "index.json").write_text(dump(whole | {k: [{f: v for f, v in r.items() if f not in PUB_INDEX_DROP} for r in rs]
                                                   for k, rs in (("races", index), ("relays", relay_index))}), encoding="utf-8")
-    keep = {f"{r['key']}.json" for r in index + relay_index} | {"index.json", "blocked.json"}
+    keep = {f"{r['key']}.json" for r in index + relay_index} | {"index.json", "blocked.json", "links.json"}
     for folder in (d, pub):
         for old in folder.glob("*.json"):
             if old.name not in keep:
@@ -1412,6 +1492,11 @@ def run(db: Path, out: Path, agenda: Path | None = None, days: int = KEEP_DAYS -
             races.schedule(con, race, today)
             con.commit()
             looked += 1
+        if not f.out_of_time():
+            try:
+                changed += site_links(con, f, cs, today)
+            except Exception:
+                log.exception("provisional: the organisers' announcements failed")
         stats.update(looked=looked, changed=changed, failed=failed, requests=f.requests)
         log_runs = store.meta_get(con, "runs", []) + [{"at": _now(), "due": len(due), "looked": looked, "changed": changed,
                                                         "failed": failed, "requests": f.requests, "cut": cut,

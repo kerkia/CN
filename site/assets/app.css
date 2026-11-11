@@ -2007,6 +2007,16 @@ table.data.ma-two .ma-name .ma-l2 { white-space: nowrap; overflow: hidden; text-
 .sh-m-table tr.sel td { background: color-mix(in srgb, var(--course) 10%, var(--surface)); }
 .sh-m-table tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--course); }
 .sh-m-act { white-space: nowrap; }
+/* an OCAD project read in the circuits card (shared.js take / impHtml) */
+.sh-imp { margin-top: 12px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--course) 35%, var(--line)); border-radius: 10px;
+  background: color-mix(in srgb, var(--course) 5%, var(--surface)); display: grid; gap: 8px; }
+.sh-imp p { margin: 0; }
+.sh-imp-h { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 14px; }
+.sh-imp-h .muted { font-size: 12px; }
+.sh-imp-table td:first-child { width: 28px; }
+.sh-imp-err { color: var(--bad, #c0392b); font-weight: 600; }
+.sh-imp-go { gap: 8px; align-items: center; flex-wrap: wrap; }
+#sh-imp-bar progress { width: 100%; }
 .sh-m-opts { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .sh-m-opt { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; font-size: 13.5px; }
 .sh-m-opt input { margin-top: 3px; }
