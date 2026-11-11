@@ -236,6 +236,16 @@ for o in objs:
         dmap.ellipse([x - r, y - r, x + r, y + r], fill=(0, 0, 0))
 log("boulder dots", sum(1 for o in objs if o.get("dot")))
 
+# ---- the magnetic north lines (ISOM 601, owner 2026-11-11: a map turned to the leg needs them): blue, 30 mm apart at 1:10 000 =
+#      300 m, 0.27 mm wide (0.18 at 1:15 000 × 1.5), on the grid's round hundreds so they agree from one race to the next; drawn
+#      parallel to the frame's sides, the game's north being the grid's (its compass points to the map's top)
+NORTH_M = 300
+north_x = [gx for gx in range(int(-(-GX0 // NORTH_M) * NORTH_M), int(GX1) + 1, NORTH_M)]
+for gx in north_x:
+    x = (gx - GX0) / MPX
+    dmap.line([(x, 0), (x, mapimg.height)], fill=(0, 152, 220), width=max(2, round(0.27 * K / MPX)))
+log("north lines", len(north_x))
+
 
 # ---- an OCAD file of the same map, for an organiser to edit before building (Cartographier's own writer, mkocd.mjs) -------------
 def editable_ocd():
@@ -288,6 +298,8 @@ def editable_ocd():
         for part in getattr(poly, "geoms", [poly]):
             if not part.is_empty and part.area * K * K >= 4:
                 out.append({"sym": 206000, "otp": 3, "ang": 0, "rings": [[list(pt) for pt in part.exterior.coords]]})
+    for gx in north_x:                                                # the north lines (601.1, blue)
+        out.append({"sym": 601001, "otp": 2, "ang": 0, "rings": [[[(gx - GX0) / K, 0], [(gx - GX0) / K, H / K]]]})
     J = {"title": f"{A.race} (LiDAR)", "scale": SCALE, "set": "isom2017-2", "realWorld": {"x": GX0, "y": GY0, "epsg": EPSG}, "objects": out}
     json.dump(J, open(RD / "map_objects.json", "w"))
     shim = (ROOT / "tools" / "mapper" / "shim.mjs").as_uri()
