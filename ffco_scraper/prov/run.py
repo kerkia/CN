@@ -280,6 +280,32 @@ def look(con, race, f: Fetcher, lr: LiveResultat, ws: WinSplits, hy: Heyries, cs
             changed += save(con, race["key"], url, "oreplay", d, note=MATCHED)
         elif not con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone():
             save(con, race["key"], url, "oreplay", None, kind="empty", note=MATCHED)     # nothing uploaded (yet)
+    # Canada's (countries/ca, 2026-11-11): WhyJustRun's IOF XML results of the event its agenda names, and the club's own
+    # results files of that day (Orienteering Ottawa's MeOS split lists, Ramblers' lists) — read again when they change
+    if links.get("wjr") and not f.out_of_time():
+        m = re.search(r"/events/view/(\d+)", links["wjr"], re.I)
+        url = f"https://whyjustrun.ca/iof/3.0/events/{m.group(1)}/result_list.xml" if m else None
+        a = f.get(url, conditional=not reread) if url else None
+        if a is not None and a.status == 304 and con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?",
+                                                             (race["key"], url)).fetchone():
+            matched.append(url)
+        elif a is not None and a.status == 200:
+            d = parse_any(a.content, a.url, a.ctype)
+            if d and d["classes"]:
+                matched.append(url)
+                changed += save(con, race["key"], url, "wjr", d, note=MATCHED)
+    files = links.get("file") or []
+    for url in [files] if isinstance(files, str) else files:
+        if f.out_of_time():
+            break
+        matched.append(url)
+        has = con.execute("SELECT 1 FROM prov_docs WHERE race_key = ? AND url = ?", (race["key"], url)).fetchone()
+        a = f.get(url, conditional=bool(has) and not reread)
+        if a.status != 200:
+            continue
+        d = parse_any(a.content, a.url, a.ctype)
+        if d and d["classes"] and date_ok(d, race):
+            changed += save(con, race["key"], url, "site", d, note=MATCHED)
     if links.get("helga") and hg and not f.out_of_time():
         url = PLATFORM_URL["helga"].format(links["helga"])
         matched.append(url)

@@ -3348,6 +3348,39 @@ Every multiple-choice game was played through to its score page at phone size, w
   (r/ and net/: a runner's number // 10 in France, // 100 elsewhere, `site_io.runner_bucket`, `data.bucketOf`) and
   `club_packs` (67, a prime: 64 left 10 files empty and one with 162 clubs; club/ and club_courses/ in `p<n>.json` by a hash of the club's code, `site_io.club_pack` = `data.clubPack`):
   Spain ~1,250 files instead of ~7,500.
+- **Canada** (`countries/ca`, owner 2026-11-11: « start with Orienteering Ottawa, then Canada in general », to show the clubs
+  what Ozimut could be). Orienteering Canada's own site is behind a Cloudflare challenge (never worked around): the clubs are
+  the sources. **Agenda** (`countries/ca/__init__.py`, `results=True`): WhyJustRun's events (`wjr.py`: whyjustrun.ca's open
+  API, robots.txt allows all — `events.json`, the organisations' IOF XML list whose parents give each club's province:
+  OABC, AOA, MOA, OO, OQ, ONB, ONS, SOA, YOA; Orienteering Ottawa's parent is OQ, `REGION_OF_CLUB` puts it in Ontario, its
+  Gatineau Park events in Québec by name; the platform about twenty clubs use, no longer maintained) and the Quebec
+  federation's calendar (`fqco.py`: courseorientationquebec.ca, WordPress « The Events Calendar » REST API; Ottawa's rows
+  dropped there — WhyJustRun has them —, a WhyJustRun post of another club's event, « (Ramblers) Eastern Canadian… », kept
+  only when its page links the results, else the organiser's row). Regions = the provinces (no finer unit, no places
+  table: positions from the sources' coordinates). Meetings, AGMs, socials dropped (`NOT_EVENT`), trainings kind « e »,
+  snowshoe-O its own discipline (« Raquettes », not ranked), « CANCELLED » after a name read. **Results**: each past race's
+  `src` carries the club's own files of that day (`results.py`, the clubs' results pages read once a run: Orienteering
+  Ottawa's `/Results/<yyyymmdd>_results.html`, MeOS split lists since January 2023 — robots.txt lists `/Results/` as closed,
+  read all the same at a light pace, the owner's rule —, Ramblers' MeOS lists named by day), else what the WhyJustRun
+  event's page links (WinSplits' database id, result files), looked at a few days after, then kept; `run.look` reads
+  `links["wjr"]` (WhyJustRun's IOF XML result list) and `links["file"]` (the club's files, `parse_any`, `date_ok`).
+  **MeOS's split list in HTML** (`parsers/meos_html._split_list`, `parsers.VERSION` 12): a class header « (n / m) », a runner
+  row « 1. Elliott, Jesse · SI No · Time: 32:04 | MP | DNF », split rows « 3 (56): 4:28 (9:26) »; names turned round, the card
+  kept (never published). **Ranking** (`archive.py`, `clubs.py`, `ranking.py`, as Spain's): CN_DATA_DIR/ca.sqlite3 from the
+  provisional results' Canadian races (`from_prov`; an event with a file per format — the Eastern Canadian Championships'
+  « Results-Long-by-Class.pdf » — split into a race per format), the clubs' past files once each (`backfill_files`, Ottawa's
+  events named from WhyJustRun's calendar of their day) and WhyJustRun's past results of every Canadian club, newest season
+  first, a budget per night until done (`backfill_wjr`, 2010 on); score-O, relays, Hallowe'en and family events, series
+  totals left out (`NOT_RANKED`), Novice / beginner / group classes « nc » (`OPEN_CLASS`); runners told apart by their name
+  alone (`identity.resolve` without clubs: Ottawa's files print none); clubs numbered once with their province's letters
+  (« 0003ON », `ca_clubs`, WhyJustRun's organisations and the Quebec clubs, others numbered as met); the engine as Spain's
+  (`bootstrap` with Spain's category levels — most of Canada's local races are courses by level: 0.75 —, seeds never
+  expire). **Not published** until the owner says so — one switch, `countries/ca` `OPEN` (False): the races stay out of
+  « Résultats » (`COUNTRY.results`) and the ranking's site files are not written (`ranking.PUBLISH`), while the calendar is
+  published as the other countries' and the archive and the index are computed every night; `functions/_lib/access.js`
+  lists CA as « all ». The page word for its regions is
+  « Province » (`f.region.CA`); the Documentation's note `doc.country.CA`. Measured locally on 2026-11-11: the archive 1,642 races 2010-2026 (Ottawa 85 files, Ramblers' lists, WhyJustRun 1,350 events with results of 3,474 asked), 43,526 results, 7,897 runners, 371 ranked in forest on the day, 744 site files; the index calls 77.2 % of forest duels right since 2012 (75.2 % since July 2025; each circuit weighing its runners, the index 15 days before; France about 81 %) — Canada's elite on top (McLaren, Smith, Harkavy, Kemp, Bergstrom).
+  Letter to Orienteering Ottawa drafted (private doc https://claude.ai/artifact/N7qu8xM7zrU3wCa1vbXZxR).
 - **FFCO's national calendars in the Agenda** (owner, 2026-11-05): the « Calendrier national » PDFs of FFCO's page
   `/les-pratiques/pratiquer-la-co/calendrier-national/` (the season's, the next ones « provisoire »: one-page tables of sub-groups B1
   and C1) are read by `ffco_scraper/natcal.py` in every agenda build (`agenda.build`: one page a day, a PDF only when its address is

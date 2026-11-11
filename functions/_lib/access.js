@@ -5,7 +5,8 @@
 //   "all":     every signed-in account — Spain: every result is public, so what is computed from them is too (owner,
 //              2026-10-22).
 // (Its own module: the login gate imports it, and countries.js imports api.js, which imports the gate.)
-export const DATA_ACCESS = { FR: "members", ES: "all" };
+//   Canada (2026-11-11): its clubs publish every result on their sites, as Spain's federation does.
+export const DATA_ACCESS = { FR: "members", ES: "all", CA: "all" };
 // the countries whose agenda alone the site reads (countries/agenda.py, 2026-10-23): open to everyone, as their calendars are
 for (const cc of ["AT", "BE", "BG", "BR", "BY", "CH", "CZ", "DE", "DK", "EE", "GB", "GE", "HK", "HR", "IE", "IL", "IT", "JP",
   "KR", "LT", "MK", "PL", "RO", "RS", "SI", "SK", "TR", "UA", "ZA"]) DATA_ACCESS[cc] = "all";

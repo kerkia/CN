@@ -15,6 +15,8 @@ import {
 } from "../clubstats.js";
 import { link, replaceQuery, terrainField } from "../app.js";
 import { myClub } from "../auth.js";
+// the country's own word for its regions when the catalogues have one (Canada: its provinces), else « regional federation »
+const regionWord = () => { const k = `f.region.${data.loadedCountry()}`; return t(k) !== k ? t(k) : t("f.region"); };
 
 /** The four selectors shared by the club pages; withOrg adds the organised-competitions base; without withMeasure,
  *  the measure is chosen by sorting the table on its column. */
@@ -60,7 +62,7 @@ const VIEWS = [["clubs", "#/clubs"], ["ligues", "#/clubs?onglet=ligues"], ["comp
 // France's: FFCO's club numbers, its ligues, its national races' points and its relay formats; another country's clubs are
 // keyed by Ozimut (countries/<cc>/clubs.py) and its regions are its regional federations
 const isFr = () => data.loadedCountry() === "FR";
-const ligueWord = () => (isFr() ? t("f.ligue") : t("f.region"));
+const ligueWord = () => (isFr() ? t("f.ligue") : regionWord());
 async function view(el, v, query) {
   setLede(t("cl.lede"));
   if (v === "compare") return (await import("./clubcompare.js")).render(el, { query });

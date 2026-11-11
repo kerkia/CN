@@ -14,6 +14,8 @@ import {
 import { link, replaceQuery, terrainField } from "../app.js";
 import * as auth from "../auth.js";
 import * as country from "../country.js";
+// the country's own word for its regions when the catalogues have one (Canada: its provinces), else « regional federation »
+const regionWord = () => { const k = `f.region.${data.loadedCountry()}`; return t(k) !== k ? t(k) : t("f.region"); };
 
 export const AGES = ["10", "12", "14", "16", "18", "20", "21", "35", "40", "45", "50", "55", "60", "65", "70", "75", "80", "85", "90"];
 const BIN = 250;
@@ -268,7 +270,7 @@ export async function render(main, { query }) {
         <select id="f-club" style="max-width:230px"><option value="">${t("f.allm")}</option>${clubOpts.map(([c, n]) => html`<option value="${c}" ${raw(c === f.club ? "selected" : "")}>${fr ? `${c} - ${n}` : n}</option>`)}</select></label>
       ${fr && depts.length ? html`<label class="field"><span>${t("f.dept")}</span>
         <select id="f-dept" style="max-width:170px"><option value="">${t("f.allm")}</option>${depts.map((d) => html`<option value="${d}" ${raw(d === f.dept ? "selected" : "")}>${d} - ${data.deptName(d)}</option>`)}</select></label>` : ""}
-      <label class="field"><span>${fr ? t("f.ligue") : t("f.region")}</span>
+      <label class="field"><span>${fr ? t("f.ligue") : regionWord()}</span>
         <select id="f-ligue" style="max-width:170px"><option value="">${t("f.all")}</option>${ligues.map((l) => html`<option value="${l}" ${raw(l === f.ligue ? "selected" : "")}>${l} - ${data.ligueName(l)}</option>`)}</select></label>
       <label class="field"><span>${t("f.name")}</span><input type="search" id="f-q" value="${f.q}" style="width:150px"></label>
       <label class="checkline"><input type="checkbox" id="f-podium" ${raw(f.podium ? "checked" : "")}>${t("f.podiums")}</label>

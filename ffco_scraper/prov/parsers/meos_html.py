@@ -44,6 +44,8 @@ def _parse(content: bytes, url: str) -> dict | None:
     title = text_of(root.find(".//title")) or None
     if root.xpath("//table[@id='resultsTable']"):
         return _orientation_data(root, title, url)
+    if b"si no:" in low and _SPLIT.search(content.decode("utf-8", "replace")):
+        return _split_list(root, title)
     heading = " ".join(text_of(h) for h in root.xpath("//h1|//h2|//h3")[:2])
     if root.xpath("//div[contains(translate(@style,'ABSOLUTE','absolute'),'absolute')]"):
         lines = _div_lines(root)
@@ -188,6 +190,84 @@ def _runner(row: dict, cols: dict):
 
 
 # --- Orientation Data -------------------------------------------------------------------------------------------
+
+# --- MeOS's split list (« Sträcktider », 2026-11-11: Orienteering Ottawa's results files) -----------------------
+# a class's bold header row (its name, « (finishers / starters) », its course, « Length: 2125 Meters »), then each runner on
+# a row (« 1.  Elliott, Jesse », « SI No: 2164845 », « Time: 32:04 » or « Time: MP ») and their splits on the rows under it
+# (« 3 (56): 4:28 (9:26) »: control 3, code 56, the leg, the time from the start; « - » for a control not punched; « Finish: »)
+_SPLIT = re.compile(r"\b\d+ \(\d+\): (?:-|\d+:\d\d)")
+_SPLIT_CELL = re.compile(r"^(\d+) \((\d+)\):\s*(\S+)\s*\(([^)]*)\)$")
+_FINISH_CELL = re.compile(r"^(?:Finish|Mål|Arrivée|Ziel|Llegada|Maali)\s*:", re.I)
+_LENGTH = re.compile(r"(\d[\d ]*)\s*(?:m\b|meters|metres|mètres)", re.I)
+
+
+def _split_list(root, title: str | None) -> dict | None:
+    classes: list[dict] = []
+    cur = None                      # the class being read
+    who = None                      # the runner whose splits come next
+    heading = [text_of(h) for h in root.xpath("//h1|//h2|//h3")[:3]]
+    for tr in root.xpath("//tr"):
+        cells = [text_of(td) for td in tr.xpath("./td")]
+        cells = [c for c in cells if c]
+        if not cells:
+            continue
+        if tr.xpath("./td[contains(@class,'header')]") and any(re.match(r"^\(\d+\s*/\s*\d+\)$", c) for c in cells):
+            name = re.sub(r"\s*\*\s*$", "", cells[0]).strip()
+            length = next((int(m.group(1).replace(" ", "")) for c in cells if (m := _LENGTH.search(c))), None)
+            cur = model.klass(name, length_m=length)
+            cur["_codes"] = None
+            classes.append(cur)
+            who = None
+            continue
+        if cur is None:
+            continue
+        si = next((c for c in cells if c.lower().startswith("si no:")), None)
+        tm = next((c for c in cells if c.lower().startswith("time:")), None)
+        if si or tm:
+            m = re.match(r"^(\d+)\.\s*(.*)$", cells[0])
+            place, name = (int(m.group(1)), m.group(2)) if m else (None, cells[0])
+            if name.lower().startswith(("si no:", "time:")):
+                continue
+            t = (tm or "").split(":", 1)[1].strip() if tm else ""
+            status = model.status_of(t) or "ok"
+            secs = model.parse_time(t) if status == "ok" else None
+            card = re.sub(r"\D", "", si.split(":", 1)[1]) if si else ""
+            who = model.runner(_turn(name), place=place, time_s=secs, status=status, category=model.category(cur["name"]),
+                               card=card or None)
+            who["_legs"] = []
+            cur["runners"].append(who)
+            continue
+        if who is not None:
+            for c in cells:
+                m = _SPLIT_CELL.match(c)
+                if m:
+                    who["_legs"].append((m.group(2), model.parse_time(m.group(4))))
+    out = []
+    for k in classes:
+        # the course's controls: the codes of its longest list of splits (MeOS prints every control, « - » when missed)
+        rows = [r["_legs"] for r in k["runners"] if r.get("_legs")]
+        codes = max(([c for c, _ in legs] for legs in rows), key=len, default=[])
+        if codes:
+            k["controls"] = codes
+        for r in k["runners"]:
+            legs = r.pop("_legs", [])
+            if codes and legs and [c for c, _ in legs] == codes:
+                r["splits"] = [t for _, t in legs]
+        k.pop("_codes", None)
+        if k["runners"]:
+            out.append(k)
+    if not out:
+        return None
+    by = by_of([c["name"] for c in out], " ".join(heading))
+    finish_classes(out, by)
+    return model.doc(KIND, out, by=by, title=(heading[0] if heading else None) or title, date=find_date(*heading, title))
+
+
+def _turn(name: str) -> str:
+    """MeOS's « Family, Given » -> « Given Family »."""
+    m = re.match(r"^\s*([^,]+),\s*(.+?)\s*$", name or "")
+    return f"{m.group(2)} {m.group(1)}" if m else (name or "").strip()
+
 
 def _orientation_data(root, title: str | None, url: str) -> dict | None:
     table = root.xpath("//table[@id='resultsTable']")[0]

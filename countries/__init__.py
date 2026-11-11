@@ -25,9 +25,9 @@ def modules() -> list:
     """Every country's module (countries/fr, countries/es, countries/ch…), France first: its COUNTRY, and what it can do —
     refresh_agenda(root), agenda_path(root)…"""
     import importlib
-    from . import es, fr, wre
+    from . import ca, es, fr, wre
     # « IOF WRE » (countries/wre.py) last: it matches each WRE to its host country's agenda as just refreshed
-    return [fr, es] + [importlib.import_module(f"{__name__}.{k}") for k in AGENDA_ONLY] + [wre]
+    return [fr, es, ca] + [importlib.import_module(f"{__name__}.{k}") for k in AGENDA_ONLY] + [wre]
 
 
 def registry() -> list[Country]:
