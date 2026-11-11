@@ -265,4 +265,11 @@ export default {
   "va.gait.walk": "Walking",
   "va.gait.run": "Running",
   "va.turn": "Drag to turn it.",
+  "vt.map.orient.north": "Map north up (click to change, O)",
+  "vt.map.orient.leg": "Map turned to the leg (click to change, O)",
+  "vt.map.orient.run": "Map turned to the way you run (click to change, O)",
+  "vt.map.orient.set.north": "Map: north up",
+  "vt.map.orient.set.leg": "Map: the leg up",
+  "vt.map.orient.set.run": "Map: the way you run up",
+  "vt.keys.orient": "O: map north up, turned to the leg or to the way you run",
 };

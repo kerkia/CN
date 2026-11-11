@@ -265,4 +265,11 @@ export default {
   "va.gait.walk": "Andando",
   "va.gait.run": "Corriendo",
   "va.turn": "Arrastra para girarlo.",
+  "vt.map.orient.north": "Mapa orientado al norte (clic para cambiar, O)",
+  "vt.map.orient.leg": "Mapa orientado al tramo (clic para cambiar, O)",
+  "vt.map.orient.run": "Mapa orientado en el sentido de carrera (clic para cambiar, O)",
+  "vt.map.orient.set.north": "Mapa: el norte arriba",
+  "vt.map.orient.set.leg": "Mapa: el tramo arriba",
+  "vt.map.orient.set.run": "Mapa: el sentido de carrera arriba",
+  "vt.keys.orient": "O: mapa al norte, orientado al tramo o en el sentido de carrera",
 };

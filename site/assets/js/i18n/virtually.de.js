@@ -265,4 +265,11 @@ export default {
   "va.gait.walk": "Gehen",
   "va.gait.run": "Laufen",
   "va.turn": "Zum Drehen ziehen.",
+  "vt.map.orient.north": "Karte nach Norden ausgerichtet (klicken zum Wechseln, O)",
+  "vt.map.orient.leg": "Karte nach der Teilstrecke ausgerichtet (klicken zum Wechseln, O)",
+  "vt.map.orient.run": "Karte in Laufrichtung ausgerichtet (klicken zum Wechseln, O)",
+  "vt.map.orient.set.north": "Karte: Norden oben",
+  "vt.map.orient.set.leg": "Karte: die Teilstrecke oben",
+  "vt.map.orient.set.run": "Karte: die Laufrichtung oben",
+  "vt.keys.orient": "O: Karte nach Norden, nach der Teilstrecke oder in Laufrichtung",
 };

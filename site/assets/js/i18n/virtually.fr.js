@@ -265,4 +265,11 @@ export default {
   "va.gait.walk": "Marche",
   "va.gait.run": "Course",
   "va.turn": "Faites glisser pour le tourner.",
+  "vt.map.orient.north": "Carte orientée au nord (cliquer pour changer, O)",
+  "vt.map.orient.leg": "Carte orientée sur l'interposte (cliquer pour changer, O)",
+  "vt.map.orient.run": "Carte orientée dans le sens de course (cliquer pour changer, O)",
+  "vt.map.orient.set.north": "Carte : le nord en haut",
+  "vt.map.orient.set.leg": "Carte : l'interposte en haut",
+  "vt.map.orient.set.run": "Carte : le sens de course en haut",
+  "vt.keys.orient": "O : carte orientée au nord, sur l'interposte ou dans le sens de course",
 };

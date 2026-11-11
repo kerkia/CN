@@ -76,6 +76,7 @@ export function mount(root, raceId, opts = {}) {
         <div class="vt-mapbar">
           <button type="button" data-z="1.5" title="${t("vt.map.zoomIn")}">+</button><button type="button" data-z="0.67" title="${t("vt.map.zoomOut")}">−</button>
           <button type="button" id="vt-mnext" title="${t("vt.map.next")}">◎</button><button type="button" id="vt-msize" title="${t("vt.map.size")}">⤢</button>
+          <button type="button" id="vt-morient" class="vt-morient"></button>
         </div>
         <div class="vt-desc" id="vt-desc"></div>
       </div>
@@ -113,7 +114,20 @@ export function mount(root, raceId, opts = {}) {
     const ro = new ResizeObserver(resize); ro.observe(box);
     // ---- the map panel ----
     const ppm = mapImg.ppm, mPer = ppm / race.k;                    // map canvas px per world metre
-    const mv = { cx: course[0].x * mPer, cy: course[0].z * mPer, zoom: 1, drag: null };
+    const mv = { cx: course[0].x * mPer, cy: course[0].z * mPer, zoom: 1, drag: null, ang: 0 };
+    // the map's orientation (owner, 2026-11-11): north up, the leg being run up, or the way the runner faces up; kept in this browser
+    const ORIENTS = ["north", "leg", "run"];
+    let orient = "north";
+    try { const o = localStorage.getItem("ocn.vt.orient"); if (ORIENTS.includes(o)) orient = o; } catch (e) { /* none kept */ }
+    /** The canvas's turn (radians, clockwise on screen) that puts the chosen direction up; north up at the finish. */
+    const mapAngle = () => {
+      if (orient === "north" || st.phase === "done") return 0;
+      if (orient === "run") return -st.yaw;
+      const a = course[Math.max(0, Math.min(st.next, course.length - 1) - 1)], b = course[Math.min(st.next, course.length - 1)];
+      return a === b ? 0 : -Math.atan2(b.x - a.x, -(b.z - a.z));
+    };
+    /** A shift on the screen (px) as a shift on the map's canvas (its px), the turn undone. */
+    const unturn = (dx, dy) => { const c = Math.cos(-mv.ang), s = Math.sin(-mv.ang); return [(dx * c - dy * s) / mv.zoom, (dx * s + dy * c) / mv.zoom]; };
     const fitZoom = (metres) => { mv.zoom = Math.max(0.05, mapEl.clientWidth / (metres * mPer)); };
     function drawMapPanel() {
       const w = mapEl.clientWidth, h = mapEl.clientHeight, dpr = Math.min(devicePixelRatio || 1, 2);
@@ -121,7 +135,8 @@ export function mount(root, raceId, opts = {}) {
       if (mapC.width !== Math.round(w * dpr)) { mapC.width = Math.round(w * dpr); mapC.height = Math.round(h * dpr); }
       const g = mapC.getContext("2d");
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h);
-      g.save(); g.translate(w / 2, h / 2); g.scale(mv.zoom, mv.zoom); g.translate(-mv.cx, -mv.cy);
+      mv.ang = mapAngle();
+      g.save(); g.translate(w / 2, h / 2); g.rotate(mv.ang); g.scale(mv.zoom, mv.zoom); g.translate(-mv.cx, -mv.cy);
       g.imageSmoothingQuality = "high"; g.drawImage(mapImg.canvas, 0, 0);
       overprint(g);
       if (st.phase === "done") {
@@ -134,6 +149,14 @@ export function mount(root, raceId, opts = {}) {
         g.lineTo((st.x + Math.sin(st.yaw) * 40) * mPer, (st.z - Math.cos(st.yaw) * 40) * mPer); g.stroke();
       }
       g.restore();
+      if (mv.ang) {                                                    // a north arrow when the map is turned
+        g.save(); g.translate(20, 22); g.rotate(mv.ang);
+        g.fillStyle = "rgba(255, 255, 255, 0.85)"; g.beginPath(); g.arc(0, 0, 14, 0, 7); g.fill();
+        g.fillStyle = "#1f3b8a"; g.beginPath(); g.moveTo(0, -11); g.lineTo(5, 3); g.lineTo(0, 0); g.lineTo(-5, 3); g.closePath(); g.fill();
+        g.rotate(-mv.ang); g.font = "bold 10px Arial"; g.textAlign = "center"; g.textBaseline = "middle";
+        g.fillText(t("vt.card.N"), -Math.sin(mv.ang) * 6.5, Math.cos(mv.ang) * 6.5);
+        g.restore();
+      }
     }
     function overprint(g) { drawOverprint(g, course, mPer, ppm); }
     function describe() {
@@ -146,11 +169,29 @@ export function mount(root, raceId, opts = {}) {
     $("#vt-mnext", root).addEventListener("click", () => { const c = course[Math.min(st.next, course.length - 1)]; mv.cx = c.x * mPer; mv.cy = c.z * mPer; drawMapPanel(); });
     $("#vt-msize", root).addEventListener("click", () => { const big = st.phase === "done" ? "full" : "large"; mapSize(mapEl.dataset.size === big ? "small" : big); });
     mapC.addEventListener("pointerdown", (e) => { mv.drag = [e.clientX, e.clientY, mv.cx, mv.cy]; mapC.setPointerCapture(e.pointerId); });
-    mapC.addEventListener("pointermove", (e) => { if (!mv.drag) return; mv.cx = mv.drag[2] - (e.clientX - mv.drag[0]) / mv.zoom; mv.cy = mv.drag[3] - (e.clientY - mv.drag[1]) / mv.zoom; drawMapPanel(); });
+    mapC.addEventListener("pointermove", (e) => { if (!mv.drag) return; const [dx, dy] = unturn(e.clientX - mv.drag[0], e.clientY - mv.drag[1]); mv.cx = mv.drag[2] - dx; mv.cy = mv.drag[3] - dy; drawMapPanel(); });
     mapC.addEventListener("pointerup", () => (mv.drag = null));
     mapC.addEventListener("wheel", (e) => { e.preventDefault(); const f = e.deltaY < 0 ? 1.2 : 1 / 1.2, rc = mapC.getBoundingClientRect();
       const px = e.clientX - rc.left - rc.width / 2, py = e.clientY - rc.top - rc.height / 2;
-      mv.cx += px / mv.zoom - px / (mv.zoom * f); mv.cy += py / mv.zoom - py / (mv.zoom * f); mv.zoom *= f; drawMapPanel(); }, { passive: false });
+      const [ux, uy] = unturn(px, py); mv.cx += ux - ux / f; mv.cy += uy - uy / f; mv.zoom *= f; drawMapPanel(); }, { passive: false });
+    // the orientation's button: its icon and tooltip say the current choice; a click (or O) takes the next
+    const orientBtn = $("#vt-morient", root);
+    const ORIENT_ICON = {
+      north: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3 17 15 12 12 7 15Z" fill="currentColor"/><text x="12" y="22.5" font-size="8" font-weight="700" text-anchor="middle" fill="currentColor">N</text></svg>',
+      leg: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="#b0189a" stroke-width="2"><circle cx="12" cy="19" r="3.2"/><circle cx="12" cy="5" r="3.2"/><path d="M12 15.6V8.4"/></svg>',
+      run: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3 18 19 12 15 6 19Z" fill="#d21f1f"/></svg>',
+    };
+    const showOrient = () => {
+      orientBtn.innerHTML = ORIENT_ICON[orient];
+      orientBtn.title = t(`vt.map.orient.${orient}`); orientBtn.setAttribute("aria-label", orientBtn.title);
+    };
+    const nextOrient = () => {
+      orient = ORIENTS[(ORIENTS.indexOf(orient) + 1) % ORIENTS.length];
+      try { localStorage.setItem("ocn.vt.orient", orient); } catch (e) { /* kept for the visit */ }
+      showOrient(); drawMapPanel(); toast(t(`vt.map.orient.set.${orient}`)); box.focus();
+    };
+    orientBtn.addEventListener("click", nextOrient);
+    showOrient();
     // ---- the compass ----
     function drawCompass() {
       const g = comp.getContext("2d"), s = comp.width, c = s / 2, R = s * 0.42;
@@ -183,6 +224,7 @@ export function mount(root, raceId, opts = {}) {
         if (e.repeat) return;
         if (e.code === "Space" && st.phase === "run") punch();
         else if (e.code === "KeyM") mapSize(mapEl.dataset.size === "small" ? "large" : mapEl.dataset.size === "large" ? "hidden" : "small");
+        else if (e.code === "KeyO") nextOrient();
         else if (e.code === "KeyV") st.view = st.view === "third" ? "first" : "third";
         keys.add(e.code);
       } else keys.delete(e.code);
@@ -226,8 +268,10 @@ export function mount(root, raceId, opts = {}) {
       if (st.phase !== "run" || st.posLeft > 0) return;
       st.posLeft = POS_S; st.posN++; st.pen += POS_PEN; st.legPen[st.next - 1] = (st.legPen[st.next - 1] || 0) + POS_PEN;
       if (mapEl.dataset.size === "hidden") mapSize("small");
-      const c = [st.x * mPer, st.z * mPer], w = mapEl.clientWidth / mv.zoom / 2, h = mapEl.clientHeight / mv.zoom / 2;
-      if (Math.abs(c[0] - mv.cx) > w * 0.8 || Math.abs(c[1] - mv.cy) > h * 0.8) { mv.cx = c[0]; mv.cy = c[1]; }   // brought into view
+      const c = [st.x * mPer, st.z * mPer], w = mapEl.clientWidth / 2, h = mapEl.clientHeight / 2;
+      const ox = (c[0] - mv.cx) * mv.zoom, oy = (c[1] - mv.cy) * mv.zoom, a = mapAngle();
+      const sx = ox * Math.cos(a) - oy * Math.sin(a), sy = ox * Math.sin(a) + oy * Math.cos(a);
+      if (Math.abs(sx) > w * 0.8 || Math.abs(sy) > h * 0.8) { mv.cx = c[0]; mv.cy = c[1]; }   // brought into view
       showPosBtn(); drawMapPanel(); toast(t("vt.pos.used"), false);
     });
     // ---- messages and overlays ----
@@ -237,7 +281,7 @@ export function mount(root, raceId, opts = {}) {
       over(html`<div class="vt-card"><h2>${race.course.name}</h2>
         <p>${t("vt.info", { n: nC, km: num(race.course.length / 1000), scale: race.scale.toLocaleString(lang()) })}</p>
         <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
-        <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "view", "pause", "pos", "speed"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
+        <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "orient", "view", "pause", "pos", "speed"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-go">${t("vt.go")}</button>
 </div>
         <p class="muted vt-credit">${t("vt.credit", { std: race.std })}</p></div>`);
@@ -368,6 +412,10 @@ export function mount(root, raceId, opts = {}) {
       const penEl = $("#vt-pen", root); penEl.hidden = !st.pen; if (st.pen) penEl.textContent = t("vt.pen.hud", { s: st.pen });
       $("#vt-next", root).textContent = st.next >= course.length - 1 ? `→ ${t("vt.finish")}` : `→ ${st.next} (${course[st.next].code})`;
       if (st.posLeft > 0 && run && (mapTick++ % 6 === 0)) drawMapPanel();
+      else if (orient !== "north" && mapEl.dataset.size !== "hidden") {
+        const d = mapAngle() - mv.ang;
+        if (Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) > 0.004) drawMapPanel();
+      }
     };
     reset(); startScreen(); resize();
     window.vtDebug = { st, course, world };            // for support and scripted tests (the console)
