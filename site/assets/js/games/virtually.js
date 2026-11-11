@@ -1,11 +1,13 @@
 // « Virtually » (Jeux; administrators only for now, owner 2026-11-10): a virtual race in a 3D forest built from a real
 // orienteering map — after Catching Features and Virtual-O. The runner is seen from behind (or through their own eyes), the
-// orienteering map with the course is beside the view (its position hidden unless asked), a compass at the bottom; the flags
+// orienteering map with the course is in the bottom left corner with the compass beside it (owner, 2026-11-11), the runner's
+// position hidden unless « Ma position » is pressed (10 s shown, 20 s added to the time), the game's speed and the pause at
+// the top right; the flags
 // stand at the controls, lit up when within reach, punched with the space bar in the course's order; the finish gives the
 // time, the splits and the route run drawn on the map. Each race is a package made offline (work's racebuild.py: the OCAD
 // map, the worldwide relief, a national LiDAR where there is one) served by functions/api/virtual to administrators.
 import { html, $ } from "../util.js";
-import { t, loadArea, lang } from "../i18n.js";
+import { t, tn, loadArea, lang } from "../i18n.js";
 import { THREE as THREE_URL } from "../vendor.js";
 import * as palm from "./palmares.js";
 import { loadRace, World, runnerFigure } from "./vworld.js";
@@ -46,9 +48,15 @@ export function mount(root, raceId) {
     const race = data.race, course = race.course.controls, nC = course.length - 2;
     root.innerHTML = html`<div class="vt" tabindex="0">
       <canvas class="vt-view"></canvas>
-      <div class="vt-hud"><b>${race.course.name}</b><span id="vt-time">0:00</span><span id="vt-next"></span></div>
+      <div class="vt-hud"><b>${race.course.name}</b><span id="vt-time">0:00</span><span id="vt-pen" hidden></span><span id="vt-next"></span></div>
       <div class="vt-cue" id="vt-cue" hidden></div>
       <div class="vt-toast" id="vt-toast" hidden></div>
+      <div class="vt-topbar">
+        <button type="button" class="btn" id="vt-pos" title="${t("vt.pos.tip")}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg><span class="vt-lbl" id="vt-poslbl">${t("vt.pos.btn")}</span></button>
+        <button type="button" class="btn" id="vt-speed" title="${t("vt.speed.tip")}">×1</button>
+        <button type="button" class="btn" id="vt-pause" title="${t("vt.pause.tip")}" aria-label="${t("vt.pause")}"><span aria-hidden="true">❚❚</span><span class="vt-lbl">${t("vt.pause")}</span></button>
+        <button type="button" class="btn" id="vt-full" title="${t("vt.full")}" aria-label="${t("vt.full")}">⤢</button>
+      </div>
       <canvas class="vt-compass" width="180" height="180" title="${t("vt.compass")}"></canvas>
       <div class="vt-map" data-size="small">
         <canvas class="vt-mapc"></canvas>
@@ -58,7 +66,6 @@ export function mount(root, raceId) {
         </div>
         <div class="vt-desc" id="vt-desc"></div>
       </div>
-      <div class="vt-topbar"><button type="button" class="btn" id="vt-pause">${t("vt.pause")}</button><button type="button" class="btn" id="vt-full">⤢</button></div>
       <div class="vt-pad" id="vt-pad">
         <button type="button" data-k="ArrowLeft">◀</button><button type="button" data-k="ArrowUp">▲</button><button type="button" data-k="ArrowRight">▶</button>
         <button type="button" data-k="Space" class="vt-padpunch">${t("vt.punchBtn")}</button><button type="button" data-k="ArrowDown">▼</button><button type="button" data-k="KeyM">${t("vt.mapBtn")}</button>
@@ -85,7 +92,9 @@ export function mount(root, raceId) {
     const me = runnerFigure(T); scene.add(me);
     // ---- the runner's state ----
     const st = { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, pitch: -0.08, next: 1, splits: [], track: [], dist: 0,
-      view: "third", showPos: false, speedX: 1, speed: 0, lastTrack: -1, msgUntil: 0 };
+      view: "third", speedX: 1, maxSpeedX: 1, speed: 0, lastTrack: -1, msgUntil: 0,
+      posLeft: 0, posN: 0, pen: 0, legPen: [] };       // « Ma position »: seconds still shown (real time), presses, penalty seconds, per leg
+    const total = () => st.t + st.pen;                // the race time: the clock and the penalties
     const keys = new Set();
     const resize = () => { const w = box.clientWidth, h = box.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix(); drawMapPanel(); };
     const ro = new ResizeObserver(resize); ro.observe(box);
@@ -106,7 +115,7 @@ export function mount(root, raceId) {
         g.strokeStyle = "rgba(220, 30, 30, 0.9)"; g.lineWidth = 2.2 / mv.zoom; g.beginPath();
         st.track.forEach(([, x, z], i) => (i ? g.lineTo(x * mPer, z * mPer) : g.moveTo(x * mPer, z * mPer))); g.stroke();
       }
-      if (st.showPos || st.phase === "done") {
+      if ((st.posLeft > 0 && st.phase === "run") || st.phase === "done") {
         g.fillStyle = "#e01e1e"; g.beginPath(); g.arc(st.x * mPer, st.z * mPer, 5 / mv.zoom, 0, 7); g.fill();
         g.strokeStyle = "#e01e1e"; g.lineWidth = 2 / mv.zoom; g.beginPath(); g.moveTo(st.x * mPer, st.z * mPer);
         g.lineTo((st.x + Math.sin(st.yaw) * 40) * mPer, (st.z - Math.cos(st.yaw) * 40) * mPer); g.stroke();
@@ -142,10 +151,11 @@ export function mount(root, raceId) {
       $("#vt-desc", root).innerHTML = html`<table><tbody>${course.slice(1, -1).map((c, i) => html`<tr class="${i + 1 < st.next ? "done" : i + 1 === st.next ? "cur" : ""}"><td>${i + 1}</td><td>${c.code}</td><td>${t(`vt.f.${c.feature}`)}</td></tr>`)}</tbody></table>`;
     }
     describe();
-    const mapSize = (s) => { mapEl.dataset.size = s; requestAnimationFrame(drawMapPanel); };
+    // sizes: small and large in the bottom left corner, the compass beside it (app.css), hidden, and « full » at the finish
+    const mapSize = (s) => { mapEl.dataset.size = s; box.dataset.map = s; requestAnimationFrame(drawMapPanel); };
     $$$(root, ".vt-mapbar [data-z]").forEach((b) => b.addEventListener("click", () => { mv.zoom *= +b.dataset.z; drawMapPanel(); }));
     $("#vt-mnext", root).addEventListener("click", () => { const c = course[Math.min(st.next, course.length - 1)]; mv.cx = c.x * mPer; mv.cy = c.z * mPer; drawMapPanel(); });
-    $("#vt-msize", root).addEventListener("click", () => mapSize(mapEl.dataset.size === "large" ? "small" : "large"));
+    $("#vt-msize", root).addEventListener("click", () => { const big = st.phase === "done" ? "full" : "large"; mapSize(mapEl.dataset.size === big ? "small" : big); });
     mapC.addEventListener("pointerdown", (e) => { mv.drag = [e.clientX, e.clientY, mv.cx, mv.cy]; mapC.setPointerCapture(e.pointerId); });
     mapC.addEventListener("pointermove", (e) => { if (!mv.drag) return; mv.cx = mv.drag[2] - (e.clientX - mv.drag[0]) / mv.zoom; mv.cy = mv.drag[3] - (e.clientY - mv.drag[1]) / mv.zoom; drawMapPanel(); });
     mapC.addEventListener("pointerup", () => (mv.drag = null));
@@ -202,7 +212,35 @@ export function mount(root, raceId) {
       for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, () => keys.delete(k));
     });
     $("#vt-pause", root).addEventListener("click", () => (st.phase === "run" ? pause() : null));
-    $("#vt-full", root).addEventListener("click", () => (document.fullscreenElement ? document.exitFullscreen() : box.requestFullscreen?.()).catch?.(() => {}));
+    $("#vt-full", root).addEventListener("click", () => { (document.fullscreenElement ? document.exitFullscreen() : box.requestFullscreen?.())?.catch?.(() => {}); box.focus(); });
+    // the game's speed, changed during the race (the start screen's choice until 2026-11-11): ×1, ×2
+    const SPEEDS = [1, 2];
+    const speedBtn = $("#vt-speed", root);
+    const showSpeed = () => { speedBtn.textContent = `×${st.speedX}`; speedBtn.classList.toggle("on", st.speedX > 1); };
+    speedBtn.addEventListener("click", () => {
+      st.speedX = SPEEDS[(SPEEDS.indexOf(st.speedX) + 1) % SPEEDS.length];
+      if (st.phase === "run") st.maxSpeedX = Math.max(st.maxSpeedX, st.speedX);
+      showSpeed(); toast(t("vt.speed.set", { x: st.speedX })); box.focus();
+    });
+    // « Ma position »: the runner shown on the map for POS_S seconds of play, POS_PEN seconds added to the race time
+    const POS_S = 10, POS_PEN = 20;
+    const posBtn = $("#vt-pos", root), posLbl = $("#vt-poslbl", root);
+    let posShown = -1;
+    const showPosBtn = () => {
+      const s = Math.ceil(st.posLeft);
+      if (s === posShown) return;
+      posShown = s; posBtn.classList.toggle("on", s > 0); posBtn.disabled = s > 0;
+      posLbl.textContent = s > 0 ? t("vt.pos.left", { s }) : t("vt.pos.btn");
+    };
+    posBtn.addEventListener("click", () => {
+      box.focus();
+      if (st.phase !== "run" || st.posLeft > 0) return;
+      st.posLeft = POS_S; st.posN++; st.pen += POS_PEN; st.legPen[st.next - 1] = (st.legPen[st.next - 1] || 0) + POS_PEN;
+      if (mapEl.dataset.size === "hidden") mapSize("small");
+      const c = [st.x * mPer, st.z * mPer], w = mapEl.clientWidth / mv.zoom / 2, h = mapEl.clientHeight / mv.zoom / 2;
+      if (Math.abs(c[0] - mv.cx) > w * 0.8 || Math.abs(c[1] - mv.cy) > h * 0.8) { mv.cx = c[0]; mv.cy = c[1]; }   // brought into view
+      showPosBtn(); drawMapPanel(); toast(t("vt.pos.used"), false);
+    });
     // ---- messages and overlays ----
     const toast = (msg, ok = true) => { const e = $("#vt-toast", root); e.textContent = msg; e.className = `vt-toast ${ok ? "ok" : "bad"}`; e.hidden = false; st.msgUntil = performance.now() + 2600; };
     const over = (h) => { const o = $("#vt-over", root); o.innerHTML = h; o.hidden = !h; };
@@ -210,14 +248,12 @@ export function mount(root, raceId) {
       over(html`<div class="vt-card"><h2>${race.course.name}</h2>
         <p>${t("vt.info", { n: nC, km: num(race.course.length / 1000), scale: race.scale.toLocaleString(lang()) })}</p>
         <p class="muted">${t(`vt.src.${race.source}`)}</p>
-        <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "view", "pause"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
-        <label class="vt-opt"><input type="checkbox" id="vt-showpos"> ${t("vt.opt.pos")}</label>
-        <label class="vt-opt">${t("vt.opt.speed")} <select id="vt-speed"><option value="1">×1</option><option value="2">×2</option></select></label>
+        <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "view", "pause", "pos", "speed"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-go">${t("vt.go")}</button>
           ${palm.signedIn() ? html`<button type="button" class="btn" id="vt-palm">${t("g.palm")}</button>` : ""}</div>
         <p class="muted vt-credit">${t("vt.credit", { std: race.std })}</p></div>`);
       $("#vt-go", root).addEventListener("click", () => {
-        st.showPos = $("#vt-showpos", root).checked; st.speedX = +$("#vt-speed", root).value;
+        st.maxSpeedX = st.speedX;
         st.phase = "run"; over(""); box.focus(); toast(t("vt.started"));
       });
       $("#vt-palm", root)?.addEventListener("click", () => palm.openPalmares(`virtually-${raceId}`, race.course.name));
@@ -230,24 +266,27 @@ export function mount(root, raceId) {
       $("#vt-quit", root).addEventListener("click", () => { reset(); startScreen(); });
     }
     function reset() {
-      Object.assign(st, { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, next: 1, splits: [], track: [], dist: 0, lastTrack: -1 });
-      describe(); mapSize("small"); mv.cx = course[0].x * mPer; mv.cy = course[0].z * mPer; fitZoom(700); drawMapPanel();
+      Object.assign(st, { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, next: 1, splits: [], track: [], dist: 0, lastTrack: -1,
+        posLeft: 0, posN: 0, pen: 0, legPen: [] });
+      showPosBtn(); showSpeed(); describe(); mapSize("small"); mv.cx = course[0].x * mPer; mv.cy = course[0].z * mPer; fitZoom(700); drawMapPanel();
     }
     function finished() {
-      st.phase = "done"; keys.clear();
-      const legs = st.splits.map((s, i) => [s - (i ? st.splits[i - 1] : 0), s]);
-      const straight = race.course.length;
-      palm.record(`virtually-${raceId}`, { value: Math.round(st.t), label: fmt(st.t), higher: false, extra: st.speedX > 1 ? "×2" : "" });
-      mapSize("large");
+      st.phase = "done"; keys.clear(); st.posLeft = 0; showPosBtn();
+      const legs = st.splits.map((s, i) => [s - (i ? st.splits[i - 1] : 0), s]);   // the splits hold the race time, penalties included
+      const straight = race.course.length, T = total();
+      const extra = [st.maxSpeedX > 1 ? `×${st.maxSpeedX}` : "", st.posN ? t("vt.palm.pos", { n: st.posN, s: st.pen }) : ""].filter(Boolean).join(" · ");
+      palm.record(`virtually-${raceId}`, { value: Math.round(T), label: fmt(T), higher: false, extra });
+      mapSize("full");
       const all = st.track.map(([, x, z]) => [x, z]).concat(course.map((c) => [c.x, c.z])); const xs = all.map((p) => p[0]), zs = all.map((p) => p[1]);
       mv.cx = ((Math.min(...xs) + Math.max(...xs)) / 2) * mPer; mv.cy = ((Math.min(...zs) + Math.max(...zs)) / 2) * mPer;
       fitZoom((Math.max(...xs) - Math.min(...xs)) * 1.25 + 100);
       $("#vt-over", root).classList.add("side");
       over(html`<div class="vt-card vt-done"><h2>${t("vt.done")}</h2>
-        <p class="vt-big">${fmt(st.t)}</p>
+        <p class="vt-big">${fmt(T)}</p>
+        ${st.posN ? html`<p class="vt-penline">${tn("vt.pen.done", st.posN, { s: st.pen })}</p>` : ""}
         <p>${t("vt.dist", { run: num(st.dist / 1000, 2), course: num(straight / 1000, 2) })}</p>
-        <table class="data"><thead><tr><th>${t("vt.col.leg")}</th><th>${t("vt.col.code")}</th><th>${t("vt.col.split")}</th><th>${t("vt.col.total")}</th></tr></thead>
-        <tbody>${legs.map(([leg, tot], i) => html`<tr><td>${i + 1 <= nC ? i + 1 : t("vt.finish")}</td><td>${course[i + 1].code || ""}</td><td>${fmt(leg)}</td><td>${fmt(tot)}</td></tr>`)}</tbody></table>
+        <table class="data"><thead><tr><th>${t("vt.col.leg")}</th><th>${t("vt.col.code")}</th><th>${t("vt.col.split")}</th><th>${t("vt.col.total")}</th>${st.posN ? html`<th>${t("vt.col.pen")}</th>` : ""}</tr></thead>
+        <tbody>${legs.map(([leg, tot], i) => html`<tr><td>${i + 1 <= nC ? i + 1 : t("vt.finish")}</td><td>${course[i + 1].code || ""}</td><td>${fmt(leg)}</td><td>${fmt(tot)}</td>${st.posN ? html`<td>${st.legPen[i] ? `+${st.legPen[i]} s` : ""}</td>` : ""}</tr>`)}</tbody></table>
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-again">${t("vt.again")}</button>
           ${palm.signedIn() ? html`<button type="button" class="btn" id="vt-palm2">${t("g.palm")}</button>` : ""}</div></div>`);
       $("#vt-again", root).addEventListener("click", () => { $("#vt-over", root).classList.remove("side"); reset(); startScreen(); });
@@ -262,7 +301,7 @@ export function mount(root, raceId) {
       const n = nearest(); if (!n) return;
       const c = course[n.i], last = course.length - 1;
       if (n.i === st.next) {
-        st.splits.push(st.t); st.next++; describe(); beep(n.i === last ? 2 : 1);
+        st.splits.push(total()); st.next++; describe(); beep(n.i === last ? 2 : 1);
         if (n.i === last) { finished(); return; }
         toast(t("vt.punched", { n: n.i, code: c.code }));
       } else if (n.i === last) toast(t("vt.finishNotYet", { n: last - st.next }), false);
@@ -285,6 +324,7 @@ export function mount(root, raceId) {
       const run = st.phase === "run", sdt = dt * (run ? st.speedX : 1);
       if (run) {
         st.t += sdt;
+        if (st.posLeft > 0) { st.posLeft = Math.max(0, st.posLeft - dt); showPosBtn(); if (!st.posLeft) drawMapPanel(); }
         const turn = (keys.has("ArrowLeft") || keys.has("KeyA") ? -1 : 0) + (keys.has("ArrowRight") || keys.has("KeyD") ? 1 : 0);
         st.yaw += turn * 1.9 * dt;
         const fwd = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0);
@@ -334,9 +374,10 @@ export function mount(root, raceId) {
       if (st.msgUntil && now > st.msgUntil) { $("#vt-toast", root).hidden = true; st.msgUntil = 0; }
       renderer.render(scene, camera);
       drawCompass();
-      $("#vt-time", root).textContent = fmt(st.t);
+      $("#vt-time", root).textContent = fmt(total());
+      const penEl = $("#vt-pen", root); penEl.hidden = !st.pen; if (st.pen) penEl.textContent = t("vt.pen.hud", { s: st.pen });
       $("#vt-next", root).textContent = st.next >= course.length - 1 ? `→ ${t("vt.finish")}` : `→ ${st.next} (${course[st.next].code})`;
-      if (st.showPos && (mapTick++ % 6 === 0)) drawMapPanel();
+      if (st.posLeft > 0 && run && (mapTick++ % 6 === 0)) drawMapPanel();
     };
     reset(); startScreen(); resize();
     window.vtDebug = { st, course, world };            // for support and scripted tests (the console)

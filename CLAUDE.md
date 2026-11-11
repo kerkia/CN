@@ -874,9 +874,18 @@ Every multiple-choice game was played through to its score page at phone size, w
 - **Virtually** (« Jeux » › Virtually, `games/virtually.js` + `games/vworld.js`; owner, 2026-11-10, after Catching Features and
   Virtual-O; **administrators only**: `pages/games.js`'s fifth field, `auth.session().admin`, and `functions/api/virtual` `admin: true`):
   a virtual race in a 3D forest made from a real orienteering map. The runner is seen from behind (V: through their eyes), the map
-  with the course in a panel (M: small, large, hidden; its position hidden unless « Montrer ma position » is ticked), a compass
+  with the course in a panel (M: small, large, hidden), a compass
   (baseplate, red needle north, the dial turning with the runner: the map's north is the world's, the world being the map's paper
-  frame in metres). Physical keys (`e.code`: ZQSD on AZERTY = WASD), arrows, Shift to walk, mouse drag to look, Space to punch
+  frame in metres). **The race's screen** (owner, 2026-11-11): the map in the bottom left corner, the compass beside it, both left of
+  the centre where the runner stands at every size (app.css `--mw`/`--mh`/`--cw` by `.vt[data-map]`: large = half the width less the
+  compass; on a touch screen smaller, the pad at the bottom right; a phone upright: map ≤ 36 % of the width, the compass above the pad;
+  the game's box fits under the site's bar, so a phone on its side sees it whole; « full » is the finish's map beside the card); the
+  course, time and next control top left; top right « Ma position », the speed (×1 / ×2, `SPEEDS`), pause, full screen — the start
+  screen's speed and position options are gone. « Ma position » shows the runner on the map for 10 s of play (`POS_S`, paused with
+  the game; the button counts down and cannot be pressed again meanwhile) and adds 20 s to the race time (`POS_PEN`; `st.pen`,
+  `st.legPen` per leg, the time shown `total()`): the splits, the finish card (a line and a « Pénalité » column) and the palmarès hold
+  the penalised time, the run's `extra` saying « ×2 » (any time at ×2) and « position n× (+s s) »; the rule in the start screen's list
+  and the button's tooltip. Checked 2026-11-11 in headless Edge at 1400 × 860 and on phones 375 × 812, 375 × 667, 812 × 375. Physical keys (`e.code`: ZQSD on AZERTY = WASD), arrows, Shift to walk, mouse drag to look, Space to punch
   within 6 m of a flag — the flag then glows, a light column and a ring rise, a banner says « Poste 41 — Espace pour poinçonner »;
   controls in order (a wrong or repeated one is said, not punched); speed by the ground class (`race.speed`) and the slope; impassable
   classes, trunks and large boulders block (`World.hits`). The finish: time, splits, distance run, the route drawn on the map, the

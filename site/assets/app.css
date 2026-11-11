@@ -4194,18 +4194,30 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
   background: rgba(15, 20, 25, 0.62); color: #fff; font-size: 14px; pointer-events: none; }
 .vt-hud b { font-size: 16px; }
 .vt-hud #vt-time { font: 600 22px/1.1 ui-monospace, Consolas, monospace; }
-.vt-topbar { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 6px; }
-.vt-topbar .btn { background: rgba(15, 20, 25, 0.62); color: #fff; border-color: transparent; }
+.vt-hud #vt-pen { font-size: 12px; color: #ffb38a; }
+/* The race's buttons at the top right (owner, 2026-11-11): « Ma position », the game's speed, pause, full screen */
+.vt-topbar { position: absolute; right: 12px; top: 12px; display: flex; gap: 6px; }
+.vt-topbar .btn { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; background: rgba(15, 20, 25, 0.62); color: #fff; border-color: transparent; }
+.vt-topbar .btn.on { background: rgba(242, 107, 29, 0.92); }
+.vt-topbar .btn:disabled { opacity: 1; cursor: default; }
+#vt-pos .vt-lbl { min-width: 2.6em; }
 .vt-cue { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); padding: 10px 18px; border-radius: 10px; font-weight: 700;
   background: rgba(242, 107, 29, 0.92); color: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6), 0 6px 20px rgba(0, 0, 0, 0.35);
   animation: vt-pulse 1s ease-in-out infinite; pointer-events: none; white-space: nowrap; }
 @keyframes vt-pulse { 50% { transform: translateX(-50%) scale(1.05); } }
-.vt-toast { position: absolute; left: 50%; top: 18px; transform: translateX(-50%); padding: 8px 16px; border-radius: 8px; color: #fff; font-weight: 600; pointer-events: none; }
+.vt-toast { position: absolute; left: 50%; top: 64px; transform: translateX(-50%); padding: 8px 16px; border-radius: 8px; color: #fff; font-weight: 600; pointer-events: none; }
 .vt-toast.ok { background: rgba(30, 130, 60, 0.9); } .vt-toast.bad { background: rgba(190, 40, 40, 0.92); }
-.vt-compass { position: absolute; right: 16px; bottom: 12px; width: 180px; height: 180px; pointer-events: none; }
-.vt-map { position: absolute; right: 12px; top: 12px; width: min(380px, 40%); height: min(380px, 55%); background: #fff; border-radius: 8px;
+/* The map in the bottom left corner, the compass beside it (owner, 2026-11-11): --mw/--mh the map's size, --cw the compass's; small and
+   large keep both left of the screen's centre, where the runner is; « full » is the finish's (beside the card), the compass hidden */
+.vt { --cw: 180px; --mw: min(340px, 28%); --mh: min(340px, 45%); }
+.vt[data-map="large"] { --mw: min(760px, calc(50% - var(--cw) - 40px)); --mh: calc(100% - 150px); }   /* under the HUD */
+.vt[data-map="hidden"] { --mw: 0px; }
+.vt-compass { position: absolute; left: calc(12px + var(--mw) + 10px); bottom: 12px; width: var(--cw); height: var(--cw); pointer-events: none; }
+.vt[data-map="hidden"] .vt-compass { left: 12px; }
+.vt[data-map="full"] .vt-compass { display: none; }
+.vt-map { position: absolute; left: 12px; bottom: 12px; width: var(--mw); height: var(--mh); background: #fff; border-radius: 8px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); overflow: hidden; }
-.vt-map[data-size="large"] { left: 4%; right: 4%; top: 4%; width: auto; height: 92%; }
+.vt-map[data-size="full"] { left: 4%; right: 4%; top: 4%; bottom: 4%; width: auto; height: auto; }
 .vt-map[data-size="hidden"] { display: none; }
 .vt-mapc { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
 .vt-mapbar { position: absolute; right: 6px; top: 6px; display: flex; flex-direction: column; gap: 4px; }
@@ -4219,7 +4231,7 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .vt-over[hidden], .vt-over:empty { display: none; }
 .vt-over.side { place-items: center start; padding-left: 2%; background: transparent; pointer-events: none; }
 .vt-over.side .vt-card { width: min(420px, 36%); pointer-events: auto; }
-.vt:has(.vt-over.side) .vt-map[data-size="large"] { left: calc(2% + min(420px, 36%) + 16px); }
+.vt:has(.vt-over.side) .vt-map[data-size="full"] { left: calc(2% + min(420px, 36%) + 16px); }
 .vt ~ .push-offer, body:has(.vt) .push-offer { display: none; }
 .vt-card { width: min(520px, 92%); max-height: 92%; overflow: auto; background: var(--surface); color: var(--ink); border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4); }
@@ -4228,9 +4240,35 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .vt-opt { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
 .vt-btns { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .vt-big { font: 700 34px/1.2 ui-monospace, Consolas, monospace; margin: 4px 0; }
+.vt-penline { margin: 0 0 6px; color: #c2410c; font-weight: 600; }
 .vt-done table { width: 100%; margin-top: 8px; }
 .vt-credit { font-size: 12px; margin-top: 10px; }
-.vt-pad { position: absolute; left: 12px; bottom: 60px; display: none; grid-template-columns: repeat(3, 54px); gap: 6px; }
+.vt-pad { position: absolute; right: 12px; bottom: 12px; display: none; grid-template-columns: repeat(3, 54px); gap: 6px; }
 .vt-pad button { height: 50px; border-radius: 10px; border: 0; background: rgba(15, 20, 25, 0.55); color: #fff; font-size: 18px; touch-action: none; }
 .vt-pad .vt-padpunch { background: rgba(242, 107, 29, 0.9); font-size: 13px; }
-@media (hover: none) and (pointer: coarse) { .vt-pad { display: grid; } .vt-compass { width: 130px; height: 130px; } .vt-cue { bottom: 150px; } }
+/* Touch screens: the pad at the bottom right, a smaller map and compass at the bottom left, never as far as the centre (owner,
+   2026-11-11: the phone's map reached the middle of the screen); the cue and the messages at the top; the buttons' words dropped */
+@media (hover: none) and (pointer: coarse) {
+  .vt-pad { display: grid; }
+  .vt { --cw: 96px; --mw: min(260px, 30%); --mh: min(240px, 40%); }
+  .vt { height: max(260px, min(max(440px, calc(100vh - 220px)), calc(100dvh - 64px))); }   /* the whole game under the site's bar (a phone on its side) */
+  .vt[data-map="large"] { --mw: min(420px, calc(50% - var(--cw) - 40px)); --mh: calc(100% - 124px); }
+  .vt-cue { top: 60px; bottom: auto; }
+  .vt-toast { top: 108px; }
+  .vt-topbar .vt-lbl { display: none; }
+  .vt-topbar .btn { padding: 4px 9px; }
+  #vt-pos.on .vt-lbl { display: inline; }
+  .vt-hud { max-width: calc(100% - 230px); padding: 6px 10px; font-size: 12px; }
+  .vt-hud b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vt-hud #vt-time { font-size: 18px; }
+  .vt-desc { font-size: 10px; }
+}
+/* A phone held upright: the map in the bottom left quarter, the compass above the pad at the right */
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+  .vt { --cw: 84px; --mw: 36%; --mh: 26%; }
+  .vt[data-map="large"] { --mw: 36%; --mh: 46%; }   /* as narrow: the runner stands from 41 % to 59 % of the width */
+  .vt-desc { max-height: 32%; }
+  .vt-compass, .vt[data-map="hidden"] .vt-compass { left: auto; right: 12px; bottom: 126px; }
+  .vt-pad { grid-template-columns: repeat(3, 50px); }
+  .vt-hud { max-width: calc(100% - 200px); }
+}
