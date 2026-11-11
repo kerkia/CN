@@ -872,8 +872,10 @@ in multi-pick games), the answers and the result stay at the screen's bottom (st
 the Labyrinthe's view is nearly square on a narrow screen, hedge height tied to the lens (`WALL`), the start facing an open way, the
 buttons a pad, the view itself tapped (left/right third turns, middle steps, a swipe down steps back), its map as large as the view.
 Every multiple-choice game was played through to its score page at phone size, without errors. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
-- **Virtually** (« Jeux » › Virtually, `games/virtually.js` + `games/vworld.js`; owner, 2026-11-10, after Catching Features and
-  Virtual-O; **administrators only**: `pages/games.js`'s fifth field, `auth.session().admin`, and `functions/api/virtual` `admin: true`):
+- **Virtually** (Coach › Virtually, `#/virtually`, route `virtually`, `pages/virtually.js`; the game `games/virtually.js` +
+  `games/vworld.js`; owner, 2026-11-10, after Catching Features and Virtual-O — a tab of « Jeux » that day, a Coach page of its own
+  since 2026-11-11, `#/jeux?onglet=virtually` leading there; **administrators only**: `app.js` `NUTRITION_ROUTES.virtually` keeps
+  the menu entry and the address to `auth.session().admin`, and `functions/api/virtual` `admin: true`):
   a virtual race in a 3D forest made from a real orienteering map. The runner is seen from behind (V: through their eyes), the map
   with the course in a panel (M: small, large, hidden), a compass
   (baseplate, red needle north, the dial turning with the runner: the map's north is the world's, the world being the map's paper
@@ -889,8 +891,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   and the button's tooltip. Checked 2026-11-11 in headless Edge at 1400 × 860 and on phones 375 × 812, 375 × 667, 812 × 375. Physical keys (`e.code`: ZQSD on AZERTY = WASD), arrows, Shift to walk, mouse drag to look, Space to punch
   within 6 m of a flag — the flag then glows, a light column and a ring rise, a banner says « Poste 41 — Espace pour poinçonner »;
   controls in order (a wrong or repeated one is said, not punched); speed by the ground class (`race.speed`) and the slope; impassable
-  classes, trunks and large boulders block (`World.hits`). The finish: time, splits, distance run, the route drawn on the map, the
-  palmarès (`virtually-<race>`, smaller is better; `functions/api/games/scores.js`). Touch screens get a pad. The world streams
+  classes, trunks and large boulders block (`World.hits`). The finish: time, splits, distance run, the route drawn on the map, the run
+  kept (below) — the palmarès of 2026-11-10 is gone. Touch screens get a pad. The world streams
   64 m chunks within 250 m (ground mesh 1 m, instanced trees, bushes, ferns/grass as crossed sprites, rocks, walls and cliffs, water
   surfaces); only chunks within 90 m cast shadows (34 fps in headless Edge at 1400 × 860, 2026-11-10). Each race is a package
   (race.json, h.png heights as R·256+G cm, cls.png ground classes, veg.png tree/bush/low densities, ground.jpg, feats.json,
@@ -902,8 +904,45 @@ Every multiple-choice game was played through to its score page at phone size, w
   pieces of one contour joined, levels solved, a membrane between the lines, tops and bottoms in the innermost closed lines, the small
   landforms as bumps; the contour interval chosen against the worldwide relief, AWS Terrain Tiles; on Desquinemarre, checked against
   IGN's LiDAR: 77 % of lines at their exact level, 0.78 m RMS within 30 m of a contour), or the national LiDAR's ground and trees where
-  there is one (`lidar.py` through mapgen's fetchers; the map's relief is then checked against it). `course.py` proposes a course
-  (features as control sites, legs 180-480 m, no dog-leg, legs 45 m apart, the start beside a path). Races: **Granites** (Victoria,
+  there is one (`lidar.py` through mapgen's fetchers; the map's relief is then checked against it). `course.py` sets **six courses a
+  map** (owner, 2026-11-11; `race.json` `courses` [{ id, controls, length, climb }], the single `course` of before read as one):
+  `blue` (8 controls, ~2.2 km, legs 120-360 m, the sites within 15 m of a handrail — path, track, road, stream —, path junctions
+  among them, found by a ring of 8 m meeting the paths three times; each leg's straight line 35 m from a handrail on average, 90 m
+  at most), `yellow` (10, ~3 km, 40 m / 80 and 160 m), `orange_md` (12, ~3.4 km, 140-420 m, any distinct feature), `orange_ld` (10,
+  ~5 km, 280-800 m, legs across slow or blocked ground rewarded: route choices), `violet_md` (15, ~4 km, 140-450 m, sites away
+  from the paths rewarded) and `violet_ld` (13, ~7 km, 300-1150 m, route choices); everywhere no dog-leg, legs 40 m apart, controls
+  60 m apart, nothing on impassable or very slow ground, the finish near the start; length the straight legs', climb the rises
+  along them (45 s of random search a course; `course_review_<id>.png` beside pkg/). `thumb.mjs` draws each map's thumbnail,
+  pkg/thumb.webp (640 px, the map with its logos, by the Tracer's `vmap` in headless Edge: `npm install` in tools/virtually, run
+  from PowerShell). Python for build.py and course.py: `C:\kerkia\Ozimut\work\vr3d\venv` (scipy; the global Python has none).
+  **The page's four tabs** (2026-11-11): « Entraînement » — the maps as thumbnails (`GET /api/virtual/races`: each map's race.json
+  frame and courses, whether it has a thumbnail), a map chosen lists its courses (level colour, km, climb, controls, a line on the
+  level), « Commencer » only once both are chosen (no setting there: the speed and « Montrer ma position » are buttons during the
+  race, another session's work), the game mounted in place (`mount(root, race, { course, title, onFinish, onNav })`), the finished
+  run posted to `/api/virtual/runs` and its card offering « Voir les résultats » / « Analyser ma course »; « Résultats » — a map,
+  then a circuit (each course as a training, every event and course the runs name), Stats' race table (`ui.dataTable`: place,
+  runner, time, gap, the runner's virtual index today, the virtual score with its gap, `scoreCell`), the runs not ranked below
+  (another try); « Classement » — the runners by virtual index (2 counted runs at least), their starting index;
+  « Analyse » — one's own runs (`pages/virtuallyan.js`): the map (`drawMap`, `drawOverprint` exported by games/virtually.js) with
+  the route run so far and the runner, play / speed / time slider, drag and wheel; the legs' table (time, rank, best, the time lost
+  and the mistakes by `trace/legs.js` `refLegs` / `legLoss` over each runner's first run of the circuit, distance run, pace), a leg
+  clicked framed and replayed; the pace under the map (`trace/pacestrip.js`); other runners of the circuit ticked beside it.
+  **Runs** (`functions/api/virtual/[[path]].js`): R2 `virtual-runs/<race>/<course>/<hash>-<time>.json` — the route `[[t, x, z]]`
+  (world metres, 0.1) in the object, the summary in custom metadata (u, n name, t, sp cumulative splits, d metres run, at, h the
+  position shown, s seed, k kind, e event) so that one R2 list gives a map's results; `u` = 12 hex digits of SHA-256 over the
+  account's number and `SESSION_SECRET` (`_lib/virtual.js` `runnerHash`), never the number; GET `runs?race=`, GET
+  `runs/<race>/<run>` (with the route), POST `runs`, DELETE one's own; account deletion removes them. **Events** (owner, 2026-11-11):
+  a run is a `training` (played as often as one likes; a map's own six courses are trainings) or a `competition` of an event
+  (played once: the server refuses a second run of one event and course, 409); events themselves and their Orga page are another
+  session's work. **The « Indice Ozimut virtuel »** (`games/vindex.js`, explained in the tabs): the Ozimut method on the runs —
+  only competitions count (a run's time includes « Ma position »'s penalties), a runner's first run of a circuit; a circuit's value the mean of (index ×
+  time) over its fastest 90 % (`cn.circuitValue`, from one runner on); a score = value ÷ time; the index the best 60 % of 12 months'
+  scores in 6 places (`cn.topWeighted`), 2 counted runs; before that the seed — the runner's own Ozimut forest index at their first
+  run when the site knows it (`data.cnAt` at the latest month, sent with the run), else 3 500 (about the middle of France's forest
+  ranking, 2026-10); indices and values computed together in 20 rounds, the scale keeping the mean of the seeds of the runners with
+  an index. Trainings are scored (each runner's first run valued) but never counted. Local test: launch config `pages-dev-games`
+  (8790), `py tools/virtually/upload.py <race>` for the dev server's R2, `work\vr3d\pagetest.mjs` (the four tabs, a race run to its
+  finish, two competition runs posted). Races: **Granites** (Victoria,
   Australia, ISOM 2017 1:15 000; no open LiDAR: the map and the worldwide relief) and **Foley Mountain** (Ontario, Canada, ISOM 2000
   1:10 000; NRCan CanElevation LiDAR). The work of the day (Desquinemarre's movies, `C:\kerkia\Ozimut\work\vr3d`) stays outside git.
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and

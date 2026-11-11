@@ -2,6 +2,7 @@
 import { allow, clearCookie, json, readBody, withUser } from "../../_lib/api.js";
 import { checkPassword } from "../../_lib/crypto.js";
 import { handOver, soloHandOver, forgetUser, tracerInfo } from "../../_lib/maplib.js";
+import { runnerHash } from "../../_lib/virtual.js";
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
   const b = await readBody(request);
@@ -187,6 +188,19 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
             }
           }
         }
+        cursor = r.truncated ? r.cursor : undefined;
+      } while (cursor);
+    }
+  } catch (e) { /* the account goes all the same */ }
+  // « Virtually »'s runs (api/virtual: virtual-runs/<race>/<course>/<hash>-<time>.json)
+  try {
+    if (env.BUCKET) {
+      const me = await runnerHash(env, user.id);
+      let cursor;
+      do {
+        const r = await env.BUCKET.list({ prefix: "virtual-runs/", cursor, limit: 1000 });
+        const gone = r.objects.map((o) => o.key).filter((k) => k.split("/").pop().startsWith(`${me}-`));
+        if (gone.length) await env.BUCKET.delete(gone);
         cursor = r.truncated ? r.cursor : undefined;
       } while (cursor);
     }

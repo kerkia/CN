@@ -10,7 +10,7 @@ race = sys.argv[1]
 where = "--remote" if "--remote" in sys.argv else "--local"
 pkg = DATA / race / "pkg"
 repo = Path(__file__).resolve().parents[2]
-for name in ("race.json", "h.png", "cls.png", "veg.png", "ground.jpg", "feats.json", "trees.bin", "map.ocd"):
+for name in ("race.json", "h.png", "cls.png", "veg.png", "ground.jpg", "feats.json", "trees.bin", "map.ocd", "thumb.webp"):
     f = pkg / name
     if not f.exists():
         continue

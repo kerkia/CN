@@ -4,13 +4,14 @@ map.ocd (the club's map: never in the repository), biome.json (ground colours, t
 
   node --import ../mapper/shim.mjs dump.mjs DATA/<race>/map.ocd DATA/<race>/map.json
   py build.py <race>               the package into DATA/<race>/pkg/
-  py course.py <race> <controls> <km> [seed]   a proposed course, written into pkg/race.json (review picture beside)
+  py course.py <race> [seed] [s]   its six courses (Bleu … Violet long), written into pkg/race.json (review pictures beside)
+  node thumb.mjs <race>            its thumbnail, pkg/thumb.webp (npm install here first; headless Edge: run from PowerShell)
   py upload.py <race> [--remote]   the package to R2 virtual/<race>/ (the local dev server's R2 without --remote)
 Python: numpy scipy pillow laspy[lazrs] pyproj requests (and httpx apsw for lidar.py, through mapgen).
 
 World frame: the map's own paper frame in metres (x to the map's right, z to the map's bottom), so that the map's north is the
 world's -z and the compass agrees with the printed map. Grid 1 m. Outputs in races/<race>/pkg/:
-  race.json   frame, size, classes, speeds, biome, sources, (the course once course.py has run)
+  race.json   frame, size, classes, speeds, biome, sources, (the courses once course.py has run)
   h.png       ground heights, (h - base) * 100 as R * 256 + G
   cls.png     ground classes (CLASSES below)
   veg.png     R trees, G bushes, B low vegetation, per m² densities (TREE_K, BUSH_K, LOW_K)

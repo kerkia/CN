@@ -1,0 +1,243 @@
+// « Virtually » (Coach; owner, 2026-11-11 — a tab of « Jeux » the day before): virtual orienteering in a 3D forest made from
+// a real map, a page of four tabs. Administrators only for now (app.js: the menu entry and the address).
+// - Entraînement: the maps as thumbnails (their package's thumb.webp, tools/virtually/thumb.mjs), a map chosen lists its six
+//   courses (tools/virtually/course.py: Bleu, Jaune, Orange MD, Orange LD, Violet court, Violet long), « Commencer » once both
+//   are chosen runs the game (games/virtually.js) in place; the run finished is kept on the server (/api/virtual/runs).
+// - Résultats: a map, then a circuit, its runs as Stats' race results: place, runner, time, gap, the runner's virtual index and
+//   the run's virtual score with its gap (games/vindex.js: the Ozimut method's rules on the virtual runs, explained there).
+// - Classement: the runners by their virtual index (competitions only: owner, 2026-11-11).
+// - Analyse: one's own run replayed on the map, its legs (time lost as « Analyse de course » counts it, trace/legs.js), the
+//   pace under the map (trace/pacestrip.js), other runners of the same circuit beside it. A virtual run is a perfect trace
+//   in the map's frame: no calibration.
+// The tab in the address (?onglet=resultats|classement|analyse), the map and course too (?carte=, ?circuit=, ?run=).
+
+import { html, raw, $, $$, fmt, fmtDate, displayName } from "../util.js";
+import { t, tn, loadArea } from "../i18n.js";
+import { pageTabs, tabFrom, bindPageTabs, dataTable, scoreCell, subHead } from "../ui.js";
+import * as auth from "../auth.js";
+import * as data from "../data.js";
+
+const API = "/api/virtual/";
+export const LEVELS = ["blue", "yellow", "orange_md", "orange_ld", "violet_md", "violet_ld"];
+const LEVEL_COLOUR = { blue: "#2b6fd6", yellow: "#e2bd12", orange_md: "#f08a1c", orange_ld: "#f08a1c", violet_md: "#8e3fbf", violet_ld: "#8e3fbf" };
+
+export const clock = (s) => {
+  if (s == null || !Number.isFinite(s)) return "—";
+  s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+  return (h ? `${h}:${String(m).padStart(2, "0")}` : `${m}`) + `:${String(x).padStart(2, "0")}`;
+};
+const gapClock = (s) => (s == null || Math.round(s) <= 0 ? "" : `+${clock(s)}`);
+/** A map's name: its catalogue entry, else its id. */
+const mapName = (id) => { const k = `vt.map.${id}`, v = t(k); return v === k ? id : v; };
+/** A course's name: its level's, else its own. */
+const courseName = (c) => (LEVELS.includes(c.id) ? t(`vt.lvl.${c.id}`) : c.name || c.id);
+const swatch = (id) => html`<span class="vtp-sw" style="background:${LEVEL_COLOUR[id] || "#888"}"></span>`;
+
+// ---- the server ---------------------------------------------------------------------------------------------------------
+let RACES = null;
+const runsCache = new Map();
+async function getJson(url, opts) {
+  const r = await fetch(url, { credentials: "same-origin", cache: "no-store", ...opts });
+  if (!r.ok) throw Object.assign(new Error(`${url}: ${r.status}`), { status: r.status });
+  return r.json();
+}
+const races = async () => (RACES ||= (await getJson(`${API}races`)).races);
+async function runsOf(race) {
+  if (!runsCache.has(race)) runsCache.set(race, getJson(`${API}runs?race=${encodeURIComponent(race)}`).then((d) => d.runs.map((r) => ({ ...r, race }))));
+  return runsCache.get(race);
+}
+/** Every map's runs with the virtual index computed over all of them (games/vindex.js). */
+async function allRuns() {
+  const list = await races();
+  const runs = (await Promise.all(list.map((r) => runsOf(r.id).catch(() => [])))).flat();
+  const { compute } = await import("../games/vindex.js");
+  return compute(runs);
+}
+
+/** The account's own Ozimut forest index today, the seed of their virtual index (games/vindex.js), or null. */
+async function mySeed() {
+  try {
+    const me = auth.myId();
+    if (!me || !data.isPrivateLoaded()) return null;
+    return (await data.cnAt("top6w", "For", data.latestMonth())).get(String(me)) || null;
+  } catch (e) { return null; }
+}
+
+export async function render(main, { query }) {
+  await loadArea("virtually");
+  if (location.hash.startsWith("#/jeux")) history.replaceState(null, "", "#/virtually");     // « Jeux »'s tab of before
+  const tabs = [["entrainement", t("vt.tab.training")], ["resultats", t("vt.tab.results")], ["classement", t("vt.tab.ranking")], ["analyse", t("vt.tab.analysis")]];
+  const tab = tabFrom(tabs, query);
+  const sel = { race: query.carte || null, course: query.circuit || null, run: query.run || null };
+  main.innerHTML = html`
+    <div class="page-head"><div><h1>${t("nav.virtually")}</h1><p class="lede">${t("vtp.lede")}</p></div></div>
+    ${pageTabs(tabs, tab)}
+    ${tabs.map(([k]) => html`<div data-panel="${k}" class="vtp-panel" hidden></div>`)}`;
+  let game = null, drawn = new Set(), stopAn = null;
+  const panel = (k) => $(`[data-panel="${k}"]`, main);
+  const setQuery = (q) => {
+    const [path, qs] = location.hash.split("?"), p = new URLSearchParams(qs || "");
+    for (const [k, v] of Object.entries(q)) (v ? p.set(k, v) : p.delete(k));
+    const next = `${path}${p.toString() ? `?${p}` : ""}`;
+    if (next !== location.hash) history.replaceState(null, "", next);
+  };
+  const draw = async (k) => {
+    if (k !== "analyse") { stopAn?.(); stopAn = null; }
+    try {
+      if (k === "entrainement") await training(panel(k));
+      else if (k === "resultats") await results(panel(k));
+      else if (k === "classement") await ranking(panel(k));
+      else stopAn = await analysis(panel(k));
+    } catch (e) {
+      console.error(e);
+      panel(k).innerHTML = html`<div class="card"><div class="empty">${t(e.status === 403 ? "vt.forbidden" : "vt.error")}<br><span class="muted">${String(e.message || e)}</span></div></div>`;
+    }
+  };
+  const show = bindPageTabs(main, tabs, tab, (k) => { if (!drawn.has(k) || k !== "entrainement") { drawn.add(k); draw(k); } });
+  const goTab = (k) => { game?.stop(); game = null; show(k); };
+
+  // ---- Entraînement ------------------------------------------------------------------------------------------------------
+  async function training(el) {
+    if (game) return;
+    el.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
+    const list = await races();
+    if (!list.some((r) => r.id === sel.race)) sel.race = null;
+    const drawChooser = () => {
+      const race = list.find((r) => r.id === sel.race), courses = race?.race.courses || [];
+      if (!courses.some((c) => c.id === sel.course)) sel.course = null;
+      el.innerHTML = html`<p class="muted vtp-intro">${t("vt.tr.intro")}</p>
+        <h2 class="vtp-h">${t("vt.tr.maps")}</h2>
+        <div class="vtp-maps">${list.map((r) => html`<button type="button" class="vtp-map card" data-race="${r.id}" aria-pressed="${r.id === sel.race}">
+          ${r.thumb ? html`<img src="${API}${r.id}/thumb.webp" alt="" loading="lazy">` : html`<span class="vtp-nothumb"></span>`}
+          <b>${mapName(r.id)}</b><span class="muted">${t("vt.tr.mapLine", { scale: fmt(r.race.scale), std: r.race.std || "", n: r.race.courses.length })}</span>
+          <span class="muted">${t(`vt.src.${r.race.source}`)}</span></button>`)}</div>
+        ${race ? html`<h2 class="vtp-h">${t("vt.tr.courses", { map: mapName(race.id) })}</h2>
+          <div class="vtp-courses">${courses.map((c) => html`<button type="button" class="vtp-course" data-course="${c.id}" aria-pressed="${c.id === sel.course}">
+            ${swatch(c.id)}<b>${courseName(c)}</b><span>${t("vt.tr.courseLine", { km: fmt(c.length / 1000, 1), climb: fmt(c.climb || 0), n: c.controls.length - 2 })}</span>
+            <span class="muted">${t(`vt.lvlHint.${LEVELS.includes(c.id) ? c.id : "other"}`)}</span></button>`)}</div>` : ""}
+        <div class="vtp-go"><button type="button" class="btn btn-primary" id="vtp-go" ${raw(race && sel.course ? "" : "disabled")}>${t("vt.tr.start")}</button>
+          <span class="muted">${!race ? t("vt.tr.needMap") : !sel.course ? t("vt.tr.needCourse") : t("vt.tr.ready", { course: courseName(courses.find((c) => c.id === sel.course)), map: mapName(race.id) })}</span></div>`;
+      $$(".vtp-map", el).forEach((b) => b.addEventListener("click", () => { sel.race = b.dataset.race; sel.course = null; setQuery({ carte: sel.race, circuit: null }); drawChooser(); }));
+      $$(".vtp-course", el).forEach((b) => b.addEventListener("click", () => { sel.course = b.dataset.course; setQuery({ circuit: sel.course }); drawChooser(); }));
+      $("#vtp-go", el)?.addEventListener("click", () => play(race, courses.find((c) => c.id === sel.course)));
+    };
+    const play = async (race, course) => {
+      el.innerHTML = html`<p class="vtp-back"><button type="button" class="btn btn-sm" id="vtp-back">${t("vt.tr.back")}</button>
+        <b>${mapName(race.id)} · ${courseName(course)}</b></p><div class="g-root card vtp-game"><div class="card-body"></div></div>`;
+      const seed = mySeed();
+      const { mount } = await import("../games/virtually.js");
+      game = mount($(".vtp-game .card-body", el), race.id, {
+        course: course.id, title: `${mapName(race.id)} · ${courseName(course)}`,
+        onFinish: async (run) => {
+          const note = () => $("#vt-saved", el);
+          try {
+            const r = await fetch(`${API}runs`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ race: race.id, kind: "training", event: "", ...run, seed: await seed }) });
+            if (!r.ok) throw new Error(String(r.status));
+            const saved = await r.json();
+            runsCache.delete(race.id); sel.run = saved.id; drawn.delete("resultats"); drawn.delete("classement"); drawn.delete("analyse");
+            if (note()) note().textContent = t("vt.saved");
+          } catch (e) { if (note()) note().textContent = t("vt.notSaved"); }
+        },
+        onNav: (k) => { setQuery({ run: sel.run }); goTab(k === "results" ? "resultats" : "analyse"); },
+      });
+      $("#vtp-back", el).addEventListener("click", () => { game?.stop(); game = null; drawChooser(); });
+    };
+    drawChooser();
+  }
+
+  // ---- Résultats ---------------------------------------------------------------------------------------------------------
+  async function results(el) {
+    el.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
+    const [list, all] = await Promise.all([races(), allRuns()]);
+    if (!list.length) { el.innerHTML = html`<div class="card"><div class="empty">${t("vt.noMaps")}</div></div>`; return; }
+    if (!list.some((r) => r.id === sel.race)) sel.race = list[0].id;
+    const drawIt = () => {
+      const race = list.find((r) => r.id === sel.race);
+      const runs = all.runs.filter((r) => r.race === race.id);
+      // the circuits: each course of the map as a training, and every (event, course, kind) a run names
+      const circ = new Map();
+      for (const c of race.race.courses) circ.set(`${race.id}||${c.id}|t`, { course: c.id, event: "", kind: "training" });
+      for (const r of runs) { const k = all.circuitKey(r); if (!circ.has(k)) circ.set(k, { course: r.course, event: r.event || "", kind: r.kind }); }
+      const keys = [...circ.keys()];
+      let cur = keys.find((k) => circ.get(k).course === sel.course && (sel.event == null || circ.get(k).event === sel.event)) || keys[0];
+      const ci = circ.get(cur), course = race.race.courses.find((c) => c.id === ci.course) || { id: ci.course, controls: [], length: 0 };
+      const mine = runs.filter((r) => all.circuitKey(r) === cur);
+      const firstOf = new Set();
+      [...mine].sort((a, b) => a.at.localeCompare(b.at)).forEach((r) => { const k = r.u; if (!firstOf.has(k) && !r.help) firstOf.add(k), (r._first = true); });
+      const ranked = mine.filter((r) => (ci.kind === "competition" ? r.why === "" : r._first)).sort((a, b) => a.t - b.t);
+      const others = mine.filter((r) => !ranked.includes(r)).sort((a, b) => a.t - b.t);
+      const best = ranked[0]?.t;
+      ranked.forEach((r, i) => { r._place = i && r.t === ranked[i - 1].t ? ranked[i - 1]._place : i + 1; });
+      el.innerHTML = html`
+        <div class="vtp-pick"><div class="seg" role="group">${list.map((r) => html`<button type="button" data-race="${r.id}" aria-pressed="${r.id === race.id}">${mapName(r.id)}</button>`)}</div>
+          <select id="vtp-circ" aria-label="${t("vt.res.circuit")}">${keys.map((k) => { const c = circ.get(k), co = race.race.courses.find((x) => x.id === c.course);
+            return html`<option value="${k}" ${raw(k === cur ? "selected" : "")}>${co ? courseName(co) : c.course}${c.kind === "competition" ? ` · ${t("vt.kind.competition")}${c.event ? ` ${c.event}` : ""}` : ` · ${t("vt.kind.training")}`}</option>`; })}</select></div>
+        <p class="muted vtp-cline">${swatch(course.id)} ${t("vt.res.line", { km: fmt((course.length || 0) / 1000, 1), climb: fmt(course.climb || 0), n: Math.max(0, course.controls.length - 2), runners: ranked.length })}
+${ci.kind === "training" ? html` · <span class="tag">${t("vt.res.trainingTag")}</span>` : ""}</p>
+        <div id="vtp-table"></div>
+        ${others.length ? html`<h3 class="vtp-h3">${t("vt.res.others")}</h3><div id="vtp-others"></div>` : ""}
+        <details class="vtp-how"><summary>${t("vt.how.title")}</summary>${raw(t("vt.how.body", { seed: fmt(3500), share: "90 %" }))}</details>`;
+      const idxOf = (r) => all.runners.get(r.u)?.index;
+      const cols = (place) => [
+        { key: "place", label: t("vt.col.place"), align: "num", render: (r) => (place ? r._place : html`<span class="dim">${t(`vt.why.${r.why === "" ? "again" : r.why === "training" ? (r.help ? "help" : "again") : r.why}`)}</span>`), sort: (r) => (place ? r._place : null) },
+        { key: "name", label: t("vt.col.runner"), render: (r) => html`${displayName(r.name)}${r.mine ? html` <span class="tag">${t("vt.me")}</span>` : ""}`, sort: (r) => r.name },
+        { key: "time", label: t("vt.col.time"), align: "num", render: (r) => clock(r.t), sort: (r) => r.t },
+        { key: "gap", label: t("vt.col.gap"), align: "num", render: (r) => gapClock(best != null ? r.t - best : null), sort: (r) => r.t },
+        { key: "idx", label: subHead(t("vt.col.index"), t("vt.col.indexSub")), align: "num", render: (r) => (idxOf(r) ? fmt(idxOf(r)) : "—"), sort: (r) => idxOf(r) },
+        { key: "score", label: t("vt.col.score"), align: "num", render: (r) => scoreCell(r.score, idxOf(r)), sort: (r) => (r.score && idxOf(r) ? r.score - idxOf(r) : null) },
+        { key: "at", label: t("vt.col.date"), render: (r) => fmtDate(String(r.at).slice(0, 10)), sort: (r) => r.at },
+        { key: "an", label: "", render: (r) => (r.mine ? html`<a href="#" data-an="${r.id}">${t("vt.res.analyse")}</a>` : "") },
+      ];
+      dataTable($("#vtp-table", el), { columns: cols(true), rows: ranked, sortKey: "place", sortDir: 1, rowClass: (r) => (r.mine ? "vtp-me" : ""),
+        emptyText: t("vt.res.none"), compact: true });
+      if (others.length) dataTable($("#vtp-others", el), { columns: cols(false), rows: others, sortKey: "time", sortDir: 1, rowClass: (r) => (r.mine ? "vtp-me" : ""), compact: true });
+      $$(".vtp-pick [data-race]", el).forEach((b) => b.addEventListener("click", () => { sel.race = b.dataset.race; sel.course = null; sel.event = null; setQuery({ carte: sel.race, circuit: null }); drawIt(); }));
+      $("#vtp-circ", el).addEventListener("change", (e) => { const c = circ.get(e.target.value); sel.course = c.course; sel.event = c.event; setQuery({ circuit: sel.course }); drawIt(); });
+      el.addEventListener("click", (e) => { const a = e.target.closest("[data-an]"); if (!a) return; e.preventDefault(); sel.run = a.dataset.an; setQuery({ run: sel.run }); drawn.delete("analyse"); show("analyse"); });
+    };
+    drawIt();
+  }
+
+  // ---- Classement --------------------------------------------------------------------------------------------------------
+  async function ranking(el) {
+    el.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
+    const all = await allRuns();
+    const people = [...all.runners.values()];
+    const ranked = people.filter((p) => !p.provisional).sort((a, b) => b.index - a.index);
+    ranked.forEach((p, i) => { p._rank = i && p.index === ranked[i - 1].index ? ranked[i - 1]._rank : i + 1; });
+    const waiting = people.filter((p) => p.provisional && p.counted > 0).length;
+    const myU = all.runs.find((r) => r.mine)?.u;
+    el.innerHTML = html`<p class="muted">${t("vt.rk.intro")}</p><div id="vtp-rk"></div>
+      ${waiting ? html`<p class="muted">${tn("vt.rk.waiting", waiting)}</p>` : ""}
+      <details class="vtp-how"><summary>${t("vt.how.title")}</summary>${raw(t("vt.how.body", { seed: fmt(3500), share: "90 %" }))}</details>`;
+    dataTable($("#vtp-rk", el), {
+      columns: [
+        { key: "rank", label: t("vt.col.rank"), align: "num", render: (p) => p._rank, sort: (p) => p._rank },
+        { key: "name", label: t("vt.col.runner"), render: (p) => html`${displayName(p.name)}${p.u === myU ? html` <span class="tag">${t("vt.me")}</span>` : ""}`, sort: (p) => p.name },
+        { key: "idx", label: t("vt.col.index"), align: "num", render: (p) => fmt(p.index), sort: (p) => p.index },
+        { key: "n", label: t("vt.col.counted"), align: "num", render: (p) => fmt(p.counted), sort: (p) => p.counted },
+        { key: "seed", label: t("vt.col.seed"), align: "num", render: (p) => html`${fmt(p.seed)}${p.ownSeed ? "" : html` <span class="dim" title="${t("vt.rk.defaultSeed")}">*</span>`}`, sort: (p) => p.seed },
+        { key: "last", label: t("vt.col.last"), render: (p) => fmtDate(String(p.last).slice(0, 10)), sort: (p) => p.last },
+      ],
+      rows: ranked, sortKey: "rank", sortDir: 1, rowClass: (p) => (p.u === myU ? "vtp-me" : ""), emptyText: t("vt.rk.none"), compact: true,
+    });
+  }
+
+  // ---- Analyse -----------------------------------------------------------------------------------------------------------
+  async function analysis(el) {
+    el.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
+    const [list, all] = await Promise.all([races(), allRuns()]);
+    const mineRuns = all.runs.filter((r) => r.mine).sort((a, b) => b.at.localeCompare(a.at));
+    if (!mineRuns.length) { el.innerHTML = html`<div class="card"><div class="empty">${t("vt.an.none")}</div></div>`; return null; }
+    const run = mineRuns.find((r) => r.id === sel.run) || mineRuns[0];
+    sel.run = run.id;
+    const race = list.find((r) => r.id === run.race), course = race?.race.courses.find((c) => c.id === run.course);
+    if (!race || !course) { el.innerHTML = html`<div class="card"><div class="empty">${t("vt.an.gone")}</div></div>`; return null; }
+    const mod = await import("./virtuallyan.js");
+    return mod.drawAnalysis(el, { run, race, course, all, mineRuns, list, mapName, courseName, onRun: (id) => { sel.run = id; setQuery({ run: id }); draw("analyse"); } });
+  }
+
+  return { title: t("nav.virtually"), cleanup: () => { game?.stop(); stopAn?.(); } };
+}
+

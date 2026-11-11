@@ -1,0 +1,1 @@
+{ "name": "ozimut-virtually-tools", "private": true, "type": "module", "devDependencies": { "puppeteer-core": "24.43.1" } }

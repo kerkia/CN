@@ -61,6 +61,7 @@ const PAGES = {
   relays: () => import("./pages/clubs.js"),        // « Relais »: the relay simulator, a view of the Clubs page
   relayHistory: () => import("./pages/relayhistory.js"),   // « Relais nationaux »: the CFC's and the CNE's history (2026-10-26)
   games: () => import("./pages/games.js"),         // « Jeux »: training games on generated maps
+  virtually: () => import("./pages/virtually.js"), // « Virtually » (Coach, administrators; 2026-11-11): virtual races in 3D forests
   vma: () => import("./pages/vma.js"),
   // « Apprendre » (Coach; owner, 2026-11-10): « Définitions de postes », « Symboles de carte » and a test, as three views
   learn: () => import("./pages/learn.js"),
@@ -77,7 +78,7 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 // tooltip of its name in the second row (NAV_HINT), its buttons go to the right of the tab row. The runner's, a club's
 // or a race's name stays as a title, and the pages outside the menu keep theirs.
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", relayHistory: "rh.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
-  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", vma: "vma.lede", learn: "lt.lede",
+  agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", virtually: "vtp.lede", vma: "vma.lede", learn: "lt.lede",
   analysisPerso: "an.perso.lede", analysisOrga: "an.orga.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
   orgAnalyses: "sh.org.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint", orgMapper: "nav.orgMapper.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
@@ -104,11 +105,12 @@ const OWNER_ROUTES = new Set([]);
 const ownerOnly = auth.owner;
 // « Nutrition » and its authors' « Rédaction » (owner, 2026-11-01): those given the right on the admin page, its authors and
 // the administrators; nobody else sees them in the menus, and their addresses lead the others to the modules page
-const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites };
+// « Virtually » (2026-11-11) likewise, the administrators' only for now (api/virtual refuses the others)
+const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites, virtually: () => !!auth.session()?.admin };
 // the map analyses out of beta on 2026-11-05; « Résultats » and « Horaires » marked beta on 2026-11-07 (owner)
 const BETA_ROUTES = new Set(["orgDirect", "orgTracer", "orgMapper", "orgResults", "orgStarts"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
-const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "vma", "learn"].includes(r.route)
+const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "virtually", "vma", "learn"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
   || (r.route === "orgAnalyses" && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
 // Réseau views that count every discipline together by default (all but the leaders, who are
@@ -161,7 +163,9 @@ function parseHash(hash = location.hash) {
     : head === "analyse-competition" ? "analysisRace"
     : head === "relais" ? "relays"
     : head === "relais-nationaux" ? "relayHistory"
+    : head === "jeux" && query.onglet === "virtually" ? "virtually"     // its tab of before (2026-11-10)
     : head === "jeux" ? "games"
+    : head === "virtually" ? "virtually"
     : head === "vma" ? "vma"
     : head === "ia" ? "ask"
     : head === "modules" ? "hub"
@@ -423,7 +427,7 @@ export function moduleMenus() {
     coach: [["mapAnalysis", "#/analyses", t("nav.mapAnalysis")],
       // « Mes cartes » (owner, 2026-11-01): an account's own archive (a link shared opens it to anyone: GUEST_ROUTES)
       ...(me ? [["myMaps", "#/mes-cartes", t("nav.myMaps")]] : []),
-      ["learn", "#/apprendre", t("nav.learn")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
+      ["learn", "#/apprendre", t("nav.learn")], ["games", "#/jeux", t("nav.games")], ["virtually", "#/virtually", t("nav.virtually")], ["vma", "#/vma", t("nav.vma")],
       // « Santé » to the accounts given it; its authors reach « Rédaction » from its page, not from the menu (owner, 2026-11-01)
       ["nutrition", "#/sante", t("nav.nutrition")]]
       .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),

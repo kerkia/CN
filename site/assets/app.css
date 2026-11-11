@@ -4185,7 +4185,7 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 }
 
 /* ---- « Virtually » (games/virtually.js): the 3D view fills the game's card, everything else floats over it ---------------- */
-.g-panel[data-panel="virtually"] .g-root .card-body { padding: 0; }
+.vtp-game .card-body { padding: 0; }
 .vt { position: relative; height: max(440px, calc(100vh - 220px)); background: #1b1f22; overflow: hidden; outline: none; border-radius: inherit; user-select: none; }
 .vt:fullscreen { height: 100vh; border-radius: 0; }
 .vt-view { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
@@ -4272,3 +4272,44 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
   .vt-pad { grid-template-columns: repeat(3, 50px); }
   .vt-hud { max-width: calc(100% - 200px); }
 }
+
+/* ---- Coach › Virtually (pages/virtually.js, virtuallyan.js; 2026-11-11): maps as thumbnails, courses, results, analysis ---- */
+.vtp-intro { margin: 4px 0 10px; max-width: 70ch; }
+.vtp-h { font-size: 1.05rem; margin: 16px 0 8px; }
+.vtp-h3 { font-size: 0.95rem; margin: 18px 0 6px; }
+.vtp-maps { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.vtp-map { display: flex; flex-direction: column; gap: 3px; padding: 8px; text-align: left; cursor: pointer; font: inherit; color: inherit; border: 2px solid transparent; }
+.vtp-map img, .vtp-nothumb { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 6px; background: #fff; border: 1px solid var(--border); margin-bottom: 4px; }
+.vtp-map:hover { border-color: color-mix(in srgb, var(--flag) 45%, transparent); }
+.vtp-map[aria-pressed="true"] { border-color: var(--flag); box-shadow: 0 0 0 2px color-mix(in srgb, var(--flag) 25%, transparent); }
+.vtp-map .muted { font-size: 0.85rem; }
+.vtp-courses { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.vtp-course { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; padding: 8px 10px; text-align: left; font: inherit; color: inherit;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px; cursor: pointer; }
+.vtp-course > :nth-child(n+3) { grid-column: 2; font-size: 0.85rem; }
+.vtp-course:hover { border-color: var(--border-strong); }
+.vtp-course[aria-pressed="true"] { border-color: var(--flag); background: color-mix(in srgb, var(--flag) 9%, var(--surface)); }
+.vtp-sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.25); vertical-align: -1px; }
+.vtp-go { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 6px; }
+.vtp-back { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; }
+.vtp-pick { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 4px 0 6px; }
+.vtp-cline { margin: 6px 0 8px; }
+.vtp-me td { background: color-mix(in srgb, var(--flag) 10%, var(--surface)); }
+.vtp-how { margin: 14px 0; max-width: 80ch; }
+.vtp-how summary { cursor: pointer; font-weight: 600; }
+.vtp-anhead { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; }
+.vtp-cmp { display: flex; gap: 6px 12px; align-items: center; flex-wrap: wrap; margin: 0 0 8px; }
+.vtp-chip { display: inline-flex; gap: 5px; align-items: center; cursor: pointer; }
+.vtp-an { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 420px); gap: 12px; align-items: start; }
+.vtp-anmap { position: relative; height: max(320px, calc(100vh - 360px)); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+.vtp-anmap canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+.vtp-anbar { position: absolute; right: 8px; top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.vtp-anload { position: absolute; inset: 0; display: grid; place-content: center; }
+.vtp-transport { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+.vtp-transport input[type=range] { flex: 1; min-width: 80px; }
+.vtp-strip { width: 100%; height: 110px; display: block; cursor: pointer; }
+.vtp-legs tr[data-leg] { cursor: pointer; }
+.vtp-legs tr.vtp-cur td { background: color-mix(in srgb, var(--water) 12%, var(--surface)); }
+.vtp-legs tr.vtp-err td:nth-child(5) { color: var(--bad); font-weight: 600; }
+.vtp-legnote { font-size: 0.85rem; margin: 6px 0; }
+@media (max-width: 900px) { .vtp-an { grid-template-columns: 1fr; } .vtp-anmap { height: 60vh; } }

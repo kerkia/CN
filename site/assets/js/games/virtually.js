@@ -1,4 +1,5 @@
-// « Virtually » (Jeux; administrators only for now, owner 2026-11-10): a virtual race in a 3D forest built from a real
+// « Virtually » (Coach › Virtually's Training tab, pages/virtually.js; a tab of « Jeux » on 2026-11-10; administrators only for
+// now): a virtual race in a 3D forest built from a real
 // orienteering map — after Catching Features and Virtual-O. The runner is seen from behind (or through their own eyes), the
 // orienteering map with the course is in the bottom left corner with the compass beside it (owner, 2026-11-11), the runner's
 // position hidden unless « Ma position » is pressed (10 s shown, 20 s added to the time), the game's speed and the pause at
@@ -9,7 +10,6 @@
 import { html, $ } from "../util.js";
 import { t, tn, loadArea, lang } from "../i18n.js";
 import { THREE as THREE_URL } from "../vendor.js";
-import * as palm from "./palmares.js";
 import { loadRace, World, runnerFigure } from "./vworld.js";
 
 await loadArea("virtually");
@@ -21,10 +21,16 @@ const PURPLE = "rgba(181, 23, 158, 0.9)";
 const fmt = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? `${h}:${String(m).padStart(2, "0")}` : `${m}`) + `:${String(x).padStart(2, "0")}`; };
 const num = (v, d = 1) => v.toLocaleString(lang(), { minimumFractionDigits: d, maximumFractionDigits: d });
 
-export const spec = () => ({});      // games.js reads `mount` for this game
+/** A map's course: race.json's `courses` (six levels, tools/virtually/course.py), or the single `course` of before. */
+export const coursesOf = (race) => race.courses || (race.course ? [{ id: "course", ...race.course }] : []);
 
-/** Mount the game for race `raceId` in `root`; returns { stop }. */
-export function mount(root, raceId) {
+/**
+ * Mount the game for map `raceId` in `root` (Coach › Virtually's Training tab); returns { stop }.
+ * opts: course (its id), title (the course's name as the page writes it), onFinish(run) once the finish is punched —
+ * run { course, t (the race time, « Ma position »'s penalties included), sp (cumulative splits, s, the same), d (m run),
+ * route [[t, x, z]] (the clock's time) } —, onNav("results" | "analysis") the finish card's buttons.
+ */
+export function mount(root, raceId, opts = {}) {
   let stopped = false, raf = 0, cleanup = [];
   root.innerHTML = html`<div class="vt-load"><div class="spinner"></div><p id="vt-msg">${t("vt.loading")}</p></div>`;
   const say = (k, v) => { const m = $("#vt-msg", root); if (m) m.textContent = t(k, v); };
@@ -45,7 +51,9 @@ export function mount(root, raceId) {
 
   // ---- the game ----------------------------------------------------------------------------------------------------------
   function start(root, T, data, mapImg, raceId) {
-    const race = data.race, course = race.course.controls, nC = course.length - 2;
+    const race = data.race, cs = coursesOf(race), C0 = cs.find((c) => c.id === opts.course) || cs[0];
+    race.course = { ...C0, name: opts.title || C0.name || race.id };
+    const course = race.course.controls, nC = course.length - 2;
     root.innerHTML = html`<div class="vt" tabindex="0">
       <canvas class="vt-view"></canvas>
       <div class="vt-hud"><b>${race.course.name}</b><span id="vt-time">0:00</span><span id="vt-pen" hidden></span><span id="vt-next"></span></div>
@@ -122,31 +130,7 @@ export function mount(root, raceId) {
       }
       g.restore();
     }
-    function overprint(g) {
-      const mm = ppm, r = 3 * mm, lw = 0.35 * mm;
-      g.strokeStyle = PURPLE; g.fillStyle = PURPLE; g.lineWidth = lw; g.lineCap = "round";
-      const P = course.map((c) => [c.x * mPer, c.z * mPer]);
-      for (let i = 0; i < P.length - 1; i++) {
-        const [ax, ay] = P[i], [bx, by] = P[i + 1], L = Math.hypot(bx - ax, by - ay);
-        const ra = (i === 0 ? 4 : r) + 0.5 * mm, rb = (i + 1 === P.length - 1 ? 3.6 * mm : r) + 0.5 * mm;
-        if (L <= ra + rb) continue;
-        const ux = (bx - ax) / L, uy = (by - ay) / L;
-        g.beginPath(); g.moveTo(ax + ux * ra, ay + uy * ra); g.lineTo(bx - ux * rb, by - uy * rb); g.stroke();
-      }
-      P.forEach(([x, y], i) => {
-        g.beginPath();
-        if (i === 0) {
-          const [nx, ny] = P[1], a = Math.atan2(ny - y, nx - x), s = 4 * mm;
-          for (let k = 0; k < 3; k++) { const b = a + (k * 2 * Math.PI) / 3; k ? g.lineTo(x + Math.cos(b) * s, y + Math.sin(b) * s) : g.moveTo(x + Math.cos(b) * s, y + Math.sin(b) * s); }
-          g.closePath(); g.stroke();
-        } else if (i === P.length - 1) {
-          g.arc(x, y, 2.4 * mm, 0, 7); g.stroke(); g.beginPath(); g.arc(x, y, 3.5 * mm, 0, 7); g.stroke();
-        } else {
-          g.arc(x, y, r, 0, 7); g.stroke();
-          g.font = `${4 * mm}px Arial`; g.textBaseline = "middle"; g.fillText(String(i), x + r * 1.05, y - r * 1.05);
-        }
-      });
-    }
+    function overprint(g) { drawOverprint(g, course, mPer, ppm); }
     function describe() {
       $("#vt-desc", root).innerHTML = html`<table><tbody>${course.slice(1, -1).map((c, i) => html`<tr class="${i + 1 < st.next ? "done" : i + 1 === st.next ? "cur" : ""}"><td>${i + 1}</td><td>${c.code}</td><td>${t(`vt.f.${c.feature}`)}</td></tr>`)}</tbody></table>`;
     }
@@ -250,13 +234,12 @@ export function mount(root, raceId) {
         <p class="muted">${t(`vt.src.${race.source}`)}</p>
         <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "view", "pause", "pos", "speed"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-go">${t("vt.go")}</button>
-          ${palm.signedIn() ? html`<button type="button" class="btn" id="vt-palm">${t("g.palm")}</button>` : ""}</div>
+</div>
         <p class="muted vt-credit">${t("vt.credit", { std: race.std })}</p></div>`);
       $("#vt-go", root).addEventListener("click", () => {
         st.maxSpeedX = st.speedX;
         st.phase = "run"; over(""); box.focus(); toast(t("vt.started"));
       });
-      $("#vt-palm", root)?.addEventListener("click", () => palm.openPalmares(`virtually-${raceId}`, race.course.name));
     }
     function pause() {
       st.phase = "pause"; keys.clear();
@@ -274,8 +257,7 @@ export function mount(root, raceId) {
       st.phase = "done"; keys.clear(); st.posLeft = 0; showPosBtn();
       const legs = st.splits.map((s, i) => [s - (i ? st.splits[i - 1] : 0), s]);   // the splits hold the race time, penalties included
       const straight = race.course.length, T = total();
-      const extra = [st.maxSpeedX > 1 ? `×${st.maxSpeedX}` : "", st.posN ? t("vt.palm.pos", { n: st.posN, s: st.pen }) : ""].filter(Boolean).join(" · ");
-      palm.record(`virtually-${raceId}`, { value: Math.round(T), label: fmt(T), higher: false, extra });
+      opts.onFinish?.({ course: C0.id, t: T, sp: st.splits.slice(), d: st.dist, route: st.track.concat([[st.t, st.x, st.z]]) });
       mapSize("full");
       const all = st.track.map(([, x, z]) => [x, z]).concat(course.map((c) => [c.x, c.z])); const xs = all.map((p) => p[0]), zs = all.map((p) => p[1]);
       mv.cx = ((Math.min(...xs) + Math.max(...xs)) / 2) * mPer; mv.cy = ((Math.min(...zs) + Math.max(...zs)) / 2) * mPer;
@@ -288,9 +270,11 @@ export function mount(root, raceId) {
         <table class="data"><thead><tr><th>${t("vt.col.leg")}</th><th>${t("vt.col.code")}</th><th>${t("vt.col.split")}</th><th>${t("vt.col.total")}</th>${st.posN ? html`<th>${t("vt.col.pen")}</th>` : ""}</tr></thead>
         <tbody>${legs.map(([leg, tot], i) => html`<tr><td>${i + 1 <= nC ? i + 1 : t("vt.finish")}</td><td>${course[i + 1].code || ""}</td><td>${fmt(leg)}</td><td>${fmt(tot)}</td>${st.posN ? html`<td>${st.legPen[i] ? `+${st.legPen[i]} s` : ""}</td>` : ""}</tr>`)}</tbody></table>
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-again">${t("vt.again")}</button>
-          ${palm.signedIn() ? html`<button type="button" class="btn" id="vt-palm2">${t("g.palm")}</button>` : ""}</div></div>`);
+          ${opts.onNav ? html`<button type="button" class="btn" id="vt-to-res">${t("vt.toResults")}</button><button type="button" class="btn" id="vt-to-an">${t("vt.toAnalysis")}</button>` : ""}</div>
+        <p class="muted" id="vt-saved">${opts.onFinish ? t("vt.saving") : ""}</p></div>`);
       $("#vt-again", root).addEventListener("click", () => { $("#vt-over", root).classList.remove("side"); reset(); startScreen(); });
-      $("#vt-palm2", root)?.addEventListener("click", () => palm.openPalmares(`virtually-${raceId}`, race.course.name));
+      $("#vt-to-res", root)?.addEventListener("click", () => opts.onNav("results"));
+      $("#vt-to-an", root)?.addEventListener("click", () => opts.onNav("analysis"));
     }
     function nearest() {
       let best = null;
@@ -392,9 +376,37 @@ export function mount(root, raceId) {
 
 const $$$ = (root, sel) => [...root.querySelectorAll(sel)];
 
+/** The course's overprint on a map canvas: `mPer` canvas px per world metre, `mm` canvas px per map mm (start triangle,
+ *  numbered circles, the legs, the finish's double circle). Shared with Coach › Virtually's analysis. */
+export function drawOverprint(g, course, mPer, mm) {
+  const r = 3 * mm, lw = 0.35 * mm;
+  g.strokeStyle = PURPLE; g.fillStyle = PURPLE; g.lineWidth = lw; g.lineCap = "round";
+  const P = course.map((c) => [c.x * mPer, c.z * mPer]);
+  for (let i = 0; i < P.length - 1; i++) {
+    const [ax, ay] = P[i], [bx, by] = P[i + 1], L = Math.hypot(bx - ax, by - ay);
+    const ra = (i === 0 ? 4 * mm : r) + 0.5 * mm, rb = (i + 1 === P.length - 1 ? 3.6 * mm : r) + 0.5 * mm;
+    if (L <= ra + rb) continue;
+    const ux = (bx - ax) / L, uy = (by - ay) / L;
+    g.beginPath(); g.moveTo(ax + ux * ra, ay + uy * ra); g.lineTo(bx - ux * rb, by - uy * rb); g.stroke();
+  }
+  P.forEach(([x, y], i) => {
+    g.beginPath();
+    if (i === 0) {
+      const [nx, ny] = P[1], a = Math.atan2(ny - y, nx - x), s = 4 * mm;
+      for (let k = 0; k < 3; k++) { const b = a + (k * 2 * Math.PI) / 3; k ? g.lineTo(x + Math.cos(b) * s, y + Math.sin(b) * s) : g.moveTo(x + Math.cos(b) * s, y + Math.sin(b) * s); }
+      g.closePath(); g.stroke();
+    } else if (i === P.length - 1) {
+      g.arc(x, y, 2.4 * mm, 0, 7); g.stroke(); g.beginPath(); g.arc(x, y, 3.5 * mm, 0, 7); g.stroke();
+    } else {
+      g.arc(x, y, r, 0, 7); g.stroke();
+      g.font = `${4 * mm}px Arial`; g.textBaseline = "middle"; g.fillText(String(i), x + r * 1.05, y - r * 1.05);
+    }
+  });
+}
+
 /** The orienteering map, drawn once from the OCAD file over the world's rectangle: { canvas, ppm }. The file's own course
  *  overprint (7xx symbols but the out-of-bounds 709) is left out; the game draws its course. */
-async function drawMap(data) {
+export async function drawMap(data) {
   const [{ readOcad }, { CanvasTarget }, { Matrix }] = await Promise.all([import("../tracer/vmap/ocad.js"), import("../tracer/vmap/target.js"), import("../tracer/vmap/geom.js")]);
   const { map } = readOcad(data.ocd);
   await map.ready;
