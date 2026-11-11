@@ -54,6 +54,7 @@ import * as phone from "../phonelink.js";
 import { replaceQuery } from "../app.js";
 import { clubAsk } from "./mapanalysis.js";
 import { takeInbox } from "../pwa.js";
+import { dateWords } from "../datewords.js";
 import { confirmBox, alertBox } from "../askbox.js";
 
 const ORG_ROUTE = "#/orga-analyses";                     // the organisers' page: competitions and trainings in one list
@@ -397,6 +398,7 @@ function createForm(box, club) {
       <label><input type="radio" name="sh-vis" value="password"> ${t("sh.vis.password.long")} <input type="text" id="sh-pw" placeholder="${t("sh.pw.ph")}" style="width:180px" autocomplete="off"></label></fieldset>
     <div class="row" style="gap:8px;margin-top:10px"><button type="button" class="btn btn-primary" id="sh-create-go">${t("sh.org.createTraining")}</button><span class="muted" id="sh-create-note"></span></div></div>`;
   $("#sh-title").value = t("sh.club.default", { d: fmtDate(today()) });
+  dateWords($("#sh-date"));                                  // the day in words: the browser orders the field its own way
   // the club's access may also take a code for its invitees (owner, 2026-11-07)
   const codeRow = () => { $(".sh-code-row").hidden = $("input[name=sh-vis]:checked").value !== "club"; };
   $$("input[name=sh-vis]").forEach((r) => r.addEventListener("change", codeRow));
@@ -888,9 +890,19 @@ async function managePage(main, id, data, race) {
           <div class="sh-s-sub sh-s-visitors" ${raw(A.vis === "public" ? "" : "hidden")}><label class="an-opt" title="${t("sh.visitors.hint")}"><input type="checkbox" id="sh-s-visitors" ${raw(A.visitors && A.vis === "public" ? "checked" : "")}> ${t("sh.visitors")}</label></div></div>
         <label class="field" id="sh-s-pwf" ${raw(A.vis === "password" ? "" : "hidden")}><span>${t("sh.pw.new")}</span><input type="text" id="sh-s-pw" style="width:160px" autocomplete="off" placeholder="${A.vis === "password" ? t("sh.pw.keep") : ""}"></label></div></div>
       <div class="row sh-s-saverow"><button type="button" class="btn btn-sm" id="sh-s-save">${t("sh.save")}</button><span class="muted" id="sh-s-note"></span></div></div>`;
+    // the card is drawn again with what the server kept, then « Enregistré » said in it (owner, 2026-11-11: it was written before
+    // the card was drawn again, and so never seen)
     const put = async (body, note) => {
-      try { const r = await api(`/${id}`, { method: "PUT", body, key: keyOf(id) }); Object.assign(A, r.analysis); if (note) $(note).textContent = t("sh.saved"); head(); pubCard(); optsCard(); statsCard(); }
-      catch (e) { const el = note ? $(note) : null; if (el) el.textContent = errText(e); else alertBox(errText(e)); }
+      const btn = note ? $("#sh-s-save") : null;
+      if (btn) { btn.disabled = true; $(note).textContent = t("sh.saving"); $(note).classList.remove("sh-saved"); }
+      try {
+        const r = await api(`/${id}`, { method: "PUT", body, key: keyOf(id) });
+        Object.assign(A, r.analysis); head(); pubCard(); optsCard(); statsCard();
+        if (note) { const el = $(note); el.textContent = `✓ ${t("sh.saved")}`; el.classList.add("sh-saved"); }
+      } catch (e) {
+        if (btn) btn.disabled = false;
+        const el = note ? $(note) : null; if (el) el.textContent = errText(e); else alertBox(errText(e));
+      }
     };
     $("#sh-m-publish")?.addEventListener("click", () => put({ draft: false }));
     $("#sh-m-unpublish")?.addEventListener("click", async () => { if (await confirmBox(t("sh.m.unpublish.confirm"), { ok: t("sh.m.unpublish") })) put({ draft: true }); });
@@ -907,6 +919,7 @@ async function managePage(main, id, data, race) {
       }
       put(body, "#sh-s-note");
     });
+    dateWords($("#sh-s-date"));
     $("#sh-s-vis").addEventListener("change", (e) => {
       const v = e.target.value;
       $(".sh-s-visitors").hidden = v !== "public"; if (v !== "public") $("#sh-s-visitors").checked = false;

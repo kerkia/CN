@@ -748,6 +748,11 @@ Run variants with `run_method` / `derive` on DB copies with `dataclasses.replace
   a click beside it, never waiting for the dialog's « close » event (not fired in a page that is not drawn). The analyses' pages
   (`shared.js`, `sharedviews.js`, `mapanalysis.js`) use it; Mes cartes, Santé's authoring, the admin page and a few others still call
   the browser's.
+- **A date field's day in words** (owner, 2026-11-11: a browser in English (US) orders `<input type="date">` month/day whatever the
+  site's language — 10/11 typed for 10 November saved 11 October, the field showing « 10/11 » again when reopened): `datewords.js`
+  `watch()` (started by `app.start`) writes the day in the site's language under any date field as soon as it is typed in or
+  picked (`.date-words`, « dimanche 11 octobre 2026 »); `dateWords(input)` shows it from the start (the map analysis's date and the
+  new training's). The analysis's « Enregistrer » says « ✓ Enregistré » once the card is drawn again (`.sh-saved`).
 - Commit messages: a short title, a body explaining why, ending with the `Co-Authored-By` line the session
   provides. Commit and push only when the owner asks or has agreed to the change; usually: implement locally,
   test, then commit, push and confirm the CI run and the live site.

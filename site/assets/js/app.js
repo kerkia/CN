@@ -12,6 +12,7 @@ import * as bridge from "./bridge.js";
 import * as pwa from "./pwa.js";
 import * as country from "./country.js";
 import { watchTables } from "./fit.js";
+import { watch as watchDates } from "./datewords.js";
 import { ensurePass, forgetPass } from "./guestpass.js";
 
 export const SITE = "Ozimut";
@@ -1111,6 +1112,7 @@ async function start() {
   // the move to ozimut.com (bridge.js): the old address sends each visitor on, the new one takes in those arriving
   if ((await bridge.arrive()) || (await bridge.leave())) return;
   watchTables();                                   // tables that scroll fit in the window
+  watchDates();                                    // a date field's day in words, the browser's order being its own
   // the page's description in the reader's language (index.html carries the French one, for robots)
   document.querySelector('meta[name="description"]')?.setAttribute("content", t("home.metaDesc"));
   pwa.boot();                                     // the service worker, the manifest's language, files opened with the app
