@@ -4,15 +4,15 @@ Control sites on sprint features: buildings' outer corners (the flag a metre out
 standing alone, stairways' feet, impassable walls' ends — never in a building, a garden, a forbidden area or against a wall.
 Legs are timed on the ground classes' speeds (buildings, gardens, impassable walls, fences and hedges block; 1 m grid,
 skimage's geometric MCP). A leg scores for its route choice: the best route and a second one kept 10 m away from it, within
-12 % of its time; legs 60-260 m, controls 25 m apart, no dog-leg, no leg through another control's circle. Three courses
-(yellow, orange, violet: few to many controls, short to long legs, route choice weighed more and more) into pkg/race.json
-`courses`, the middle one also as `course`; a review picture per course beside the package."""
+12 % of its time; legs 60-260 m, controls 25 m apart, no dog-leg, no leg through another control's circle. Four courses
+(FFCO's levels as course.py names them: blue, yellow, orange_md, violet_md — few to many controls, short to long legs, route
+choice weighed more and more) into pkg/race.json `courses`; a review picture per course beside the package."""
 import json, math, os, sys
 from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageDraw
-from scipy.ndimage import distance_transform_edt, binary_dilation
+from scipy.ndimage import distance_transform_edt, binary_dilation, gaussian_filter1d
 from skimage.graph import MCP_Geometric
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -163,8 +163,9 @@ def seg_cross(a, b, c, d):
     return o(a, b, c) != o(a, b, d) and o(c, d, a) != o(c, d, b)
 
 
-LEVELS = {"yellow": dict(n=8, km=1.4, lo=60, hi=200, rc=0.3), "orange": dict(n=12, km=2.1, lo=70, hi=240, rc=1.0),
-          "violet": dict(n=16, km=2.9, lo=70, hi=260, rc=2.0)}
+# FFCO's colour levels as course.py names them (games/virtually's page names them, vt.lvl.<id>), at a sprint's lengths
+LEVELS = {"blue": dict(n=6, km=1.0, lo=50, hi=170, rc=0.0), "yellow": dict(n=8, km=1.4, lo=60, hi=200, rc=0.3),
+          "orange_md": dict(n=12, km=2.0, lo=70, hi=240, rc=1.0), "violet_md": dict(n=16, km=2.6, lo=70, hi=260, rc=2.0)}
 
 
 def make(level, tries=60):
@@ -222,7 +223,8 @@ def make(level, tries=60):
 
 out = []
 used_starts = set()
-for level in ("yellow", "orange", "violet"):
+HG = (lambda a: R["base"] + (a[..., 0] * 256 + a[..., 1]) / 100)(np.asarray(Image.open(P / "h.png").convert("RGB")).astype(np.float32))
+for level in LEVELS:
     b = make(level)
     if b is None:
         print(level, "no course found"); continue
@@ -234,8 +236,10 @@ for level in ("yellow", "orange", "violet"):
     ctl.append({"kind": "finish", "x": round(float(fin[0]), 1), "z": round(float(fin[1]), 1)})
     rc = sum(1 for l in legs_ if l[1] > 0.3)
     print(f"{level}: {len(seq) - 1} controls, {length / 1000:.2f} km, {rc} legs with a route choice, score {score:.2f}")
-    out.append({"id": level, "level": level, "name": {"yellow": "Gif Sprint Jaune", "orange": "Gif Sprint Orange", "violet": "Gif Sprint Violet"}[level],
-                "controls": ctl, "length": round(length)})
+    up = 0.0                                                         # the climb along the best routes
+    for i0, i1 in zip(seq, seq[1:]):
+        pa = np.array(leg(i0, i1)[3]); hz = gaussian_filter1d(HG[pa[:, 0], pa[:, 1]], 3); up += float(np.clip(np.diff(hz), 0, None).sum())
+    out.append({"id": level, "controls": ctl, "length": round(length), "climb": int(round(up / 5.0) * 5)})
     # review picture
     rv = Image.fromarray(np.where(free[..., None], np.array([250, 250, 245], np.uint8), np.array([60, 60, 60], np.uint8))).convert("RGB")
     d_ = ImageDraw.Draw(rv)
@@ -250,8 +254,7 @@ for level in ("yellow", "orange", "violet"):
     for i, (x, z) in enumerate(pts):
         d_.ellipse([x - 12, z - 12, x + 12, z + 12], outline=(200, 0, 160), width=2)
         d_.text((x + 13, z - 13), "S" if i == 0 else "F" if i == len(pts) - 1 else str(i), fill=(200, 0, 160))
-    rv.save(P.parent / f"course_{level}.png")
+    rv.save(P.parent / f"course_review_{level}.png")
+R.pop("course", None)
 R["courses"] = out
-mid = next((c for c in out if c["id"] == "orange"), out[0])
-R["course"] = {"name": mid["name"], "controls": mid["controls"], "length": mid["length"]}
 json.dump(R, open(P / "race.json", "w"), indent=1)
