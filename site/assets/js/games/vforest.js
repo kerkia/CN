@@ -156,27 +156,72 @@ export function textures(T, renderer) {
     stone: tex(stoneCanvas(19)) };
 }
 
+// ---- photo textures (CC0: Poly Haven, ambientCG; tools/virtually/textures.py, credits in /assets/textures/virtually/CREDITS.txt) ----
+// Each photo's colours are normalised around mid-grey: the game's own colours (the map's classes, the biome's trunks, leaves and
+// stones) tint them, the photo gives the grain. They are read as linear data and multiplied by 2 (`PHOTO_GAIN`).
+const PHOTOS = ["ground-litter", "ground-litter-n", "ground-gravel", "bark", "bark-n", "stone", "stone-n", "leaves-a", "leaves-b"];
+export const PHOTO_GAIN = 2;
+/** The photo textures' pictures (ImageBitmaps by name), fetched together; null for one that fails (the drawn one stands in). */
+export async function loadPhotos(base = "/assets/textures/virtually/") {
+  const one = async (n) => {
+    try {
+      const r = await fetch(`${base}${n}.webp`);
+      if (!r.ok) return [n, null];
+      return [n, await createImageBitmap(await r.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" })];
+    } catch (e) { return [n, null]; }
+  };
+  return Object.fromEntries(await Promise.all(PHOTOS.map(one)));
+}
+/** Textures of the photos: linear (they are factors), repeated, mipmapped. */
+export function photoTextures(T, renderer, bm) {
+  const out = {};
+  for (const [n, img] of Object.entries(bm || {})) {
+    if (!img) continue;
+    const t = new T.Texture(img); t.colorSpace = T.NoColorSpace; t.flipY = false;
+    t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    t.generateMipmaps = true; t.minFilter = T.LinearMipmapLinearFilter; t.needsUpdate = true;
+    out[n] = t;
+  }
+  return out;
+}
+
 // ---- geometries ----------------------------------------------------------------------------------------------------------------
-/** Merge BufferGeometries (position, normal, uv; indexed or not). */
+/** Merge BufferGeometries (position, normal, uv, and colour when one has it; indexed or not). */
 export function merge(T, parts) {
-  const pos = [], nor = [], uv = [], idx = []; let base = 0;
+  const pos = [], nor = [], uv = [], col = [], idx = []; let base = 0;
+  const anyCol = parts.some((g) => g.attributes.color);
   for (const g of parts) {
-    const p = g.attributes.position, n = g.attributes.normal, u = g.attributes.uv;
-    for (let k = 0; k < p.count; k++) { pos.push(p.getX(k), p.getY(k), p.getZ(k)); nor.push(n.getX(k), n.getY(k), n.getZ(k)); uv.push(u ? u.getX(k) : 0, u ? u.getY(k) : 0); }
+    const p = g.attributes.position, n = g.attributes.normal, u = g.attributes.uv, c = g.attributes.color;
+    for (let k = 0; k < p.count; k++) {
+      pos.push(p.getX(k), p.getY(k), p.getZ(k)); nor.push(n.getX(k), n.getY(k), n.getZ(k)); uv.push(u ? u.getX(k) : 0, u ? u.getY(k) : 0);
+      if (anyCol) col.push(c ? c.getX(k) : 1, c ? c.getY(k) : 1, c ? c.getZ(k) : 1);
+    }
     if (g.index) for (let k = 0; k < g.index.count; k++) idx.push(g.index.getX(k) + base); else for (let k = 0; k < p.count; k++) idx.push(k + base);
     base += p.count;
   }
   const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pos, 3)); g.setAttribute("normal", new T.Float32BufferAttribute(nor, 3));
-  g.setAttribute("uv", new T.Float32BufferAttribute(uv, 2)); g.setIndex(idx); return g;
+  g.setAttribute("uv", new T.Float32BufferAttribute(uv, 2)); if (anyCol) g.setAttribute("color", new T.Float32BufferAttribute(col, 3));
+  g.setIndex(idx); return g;
+}
+
+/** Baked ambient occlusion: each vertex's grey from its position (fn(x, y, z) → 0…1), as the geometry's vertex colours. */
+export function bakeAO(T, g, fn) {
+  const P = g.attributes.position, c = new Float32Array(P.count * 3);
+  for (let i = 0; i < P.count; i++) { const v = fn(P.getX(i), P.getY(i), P.getZ(i)); c[i * 3] = c[i * 3 + 1] = c[i * 3 + 2] = v; }
+  g.setAttribute("color", new T.BufferAttribute(c, 3));
+  return g;
 }
 
 /** A crown of leaf cards inside the unit ellipsoid (x, z in −1…1, y in −1…1): each card faces out from the middle, its
  *  normals bent outward so that the crown is lit as one soft mass, not as flat cards. */
-export function cardCrown(T, seed, n = 22, ry = 1) {
+export function cardCrown(T, seed, n = 22, ry = 1, { wide = 1, lobes = 0 } = {}) {
   const r = rng(seed), parts = [];
+  // a few lobes the cards gather round (an irregular crown: an oak's or an old beech's), else one mass
+  const L = Array.from({ length: lobes }, () => { const a = r() * 6.283, u = r() * 1.2 - 0.4; return new T.Vector3(Math.cos(a) * 0.45 * wide, u * 0.4 * ry, Math.sin(a) * 0.45 * wide); });
   for (let k = 0; k < n; k++) {
     const u = r() * 2 - 1, a = r() * 6.283, s = Math.sqrt(1 - u * u), d = 0.35 + 0.55 * Math.cbrt(r());
-    const c = new T.Vector3(Math.cos(a) * s * d, u * d * ry, Math.sin(a) * s * d), size = 0.85 + r() * 0.45;
+    const c = new T.Vector3(Math.cos(a) * s * d * wide, u * d * ry, Math.sin(a) * s * d * wide), size = 0.85 + r() * 0.45;
+    if (L.length) { c.multiplyScalar(0.6).add(L[k % L.length]); }
     const p = new T.PlaneGeometry(size, size);
     const out = c.lengthSq() > 1e-4 ? c.clone().normalize() : new T.Vector3(0, 1, 0);
     const q = new T.Quaternion().setFromUnitVectors(new T.Vector3(0, 0, 1), out.clone().lerp(new T.Vector3(r() - 0.5, r() - 0.5, r() - 0.5), 0.6).normalize());
@@ -188,14 +233,21 @@ export function cardCrown(T, seed, n = 22, ry = 1) {
     }
     parts.push(p);
   }
-  return twoSided(T, merge(T, parts));
+  // baked occlusion: the inside and the underside of the crown darker (light comes through and from above)
+  return twoSided(T, bakeAO(T, merge(T, parts), (x, y, z) => {
+    const rr = Math.min(1, Math.hypot(x / wide, y / ry, z / wide));
+    return Math.min(1, 0.42 + 0.38 * rr + 0.28 * (y / ry + 1) / 2);
+  }));
 }
 
 /** A conifer of needle cards: whorls of branches drooping round the axis, shorter toward the top (unit height 0…1, radius 1). */
-export function cardConifer(T, seed) {
-  const r = rng(seed), parts = [], whorls = 9;
+export function cardConifer(T, seed, { whorls = 9, from = 0.06, shape = "cone" } = {}) {
+  const r = rng(seed), parts = [];
   for (let w = 0; w < whorls; w++) {
-    const y = 0.06 + (w / whorls) * 0.86, rad = (1 - w / whorls) * 0.95 + 0.08, nb = Math.max(3, Math.round(7 - w * 0.5));
+    const f = w / whorls, y = from + f * (0.92 - from);
+    // a spruce's cone, or a pine's crown: wide and rounded at the top of a bare trunk
+    const rad = shape === "pine" ? (0.55 + 0.45 * Math.sin(Math.PI * (0.25 + 0.75 * f))) * (0.9 + r() * 0.25) : (1 - f) * 0.95 + 0.08;
+    const nb = Math.max(3, Math.round((shape === "pine" ? 6 : 7) - w * 0.5));
     for (let b = 0; b < nb; b++) {
       const a = (b / nb) * 6.283 + r() * 0.5 + w;
       const p = new T.PlaneGeometry(rad * 1.15, 0.32 + rad * 0.12);
@@ -208,7 +260,8 @@ export function cardConifer(T, seed) {
   // the top
   const top = new T.PlaneGeometry(0.22, 0.2).translate(0, 0.96, 0);
   parts.push(top, top.clone().rotateY(Math.PI / 2));
-  return twoSided(T, merge(T, parts));
+  // the inner branches and the lower ones in shade
+  return twoSided(T, bakeAO(T, merge(T, parts), (x, y, z) => Math.min(1, 0.45 + 0.35 * Math.min(1, Math.hypot(x, z) / 0.7) + 0.3 * y)));
 }
 
 /** Crossed cards, unit wide, standing on y = 0 (grass, ferns, impostors). */

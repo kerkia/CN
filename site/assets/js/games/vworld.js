@@ -7,7 +7,7 @@ const CH = 64;                     // chunk size (m)
 const NEAR = 250;                  // chunks within this distance of the runner are built
 const FAR = NEAR + 2 * CH;         // and dropped beyond this one
 
-import { rng, textures, cardCrown, cardConifer, crossed, sway, sky, impostor } from "./vforest.js";
+import { rng, textures, cardCrown, cardConifer, crossed, sway, sky, impostor, loadPhotos, photoTextures, PHOTO_GAIN, bakeAO } from "./vforest.js";
 
 /** A PNG's pixels, exact (no colour management). */
 async function pixels(blob) {
@@ -26,6 +26,7 @@ export async function loadRace(base, onFile = () => {}) {
     onFile(f);
     return v;
   };
+  const photos = loadPhotos();                       // the photo textures, beside the package
   const race = await get("race.json", "json");
   // the player's map: the club's OCAD file, or (a race from the LiDAR alone, tools/virtually/lidarrace.py) the generated map's image
   const webp = race.map === "webp";
@@ -42,7 +43,7 @@ export async function loadRace(base, onFile = () => {}) {
   // a sprint race's town (games/vtown.js: buildings, walls, street furniture), when the package has one
   let town = null;
   if (race.town) { const V = await import("./vtown.js"); town = { ...(await V.loadTown(base, race.town, onFile)), Town: V.Town }; }
-  return { race, W, H, h, cls, veg, groundImg, feats, trees: trees ? new DataView(trees) : null,
+  return { race, W, H, h, cls, veg, groundImg, feats, trees: trees ? new DataView(trees) : null, photos: await photos,
     ocd: webp ? null : new Uint8Array(ocd), mapImage: webp ? await createImageBitmap(ocd) : null, town };
 }
 
@@ -85,7 +86,7 @@ export class World {
     renderer.toneMappingExposure = B.exposure || 1.0;
     scene.traverse((o) => {
       if (o.isHemisphereLight) { o.color.set(B.skyLight || "#dfe8f2"); o.groundColor.set(B.groundLight || "#5a4c36"); o.intensity = 1.55; }
-      if (o.isDirectionalLight) { o.color.set(B.sunLight || "#fff1dc"); o.intensity = 1.9; o.shadow.radius = 3; o.shadow.bias = -0.0005; }
+      if (o.isDirectionalLight) { o.color.set(B.sunLight || "#fff1dc"); o.intensity = 1.9; o.shadow.radius = 4.5; o.shadow.bias = -0.0005; }
     });
     this.sunDir = sunDir;
   }
@@ -117,25 +118,36 @@ export class World {
 
   // ---- materials and shapes -----------------------------------------------------------------------------------------------
   makeMaterials(renderer) {
-    const T = this.T, { W, H } = this, X = textures(T, renderer);
-    this.X = X;
+    const T = this.T, { W, H } = this, X = textures(T, renderer), P = photoTextures(T, renderer, this.d.photos);
+    this.X = X; this.P = P;
+    const G = PHOTO_GAIN, gain = (k) => new T.Color(k, k, k);
     const tex = new T.Texture(this.d.groundImg); tex.colorSpace = T.SRGBColorSpace; tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     tex.needsUpdate = true;
-    // the ground: the package's colours, the litter's grain at two scales, its relief as a normal map, the canopy's shade
-    // in the vertices' colours
-    const nrm = X.litterN; nrm.repeat.set(W / 2.6, H / 2.6);
-    this.groundMat = new T.MeshLambertMaterial({ map: tex, normalMap: nrm, normalScale: new T.Vector2(0.9, 0.9), vertexColors: true });
+    // the ground: the package's colours with a photographed floor's grain (forest litter, or gravel on paths and stony ground,
+    // `gm` per vertex: x the gravel's share, y the grain's strength), a broad variation over tens of metres, its relief as a
+    // normal map; the canopy's shade and the hollows' occlusion in the vertices' colours
+    const litter = P["ground-litter"] || X.litter, gravel = P["ground-gravel"] || litter, photo = !!P["ground-litter"];
+    const nrm = P["ground-litter-n"] || X.litterN; nrm.repeat.set(W / 2.6, H / 2.6);
+    this.groundMat = new T.MeshLambertMaterial({ map: tex, normalMap: nrm, normalScale: new T.Vector2(1.1, 1.1), vertexColors: true });
     this.groundMat.onBeforeCompile = (sh) => {
-      sh.uniforms.detail = { value: X.litter }; sh.uniforms.rep = { value: new T.Vector2(W / 2.6, H / 2.6) };
-      sh.fragmentShader = "uniform sampler2D detail; uniform vec2 rep;\n" + sh.fragmentShader.replace("#include <map_fragment>",
+      Object.assign(sh.uniforms, { litter: { value: litter }, gravel: { value: gravel }, rep: { value: new T.Vector2(W / 2.6, H / 2.6) }, gainD: { value: photo ? G : 1 } });
+      sh.vertexShader = "attribute vec2 gm; varying vec2 vGm;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vGm = gm;");
+      sh.fragmentShader = "uniform sampler2D litter, gravel; uniform vec2 rep; uniform float gainD; varying vec2 vGm;\n" + sh.fragmentShader.replace("#include <map_fragment>",
         `#include <map_fragment>
-         float dA = texture2D(detail, vMapUv * rep).r, dB = texture2D(detail, vMapUv * rep * 0.173 + 0.31).r;
-         diffuseColor.rgb *= (0.55 + 0.9 * dA) * (0.8 + 0.4 * dB);`);
+         vec2 q = vMapUv * rep;
+         vec3 dL = texture2D(litter, q).rgb, dG = texture2D(gravel, q * 0.83 + 0.17).rgb;
+         vec3 d = mix(dL, dG, vGm.x) * gainD;
+         float m = texture2D(litter, q * 0.031 + 0.31).g * gainD, m2 = texture2D(gravel, q * 0.0071 + 0.6).g * gainD;
+         diffuseColor.rgb *= mix(vec3(1.0), d, vGm.y) * (0.82 + 0.18 * m) * (0.86 + 0.14 * m2);`);
     };
     const lam = (o = {}) => new T.MeshLambertMaterial({ color: 0xffffff, ...o });
-    const leafMat = (map) => sway(lam({ map, alphaTest: 0.42, alphaToCoverage: true }), this.wind, 0.035, -0.3);
+    // leaves: the photographed clusters (grey, tinted by each tree's colour), else the drawn ones; the crowns' baked occlusion
+    const leafA = P["leaves-a"] || X.leaf[0], leafB = P["leaves-b"] || X.leaf[1], leafGain = P["leaves-a"] ? 1.5 : 1.15;
+    const leafMat = (map, g = leafGain) => sway(lam({ map, color: gain(g), vertexColors: true, alphaTest: 0.42, alphaToCoverage: true }), this.wind, 0.035, -0.3);
     const euc = this.B.crown === "eucalypt";
-    const crownA = cardCrown(T, euc ? 21 : 3, euc ? 16 : 24, euc ? 0.7 : 1), crownB = cardCrown(T, euc ? 33 : 41, euc ? 14 : 20, euc ? 0.6 : 0.9);
+    // the crowns' shapes: round, tall and narrow, wide and flat, in lobes (old, irregular)
+    const crowns = euc ? [cardCrown(T, 21, 16, 0.7), cardCrown(T, 33, 14, 0.6, { wide: 1.1, lobes: 3 }), cardCrown(T, 57, 15, 0.65, { lobes: 4 }), cardCrown(T, 88, 12, 0.55, { wide: 1.2 })]
+      : [cardCrown(T, 3, 24, 1), cardCrown(T, 41, 20, 0.9, { lobes: 3 }), cardCrown(T, 19, 22, 1.35, { wide: 0.78 }), cardCrown(T, 64, 22, 0.75, { wide: 1.15, lobes: 4 })];
     const rock = (seed) => {
       const g = new T.IcosahedronGeometry(0.5, 2), p = g.attributes.position, r = rng(seed), off = new Map();
       for (let k = 0; k < p.count; k++) {
@@ -143,38 +155,66 @@ export class World {
         if (!off.has(key)) off.set(key, 0.78 + r() * 0.4 + 0.12 * Math.sin(p.getX(k) * 9 + seed));
         const f = off.get(key); p.setXYZ(k, p.getX(k) * f, Math.max(p.getY(k) * f, -0.25) + 0.25, p.getZ(k) * f);
       }
-      g.computeVertexNormals(); return g;
+      g.computeVertexNormals();
+      return bakeAO(T, g, (x, y) => 0.55 + 0.45 * Math.min(1, y / 0.38));                 // darker where it meets the ground
     };
-    const bark = X.bark; bark.repeat.set(3, 10);
-    const trunkGeo = new T.CylinderGeometry(0.08, 0.2, 1, 7, 3).translate(0, 0.5, 0);
+    const bark = P.bark || X.bark, barkN = P["bark-n"] || null; bark.repeat.set(P.bark ? 2 : 3, P.bark ? 6 : 10); if (barkN) barkN.repeat.copy(bark.repeat);
+    const barkMat = (o = {}) => lam({ map: bark, normalMap: barkN, color: gain(P.bark ? G : 1), vertexColors: true, ...o });
+    const stone = P.stone || X.stone, stoneN = P["stone-n"] || null; if (P.stone) { stone.repeat.set(1.5, 1.5); stoneN?.repeat.set(1.5, 1.5); }
+    const stoneMat = lam({ map: stone, normalMap: stoneN, color: gain(P.stone ? 1.6 : 1), vertexColors: true });
+    // the trunk darker at its foot (the ground's and the undergrowth's shade)
+    const trunkGeo = bakeAO(T, new T.CylinderGeometry(0.08, 0.2, 1, 7, 4).translate(0, 0.5, 0), (x, y) => 0.5 + 0.5 * Math.min(1, y / 0.14));
+    const logGeo = bakeAO(T, new T.CylinderGeometry(1, 1, 1, 7, 1).rotateZ(Math.PI / 2), (x, y) => 0.62 + 0.38 * (y + 1) / 2);
+    const needle = (g) => sway(lam({ map: X.needle, vertexColors: true, alphaTest: 0.42, alphaToCoverage: true, ...(g ? { color: gain(g) } : {}) }), this.wind, 0.025, 0.2);
     this.K = {
-      trunk: { geo: trunkGeo, mat: lam({ map: bark }), shadow: true },
-      crown: { geo: crownA, mat: leafMat(X.leaf[0]), shadow: true },
-      crown2: { geo: crownB, mat: leafMat(X.leaf[1]), shadow: true },
-      pine: { geo: cardConifer(T, 9), mat: sway(lam({ map: X.needle, alphaTest: 0.42, alphaToCoverage: true }), this.wind, 0.025, 0.2), shadow: true },
-      bush: { geo: cardCrown(T, 77, 10, 0.75), mat: leafMat(X.leaf[1]), shadow: true },
+      trunk: { geo: trunkGeo, mat: barkMat(), shadow: true },
+      crown: { geo: crowns[0], mat: leafMat(leafA), shadow: true },
+      crown2: { geo: crowns[1], mat: leafMat(leafB), shadow: true },
+      crown3: { geo: crowns[2], mat: leafMat(leafA), shadow: true },
+      crown4: { geo: crowns[3], mat: leafMat(leafB), shadow: true },
+      pine: { geo: cardConifer(T, 9), mat: needle(1.15), shadow: true },
+      pine2: { geo: cardConifer(T, 27, { whorls: 7, from: 0.0, shape: "pine" }), mat: needle(1.15), shadow: true },
+      bush: { geo: cardCrown(T, 77, 10, 0.75), mat: leafMat(leafB), shadow: true },
       low: { geo: crossed(T, 3), mat: sway(lam({ map: X.fern, alphaTest: 0.45, alphaToCoverage: true }), this.wind, 0.08, 0.2), shadow: false },
       grass: { geo: crossed(T, 2), mat: sway(lam({ map: X.grass, alphaTest: 0.45, alphaToCoverage: true }), this.wind, 0.1, 0.2), shadow: false },
-      log: { geo: new T.CylinderGeometry(1, 1, 1, 7, 1).rotateZ(Math.PI / 2), mat: lam({ map: bark }), shadow: true },
-      rock0: { geo: rock(7), mat: lam({ map: X.stone }), shadow: true }, rock1: { geo: rock(91), mat: lam({ map: X.stone }), shadow: true }, rock2: { geo: rock(1234), mat: lam({ map: X.stone }), shadow: true },
+      log: { geo: logGeo, mat: barkMat(), shadow: true },
+      rock0: { geo: rock(7), mat: stoneMat, shadow: true }, rock1: { geo: rock(91), mat: stoneMat, shadow: true }, rock2: { geo: rock(1234), mat: stoneMat, shadow: true },
       box: { geo: new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), mat: lam(), shadow: true },
     };
     // the trees far away: each kind rendered once, drawn as two crossed cards facing every way
     const light = () => { const s = new T.DirectionalLight(0xfff1dc, 1.9); s.position.set(-3, 6, 8); return [new T.HemisphereLight(0xdfe8f2, 0x5a4c36, 1.55), s]; };
-    const model = (crown, crownMat, leafC, pine) => {
+    const model = (crown, crownMat, leafC, kind) => {
       const g = new T.Group(), h = 20, cr = 3.5;
-      const tm = new T.Mesh(trunkGeo, new T.MeshLambertMaterial({ map: bark, color: this.trunk2 }));
-      tm.scale.set(1.3, pine ? h * 0.75 : h * 0.66, 1.3); g.add(tm);
-      const m = new T.Mesh(crown, new T.MeshLambertMaterial({ map: crownMat.map, alphaTest: 0.42, color: leafC }));
-      if (pine) { m.position.y = h * 0.3; m.scale.set(cr * 0.95, h * 0.7, cr * 0.95); } else { m.position.y = h * 0.7; m.scale.set(cr * 1.1, h * 0.3, cr * 1.1); }
+      const tm = new T.Mesh(trunkGeo, new T.MeshLambertMaterial({ map: bark, color: this.trunk2.clone().multiply(this.K.trunk.mat.color), vertexColors: true }));
+      tm.scale.set(1.3, kind === "pine2" ? h * 0.85 : kind === "pine" ? h * 0.75 : h * 0.66, 1.3); g.add(tm);
+      const m = new T.Mesh(crown, new T.MeshLambertMaterial({ map: crownMat.map, alphaTest: 0.42, vertexColors: true, color: leafC.clone().multiply(crownMat.color) }));
+      if (kind === "pine") { m.position.y = h * 0.3; m.scale.set(cr * 0.95, h * 0.7, cr * 0.95); }
+      else if (kind === "pine2") { m.position.y = h * 0.55; m.scale.set(cr * 0.9, h * 0.45, cr * 0.9); }
+      else { m.position.y = h * 0.7; m.scale.set(cr * 1.1, h * 0.3, cr * 1.1); }
       g.add(m); return g;
     };
     const imp = (tex) => new T.MeshBasicMaterial({ map: tex, alphaTest: 0.5, alphaToCoverage: true });
     this.IMP = { w: 8.4, h: 21 };
-    this.K.farLeaf = { geo: crossed(T, 2), mat: imp(impostor(T, renderer, model(crownA, this.K.crown.mat, this.leaf[0], false), this.IMP.w, this.IMP.h, light())), shadow: false };
-    this.K.farPine = { geo: crossed(T, 2), mat: imp(impostor(T, renderer, model(this.K.pine.geo, this.K.pine.mat, this.pine[0], true), this.IMP.w, this.IMP.h, light())), shadow: false };
+    const far = (kind, crown, mat, c) => ({ geo: crossed(T, 2), mat: imp(impostor(T, renderer, model(crown, mat, c, kind), this.IMP.w, this.IMP.h, light())), shadow: false });
+    this.K.farLeaf = far("leaf", crowns[0], this.K.crown.mat, this.leaf[0]);
+    this.K.farPine = far("pine", this.K.pine.geo, this.K.pine.mat, this.pine[0]);
+    this.K.farPine2 = far("pine2", this.K.pine2.geo, this.K.pine2.mat, this.pine[0]);
     this.wallMat = new T.MeshLambertMaterial({ color: 0xffffff, vertexColors: true, side: T.DoubleSide });
     this.waterMat = new T.MeshPhongMaterial({ color: 0x3d5d6a, shininess: 90, specular: 0x8899aa, transparent: true, opacity: 0.88 });
+  }
+
+  /** Per ground class [the gravel's share, the grain's strength] (the ground shader's `gm`): paths, tracks and stony ground
+   *  gravel, roads and paving a faint grain, open land a little gravel in the litter, the forest by its conifers' share. */
+  groundKinds() {
+    if (this._gm) return this._gm;
+    const c = this.B.conifer || 0, out = { forest: [Math.min(0.75, c * 0.8), 1] };
+    const set = (names, v) => { for (const n of names) if (this.C[n] != null) out[this.C[n]] = v; };
+    set(["path", "small_path", "track", "stony", "bfield", "rock", "cliff", "rockface"], [1, 1]);
+    set(["road", "paved", "building", "stairs", "block"], [1, 0.3]);
+    set(["open", "open_t", "rough", "rough_t", "cultivated"], [0.3, 0.75]);
+    set(["marsh", "marsh_x", "water", "shallow"], [0, 0.6]);
+    for (let i = 0; i < this.race.classes.length; i++) if (!out[i]) out[i] = out.forest;
+    return (this._gm = out);
   }
 
   // ---- what the package lists, by chunk ---------------------------------------------------------------------------------------
@@ -234,7 +274,7 @@ export class World {
     const nx = Math.round(x1 - x0) + 1, nz = Math.round(z1 - z0) + 1;
     // vegetation from the densities (the map's, or the LiDAR's undergrowth), trees from the LiDAR when the package has them
     const r = rng((a * 73856093) ^ (b * 19349663) ^ 0x5eed);
-    const inst = { trunk: [], crown: [], crown2: [], pine: [], bush: [], low: [], grass: [], log: [], rock0: [], rock1: [], rock2: [], box: [], farLeaf: [], farPine: [] };
+    const inst = Object.fromEntries(Object.keys(this.K).map((k) => [k, []]));
     const pick = (arr) => arr[Math.floor(r() * arr.length)];
     const [TK, BK, LK] = this.race.vegK;
     const conifer = this.B.conifer || 0, euc = this.B.crown === "eucalypt";
@@ -247,20 +287,25 @@ export class World {
           const d = Math.hypot(x0 + j - x, z0 + i - z) / rad; if (d < 1) shade[i * nx + j] *= 1 - s * (1 - d * d);
         }
     };
+    // each tree its own shade of its kind's colour (hue, saturation, lightness a little apart)
+    const tint = (c, k = 1) => c.clone().offsetHSL((r() - 0.5) * 0.035 * k, (r() - 0.5) * 0.16 * k, (r() - 0.5) * 0.07 * k);
+    const crownKinds = ["crown", "crown2", "crown3", "crown4"];
     const addTree = (x, z, h, cr) => {
       const y = this.heightAt(x, z), rot = r() * 6.283, isPine = r() < conifer;
       const bright = 0.85 + r() * 0.3;
+      const tc = tint(euc && r() < 0.7 ? this.trunk : this.trunk2, 0.6);
       if (isPine) {
-        inst.trunk.push([x, y - 0.2, z, 1 + h * 0.012, h * 0.75, 1 + h * 0.012, rot, this.trunk2]);
-        const c = pick(this.pine).clone().multiplyScalar(bright);
-        inst.pine.push([x, y + h * 0.3, z, cr * 0.95, h * 0.7, cr * 0.95, rot, c]);
-        inst.farPine.push([x, y - 0.2, z, (cr / 3.5) * this.IMP.w * 0.9, (h / 20) * this.IMP.h, (cr / 3.5) * this.IMP.w * 0.9, rot, c]);
+        // spruce-like cones, and (tall ones, a third) pines: a bare trunk under a high, rounded crown
+        const pine = h > 14 && r() < 0.35, c = tint(pick(this.pine)).multiplyScalar(bright);
+        inst.trunk.push([x, y - 0.2, z, 1 + h * 0.012, h * (pine ? 0.85 : 0.75), 1 + h * 0.012, rot, tc]);
+        if (pine) inst.pine2.push([x, y + h * 0.55, z, cr * 0.9, h * 0.45, cr * 0.9, rot, c]);
+        else inst.pine.push([x, y + h * 0.3, z, cr * 0.95, h * 0.7, cr * 0.95, rot, c]);
+        inst[pine ? "farPine2" : "farPine"].push([x, y - 0.2, z, (cr / 3.5) * this.IMP.w * 0.9, (h / 20) * this.IMP.h, (cr / 3.5) * this.IMP.w * 0.9, rot, c]);
       } else {
-        const tc = euc && r() < 0.7 ? this.trunk : this.trunk2;
         inst.trunk.push([x, y - 0.2, z, 1 + h * 0.014, h * 0.66, 1 + h * 0.014, rot, tc]);
-        const leaf = pick(this.leaf).clone().multiplyScalar(bright);
+        const leaf = tint(pick(this.leaf)).multiplyScalar(bright);
         if (this.B.leafDry && r() < this.B.leafDry) leaf.lerp(new T.Color(0xa08a5a), 0.45);
-        inst[r() < 0.5 ? "crown" : "crown2"].push([x, y + h * 0.7, z, cr * (euc ? 1.3 : 1.1), h * (euc ? 0.26 : 0.3), cr * (euc ? 1.3 : 1.1), rot, leaf]);
+        inst[pick(crownKinds)].push([x, y + h * 0.7, z, cr * (euc ? 1.3 : 1.1), h * (euc ? 0.26 : 0.3), cr * (euc ? 1.3 : 1.1), rot, leaf]);
         inst.farLeaf.push([x, y - 0.2, z, (cr / 3.5) * this.IMP.w * (euc ? 1.15 : 1), (h / 20) * this.IMP.h, (cr / 3.5) * this.IMP.w, rot, leaf.clone().multiplyScalar(1.6)]);
       }
       shadeAt(x, z, cr * 1.15, 0.32); shadeAt(x, z, 1.4, 0.25);
@@ -271,10 +316,13 @@ export class World {
     for (let i = z0; i < z1; i += 2) for (let j = x0; j < x1; j += 2) {
       const q = (i * this.W + j) * 3, td = this.d.veg[q] / TK * 4;
       if (td > 0 && r() < td) { const h = 12 + r() * 12; addTree(j + r() * 2, i + r() * 2, h, Math.min(5.5, 0.9 + 0.13 * h) * (0.8 + r() * 0.4)); }
+      // young trees under the old ones
+      else if (td > 0 && r() < td * 0.18) { const h = 2.5 + r() * 4; addTree(j + r() * 2, i + r() * 2, h, 0.7 + 0.16 * h); }
       // a fallen log now and then where trees grow
       if (td > 0 && r() < 0.012) {
         const x = j + r() * 2, zz = i + r() * 2, L = 3 + r() * 6, rad = 0.12 + r() * 0.14, ang = r() * 6.283;
         inst.log.push([x, this.heightAt(x, zz) + rad * 0.5, zz, L, rad, rad, ang, this.trunk2.clone().multiplyScalar(0.75 + r() * 0.2)]);
+        shadeAt(x, zz, L * 0.45, 0.18);
       }
     }
     const open = new Set(["open", "open_t", "rough", "rough_t", "cultivated", "marsh"].map((n) => this.C[n]).filter((v) => v != null));
@@ -288,8 +336,8 @@ export class World {
     }
     for (const [x, z, s, h, rot, sink, solid] of B_.rocks) {
       let y = Infinity; for (const [dx, dz] of [[0, 0], [s / 2, 0], [-s / 2, 0], [0, s / 2], [0, -s / 2]]) y = Math.min(y, this.heightAt(x + dx, z + dz));
-      inst[pick(["rock0", "rock1", "rock2"])].push([x, y - sink, z, s, h * 1.3, s * (0.8 + r() * 0.4), rot, pick(this.rockC)]);
-      shadeAt(x, z, s * 0.9, 0.3);
+      inst[pick(["rock0", "rock1", "rock2"])].push([x, y - sink, z, s, h * 1.3, s * (0.8 + r() * 0.4), rot, tint(pick(this.rockC), 0.5)]);
+      shadeAt(x, z, s * 0.9 + 0.4, 0.4);
       if (solid) this.trunk_(g, x, z, s * 0.42);
     }
     for (const p of B_.points) {
@@ -301,20 +349,25 @@ export class World {
       else if (p.k === "manmade") inst.box.push([p.x, y, p.z, 0.5, 1.2, 0.5, 0, new T.Color(0x8a8278)]);
     }
     // ground
-    const pos = new Float32Array(nx * nz * 3), nor = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), colr = new Float32Array(nx * nz * 3), idx = [];
+    const pos = new Float32Array(nx * nz * 3), nor = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), colr = new Float32Array(nx * nz * 3), gm = new Float32Array(nx * nz * 2), idx = [];
+    const GM = this.groundKinds(), town = this.d.race.town ? 0.3 : 1;
     for (let i = 0; i < nz; i++) for (let j = 0; j < nx; j++) {
       const x = x0 + j, z = z0 + i, q = i * nx + j, y = this.heightAt(x, z);
       pos[q * 3] = x; pos[q * 3 + 1] = y; pos[q * 3 + 2] = z;
       const ex = this.heightAt(x - 1, z) - this.heightAt(x + 1, z), ez = this.heightAt(x, z - 1) - this.heightAt(x, z + 1), l = Math.hypot(ex, 2, ez);
       nor[q * 3] = ex / l; nor[q * 3 + 1] = 2 / l; nor[q * 3 + 2] = ez / l;
       uv[q * 2] = x / this.W; uv[q * 2 + 1] = 1 - z / this.H;
-      const s = 0.55 + 0.45 * Math.max(shade[q], 0.15);
+      // a hollow (lower than the ground 3 m around) darker, a crest a little lighter
+      const hollow = (this.heightAt(x - 3, z) + this.heightAt(x + 3, z) + this.heightAt(x, z - 3) + this.heightAt(x, z + 3)) / 4 - y;
+      const ao = Math.max(0.72, Math.min(1.06, 1 - 0.16 * hollow));
+      const s = (0.55 + 0.45 * Math.max(shade[q], 0.15)) * ao;
       colr[q * 3] = s; colr[q * 3 + 1] = s * 1.01; colr[q * 3 + 2] = s * 0.98;
+      const kd = GM[this.classAt(x, z)] || GM.forest; gm[q * 2] = kd[0]; gm[q * 2 + 1] = kd[1] * town;
     }
     for (let i = 0; i < nz - 1; i++) for (let j = 0; j < nx - 1; j++) { const q = i * nx + j; idx.push(q, q + nx, q + 1, q + 1, q + nx, q + nx + 1); }
     const geo = new T.BufferGeometry();
     geo.setAttribute("position", new T.BufferAttribute(pos, 3)); geo.setAttribute("normal", new T.BufferAttribute(nor, 3)); geo.setAttribute("uv", new T.BufferAttribute(uv, 2));
-    geo.setAttribute("color", new T.BufferAttribute(colr, 3)); geo.setIndex(idx);
+    geo.setAttribute("color", new T.BufferAttribute(colr, 3)); geo.setAttribute("gm", new T.BufferAttribute(gm, 2)); geo.setIndex(idx);
     const ground = new T.Mesh(geo, this.groundMat); ground.receiveShadow = true; g.add(ground);
     // water: a surface over the open water's cells
     const water = [];
@@ -327,13 +380,14 @@ export class World {
       const wg = new T.BufferGeometry(); wg.setAttribute("position", new T.Float32BufferAttribute(wp, 3)); wg.setIndex(wi); wg.computeVertexNormals();
       g.add(new T.Mesh(wg, this.waterMat));
     }
-    const LOD = { trunk: "near", crown: "near", crown2: "near", pine: "near", farLeaf: "far", farPine: "far", low: "low", grass: "low", log: "near" };
+    const LOD = { trunk: "near", crown: "near", crown2: "near", crown3: "near", crown4: "near", pine: "near", pine2: "near", farLeaf: "far", farPine: "far", farPine2: "far", low: "low", grass: "low", log: "near" };
     const M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), P = new T.Vector3(), UP = new T.Vector3(0, 1, 0);
     for (const [kind, list] of Object.entries(inst)) {
       if (!list.length) continue;
       const K = this.K[kind], im = new T.InstancedMesh(K.geo, K.mat, list.length);
       list.forEach(([x, y, z, sx, sy, sz, rot, c], i) => { Q.setFromAxisAngle(UP, rot); im.setMatrixAt(i, M.compose(P.set(x, y, z), Q, S.set(sx, sy, sz))); im.setColorAt(i, c); });
       im.castShadow = false; im.userData.shadow = K.shadow; im.receiveShadow = kind !== "low" && kind !== "grass" && !kind.startsWith("far"); im.computeBoundingSphere();
+      im.frustumCulled = true;
       if (LOD[kind]) { im.userData.lod = LOD[kind]; im.visible = LOD[kind] === "far"; }
       g.add(im);
     }
@@ -426,24 +480,77 @@ export class World {
   }
 }
 
-/** The runner: a simple figure whose legs and arms swing with the speed. */
+/** The runner: an articulated figure (hips, thighs, shins, feet; torso, upper arms, forearms, head) whose walk and run cycles
+ *  blend with the speed — the cadence rising with it, the knees lifting, the elbows bent when running —, the body bobbing
+ *  twice a stride, leaning forward with the speed and into the turns. The group's rotation.y is set by the game (its heading);
+ *  userData.animate(speed m/s, dt s) moves the rest. The figure faces its local +z. */
 export function runnerFigure(T, shirtColor = 0x1f6fd1) {
-  const g = new T.Group();
-  const shirt = new T.MeshLambertMaterial({ color: shirtColor }), skin = new T.MeshLambertMaterial({ color: 0xd9a07a }), dark = new T.MeshLambertMaterial({ color: 0x222831 });
-  const body = new T.Mesh(new T.CapsuleGeometry(0.17, 0.5, 4, 8), shirt); body.position.y = 1.18;
-  const head = new T.Mesh(new T.SphereGeometry(0.12, 10, 8), skin); head.position.y = 1.62;
-  const legG = new T.CapsuleGeometry(0.07, 0.65, 3, 6).translate(0, -0.42, 0);
-  const legL = new T.Mesh(legG, dark), legR = new T.Mesh(legG, dark); legL.position.set(0.09, 0.92, 0); legR.position.set(-0.09, 0.92, 0);
-  const armG = new T.CapsuleGeometry(0.05, 0.45, 3, 6).translate(0, -0.3, 0);
-  const armL = new T.Mesh(armG, shirt), armR = new T.Mesh(armG, shirt); armL.position.set(0.23, 1.42, 0); armR.position.set(-0.23, 1.42, 0);
-  g.add(body, head, legL, legR, armL, armR);
-  g.traverse((o) => (o.castShadow = true));
-  let ph = 0;
-  g.userData.animate = (speed, dt) => {
-    ph += dt * (1.2 + speed * 0.55) * Math.PI * 2 * (speed > 0.05 ? 1 : 0);
-    const sw = Math.min(1, speed / 3) * 0.75;
-    legL.rotation.x = Math.sin(ph) * sw; legR.rotation.x = -Math.sin(ph) * sw; armL.rotation.x = -Math.sin(ph) * sw * 0.8; armR.rotation.x = Math.sin(ph) * sw * 0.8;
-    body.position.y = 1.18 + Math.abs(Math.sin(ph)) * 0.05 * Math.min(1, speed);
+  const g = new T.Group(), body = new T.Group(); g.add(body);
+  const M = (color) => new T.MeshLambertMaterial({ color });
+  const shirt = M(shirtColor), skin = M(0xd9a07a), tights = M(0x1d232c), shoe = M(0xe0662a), sole = M(0xeeeeee), hair = M(0x3a2a1e);
+  const cap = (r, l, mat, y = -l / 2 - r) => new T.Mesh(new T.CapsuleGeometry(r, l, 4, 10).translate(0, y, 0), mat);
+  const joint = (parent, x, y, z = 0) => { const j = new T.Group(); j.position.set(x, y, z); parent.add(j); return j; };
+  const hips = joint(body, 0, 0.96);
+  hips.add(new T.Mesh(new T.SphereGeometry(0.15, 12, 8).scale(1.05, 0.75, 0.8), tights));
+  const torso = joint(hips, 0, 0.02);
+  const chest = new T.Mesh(new T.CapsuleGeometry(0.15, 0.3, 4, 12).scale(1.08, 1, 0.72).translate(0, 0.28, 0), shirt); torso.add(chest);
+  const neck = joint(torso, 0, 0.55); neck.add(new T.Mesh(new T.CylinderGeometry(0.045, 0.05, 0.08, 8).translate(0, 0.04, 0), skin));
+  const head = joint(neck, 0, 0.08);
+  head.add(new T.Mesh(new T.SphereGeometry(0.105, 14, 10).scale(0.92, 1.1, 1).translate(0, 0.1, 0), skin));
+  head.add(new T.Mesh(new T.SphereGeometry(0.108, 14, 8, 0, Math.PI * 2, 0, Math.PI * 0.55).scale(0.95, 1.05, 1.05).translate(0, 0.12, -0.012), hair));
+  const leg = (side) => {
+    const hip = joint(hips, side * 0.095, -0.03);
+    hip.add(cap(0.072, 0.3, tights));
+    const knee = joint(hip, 0, -0.45); knee.add(cap(0.055, 0.32, tights));
+    const ankle = joint(knee, 0, -0.44);
+    ankle.add(new T.Mesh(new T.BoxGeometry(0.09, 0.07, 0.24).translate(0, -0.035, 0.05), shoe));
+    ankle.add(new T.Mesh(new T.BoxGeometry(0.095, 0.02, 0.25).translate(0, -0.075, 0.05), sole));
+    return { hip, knee, ankle };
   };
+  const arm = (side) => {
+    const sh = joint(torso, side * 0.2, 0.47);
+    sh.add(cap(0.048, 0.2, shirt)); sh.rotation.z = side * 0.06;
+    const el = joint(sh, 0, -0.28); el.add(cap(0.04, 0.2, skin));
+    el.add(new T.Mesh(new T.SphereGeometry(0.045, 8, 6).translate(0, -0.29, 0), skin));
+    return { sh, el };
+  };
+  const L = leg(1), R = leg(-1), AL = arm(1), AR = arm(-1);
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+  let ph = 0, amp = 0, run = 0, lastY = null, roll = 0, t = 0;
+  g.userData.animate = (speed, dt) => {
+    dt = Math.min(dt, 0.1); t += dt;
+    // the blend toward the gait the speed asks for, eased so that a stop or a start is not a jump
+    const k = 1 - Math.exp(-dt * 6);
+    amp += (Math.min(1, speed / 1.1) - amp) * k;
+    run += (smooth(1.7, 2.7, speed) - run) * k;
+    // strides a second: ~0.9 walking at 1.4 m/s, ~1.45 running at 3.5 m/s
+    const freq = speed < 0.05 ? 0 : (1 - run) * (0.55 + 0.25 * Math.min(speed, 2.2)) + run * Math.min(1.75, 0.95 + 0.15 * speed);
+    ph = (ph + dt * freq * Math.PI * 2) % (Math.PI * 8);
+    const pose = (Lg, A, phi) => {
+      const s = Math.sin(phi), c = Math.cos(phi);
+      const thighW = -0.42 * s, thighR = -(0.22 + 0.68 * s);
+      const kneeW = 0.08 + 0.75 * Math.max(0, Math.cos(phi - 0.35)) ** 2, kneeR = 0.25 + 1.45 * Math.max(0, c) ** 1.4;
+      const thigh = (thighW * (1 - run) + thighR * run) * amp, kn = (kneeW * (1 - run) + kneeR * run) * amp + 0.04;
+      Lg.hip.rotation.x = thigh; Lg.knee.rotation.x = kn; Lg.ankle.rotation.x = -0.35 * (thigh + kn) + 0.15 * amp * s;
+      // the arm swings against its own side's leg
+      A.sh.rotation.x = (0.3 * (1 - run) + 0.62 * run) * s * amp + 0.05;
+      A.el.rotation.x = -(0.2 * (1 - run) + (1.35 + 0.18 * s) * run) * Math.max(amp, 0.15) - 0.08;
+    };
+    pose(L, AL, ph); pose(R, AR, ph + Math.PI);
+    // the body: lower and bobbing twice a stride (higher in a run's flight), leaning forward with the speed
+    hips.position.y = 0.96 - 0.03 * run * amp + (0.018 * (1 - run) + 0.045 * run) * amp * Math.cos(2 * ph) + 0.004 * Math.sin(t * 2.2) * (1 - amp);
+    torso.rotation.x = (0.05 + 0.16 * run) * amp; torso.rotation.y = (0.06 + 0.1 * run) * amp * Math.sin(ph);
+    hips.rotation.y = -0.06 * amp * Math.sin(ph);
+    head.rotation.x = -torso.rotation.x * 0.7; head.rotation.y = -torso.rotation.y * 0.8;
+    // into the turns: the heading's rate of change (the game sets it), toward the inside
+    if (lastY != null && dt > 0) {
+      let dy = g.rotation.y - lastY; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+      const target = Math.max(-0.28, Math.min(0.28, -(dy / dt) * 0.09 * Math.min(1, speed / 3)));
+      roll += (target - roll) * (1 - Math.exp(-dt * 5));
+    }
+    lastY = g.rotation.y; body.rotation.z = roll;
+  };
+  g.userData.animate(0, 0);
   return g;
 }
