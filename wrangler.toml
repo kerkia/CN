@@ -64,6 +64,10 @@ REGISTRATION_OPEN = "1"
 NUTRITION_OPEN = "0"
 # "1": registration without France (the countries, migration 0014); "0" until the site's access follows the countries
 WORLD_OPEN = "1"
+# « Orga › Gérer » (functions/_lib/events.js, owner 2026-11-11): "1" — only the team of the event holding a competition (and
+# the administrators) act as its organisers; "0" — a competition no event holds keeps the rule of before (a member of its
+# organising club). Before migration 0026 is applied the rule of before holds either way.
+EVENTS_STRICT = "1"
 # Cloudflare Turnstile on registration (_lib/turnstile.js): the widget's public site key; its secret is the Pages secret
 # TURNSTILE_SECRET. Empty (or no secret): no check
 TURNSTILE_SITE_KEY = "0x4AAAAAAFd6fHJaiIvn92Xe"

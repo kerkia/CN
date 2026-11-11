@@ -57,6 +57,7 @@
 import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
 import { hashPassword, checkPassword, b64url, randomBytes } from "../../_lib/crypto.js";
 import { clubOf, clubLabel, findRace, orgCode, organises } from "../../_lib/club.js";
+import { strict, teamIndex } from "../../_lib/events.js";
 
 const META = "analyses-meta/";
 const DATA = "analyses/";
@@ -164,9 +165,24 @@ async function access(ctx, user, meta, lazyClub) {
   if (meta.vis === "password") return (await keyOk()) ? "open" : "locked";
   return null;
 }
-/** The analysis's organisers: its creator, the administrators, and for a competition the organising club's members. */
-const isOrganiser = async (env, user, meta, lazyClub) => meta.owner === user.id || isAdmin(env, user)
-  || (meta.kind === "race" && !!meta.orgClub && (await lazyClub()) === meta.orgClub);
+/**
+ * The analysis's organisers: the administrators; when an event of « Orga › Gérer » holds it (its competition, or its id for a
+ * training) the event's team alone (functions/_lib/events.js); else its creator, and for a competition — unless
+ * EVENTS_STRICT — the organising club's members, as before the events.
+ */
+async function isOrganiser(env, user, meta, lazyClub) {
+  if (isAdmin(env, user)) return true;
+  const idx = await lazyTeams();
+  if (idx) {
+    for (const k of [meta.id, meta.kind === "race" ? meta.race : null]) if (k && idx.held.has(k)) return idx.mine.has(k);
+  }
+  if (meta.owner === user.id) return true;
+  return !!idx && strict(env) ? false : meta.kind === "race" && !!meta.orgClub && (await lazyClub()) === meta.orgClub;
+  // (lazyTeams: the account's teams, read once a request — set by the handler below)
+  async function lazyTeams() { return TEAMS.get(user.id) ?? (TEAMS.set(user.id, await teamIndex(env, user)), TEAMS.get(user.id)); }
+}
+// the teams read in this request (a fresh map every request: the handler clears it)
+const TEAMS = new Map();
 
 /** A circuit's layers' record: the map version they were drawn on (the layers of another map are not this map's). */
 function cleanLayers(c) {
@@ -329,6 +345,7 @@ const forUsers = withUser(async (ctx, user) => {
   const method = request.method;
   let clubMemo;
   const lazyClub = async () => (clubMemo === undefined ? (clubMemo = await clubOf(env, request, user.licence)) : clubMemo);
+  TEAMS.clear();
 
   // ---- the list, a new analysis
   if (!parts.length) {

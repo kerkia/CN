@@ -234,6 +234,12 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
         (SELECT race_key FROM booking_events WHERE race_date >= date('now'))`).bind(user.id),
       env.DB.prepare("UPDATE bookings SET user_id = 0 WHERE user_id = ?").bind(user.id)]);
   } catch (e) { /* before migration 0023 */ }
+  // « Orga › Gérer » (migration 0026): it leaves its teams and its requests go; an event whose last member it was stays, in
+  // the administrators' hands (what it published remains)
+  try {
+    await env.DB.batch([env.DB.prepare("DELETE FROM event_members WHERE user_id = ?").bind(user.id),
+      env.DB.prepare("DELETE FROM event_requests WHERE user_id = ?").bind(user.id)]);
+  } catch (e) { /* before migration 0026 */ }
   try {                                       // the devices' push subscriptions and what was sent to them (migration 0010)
     await env.DB.batch([env.DB.prepare("DELETE FROM push_subs WHERE user_id = ?").bind(user.id),
       env.DB.prepare("DELETE FROM push_sent WHERE user_id = ?").bind(user.id),

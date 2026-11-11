@@ -166,6 +166,7 @@ export default {
   "nav.orgResults": "Resultados",
   "nav.orgDirect": "Emisión en directo",
   "nav.orgTracer": "Trazado",
+  "nav.orgManage": "Gestionar", "nav.orgManage.hint": "Tus eventos, carrera o entrenamiento: salidas, directo, resultados, análisis, equipo", "mt.orgManage": "Tus carreras y entrenamientos: salidas, directo, resultados, análisis, equipo",
   "nav.orgTracer.hint": "Trazar los recorridos de una carrera o de un entrenamiento, como con Purple Pen",
   "nav.soon": "Próximamente",
   "nav.analysisPerso": "Análisis individual",

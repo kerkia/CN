@@ -15,6 +15,7 @@
 import { isAdmin, json, readBody, withUser } from "../../_lib/api.js";
 import { broadcasts, liveDir, newMopKey } from "../../_lib/live.js";
 import { findRace, organises } from "../../_lib/club.js";
+import { teamIndex } from "../../_lib/events.js";
 import { startRun } from "../upload.js";
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -39,11 +40,16 @@ async function raceFor(env, request, user, key) {
   return { race };
 }
 
+// a broadcast tied to a competition is also its event's team's (« Orga › Gérer », 2026-11-11: every member alike)
+const teamHas = (idx, b) => !!b.race && !!idx?.mine.has(b.race);
+
 export const onRequestGet = withUser(async ({ env }, user) => {
   if (!env.LIVE_DIR) return json({ error: "live server not bound" }, 500);
-  const admin = isAdmin(env, user);
-  return json({ broadcasts: (await broadcasts(env)).map(({ by, key, mop, ...b }) => ({ ...b, mine: by === user.id,
-    ...(admin ? { by } : {}), ...(by === user.id || admin ? { mop: mop || null } : {}) })) });
+  const admin = isAdmin(env, user), idx = await teamIndex(env, user);
+  return json({ broadcasts: (await broadcasts(env)).map(({ by, key, mop, ...b }) => {
+    const ours = by === user.id || teamHas(idx, b);
+    return { ...b, mine: ours, ...(admin ? { by } : {}), ...(ours || admin ? { mop: mop || null } : {}) };
+  }) });
 });
 
 export const onRequestPost = withUser(async ({ request, env }, user) => {
@@ -52,7 +58,7 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   if (b?.op === "mopkey" || b?.op === "link" || b?.op === "publish") {
     const x = (await broadcasts(env)).find((y) => y.id === Number(b.id));
     if (!x) return json({ error: "unknown broadcast" }, 404);
-    if (x.by !== user.id && !isAdmin(env, user)) return json({ error: "not your broadcast" }, 403);
+    if (x.by !== user.id && !isAdmin(env, user) && !teamHas(await teamIndex(env, user), x)) return json({ error: "not your broadcast" }, 403);
     if (b.op === "mopkey") {
       const mop = newMopKey();
       await dirPost(env, { op: "mop", id: x.id, mop });

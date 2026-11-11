@@ -6,7 +6,7 @@
 // federation, a league or a club that wants to see the site. The server enforces the role; this page only reads and acts.
 
 import { html, raw, $, $$, normalise, fmt, fmtDate, pctN } from "../util.js";
-import { t, LANGS, LANG_NAMES, locale } from "../i18n.js";
+import { t, LANGS, LANG_NAMES, locale, loadArea } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { tile, seg, chartCard, bindChartCard, legend, setLede } from "../ui.js";
@@ -27,7 +27,7 @@ function pageName(k) {
     settings: "st.link", contact: "ct.title", admin: "ad.title", provisional: "prov.title", splits: "spl.title",
     deposit: "dep.title", live: "lv.title", relays: "rl.title", analysis: "nav.analysis.long", games: "nav.games", vma: "nav.vma",
     analysisPerso: "nav.analysisPerso.long", analysisClub: "nav.analysisClub.long", analysisRace: "nav.analysisRace.long", mapAnalysis: "nav.mapAnalysis", myMaps: "nav.myMaps", analysisOrga: "an.orga.title",
-    orgAnalyses: "nav.orgAnalyses", orgRace: "nav.orgAnalyses", orgTraining: "nav.orgAnalyses", orgResults: "or.title", orgStarts: "os.title", orgDirect: "nav.orgDirect", ask: "nav.ask", orgTracer: "nav.orgTracer", orgMapper: "nav.orgMapper", categories: "cg.title", relayHistory: "rh.title", needCountry: "cty.need.title",
+    orgAnalyses: "nav.orgAnalyses", orgRace: "nav.orgAnalyses", orgTraining: "nav.orgAnalyses", orgResults: "or.title", orgStarts: "os.title", orgDirect: "nav.orgDirect", orgManage: "nav.orgManage", ask: "nav.ask", orgTracer: "nav.orgTracer", orgMapper: "nav.orgMapper", categories: "cg.title", relayHistory: "rh.title", needCountry: "cty.need.title",
     descriptions: "nav.descriptions", mapkey: "nav.mapkey", learn: "nav.learn", nutrition: "nav.nutrition", nutritionWrite: "nav.nutritionWrite", hub: "mod.pick", modtiles: "ad.modtiles" };
   if (k.startsWith("network:")) {
     const v = k.slice(8);
@@ -44,7 +44,8 @@ export async function render(main, { query = {} } = {}) {
     return { title: t("ad.title") };
   }
   let { users, duplicates, queued, me } = await r.json();
-  let tab = { inscrits: "members", utilisation: "usage", consommation: "conso", depots: "uploads", sites: "sites", anonymises: "anon", demo: "demo", cartes: "mymaps" }[query.onglet] || "accounts";
+  let tab = { inscrits: "members", utilisation: "usage", consommation: "conso", depots: "uploads", sites: "sites", anonymises: "anon", demo: "demo", cartes: "mymaps", evenements: "events" }[query.onglet] || "accounts";
+  await loadArea("manage");          // « Événements » (Orga › Gérer, 2026-11-11): its texts are the page's
 
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("ad.title")}</h1><p class="lede" id="page-lede"></p></div>
@@ -117,6 +118,13 @@ export async function render(main, { query = {} } = {}) {
       <div class="tiles" id="mm-tiles"></div>
       <section class="card"><div class="table-wrap" id="mm-users"><div class="empty">${t("misc.loading")}</div></div></section>
     </div>
+    <div data-panel="events" hidden>
+      <section class="card"><div class="card-head"><div><h2>${t("mg.ad.pending")}</h2><div class="hint">${t("mg.ad.pending.hint")}</div></div></div>
+        <div class="table-wrap" id="ev-pending"><div class="empty">${t("misc.loading")}</div></div></section>
+      <section class="card"><div class="card-body"><h2 style="margin:0 0 6px">${t("mg.ad.migrate")}</h2>
+        <p class="muted" style="margin:0 0 10px">${t("mg.ad.migrate.hint")}</p>
+        <button type="button" class="btn" id="ev-migrate">${t("mg.ad.migrate.go")}</button> <span class="muted" id="ev-migrate-out"></span></div></section>
+    </div>
     <div data-panel="uploads" hidden>
       <p class="muted" style="margin:0 2px 12px">${t("ad.up.lede")}</p>
       <section class="card"><div class="table-wrap" id="up-list"></div></section>
@@ -150,11 +158,11 @@ export async function render(main, { query = {} } = {}) {
 
   function showTab() {
     $("#ad-tabs").innerHTML = seg("adtab", [["accounts", t("ad.tab.accounts")], ["members", t("ad.tab.members")], ["usage", t("ad.tab.usage")], ["conso", t("ad.tab.conso")], ["uploads", t("ad.tab.uploads")],
-      ["sites", t("ad.tab.sites")], ["anon", t("ad.tab.anon")], ["demo", t("ad.tab.demo")], ["mymaps", t("ad.tab.mymaps")]], tab);
+      ["sites", t("ad.tab.sites")], ["anon", t("ad.tab.anon")], ["demo", t("ad.tab.demo")], ["mymaps", t("ad.tab.mymaps")], ["events", t("mg.ad.tab")]], tab);
     $$('[data-seg="adtab"]').forEach((b) => b.addEventListener("click", () => { tab = b.dataset.value; showTab(); }));
     $$("[data-panel]", main).forEach((p) => { p.hidden = p.dataset.panel !== tab; });
     setLede(t(`ad.lede.${tab}`));       // the head says what the tab shows (one line: the tabs' own paragraphs say more)
-    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, conso: { onglet: "consommation" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" }, demo: { onglet: "demo" }, mymaps: { onglet: "cartes" } }[tab] || {});   // the address keeps the usage filters
+    if (tab === "usage") saveUsage(); else replaceQuery({ members: { onglet: "inscrits" }, conso: { onglet: "consommation" }, uploads: { onglet: "depots" }, sites: { onglet: "sites" }, anon: { onglet: "anonymises" }, demo: { onglet: "demo" }, mymaps: { onglet: "cartes" }, events: { onglet: "evenements" } }[tab] || {});   // the address keeps the usage filters
     if (tab === "usage" && !usageStarted) { usageStarted = true; startUsage(); }
     if (tab === "members") drawMembers();
     if (tab === "uploads") drawUploads();
@@ -163,6 +171,7 @@ export async function render(main, { query = {} } = {}) {
     if (tab === "demo") drawDemo();
     if (tab === "conso") drawConso();
     if (tab === "mymaps") drawMymaps();
+    if (tab === "events") drawEvents();
   }
 
   // « Consommation » (owner, 2026-10-20): the site's use of its free plans, each measure against its limit, the last 30 days
@@ -297,6 +306,41 @@ export async function render(main, { query = {} } = {}) {
   }
 
   // « Démo »: the demo accounts. A password is shown once, when made or renewed: to be sent with the address and the site's link
+  // ---- « Événements » (Orga › Gérer, 2026-11-11): the calendar links waiting for an administrator, the events made from before
+  let eventsBound = false;
+  async function drawEvents() {
+    const call = async (path, body) => {
+      const r = await fetch(`api/events${path}`, { method: body ? "POST" : "GET", credentials: "same-origin", cache: "no-store",
+        headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || r.status);
+      return j;
+    };
+    if (!eventsBound) {
+      eventsBound = true;
+      $("#ev-migrate").addEventListener("click", async (e) => {
+        e.target.disabled = true;
+        try { const r = await call("/migrate", {}); $("#ev-migrate-out").textContent = t("mg.ad.migrate.done", { c: r.competitions, d: r.declared, t: r.trainings, s: r.skipped.length }); }
+        catch (err) { $("#ev-migrate-out").textContent = String(err.message); }
+        e.target.disabled = false;
+      });
+    }
+    let list;
+    try { list = (await call("/pending")).pending; } catch (e) { $("#ev-pending").innerHTML = html`<div class="empty">${String(e.message)}</div>`; return; }
+    $("#ev-pending").innerHTML = list.length ? html`<table class="data compact"><thead><tr><th>${t("mg.f.date")}</th><th>${t("mg.col.event")}</th><th>${t("mg.ad.asked")}</th>
+        <th>${t("mg.ad.by")}</th><th></th></tr></thead><tbody>${list.map((e) => html`<tr data-ev="${e.id}"><td class="num">${fmtDate(e.date, "short")}</td>
+        <td><a href="#/gerer?ev=${e.id}">${e.name}</a></td>
+        <td>${e.competition ? html`${e.competition.name}<br><span class="muted">${e.competition.org || ""}</span>` : "—"}${e.held ? html`<br><span class="tag">${t("mg.ad.heldBy", { name: e.held })}</span>` : ""}</td>
+        <td>${e.byName}<br><span class="muted">${e.byEmail}${e.byClub ? ` · ${e.byClub}` : ""}</span></td>
+        <td class="r" style="white-space:nowrap"><button type="button" class="btn btn-sm btn-primary" data-ok="1">${t("mg.ad.approve")}</button>
+          <button type="button" class="btn btn-sm" data-ok="0">${t("mg.ad.refuse")}</button></td></tr>`)}</tbody></table>`
+      : html`<div class="empty">${t("mg.ad.none")}</div>`;
+    $$("#ev-pending [data-ok]").forEach((b) => b.addEventListener("click", async () => {
+      try { await call(`/${b.closest("[data-ev]").dataset.ev}/approve`, { ok: b.dataset.ok === "1" }); drawEvents(); }
+      catch (e) { b.closest("td").append(` ${e.message}`); }
+    }));
+  }
+
   let demoBound = false;
   function showMade(email, password) {
     const text = t("ad.dm.message", { site: location.origin, email, password });

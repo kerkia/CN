@@ -92,16 +92,18 @@ export async function render(main, { query = {} } = {}) {
 }
 
 // ---- one race: the file, the check, the publication ---------------------------------------------------------------
-async function deposit(main, race) {
+// `base` (« Orga › Gérer », 2026-11-11): drawn in an event's « Départs » tab — no head, the booking at base&resa=1
+export async function deposit(main, race, { base = null } = {}) {
   const e = race.e;
+  const resaHref = base ? `${base}&resa=1` : `#/orga-horaires?course=${encodeURIComponent(race.key)}&resa=1`;
   let file = null, read = null;
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${e.name}</h1>
+    <div class="page-head" ${raw(base ? "hidden" : "")}><div><h1>${e.name}</h1>
       <p class="lede meta"><span>${fmtDate(e.date)}</span>${e.place ? html`<span>${e.place}</span>` : ""}${e.org ? html`<span>${e.org}</span>` : ""}
         ${e.reg?.count ? html`<span>${tn("os.reg", e.reg.count, { n: fmt(e.reg.count) })}</span>` : ""}</p></div></div>
     <div id="os-current"></div>
     <section class="card os-bk" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("os.bk.title")}</h2><div class="hint">${t("os.bk.hint")}</div></div>
-      <a class="btn btn-sm btn-primary" href="#/orga-horaires?course=${encodeURIComponent(race.key)}&resa=1">${t("os.bk.go")}</a></div></section>
+      <a class="btn btn-sm btn-primary" href="${resaHref}">${t("os.bk.go")}</a></div></section>
     <section class="card" style="margin-bottom:16px"><div class="card-head"><h2>${t("os.step1")}</h2></div>
       <div class="card-body upload-grid">
         <div class="upload-form">

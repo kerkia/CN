@@ -3,7 +3,7 @@
 // the account's latest race in the site's data — or an administrator (owner, 2026-10-15); a competition declared by its
 // organiser (outside France: below) is managed by the account that declared it.
 
-import { isAdmin } from "./api.js";
+import { canManage } from "./events.js";
 
 /** The club (4 digits) of the account's licence: that of its latest race in the site's data, or null. */
 export async function clubOf(env, request, licence) {
@@ -87,13 +87,11 @@ export async function findRace(env, request, key) {
 }
 
 /**
- * Is the account one of the race's organisers? An administrator; for a declared competition the account that declared it;
- * else a member of its organising club (the club of the account's latest race). `club` may give the account's club, known.
+ * Is the account one of the race's organisers? Since « Orga › Gérer » (2026-11-11): an administrator, or a member of the
+ * team of the event holding the competition (functions/_lib/events.js canManage; before migration 0026, or with
+ * EVENTS_STRICT off and no event, the rule of before: a member of its organising club, a declared competition's declarer).
+ * `club` may give the account's club, known.
  */
 export async function organises(env, request, user, race, club) {
-  if (!race) return false;
-  if (isAdmin(env, user)) return true;
-  if (/^d/.test(race.key || "")) return Number(race.owner) === user.id;
-  const code = orgCode(race.org);
-  return !!code && (club !== undefined ? club : await clubOf(env, request, user.licence)) === code;
+  return canManage(env, request, user, race, club);
 }

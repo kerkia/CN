@@ -27,7 +27,8 @@ const slug = (s) => String(s || "").normalize("NFKD").replace(/[̀-ͯ]/g, "").to
 const xml = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
 /** `race`: { key, e: { name, date, place, org, reg } } from Orga › Horaires' list (one's club's, or declared). */
-export async function renderBooking(main, race) {
+// `base` (« Orga › Gérer », 2026-11-11): drawn in an event's « Départs » tab, its link back to the start list there
+export async function renderBooking(main, race, { base = null } = {}) {
   const key = race.key, e = race.e;
   main.innerHTML = html`<div class="empty">${t("bk.loading")}</div>`;
   let r = await call("GET", `/${encodeURIComponent(key)}`);
@@ -46,7 +47,7 @@ export async function renderBooking(main, race) {
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("bk.org.title")}</h1>
       <p class="lede meta"><span>${e.name}</span><span>${fmtDate(e.date)}</span>${e.place ? html`<span>${e.place}</span>` : ""}</p></div>
-      <div class="page-actions"><a class="btn btn-sm" href="#/orga-horaires?course=${encodeURIComponent(key)}">${t("bk.org.backDeposit")}</a></div></div>
+      <div class="page-actions"><a class="btn btn-sm" href="${base || `#/orga-horaires?course=${encodeURIComponent(key)}`}">${t("bk.org.backDeposit")}</a></div></div>
     <p class="muted" style="margin:0 2px 14px">${t("bk.org.lede")}</p>
     <section class="card" style="margin-bottom:16px"><div class="card-head"><div><h2>${t("bk.org.s1")}</h2><div class="hint" id="bo-state"></div></div></div>
       <div class="card-body" id="bo-settings"></div></section>

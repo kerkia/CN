@@ -16,7 +16,7 @@ runner histories, clubs, comparisons, an agenda of upcoming events and per-race 
 | `ffco_scraper/prov/` | Provisional results (« Résultats »): organisers' results, often before FFCO publishes — races (`races.py`), sources (`sources/`: liveresultat, WinSplits, Helga, Orientation Data, O'Live, SPORTident Center, the club's site), parsers (`parsers/`: OE/MeOS HTML, IOF XML, PDF), matching to licences (`match.py`), provisional scores (`compute.py`), run + output (`run.py`) |
 | `notify.py` | E-mail digests (new results, new competitions in subscribed regions) through `/api/notify` |
 | `site/` | Static single-page app (vanilla JS modules, no build step). `assets/js/pages/*.js` one module per page, `i18n.js` all French text, `cn.js` the CN computation mirrored in the browser, `data.js` data access and the column index maps `R` (runner race rows) and `C` (race result rows) |
-| `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `_lib/club.js` (an account's club, a race's organiser), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited), `api/analyses/[[path]].js` (the shared GPS analyses, in R2), `api/tracer/[[path]].js` (the Tracer's course-setting events, in R2) |
+| `functions/` | Cloudflare Pages Functions: `_middleware.js` (login gate, deny by default), `_lib/club.js` (an account's club, a race's organiser), `_lib/events.js` + `api/events/[[path]].js` (« Orga › Gérer »: the events and their teams, who may act as a competition's organiser), `api/account/*` (accounts on D1), `api/admin/*`, `api/notify.js`, `api/ffco-history.js` and `api/ffco-cn.js` (proxies to FFCO pages, logged-in users only, cached and rate-limited), `api/analyses/[[path]].js` (the shared GPS analyses, in R2), `api/tracer/[[path]].js` (the Tracer's course-setting events, in R2) |
 | `migrations/` | D1 schema migrations |
 | `ci/state.py` | Packs/unpacks the database and site state to/from Cloudflare R2 between CI runs |
 | `mapgen/` | **Generated maps** (a prototype, 2026-11-01): 1 km tiles of an orienteering map from IGN's LiDAR HD through karttapullautin, with OpenStreetMap's features drawn over (`run.py`, `osm.py`, `lambert93.py`; `python -m mapgen tiles|area|ci`), made by `.github/workflows/lidarmap.yml` on the site's request (see « Generated maps ») |
@@ -2183,6 +2183,39 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`X-Upload` `organiser: true`, checked the same way, 403 « not organiser » otherwise) is noted « déposé par
   l'organisateur », and its race is no longer looked for on the club's site or the platforms (`prov_meta` `org_races`,
   kept by `sources/upload.apply`, skipped in `run.run`'s loop): the organiser's file is used as it is.
+- **Orga › Gérer** (`#/gerer`, route `orgManage`, `pages/manage.js`; owner, 2026-11-11, after the plan of the same day, private
+  artifact https://claude.ai/artifact/3sUsQZWk8AToxEQvvrXyR2): Orga's menu is three verbs, Gérer · Tracer · Cartographier; the pages
+  « Analyses », « Résultats », « Horaires » and « Direct » are an event's tabs (their addresses lead there: `app.route_`,
+  `#/orga-horaires?course=X` → the event holding X on « Départs », else the creation with X chosen; `#/orga-analyses?id=` still opens
+  an analysis's own page). **An event** (D1 **migration 0026**: `events`, `event_members`, `event_requests`) is one race or one
+  training (owner: « one event, one race », as FFCO), its type `individual` | `score` | `relay` | `training` deciding its tabs
+  (`TABS`: Départs — the booking and the start list —, Direct — and the GPS link —, Résultats, Analyse, Équipe; a relay Direct,
+  Analyse, Équipe — « Résultats » leaves relays out, see the plan's relay proposal —; a training Analyse, Équipe). No « Aperçu » tab
+  and no « Réglages »: the list of events is the way in (Arena's look: periods, months, today's line, each row's tabs as chips with
+  their state, a chip opening that tab, the row the tab fitting its day), « ✎ Modifier » the description, the calendar link and
+  deletion. **The team** (owner): every member has the same rights (everything, the team and deletion included); nobody is added —
+  people ask (« Rejoindre une équipe », `GET /api/events/find`, or the event's own address), any member accepts (a push to the
+  members, one to the asker: `templates.eventPush`); one leaves, the last member deletes instead. **Linking to the calendar** (France):
+  a competition of the agenda (`a<id>`) or of « Résultats » (its key: an organiser may come after the race, the agenda having dropped
+  it; `CAL`), at most one event each (unique `race_key`); a member of the organising club (`clubOf`) is linked at once (« verified »),
+  anyone else waits for an administrator (« pending »: `race_key` NULL, the tools closed; admin page tab « Événements »: confirm or
+  refuse). An unlinked competition keeps a key of its own `d<id>`, written to R2 `declared/<id>.json` as the declared competitions
+  were (`events.mirror`; France's too now, `sources/declared.py`, relays not: `races.py` drops them); it may be linked later only while
+  nothing was deposited under that key. **Who acts as organiser** (`_lib/events.js canManage`, the body of `club.organises`, which
+  uploads, booking, broadcasts, tracking, analyses and the Tracer call): an administrator; else the team of the event holding the
+  competition (`eventOf`: its key, or the agenda id a race of « Résultats » carries); else nobody with `EVENTS_STRICT` "1"
+  (wrangler.toml), the rule of before (a member of the organising club) with "0" or before the migration. A live broadcast tied to a
+  competition is its team's too (`api/live/broadcasts.js`, `push.js`: `teamIndex`); a map analysis held by an event (its competition,
+  or `events.analysis` for a training) is its team's alone (`analyses isOrganiser`). **Claimed competitions**: a runner's results file
+  for a competition held by a linked event is refused (`upload.js`, 403 `claimed`); unclaimed ones still take them. Results deposits
+  for a race of the agenda that « Résultats » lists (`a<id>`) were all refused before 2026-11-11 (`!race.declared && !raceOf`).
+  `POST /api/events/migrate` (admin page › Événements › « Créer les événements »; idempotent) made the events of what organisers had
+  done (organiser deposits, bookings, broadcasts tied to a race, competitions' analyses, declared competitions with their ids kept,
+  trainings' analyses as training events), the earliest account the creator. The tools draw in a tab through an embedded mode
+  (`orgstarts.deposit(…, { base })`, `bookingorg.renderBooking(…, { base })`, `deposit.render({ embedded })`, `orgdirect.render({ event })`,
+  `shared.js` `managePage(…, embed)` by `?embed=1`); `app.replaceQuery` keeps `ev`. Texts: area `i18n/manage.*.js`. Local test: launch
+  configs `pages-dev-gerer-user` (8784) / `pages-dev-gerer-admin` (8785), on a copy of `.wrangler/state` (another session's dev server
+  on the shared state made pages hang); a second local account in `.dev.vars`' comments.
 - **Organisation › Horaires** (`#/orga-horaires`, route `orgStarts`, `pages/orgstarts.js`; owner, 2026-10-18): an organiser deposits
   the start list of a coming competition of their club (the agenda's competitions of today to +90 days, relays apart; administrators
   see all). Files: IOF XML StartList (best), CSV (a header row then a runner a row — Heure/Départ, Nom, Prénom or a whole name,

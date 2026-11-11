@@ -153,7 +153,9 @@ function toLive(classes) {
 // (exported for checks in the browser's console)
 export { iofLive, toLive };
 
-export async function render(main) {
+// `event` (« Orga › Gérer », 2026-11-11: drawn in an event's « Direct » tab): the competition fixed — its broadcasts only,
+// a new one tied to it, no other competition offered, the GPS link its own; no head (the event's is above)
+export async function render(main, { event = null } = {}) {
   const me = auth.session();
   const canPick = typeof window.showOpenFilePicker === "function";
   const today = new Date().toLocaleDateString("sv-SE");
@@ -165,7 +167,7 @@ export async function render(main) {
   // three steps, each card one of them (owner, 2026-10-25: the MeOS and the file instructions were one block, read as one):
   // 1. the race, 2. how the results are sent — MeOS or an exported file, the way chosen alone shown —, 3. « Résultats » after
   main.innerHTML = html`
-    <div class="page-head"><div><h1>${t("od.title")} ${raw(betaTag())}</h1>
+    <div class="page-head" ${raw(event ? "hidden" : "")}><div><h1>${t("od.title")} ${raw(betaTag())}</h1>
       <p class="lede">${t("od.lede")}</p></div></div>
     ${raw(betaNote("direct"))}
     ${raw(text.overview)}
@@ -220,7 +222,8 @@ export async function render(main) {
   let list = [];
   async function loadList() {
     try { list = (await (await fetch("/api/live/broadcasts", { credentials: "same-origin" })).json()).broadcasts || []; } catch (e) { list = []; }
-    list = list.filter((b) => b.mine || me?.admin);
+    list = list.filter((b) => (b.mine || me?.admin) && (!event || b.race === event.key));
+    if (event && !list.some((b) => b.id === st.id)) st.id = list[0]?.id ?? null;
   }
   // the competitions a GPS tracking link may be given to (the last card): the same, from a week ago to three months ahead
   let agenda = [], comps = [], tcomps = [];
@@ -245,6 +248,7 @@ export async function render(main) {
     comps.push(...mine.filter((d) => d.date >= lo && d.date <= hi7));
     tcomps.push(...mine.filter((d) => d.date >= addDays(today, -7) && d.date <= addDays(today, 90)));
   } catch (e) { /* none declared */ }
+  if (event) { comps = [event]; tcomps = [event]; }
   comps.sort((x, y) => x.date.localeCompare(y.date) || x.name.localeCompare(y.name));
   tcomps.sort((x, y) => x.date.localeCompare(y.date) || x.name.localeCompare(y.name));
   const compLabel = (c) => `${fmtDate(c.date)} · ${c.name}${c.org ? ` · ${c.org}` : ""}`;
@@ -285,6 +289,7 @@ export async function render(main) {
       for (const id of ["#od-name", "#od-date", "#od-org"]) $(id).disabled = !!c;
       if (c) { $("#od-name").value = c.name; $("#od-date").value = c.date; $("#od-org").value = c.org; }
     });
+    if (event && $("#od-comp")) { $("#od-comp").value = event.key; $("#od-comp").dispatchEvent(new Event("change")); $("#od-comp").disabled = true; }
     $("#od-name")?.addEventListener("change", (e) => {
       const ev = agenda.find((x) => x.name === e.target.value);
       if (ev) { $("#od-date").value = ev.date; if (!$("#od-org").value) $("#od-org").value = ev.org || ""; }
@@ -316,10 +321,10 @@ export async function render(main) {
       <p style="margin:0">${b.race ? html`${t("od.linked")}`
         : html`<span class="muted">${t("od.linked.none")}</span>`}</p>
       <div class="filters">
-        <label class="field"><span>${t("od.comp")}</span><select id="od-relink" style="max-width:420px">
+        <label class="field" ${raw(event ? "hidden" : "")}><span>${t("od.comp")}</span><select id="od-relink" style="max-width:420px">
           <option value="">${t("od.comp.none")}</option>
           ${choices.map((c) => html`<option value="${c.key}" ${raw(c.key === b.race ? "selected" : "")}>${compLabel(c)}</option>`)}</select></label>
-        <button type="button" class="btn btn-sm" id="od-relink-go" disabled>${t("od.link")}</button>
+        <button type="button" class="btn btn-sm" id="od-relink-go" disabled ${raw(event ? "hidden" : "")}>${t("od.link")}</button>
         ${b.race ? html`<button type="button" class="btn btn-sm" id="od-publish">${t("od.publish")}</button>` : ""}
       </div>
       <div class="muted" id="od-link-msg" style="font-size:12.5px">${msg}</div>`;

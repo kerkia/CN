@@ -6,6 +6,7 @@
 // free plan's ~10 ms of CPU): the race's object checks it.
 import { isAdmin, json, withUser } from "../../_lib/api.js";
 import { broadcasts, liveDir } from "../../_lib/live.js";
+import { teamIndex } from "../../_lib/events.js";
 
 const MAX_BODY = 3 * 1024 * 1024;
 
@@ -15,7 +16,10 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
   if (!/^9\d{8}$/.test(id)) return json({ error: "bad broadcast" }, 400);
   const b = (await broadcasts(env)).find((x) => x.id === Number(id));
   if (!b) return json({ error: "unknown broadcast" }, 404);
-  if (b.by !== user.id && !isAdmin(env, user)) return json({ error: "not your broadcast" }, 403);
+  // its opener, an administrator, or (tied to a competition) its event's team (« Orga › Gérer », 2026-11-11)
+  if (b.by !== user.id && !isAdmin(env, user) && !(b.race && (await teamIndex(env, user))?.mine.has(b.race))) {
+    return json({ error: "not your broadcast" }, 403);
+  }
   const body = await request.text();
   if (body.length > MAX_BODY) return json({ error: "too large" }, 413);
   const race = env.LIVE_RACE.get(env.LIVE_RACE.idFromName(id));

@@ -53,6 +53,9 @@ const PAGES = {
   booking: () => import("./pages/booking.js"),        // « Réserver un horaire » (Arena): the start times its organisers opened to booking (2026-11-03)
   orgDirect: () => import("./pages/orgdirect.js"),    // « Direct »: an organiser feeds « En direct » from their timing software
   orgTracer: () => import("./pages/tracer.js"),
+  // « Gérer » (owner, 2026-11-11): an organiser's events, each its tabs — the four pages above (Analyses, Résultats, Horaires,
+  // Direct) drawn inside them; their addresses lead there (route_)
+  orgManage: () => import("./pages/manage.js"),
   orgMapper: () => import("./pages/mapper.js"),         // « Cartographier » (owner, 2026-11-06): the map editor
   modtiles: () => import("./pages/modtiles.js"),   // Coach's and Stats' pages as tiles: their landing on a phone (2026-10-31)
   hub: () => import("./pages/hub.js"),             // the modules page: where one lands, the logo's address (2026-10-30)
@@ -80,7 +83,7 @@ const SEARCH_IN_TABS = new Set(["runner", "ranking", "compare"]);
 const NAV_HINT = { runner: "rn.lede.nav", ranking: "rk.lede", categories: "cg.lede", relayHistory: "rh.lede", courses: "cs.lede", compare: "cp.lede", clubs: "cl.lede", network: "nw.lede.nav",
   agenda: "ag.lede.nav", provisional: "prov.lede", live: "lv.lede", splits: "ra.lede", analysis: "an.lede", games: "g.lede", virtually: "vtp.lede", vma: "vma.lede", learn: "lt.lede",
   analysisPerso: "an.perso.lede", analysisOrga: "an.orga.lede", analysisClub: "sh.club.lede", analysisRace: "sh.race.lede",
-  orgAnalyses: "sh.org.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint", orgMapper: "nav.orgMapper.hint" };
+  orgAnalyses: "sh.org.lede", orgResults: "or.lede", orgStarts: "os.hint", orgTracer: "nav.orgTracer.hint", orgMapper: "nav.orgMapper.hint", orgManage: "nav.orgManage.hint" };
 // the tools still in beta (beta.js; owner, 2026-10-16): a small « bêta » after their name in the menus
 // The pages of a country's ranked data (owner, 2026-10-20; by country since 2026-10-22): the rankings and everything they
 // hold, and « IA ». They show the site's country's (data.js reads its folder); an account that may not read it (France:
@@ -108,7 +111,7 @@ const ownerOnly = auth.owner;
 // « Virtually » (2026-11-11) likewise, the administrators' only for now (api/virtual refuses the others)
 const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites, virtually: () => !!auth.session()?.admin };
 // the map analyses out of beta on 2026-11-05; « Résultats » and « Horaires » marked beta on 2026-11-07 (owner)
-const BETA_ROUTES = new Set(["orgDirect", "orgTracer", "orgMapper", "orgResults", "orgStarts"]);
+const BETA_ROUTES = new Set(["orgDirect", "orgTracer", "orgMapper", "orgResults", "orgStarts", "orgManage"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "virtually", "vma", "learn"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
@@ -158,6 +161,7 @@ function parseHash(hash = location.hash) {
     : head === "envoi" ? "phoneSend"
     : head === "analyses" || head === "analyse-carte" ? "mapAnalysis" : head === "analyse-orga" ? "analysisOrga"     // #/analyse-carte: the address until 2026-11-07
     : head === "orga-analyses" || head === "orga-competitions" || head === "orga-entrainements" ? "orgAnalyses"     // one list since 2026-11-04 (old addresses)
+    : head === "gerer" || head === "orga-gerer" ? "orgManage"     // « Gérer » (2026-11-11)
     : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer" : head === "orga-carto" || head === "cartographier" ? "orgMapper"
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
@@ -211,6 +215,7 @@ export function replaceQuery(q) {
   // the tab shown (ui.pageTabs: ?onglet=) stays unless the page says otherwise; so does a page opened alone (fullwin: ?fen=1)
   if (query.onglet && q && !("onglet" in q)) q = { ...q, onglet: query.onglet };
   if (query.fen && q && !("fen" in q)) q = { ...q, fen: query.fen };
+  if (query.ev && q && !("ev" in q)) q = { ...q, ev: query.ev };      // « Gérer »: a tool drawn in an event's tab keeps the event
   const next = "#" + (path || "/") + qstr(q);
   if (location.hash !== next) {
     silent = true;
@@ -362,7 +367,7 @@ let contoursBound = false;
 function menuKey(r) {
   const at = r.from || r.route;
   return at === "course" ? "courses" : at === "club" || at === "clubcompare" || at === "relays" ? "clubs"
-    : at === "splits" && r.query?.course === "fichier" ? "orgResults"          // a file under deposit: the organisers'
+    : at === "splits" && r.query?.course === "fichier" ? "orgManage"           // a file under deposit: the organisers'
     // Arena: today's and coming competitions, a live race; the past ones and a race's results and analysis
     : at === "agenda" || at === "live" || (at === "splits" && /^direct-/.test(r.query?.course || "")) ? "coming"
     : at === "provisional" || at === "splits" ? "past"
@@ -431,9 +436,9 @@ export function moduleMenus() {
       // « Santé » to the accounts given it; its authors reach « Rédaction » from its page, not from the menu (owner, 2026-11-01)
       ["nutrition", "#/sante", t("nav.nutrition")]]
       .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),
-    orga: [["orgAnalyses", "#/orga-analyses", t("nav.orgAnalyses")],
-      ["orgResults", "#/orga-resultats", t("nav.orgResults")], ["orgStarts", "#/orga-horaires", t("nav.orgStarts")],
-      ["orgDirect", "#/orga-direct", t("nav.orgDirect")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")],
+    // « Gérer », « Tracer », « Cartographier » (owner, 2026-11-11: three verbs; Analyses, Résultats, Horaires and Direct are an
+    // event's tabs in « Gérer », their addresses lead there)
+    orga: [["orgManage", "#/gerer", t("nav.orgManage")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")],
       // « Cartographier » (owner, 2026-11-06; every account's since 2026-11-07)
       ["orgMapper", "#/orga-carto", t("nav.orgMapper")]],
   };
@@ -950,9 +955,15 @@ async function route_() {
     history.replaceState(null, "", "#/resultats");
     r = parseHash();
   }
-  if (r.route === "deposit") {
-    history.replaceState(null, "", `#/orga-resultats${r.query.course ? `?course=${encodeURIComponent(r.query.course)}` : ""}`);
-    r = parseHash();
+  // « Orga › Gérer » (2026-11-11): the organisers' pages of before open the event holding their competition, on its tab
+  // (pages/manage.js ?course=), else « Gérer »'s list; an analysis's own page (?id=) stays
+  {
+    const tab = { deposit: "resultats", orgResults: "resultats", orgStarts: "departs", orgDirect: "direct", orgAnalyses: "analyse" }[r.route];
+    if (tab && !(r.route === "orgAnalyses" && r.query.id)) {
+      const c = r.query.course;
+      history.replaceState(null, "", c ? `#/gerer?${new URLSearchParams({ course: c, onglet: tab, ...(r.query.resa ? { resa: "1" } : {}) })}` : "#/gerer");
+      r = parseHash();
+    }
   }
   // the Orga module: an account that turned it on, on a computer (owner, 2026-10-30); else a page that says how
   // « Cartographier » on a phone too (its field mode: owner, 2026-11-06); every account's since 2026-11-07 (owner)

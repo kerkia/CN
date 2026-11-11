@@ -166,6 +166,7 @@ export default {
   "nav.orgResults": "Ergebnisse",
   "nav.orgDirect": "Live-Übertragung",
   "nav.orgTracer": "Bahnlegung",
+  "nav.orgManage": "Verwalten", "nav.orgManage.hint": "Deine Veranstaltungen, Lauf oder Training: Starts, Live, Ergebnisse, Analyse, Team", "mt.orgManage": "Deine Läufe und Trainings: Starts, Live, Ergebnisse, Analyse, Team",
   "nav.orgTracer.hint": "Die Bahnen eines Laufs oder Trainings legen, wie mit Purple Pen",
   "nav.soon": "Demnächst",
   "nav.analysisPerso": "Einzelanalyse",

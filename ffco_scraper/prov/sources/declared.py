@@ -24,11 +24,15 @@ FIELDS = ("date_iso", "name", "place", "org", "terrain", "epreuve", "site", "cou
 
 def row_of(d: dict) -> dict | None:
     """The prov_races fields of a declared competition, or None when it lacks the essentials."""
-    if not (d.get("id") and d.get("name") and d.get("date") and d.get("country")) or d.get("country") == "FR":
+    # France's too since « Orga › Gérer » (2026-11-11): an event not on FFCO's calendar is published as a declared one;
+    # its runners are matched to French licences like any French race (run.build: country FR), and it is never merged
+    # with FFCO's races (races.merge_duplicates takes races without a country only). A relay is left out (races.py drops them).
+    if not (d.get("id") and d.get("name") and d.get("date") and d.get("country")) or d.get("type") == "relay":
         return None
     return {"key": f"d{d['id']}", "date_iso": d["date"], "name": d["name"], "place": d.get("place") or None,
             "org": d.get("club") or None, "terrain": d.get("terrain") or None, "epreuve": d.get("epreuve") or None,
-            "site": d.get("site") or None, "country": d["country"]}
+            "site": d.get("site") or None, "country": d["country"],
+            "org_code": races.org_code(d.get("club")) if d["country"] == "FR" else None}
 
 
 def upsert(con, d: dict) -> int:
@@ -41,8 +45,8 @@ def upsert(con, d: dict) -> int:
         now = races.now_iso()
         # agenda_id 0, as for the races added with an upload: no agenda event of FFCO's to link
         con.execute("""INSERT INTO prov_races (key, date_iso, name, place, org, org_code, terrain, epreuve, cn, site, agenda_id,
-            first_seen, next_check, country) VALUES (?,?,?,?,?,NULL,?,?,0,?,0,?,?,?)""",
-                    (r["key"], r["date_iso"], r["name"], r["place"], r["org"], r["terrain"], r["epreuve"], r["site"], now, now,
+            first_seen, next_check, country) VALUES (?,?,?,?,?,?,?,?,0,?,0,?,?,?)""",
+                    (r["key"], r["date_iso"], r["name"], r["place"], r["org"], r["org_code"], r["terrain"], r["epreuve"], r["site"], now, now,
                      r["country"]))
         return 1
     if all(old[k] == r[k] for k in FIELDS):

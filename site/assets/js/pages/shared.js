@@ -433,7 +433,7 @@ async function eventPage(main, kind, id, org = false, query = {}) {
   }
   let race = null;
   if (kind === "race" && A.race) race = await getProv(`${encodeURIComponent(A.race)}.json`);
-  if (org) return managePage(main, id, data, race);
+  if (org) return managePage(main, id, data, race, query.embed === "1");
   // the circuit, and the replay's state, from the address (a link reopens the same view)
   let courseN = A.courses.some((c) => String(c.n) === query.c) ? Number(query.c) : A.courses[0]?.n ?? null, viewer = null, initial = query;
   main.innerHTML = html`
@@ -796,13 +796,14 @@ function courseLenText(c, race, crow = "sh.len.km") {
   return m ? t(crow, { km: fmt(m / 1000, 1) }) : "";
 }
 
-async function managePage(main, id, data, race) {
+// `embed` (« Orga › Gérer », 2026-11-11): drawn in an event's « Analyse » tab, under the event's own head: no way back to a list
+async function managePage(main, id, data, race, embed = false) {
   const A = data.analysis, kind = A.kind;
   const runnersHref = `${kind === "race" ? "#/analyse-competition" : "#/analyse-club"}?id=${id}`;
   let sel = A.courses[0]?.n ?? null, stats = null, preview = null;
   main.innerHTML = html`
     <div class="sh-top">
-      <a class="btn btn-sm" href="${ORG_ROUTE}">← ${t("nav.orgAnalyses")}</a>
+      ${embed ? "" : html`<a class="btn btn-sm" href="${ORG_ROUTE}">← ${t("nav.orgAnalyses")}</a>`}
       <b class="sh-title">${A.title}</b><span class="muted" id="sh-m-facts"></span>
       <span class="tag" id="sh-m-state"></span><span class="muted sh-m-by" id="sh-m-by"></span>
       <a class="btn btn-sm" href="${runnersHref}" target="_blank" rel="opener" title="${t("sh.m.asRunner.hint")}" style="margin-left:auto">${t("sh.org.asRunner")} ↗</a></div>

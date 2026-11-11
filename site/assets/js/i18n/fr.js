@@ -113,6 +113,7 @@ export default {
   "nav.analysisRace.long": "Comparer avec les autres coureurs (Courses)", "nav.analysisClub.long": "Comparer avec les autres coureurs (Entrainement)",
   "nav.g.orga": "Organisation", "nav.orgAnalyses": "Analyses", "nav.orgResults": "Résultats",
   "nav.orgDirect": "Direct", "nav.orgTracer": "Tracer", "nav.orgTracer.hint": "Tracer les circuits d'une course ou d'un entraînement, comme avec Purple Pen", "nav.soon": "Bientôt", "nav.analysisPerso": "Analyse solo", "nav.analysisClub": "Comparer avec les autres coureurs",
+  "nav.orgManage": "Gérer", "nav.orgManage.hint": "Vos événements, course ou entraînement : départs, direct, résultats, analyse, équipe", "mt.orgManage": "Ses courses et entraînements : départs, direct, résultats, analyse, équipe",
   "nav.g.cn": "Classement", "nav.g.races": "Courses", "nav.coursesCn": "Courses", "nav.docs": "Documentation",
   "auth.menu": "Mon compte",
   "cl.myClub": "Mon club",

@@ -21,7 +21,7 @@ const MAX = 30 * 1024 * 1024;
 const EXT = /\.(xml|html?|pdf|zip|gz|txt)$/i;
 const KINDS = { iofxml: "IOF XML", oe_html: "OE / OS (HTML)", meos_html: "MeOS (HTML)" };
 
-export async function render(main, { query = {}, organiser = null } = {}) {
+export async function render(main, { query = {}, organiser = null, embedded = false } = {}) {
   const idx = await getProv("index.json");
   // a competition its organiser has just declared is not in the list yet (the next run adds it)
   const races = [...(idx?.races || []), ...(organiser && !(idx?.races || []).some((r) => r.key === organiser.key) ? [organiser] : [])];
@@ -30,7 +30,7 @@ export async function render(main, { query = {}, organiser = null } = {}) {
   let di = 0, ci = 0, publishing = query.publier === "1", sessionNote = "";
 
   main.innerHTML = html`
-    ${organiser ? html`<a class="back-link" href="#/orga-resultats?course=${encodeURIComponent(organiser.key)}">‹ ${organiser.name}</a>` : ""}
+    ${organiser && !embedded ? html`<a class="back-link" href="#/orga-resultats?course=${encodeURIComponent(organiser.key)}">‹ ${organiser.name}</a>` : ""}
     <div class="page-head"><div><h1>${t("dep.title")}</h1><p class="lede">${t("dep.lede")}</p></div></div>
     <ol class="dep-steps" id="dep-steps"></ol>
     <div id="dep-body"></div>

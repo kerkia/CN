@@ -934,3 +934,21 @@ export function bookingPush(lang, race, items, kind) {
     url: `/#/horaire?course=${encodeURIComponent(race.key)}`, tag: `book-${race.key}-${kind}`,
   };
 }
+
+// ---- « Orga › Gérer »: a team's news (owner, 2026-11-11), by push only -------------------------------------------------
+const EVENT = {
+  fr: { request: (w) => `${w} demande à rejoindre l'équipe`, accepted: "Vous faites partie de l'équipe", declined: "Votre demande n'a pas été acceptée",
+    approved: "Rattachement au calendrier confirmé", refused: "Rattachement au calendrier refusé" },
+  en: { request: (w) => `${w} asks to join the team`, accepted: "You are now on the team", declined: "Your request was not accepted",
+    approved: "Calendar link confirmed", refused: "Calendar link refused" },
+  de: { request: (w) => `${w} möchte dem Team beitreten`, accepted: "Du bist jetzt im Team", declined: "Deine Anfrage wurde nicht angenommen",
+    approved: "Verknüpfung mit dem Kalender bestätigt", refused: "Verknüpfung mit dem Kalender abgelehnt" },
+  es: { request: (w) => `${w} pide unirse al equipo`, accepted: "Ya formas parte del equipo", declined: "Tu solicitud no ha sido aceptada",
+    approved: "Vínculo con el calendario confirmado", refused: "Vínculo con el calendario rechazado" },
+};
+/** A push about an event to a member (request, approved, refused) or to the account that asked (accepted, declined). */
+export function eventPush(lang, kind, ev, who = "") {
+  const T = EVENT[L(lang)], line = T[kind];
+  return { title: ev.name, body: typeof line === "function" ? line(who) : line,
+    url: `/#/gerer?ev=${encodeURIComponent(ev.id)}${kind === "request" ? "&onglet=equipe" : ""}`, tag: `event-${ev.id}-${kind}` };
+}

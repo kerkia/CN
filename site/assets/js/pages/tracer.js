@@ -197,9 +197,19 @@ async function modal(opts) { return (await import("../tracer/dialogs.js")).modal
 const field = (label, input, hint = "") => `<label class="tr-field"><span>${label}</span>${input}${hint ? `<small>${hint}</small>` : ""}</label>`;
 const escA = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 
-/** The competitions one's club organises: the agenda's coming ones and « Résultats »' recent ones; and those the account
- *  declared (outside France: declare.js). */
+/** The competitions the account runs on Ozimut (« Orga › Gérer », 2026-11-11: its events' competitions, the agenda's place
+ *  beside them); before migration 0026 (the API answers 503), as before: the club's, and those the account declared. */
 async function clubRaces() {
+  const r = await fetch("api/events", { credentials: "same-origin", cache: "no-store" }).catch(() => null);
+  if (r?.ok) {
+    const evs = ((await r.json()).events || []).filter((e) => e.type !== "training" && e.race && e.linkState !== "pending");
+    let ag = null;
+    try { ag = await data.agenda(); } catch (e) { /* no agenda */ }
+    return evs.map((e) => {
+      const a = ag?.events?.find((x) => `a${x.id}` === e.race);
+      return { key: e.race, date: e.date, name: e.name, place: e.place || "", org: e.club || "", epr: e.epreuve || a?.epr || "", spec: a?.spec || "", ...(a ? { ll: where(a) } : {}) };
+    }).sort((a, b) => a.date.localeCompare(b.date));
+  }
   if (!current) await loadEvents().catch(() => {});
   const me = auth.session(), club = current?.club;
   const out = [];

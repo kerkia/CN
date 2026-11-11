@@ -22,7 +22,8 @@
 // the account that declared it; meta.json then carries the competition (`declared`), so the run can add it if it is new.
 
 import { adminEmails, allow, isAdmin, json, nowIso, withUser } from "../_lib/api.js";
-import { findRace, organises } from "../_lib/club.js";
+import { findRace, organises, raceOf } from "../_lib/club.js";
+import { claimed } from "../_lib/events.js";
 import { sendOrQueue } from "../_lib/mail.js";
 import { uploadMail } from "../_lib/templates.js";
 
@@ -62,8 +63,9 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
   if (meta.race) {
     raceKey = clean(meta.race, 40);
     const race = await findRace(env, request, raceKey);
-    // results: a race of the list or a declared one (the agenda's coming races take courses and start lists only)
-    if (!race || (!courses && !starts && /^a/.test(race.key))) return json({ error: "unknown race" }, 400);
+    // results: a race of the list or a declared one (the agenda's coming races take courses and start lists only; a race of the
+    // agenda that « Résultats » lists — its key « a<id> » too — takes results: 2026-11-11, they were all refused)
+    if (!race || (!courses && !starts && !race.declared && !(await raceOf(env, request, race.key)))) return json({ error: "unknown race" }, 400);
     label = `${race.name} (${race.date_iso})`;
     raceDay = race.date_iso;
     declared = race.declared || null;
@@ -83,6 +85,9 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
       if (!(await organises(env, request, user, race))) return json({ error: "not organiser" }, 403);
       organiser = true;
       label += " — par l'organisateur";
+    } else if (await claimed(env, request, race.key)) {
+      // a runner's file for a competition its organisers run on Ozimut (« Orga › Gérer », owner 2026-11-11): theirs alone
+      return json({ error: "claimed" }, 403);
     }
   } else {
     const r = meta.new_race || {};

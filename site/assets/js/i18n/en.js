@@ -166,6 +166,7 @@ export default {
   "nav.orgResults": "Results",
   "nav.orgDirect": "Live feed",
   "nav.orgTracer": "Course setting",
+  "nav.orgManage": "Manage", "nav.orgManage.hint": "Your events, race or training: starts, live results, results, analysis, team", "mt.orgManage": "Your races and trainings: starts, live results, results, analysis, team",
   "nav.orgTracer.hint": "Set the courses of a race or a training session, as with Purple Pen",
   "nav.soon": "Coming soon",
   "nav.analysisPerso": "Solo analysis",
