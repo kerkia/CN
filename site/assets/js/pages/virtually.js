@@ -9,7 +9,10 @@
 // - Analyse: one's own run replayed on the map, its legs (time lost as « Analyse de course » counts it, trace/legs.js), the
 //   pace under the map (trace/pacestrip.js), other runners of the same circuit beside it. A virtual run is a perfect trace
 //   in the map's frame: no calibration.
-// The tab in the address (?onglet=resultats|classement|analyse), the map and course too (?carte=, ?circuit=, ?run=).
+// - Orga: the organisers' events (pages/virtuallyorga.js): a training or a competition made from their own OCAD map (an
+//   administrator also from the LiDAR alone), built on GitHub; the published ones are offered in Entraînement beside the maps,
+//   their runs kept by api/virtual/events (a competition once per account and course) and read here as the maps' runs.
+// The tab in the address (?onglet=resultats|classement|analyse|orga), the map and course too (?carte=, ?circuit=, ?run=).
 
 import { html, raw, $, $$, fmt, fmtDate, displayName } from "../util.js";
 import { t, tn, loadArea } from "../i18n.js";
@@ -27,8 +30,9 @@ export const clock = (s) => {
   return (h ? `${h}:${String(m).padStart(2, "0")}` : `${m}`) + `:${String(x).padStart(2, "0")}`;
 };
 const gapClock = (s) => (s == null || Math.round(s) <= 0 ? "" : `+${clock(s)}`);
-/** A map's name: its catalogue entry, else its id. */
-const mapName = (id) => { const k = `vt.map.${id}`, v = t(k); return v === k ? id : v; };
+const EVENTS = new Map();                 // the events' records, by id (an event is played as a map)
+/** A map's name: an event's own, its catalogue entry, else its id. */
+const mapName = (id) => { if (EVENTS.has(id)) return EVENTS.get(id).name; const k = `vt.map.${id}`, v = t(k); return v === k ? id : v; };
 /** A course's name: its level's, else its own. */
 const courseName = (c) => (LEVELS.includes(c.id) ? t(`vt.lvl.${c.id}`) : c.name || c.id);
 const swatch = (id) => html`<span class="vtp-sw" style="background:${LEVEL_COLOUR[id] || "#888"}"></span>`;
@@ -41,7 +45,14 @@ async function getJson(url, opts) {
   if (!r.ok) throw Object.assign(new Error(`${url}: ${r.status}`), { status: r.status });
   return r.json();
 }
-const races = async () => (RACES ||= (await getJson(`${API}races`)).races);
+/** The maps, then the published events (as maps: { id, event, race: { courses, … } }). */
+const races = async () => (RACES ||= (async () => {
+  const [maps, evs] = await Promise.all([getJson(`${API}races`).then((d) => d.races), getJson(`${API}events`).then((d) => d.events).catch(() => [])]);
+  const list = evs.filter((e) => e.published && e.courses.length);
+  for (const e of list) EVENTS.set(e.id, e);
+  return maps.concat(list.map((e) => ({ id: e.id, event: e, thumb: e.thumb,
+    race: { id: e.id, scale: e.scale, std: e.std, source: e.source === "lidar" ? "lidaronly" : "lidar", lonlat: e.lonlat, courses: e.courses } })));
+})());
 async function runsOf(race) {
   if (!runsCache.has(race)) runsCache.set(race, getJson(`${API}runs?race=${encodeURIComponent(race)}`).then((d) => d.runs.map((r) => ({ ...r, race }))));
   return runsCache.get(race);
@@ -66,14 +77,15 @@ async function mySeed() {
 export async function render(main, { query }) {
   await loadArea("virtually");
   if (location.hash.startsWith("#/jeux")) history.replaceState(null, "", "#/virtually");     // « Jeux »'s tab of before
-  const tabs = [["entrainement", t("vt.tab.training")], ["resultats", t("vt.tab.results")], ["classement", t("vt.tab.ranking")], ["analyse", t("vt.tab.analysis")]];
+  const tabs = [["entrainement", t("vt.tab.training")], ["resultats", t("vt.tab.results")], ["classement", t("vt.tab.ranking")], ["analyse", t("vt.tab.analysis")],
+    ...(auth.session()?.orga !== false ? [["orga", t("vt.tab.orga")]] : [])];
   const tab = tabFrom(tabs, query);
   const sel = { race: query.carte || null, course: query.circuit || null, run: query.run || null };
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("nav.virtually")}</h1><p class="lede">${t("vtp.lede")}</p></div></div>
     ${pageTabs(tabs, tab)}
     ${tabs.map(([k]) => html`<div data-panel="${k}" class="vtp-panel" hidden></div>`)}`;
-  let game = null, drawn = new Set(), stopAn = null;
+  let game = null, drawn = new Set(), stopAn = null, stopOrga = null, trainingPlay = null;
   const panel = (k) => $(`[data-panel="${k}"]`, main);
   const setQuery = (q) => {
     const [path, qs] = location.hash.split("?"), p = new URLSearchParams(qs || "");
@@ -87,13 +99,21 @@ export async function render(main, { query }) {
       if (k === "entrainement") await training(panel(k));
       else if (k === "resultats") await results(panel(k));
       else if (k === "classement") await ranking(panel(k));
+      else if (k === "orga") { stopOrga?.(); stopOrga = await (await import("./virtuallyorga.js")).renderOrga(panel(k), { onPlay: (ev, c) => tryEvent(ev, c) }); }
       else stopAn = await analysis(panel(k));
     } catch (e) {
       console.error(e);
       panel(k).innerHTML = html`<div class="card"><div class="empty">${t(e.status === 403 ? "vt.forbidden" : "vt.error")}<br><span class="muted">${String(e.message || e)}</span></div></div>`;
     }
   };
-  const show = bindPageTabs(main, tabs, tab, (k) => { if (!drawn.has(k) || k !== "entrainement") { drawn.add(k); draw(k); } });
+  const show = bindPageTabs(main, tabs, tab, (k) => { if (!drawn.has(k) || (k !== "entrainement" && k !== "orga")) { drawn.add(k); draw(k); } });
+  /** The organisers try their event (the Orga tab) in the training tab: their own runs are trainings. */
+  const tryEvent = async (ev, course) => {
+    EVENTS.set(ev.id, ev); RACES = null;
+    game?.stop(); game = null; show("entrainement");
+    if (!trainingPlay) { drawn.add("entrainement"); await draw("entrainement"); }
+    await trainingPlay({ id: ev.id, event: ev, race: { courses: ev.courses } }, course);
+  };
   const goTab = (k) => { game?.stop(); game = null; show(k); };
 
   // ---- Entraînement ------------------------------------------------------------------------------------------------------
@@ -108,13 +128,16 @@ export async function render(main, { query }) {
       el.innerHTML = html`<p class="muted vtp-intro">${t("vt.tr.intro")}</p>
         <h2 class="vtp-h">${t("vt.tr.maps")}</h2>
         <div class="vtp-maps">${list.map((r) => html`<button type="button" class="vtp-map card" data-race="${r.id}" aria-pressed="${r.id === sel.race}">
-          ${r.thumb ? html`<img src="${API}${r.id}/thumb.webp" alt="" loading="lazy">` : html`<span class="vtp-nothumb"></span>`}
+          ${r.thumb ? html`<img src="${r.event ? `${API}events/${r.id}/pkg/` : `${API}${r.id}/`}thumb.webp" alt="" loading="lazy">` : html`<span class="vtp-nothumb"></span>`}
           <b>${mapName(r.id)}</b><span class="muted">${t("vt.tr.mapLine", { scale: fmt(r.race.scale), std: r.race.std || "", n: r.race.courses.length })}</span>
+          ${r.event ? html`<span><span class="tag ${r.event.type === "competition" ? "vo-comp" : ""}">${t(`vo.type.${r.event.type}`)}</span> <span class="muted">${r.event.org}</span></span>` : ""}
           <span class="muted">${t(`vt.src.${r.race.source}`)}</span></button>`)}</div>
         ${race ? html`<h2 class="vtp-h">${t("vt.tr.courses", { map: mapName(race.id) })}</h2>
-          <div class="vtp-courses">${courses.map((c) => html`<button type="button" class="vtp-course" data-course="${c.id}" aria-pressed="${c.id === sel.course}">
+          ${race.event?.type === "competition" ? html`<p class="muted">${t(race.event.open ? "vo.compRule" : "vo.compClosed")}</p>` : ""}
+          <div class="vtp-courses">${courses.map((c) => html`<button type="button" class="vtp-course" data-course="${c.id}" aria-pressed="${c.id === sel.course}"
+            ${raw(race.event?.type === "competition" && !race.event.mine && (race.event.played?.includes(c.id) || !race.event.open) ? "disabled" : "")}>
             ${swatch(c.id)}<b>${courseName(c)}</b><span>${t("vt.tr.courseLine", { km: fmt(c.length / 1000, 1), climb: fmt(c.climb || 0), n: c.controls.length - 2 })}</span>
-            <span class="muted">${t(`vt.lvlHint.${LEVELS.includes(c.id) ? c.id : "other"}`)}</span></button>`)}</div>` : ""}
+            <span class="muted">${race.event?.played?.includes(c.id) ? t("vo.played") : t(`vt.lvlHint.${LEVELS.includes(c.id) ? c.id : "other"}`)}</span></button>`)}</div>` : ""}
         <div class="vtp-go"><button type="button" class="btn btn-primary" id="vtp-go" ${raw(race && sel.course ? "" : "disabled")}>${t("vt.tr.start")}</button>
           <span class="muted">${!race ? t("vt.tr.needMap") : !sel.course ? t("vt.tr.needCourse") : t("vt.tr.ready", { course: courseName(courses.find((c) => c.id === sel.course)), map: mapName(race.id) })}</span></div>`;
       $$(".vtp-map", el).forEach((b) => b.addEventListener("click", () => { sel.race = b.dataset.race; sel.course = null; setQuery({ carte: sel.race, circuit: null }); drawChooser(); }));
@@ -126,14 +149,18 @@ export async function render(main, { query }) {
         <b>${mapName(race.id)} · ${courseName(course)}</b></p><div class="g-root card vtp-game"><div class="card-body"></div></div>`;
       const seed = mySeed();
       const { mount } = await import("../games/virtually.js");
+      const ev = race.event;
       game = mount($(".vtp-game .card-body", el), race.id, {
-        course: course.id, title: `${mapName(race.id)} · ${courseName(course)}`,
+        course: course.id, title: `${mapName(race.id)} · ${courseName(course)}`, base: ev ? `/api/virtual/events/${ev.id}/pkg/` : undefined,
         onFinish: async (run) => {
           const note = () => $("#vt-saved", el);
           try {
-            const r = await fetch(`${API}runs`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ race: race.id, kind: "training", event: "", ...run, seed: await seed }) });
+            // an event's runs go to its own address, which decides their kind (a competition: once per account and course)
+            const r = await fetch(ev ? `/api/virtual/events/${ev.id}/runs` : `${API}runs`, { method: "POST", credentials: "same-origin",
+              headers: { "Content-Type": "application/json" }, body: JSON.stringify({ race: race.id, kind: "training", event: "", ...run, seed: await seed }) });
+            if (r.status === 409) { if (note()) note().textContent = t("vo.already"); return; }
             if (!r.ok) throw new Error(String(r.status));
+            if (ev?.type === "competition" && !ev.mine) { ev.played = [...(ev.played || []), course.id]; RACES = null; }
             const saved = await r.json();
             runsCache.delete(race.id); sel.run = saved.id; drawn.delete("resultats"); drawn.delete("classement"); drawn.delete("analyse");
             if (note()) note().textContent = t("vt.saved");
@@ -143,6 +170,7 @@ export async function render(main, { query }) {
       });
       $("#vtp-back", el).addEventListener("click", () => { game?.stop(); game = null; drawChooser(); });
     };
+    trainingPlay = play;
     drawChooser();
   }
 
@@ -238,6 +266,6 @@ ${ci.kind === "training" ? html` · <span class="tag">${t("vt.res.trainingTag")}
     return mod.drawAnalysis(el, { run, race, course, all, mineRuns, list, mapName, courseName, onRun: (id) => { sel.run = id; setQuery({ run: id }); draw("analyse"); } });
   }
 
-  return { title: t("nav.virtually"), cleanup: () => { game?.stop(); stopAn?.(); } };
+  return { title: t("nav.virtually"), cleanup: () => { game?.stop(); stopAn?.(); stopOrga?.(); } };
 }
 

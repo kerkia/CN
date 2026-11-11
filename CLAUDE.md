@@ -933,8 +933,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   account's number and `SESSION_SECRET` (`_lib/virtual.js` `runnerHash`), never the number; GET `runs?race=`, GET
   `runs/<race>/<run>` (with the route), POST `runs`, DELETE one's own; account deletion removes them. **Events** (owner, 2026-11-11):
   a run is a `training` (played as often as one likes; a map's own six courses are trainings) or a `competition` of an event
-  (played once: the server refuses a second run of one event and course, 409); events themselves and their Orga page are another
-  session's work. **The « Indice Ozimut virtuel »** (`games/vindex.js`, explained in the tabs): the Ozimut method on the runs —
+  (played once: the server refuses a second run of one event and course, 409); events and their Orga tab below. **The « Indice Ozimut virtuel »** (`games/vindex.js`, explained in the tabs): the Ozimut method on the runs —
   only competitions count (a run's time includes « Ma position »'s penalties), a runner's first run of a circuit; a circuit's value the mean of (index ×
   time) over its fastest 90 % (`cn.circuitValue`, from one runner on); a score = value ÷ time; the index the best 60 % of 12 months'
   scores in 6 places (`cn.topWeighted`), 2 counted runs; before that the seed — the runner's own Ozimut forest index at their first
@@ -989,6 +988,59 @@ Every multiple-choice game was played through to its score page at phone size, w
   anywhere), Street View (not « with any map »), Cesium ion's Google and Bing, Apple Look Around; Panoramax's photos are CC BY-SA
   (facts read from them may be used freely; crops as textures would carry the share-alike). If Virtually opens to the public, the
   OSM-derived layers of a package must be offered under the ODbL.
+  **Events and the « Orga » tab** (owner, 2026-11-11: « events can be trainings, played many times by a same user and open to all,
+  or competitions, only opened to registered users and played only once; rankings are computed from competitions only »):
+  `pages/virtuallyorga.js` (`renderOrga`, the page's fifth tab, to accounts with Orga) — « Mes événements », « Nouvel événement »
+  (name; type training | competition, a competition's dates `from`/`to`; the map: « Ma carte OCAD », or « LiDAR seul » for
+  administrators — a square of 1-3 km round a latitude, longitude; the courses: six proposed by `course.py`, or « Mes propres
+  circuits », the map's own OCAD course setting or an IOF XML / OCAD course-setting file sent apart), an event's page (its files sent,
+  « Construire la course » with its progress — `waitbar.js`, the stage and share the build writes, every 5 s —, « Publier », « Retirer
+  la publication », « Supprimer » through `askbox.confirmBox`, its courses to try — the organisers' own runs are trainings —, its
+  settings). The published events are offered in « Entraînement » beside the maps (`races()` adds them as maps, `EVENTS`), their
+  package read from `/api/virtual/events/<id>/pkg/` (`mount`'s `base`), a competition's course already run greyed out (« Déjà
+  couru ») and none outside its dates. **The server**: `functions/api/virtual/events/[[path]].js` (its header lists the routes; more
+  specific than `api/virtual/[[path]]`, so Pages routes `/api/virtual/events/*` to it): R2 `virtual-events/<id>.json` (the event, ids
+  `e` + 9 base36; custom metadata `by`, `t`, `s`, `p`), `virtual-events/<id>/map.ocd|courses.ocd|courses.xml` (the organiser's files,
+  40 MB / 5 MB, never served), `virtual-ev/<id>/` (the package: as `virtual/<race>/`, `map.webp` instead of `map.ocd` for a LiDAR
+  race, `thumb.webp`), `virtual-build/<id>.json` (a build asked for, its progress); the runs as the maps' runs,
+  `virtual-runs/<event id>/<course>/<hash>-<time>.json` with `k` and `e` (so « Résultats », « Classement » and `vindex` read them as
+  they are). Access on the server: a published, built training to everyone — visitors without an account too (the gate's `GUEST`
+  lets the list, an event, its package and its results through; nothing kept of their runs) —, a competition to accounts only,
+  between its dates; its run refused a second time (409 « already run ») per account and course; only its organiser (or an
+  administrator) changes, builds or deletes it; 20 events an account; « LiDAR seul » administrators only. Account deletion removes an
+  organiser's events with their files, package and runs. The privacy page's « Virtually » (11 November 2026). **The build**
+  (`.github/workflows/virtually.yml`, dispatched by « Construire » with `GH_DISPATCH_TOKEN`, rounds until no request waits;
+  `tools/virtually/ci.py`): the request's stage and share written back as it goes (files, lidar, map, build, courses, upload); an OCAD
+  map through `dump.mjs`, then **in France IGN's LiDAR HD under it** (mapgen's catalogue, the tiles the map touches, 12 at most,
+  kept for the run's other builds) and `build.py`; the courses by `coursefile.mjs` (the Tracer's `iofin.js` `fromOcad` / `readIof`;
+  score courses and variations' other branches left out) and `filecourses.py` (world frame, nearest feature within 10 m for the
+  description line), else `course.py <id> 7 40`; the package to `virtual-ev/<id>/`, the event marked ready (its courses in full in
+  its record) or failed (the step and its last line). `BUCKET=file://<folder>` runs it all on the PC against a folder standing for R2.
+  Measured 2026-11-11 on the PC: Desquinemarre (the club's OCAD, 12 IGN tiles, its own 4 courses) — LiDAR ground on 100 % of the
+  cells, 30 949 trees, the map's relief against IGN's: 73 % of contour lines at their exact level, RMS 1.77 m (coarse relief 3.27 m);
+  build.py 12 min, most of it reading the point clouds.
+  **Races from the LiDAR alone** (owner, 2026-11-11: « not as close to reality as possible, but as close to a good map as possible »;
+  administrators; the study in the session's notes, `virtually-lidar-only.md`): `tools/virtually/lidarrace.py <race> <lat> <lon>
+  [size]` — mapgen's tiles (karttapullautin + OpenStreetMap, forest style) for the square, then build.py's inputs made from the same
+  sources, so that the forest one runs through is the map one reads: `cls_base.png` from karttapullautin's vegetation raster
+  (`.vege.png`: white forest, its greens slow / walk / fight, its yellow rough open), OpenStreetMap's ways and areas as ISOM 2017
+  objects (roads, tracks, paths, streams, walls, fences, buildings, water, paved and open ground), karttapullautin's cliff strokes
+  gathered by contact into boulders (a small group one, an outcrop one every 3 m: Fontainebleau's sandstone), its dot knolls and
+  depressions; `map.json` carries `frame` (mm), `epsg`, `lidarOnly`; build.py then takes the LiDAR's ground and trees and no map
+  relief; the player's map is the generated map's image (`map.webp`, 0.5 m a pixel; race.json `map` "webp", `mapPx`; `loadRace` →
+  `mapImage`, `drawMap`). Measured on Trois Pignons (Fontainebleau, 2 × 2 km, 2026-11-11, PC): mapgen 515 s (karttapullautin 278 s;
+  the 1 GB of point clouds 25 min from IGN at the PC's pace), lidarrace 40 s, build.py 234 s, course.py 200 s; 44 747 trees, 9 727
+  boulders, a package of 11 MB; 52-56 fps at 1400 × 860.
+  **The forest's look** (owner, 2026-11-11: « a lot more realistic »; `games/vforest.js`, everything procedural — canvases and
+  geometry made in the browser, no image or model from elsewhere): crowns of leaf cards (two broadleaf variants, a conifer of
+  drooping needle whorls), each card's normals bent out of the crown so that it is lit as one mass, both faces with the same normals
+  (`twoSided`: a material's DoubleSide darkened half the cards); bark; grass tufts in open ground, ferns in the forest, swaying in
+  the wind (`sway`: a vertex shader by the instance's position); fallen logs; stones with lichen; the ground's litter at two scales
+  and its normal map; the canopy's shade in the ground's vertex colours (round each tree, deeper by the trunk); a sky dome (the haze's
+  colour at the horizon, blue above, the sun's disc and glow) and exponential fog; the lights tuned (`atmosphere`). **Trees far away
+  are impostors**: each kind rendered once to a texture (`impostor`) and drawn as two crossed cards beyond 95 m (`DETAIL`), the low
+  vegetation only within 85 m, shadows from the chunks within 80 m. Measured in headless Edge on Granites, the same PC and moment:
+  1400 × 860 23 → 34 fps, a phone's 390 × 844 41 → 49 fps.
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
   open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only

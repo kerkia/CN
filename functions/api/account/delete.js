@@ -192,6 +192,22 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
       } while (cursor);
     }
   } catch (e) { /* the account goes all the same */ }
+  // « Virtually »'s events the account organised (api/virtual/events): their map, package, build request and every run go
+  try {
+    if (env.BUCKET) {
+      const evs = await env.BUCKET.list({ prefix: "virtual-events/", include: ["customMetadata"] });
+      for (const o of evs.objects) {
+        const m = /^virtual-events\/(e[a-z0-9]{9})\.json$/.exec(o.key);
+        if (!m || String(o.customMetadata?.by) !== String(user.id)) continue;
+        const keys = [o.key, `virtual-build/${m[1]}.json`];
+        for (const p of [`virtual-events/${m[1]}/`, `virtual-ev/${m[1]}/`, `virtual-runs/${m[1]}/`]) {
+          let c;
+          do { const r = await env.BUCKET.list({ prefix: p, cursor: c, limit: 1000 }); keys.push(...r.objects.map((x) => x.key)); c = r.truncated ? r.cursor : undefined; } while (c);
+        }
+        for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
+      }
+    }
+  } catch (e) { /* the account goes all the same */ }
   // « Virtually »'s runs (api/virtual: virtual-runs/<race>/<course>/<hash>-<time>.json)
   try {
     if (env.BUCKET) {

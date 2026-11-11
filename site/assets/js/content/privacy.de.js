@@ -165,6 +165,15 @@ export const body = (SITE, { world = false } = {}) => `
         Namen deines Kontos gespeichert, wenn es eines deiner 20 besten für dieses Spiel ist, und den anderen Konten gezeigt, wenn es
         zu den 20 besten aller gehört. Nur das Ergebnis, seine Einstellungen und das Datum; von den Spielen eines Besuchers ohne Konto
         wird nichts gespeichert. Diese Ergebnisse werden mit deinem Konto gelöscht.</p>
+      <h2 style="font-size:16px">Virtually</h2>
+      <p>Jedes Rennen, das du in „Virtually“ beendest, wird unter dem Namen deines Kontos gespeichert: seine Zeit, seine
+        Zwischenzeiten, die gelaufene Strecke und sein Weg durch den virtuellen Wald, den anderen Konten in den Ergebnissen, der
+        Rangliste und der Analyse dieser Bahn gezeigt; von einem Rennen zum nächsten wirst du an einem Fingerabdruck deines Kontos
+        erkannt, nie an seiner Nummer. Von den Rennen eines Besuchers ohne Konto wird nichts gespeichert. Ein Organisator, der eine
+        Veranstaltung erstellt, sendet seine OCAD-Karte (und, wenn er will, seine Bahnen): sie wird im Speicher der Website
+        aufbewahrt, nur den Läufern der Veranstaltung gezeigt, im Spiel, sobald er sie veröffentlicht hat, und dient dazu, das Rennen
+        auf GitHub zu bauen, wo sie nicht aufbewahrt wird. Diese Rennen und die Veranstaltungen mit ihren Karten und Ergebnissen werden
+        mit deinem Konto gelöscht.</p>
       <h2 style="font-size:16px">Fragen an die KI</h2>
       <p>Auf der Seite „KI“ wird deine Frage an das Sprachmodell gesendet, das die Abfrage schreibt, zusammen mit der Beschreibung der Tabellen der
         Website, dem heutigen Datum, deiner Lizenznummer sowie der gewählten Methode und Disziplin: standardmäßig das Modell von Ozimut, ausgeführt
@@ -264,5 +273,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
         stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
-      <p class="muted">Letzte Aktualisierung: 10. November 2026.</p>
+      <p class="muted">Letzte Aktualisierung: 11. November 2026.</p>
 `;

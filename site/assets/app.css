@@ -4291,6 +4291,33 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .vtp-course[aria-pressed="true"] { border-color: var(--flag); background: color-mix(in srgb, var(--flag) 9%, var(--surface)); }
 .vtp-sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid rgba(0, 0, 0, 0.25); vertical-align: -1px; }
 .vtp-go { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 16px 0 6px; }
+/* « Virtually » › Orga (pages/virtuallyorga.js): the organisers' events */
+.vtp-course:disabled { opacity: 0.55; cursor: not-allowed; }
+.vo-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.vo-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.vo-ev { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px 12px; text-align: left; font: inherit; color: inherit; cursor: pointer; border: 2px solid transparent; }
+.vo-ev:hover { border-color: var(--border-strong); }
+.vo-ev .muted { font-size: 0.85rem; }
+.tag.vo-comp { background: color-mix(in srgb, var(--flag) 18%, var(--surface)); color: var(--text); }
+.vo-form { display: flex; flex-direction: column; gap: 10px; max-width: 760px; }
+.vo-form h2 { margin: 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.vo-form h3 { margin: 10px 0 0; font-size: 1rem; }
+.vo-form > label, .vo-dates label, .vo-lidar label { display: flex; flex-direction: column; gap: 3px; font-weight: 600; }
+.vo-form input[type=text], .vo-form select, .vo-form input[type=date] { font: inherit; font-weight: 400; max-width: 420px; }
+.vo-form fieldset { border: 1px solid var(--border); border-radius: 8px; padding: 6px 12px 10px; display: flex; flex-direction: column; gap: 6px; }
+.vo-form legend { font-weight: 600; padding: 0 4px; }
+.vo-radio { display: block; font-weight: 400; }
+.vo-radio .muted { display: block; margin-left: 24px; font-size: 0.85rem; }
+.vo-dates, .vo-lidar { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.vo-lidar p { flex-basis: 100%; margin: 0; }
+.vo-files { display: flex; flex-direction: column; gap: 6px; }
+.vo-file { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(120px, auto) auto; gap: 10px; align-items: center; }
+.vo-file label.btn { cursor: pointer; }
+.vo-prog { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.vo-prog progress { width: 100%; max-width: 520px; }
+.vo-err, .vo-errline { color: var(--bad, #c0392b); margin: 0; }
+.vo-actions { margin-top: 6px; }
+@media (max-width: 640px) { .vo-file { grid-template-columns: 1fr auto; } .vo-file > span:first-child { grid-column: 1 / -1; } }
 .vtp-back { display: flex; align-items: center; gap: 10px; margin: 4px 0 8px; }
 .vtp-pick { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 4px 0 6px; }
 .vtp-cline { margin: 6px 0 8px; }

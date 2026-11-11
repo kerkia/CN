@@ -28,7 +28,8 @@ export const coursesOf = (race) => race.courses || (race.course ? [{ id: "course
  * Mount the game for map `raceId` in `root` (Coach › Virtually's Training tab); returns { stop }.
  * opts: course (its id), title (the course's name as the page writes it), onFinish(run) once the finish is punched —
  * run { course, t (the race time, « Ma position »'s penalties included), sp (cumulative splits, s, the same), d (m run),
- * route [[t, x, z]] (the clock's time) } —, onNav("results" | "analysis") the finish card's buttons.
+ * route [[t, x, z]] (the clock's time) } —, onNav("results" | "analysis") the finish card's buttons; base the package's address
+ * when it is not a built-in map's (an event's: /api/virtual/events/<id>/pkg/).
  */
 export function mount(root, raceId, opts = {}) {
   let stopped = false, raf = 0, cleanup = [];
@@ -36,7 +37,7 @@ export function mount(root, raceId, opts = {}) {
   const say = (k, v) => { const m = $("#vt-msg", root); if (m) m.textContent = t(k, v); };
   (async () => {
     try {
-      const [THREE, data] = await Promise.all([import(THREE_URL), loadRace(`${BASE}${raceId}/`)]);
+      const [THREE, data] = await Promise.all([import(THREE_URL), loadRace(opts.base || `${BASE}${raceId}/`)]);
       if (stopped) return;
       say("vt.drawingMap");
       const mapImg = await drawMap(data);
@@ -132,7 +133,7 @@ export function mount(root, raceId, opts = {}) {
     }
     function overprint(g) { drawOverprint(g, course, mPer, ppm); }
     function describe() {
-      $("#vt-desc", root).innerHTML = html`<table><tbody>${course.slice(1, -1).map((c, i) => html`<tr class="${i + 1 < st.next ? "done" : i + 1 === st.next ? "cur" : ""}"><td>${i + 1}</td><td>${c.code}</td><td>${t(`vt.f.${c.feature}`)}</td></tr>`)}</tbody></table>`;
+      $("#vt-desc", root).innerHTML = html`<table><tbody>${course.slice(1, -1).map((c, i) => html`<tr class="${i + 1 < st.next ? "done" : i + 1 === st.next ? "cur" : ""}"><td>${i + 1}</td><td>${c.code}</td><td>${c.feature ? t(`vt.f.${c.feature}`) : ""}</td></tr>`)}</tbody></table>`;
     }
     describe();
     // sizes: small and large in the bottom left corner, the compass beside it (app.css), hidden, and « full » at the finish
@@ -408,6 +409,11 @@ export function drawOverprint(g, course, mPer, mm) {
 /** The orienteering map, drawn once from the OCAD file over the world's rectangle: { canvas, ppm }. The file's own course
  *  overprint (7xx symbols but the out-of-bounds 709) is left out; the game draws its course. */
 export async function drawMap(data) {
+  if (data.mapImage) {                     // the generated map (a race from the LiDAR alone): its image over the world, mapPx m a pixel
+    const c = document.createElement("canvas"); c.width = data.mapImage.width; c.height = data.mapImage.height;
+    c.getContext("2d").drawImage(data.mapImage, 0, 0);
+    return { canvas: c, ppm: data.race.k / data.race.mapPx };
+  }
   const [{ readOcad }, { CanvasTarget }, { Matrix }] = await Promise.all([import("../tracer/vmap/ocad.js"), import("../tracer/vmap/target.js"), import("../tracer/vmap/geom.js")]);
   const { map } = readOcad(data.ocd);
   await map.ready;

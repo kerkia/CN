@@ -36,7 +36,7 @@ const server = http.createServer(async (req, res) => {
   catch { res.writeHead(404); res.end(); }
 });
 await new Promise((r) => server.listen(0, "127.0.0.1", r));
-const browser = await puppeteer.launch({ executablePath: "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe", headless: true, args: ["--no-first-run", "--disable-extensions"] });
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME || "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe", headless: true, args: ["--no-first-run", "--disable-extensions", "--no-sandbox"] });
 const page = await browser.newPage();
 page.on("pageerror", (e) => console.log("page error:", e.message));
 await page.goto(`http://127.0.0.1:${server.address().port}/`);

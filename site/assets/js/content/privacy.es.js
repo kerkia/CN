@@ -160,6 +160,14 @@ export const body = (SITE, { world = false } = {}) => `
         guarda con el nombre de tu cuenta si es uno de tus 20 mejores en ese juego, y se muestra a las demás cuentas si está entre los
         20 mejores de todos. Solo el resultado, sus ajustes y la fecha; no se guarda nada de las partidas de un visitante sin cuenta.
         Estos resultados se borran con tu cuenta.</p>
+      <h2 style="font-size:16px">Virtually</h2>
+      <p>Cada carrera que terminas en «Virtually» se guarda con el nombre de tu cuenta: su tiempo, sus tiempos parciales, la
+        distancia recorrida y su recorrido por el bosque virtual, mostrados a las demás cuentas en los resultados, la clasificación y el
+        análisis de ese recorrido; se te reconoce de una carrera a otra por una huella de tu cuenta, nunca por su número. No se guarda
+        nada de las carreras de un visitante sin cuenta. Un organizador que crea un evento envía su mapa OCAD (y, si quiere, sus
+        recorridos): se guarda en el almacenamiento del sitio, solo se muestra a los corredores del evento, en el juego, una vez que lo
+        ha publicado, y sirve para construir la carrera en GitHub, donde no se conserva. Estas carreras, y los eventos con sus mapas y
+        resultados, se borran con tu cuenta.</p>
       <h2 style="font-size:16px">Preguntas a la IA</h2>
       <p>En la página «IA», tu pregunta se envía al modelo de lenguaje que escribe la consulta, junto con la descripción de las tablas del
         sitio, la fecha del día, tu número de licencia y el método y la disciplina elegidos: por defecto el modelo de Ozimut, ejecutado
@@ -259,5 +267,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Créditos:</b> los símbolos y los textos de las descripciones de control (Coach › Descripciones de control, el trazado de recorridos)
         proceden de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         bajo <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licencia BSD</a>.</p>
-      <p class="muted">Última actualización: 10 de noviembre de 2026.</p>
+      <p class="muted">Última actualización: 11 de noviembre de 2026.</p>
 `;
