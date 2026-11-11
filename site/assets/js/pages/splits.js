@@ -64,6 +64,9 @@ const TOLS = [5, 10, 15, 20];               // seconds apart at both controls: "
 const TIMED = ["table", "gaps"];          // the views « Sans temps perdu » applies to
 const GRAPHS = ["gap", "pos", "legpos"];
 const ERR_DEFAULT = { pct: 20, s: 10 };
+// the finish's cumulative time: a finisher's, and a mispunched runner's when the list gives it — their legs up to the
+// finish are shown, never their place or total (owner, 2026-11-11)
+const finishAt = (r) => ((r.status === "ok" || r.status === "mp") && r.time_s != null ? r.time_s : null);
 // references of the gap chart; « Sel »: computed over the runners compared only (comparing runners far from the
 // lead against the overall best squeezes their lines together)
 const REFS = ["legs", "legsSel", "cum", "cumSel", "legs5", "legs25", "legs50", "legs100", "winner", "runner"];
@@ -278,7 +281,7 @@ export async function render(main, { query = {}, embed = null } = {}) {
     const codes = k.controls || Array.from({ length: n }, (_, i) => String(i + 1));
     // cumulative times with the finish as the last "control"; legs between them
     const R = k.runners.filter((r) => r.splits).map((r) => {
-      const cum = [...r.splits.slice(0, n), r.status === "ok" ? r.time_s : null];
+      const cum = [...r.splits.slice(0, n), finishAt(r)];
       const legs = cum.map((c, i) => (c != null && (i === 0 || cum[i - 1] != null) ? c - (i ? cum[i - 1] : 0) : null));
       return { r, cum, legs };
     });
@@ -585,7 +588,7 @@ export async function render(main, { query = {}, embed = null } = {}) {
         const m = kc.controls?.length || Math.max(0, ...kc.runners.map((r) => r.splits?.length || 0));
         for (const r of kc.runners) {
           if (r.start_s == null || !r.splits) continue;
-          const cum = [...r.splits.slice(0, m), r.status === "ok" ? r.time_s : null];
+          const cum = [...r.splits.slice(0, m), finishAt(r)];
           for (let j = 1; j < m; j++) {                  // control to control: neither the start nor the finish
             if (cum[j - 1] == null || cum[j] == null) continue;
             const key = legKey(kc, j);

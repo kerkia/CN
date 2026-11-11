@@ -613,7 +613,8 @@ async function splitsDoc({ A, id, traces }) {
       const splits = mids.map((j) => (passes[j] != null ? Math.round(passes[j] - start) : null));
       const fin = fi >= 0 && passes[fi] != null ? Math.round(passes[fi] - start) : null;
       const ok = fin != null && splits.every((v) => v != null);
-      runners.push({ name: rec.name, lic: rec.lic || null, club: "", status: ok ? "ok" : fin == null ? "dnf" : "mp", time_s: ok ? fin : null,
+      // a mispunched runner keeps their finish time (no place): their legs up to the finish are still shown (owner, 2026-11-11)
+      runners.push({ name: rec.name, lic: rec.lic || null, club: "", status: ok ? "ok" : fin == null ? "dnf" : "mp", time_s: fin,
         splits, start_s: parisSec(tr.ms0 / 1000 + start) });
     }
     if (!runners.length) continue;
