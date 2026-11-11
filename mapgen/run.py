@@ -191,13 +191,24 @@ def fetch(http: httpx.Client, url: str, dest: Path, pace: Pace) -> Path:
     """A file into dest (kept: a second run reuses it), streamed."""
     if dest.exists() and dest.stat().st_size > 0:
         return dest
-    pace.wait()
     part = dest.with_suffix(dest.suffix + ".part")
-    with http.stream("GET", url, timeout=600, follow_redirects=True) as r:
-        r.raise_for_status()
-        with open(part, "wb") as f:
-            for chunk in r.iter_bytes(1 << 20):
-                f.write(chunk)
+    # IGN's servers answer 502/503 now and then, or drop a connection: tried again after 15 s, 45 s, 2 and 4 min
+    # (2026-11-11: a 502 on the MNT stopped a whole Virtually build)
+    for attempt, wait in enumerate((15, 45, 120, 240, None)):
+        pace.wait()
+        try:
+            with http.stream("GET", url, timeout=600, follow_redirects=True) as r:
+                r.raise_for_status()
+                with open(part, "wb") as f:
+                    for chunk in r.iter_bytes(1 << 20):
+                        f.write(chunk)
+            break
+        except (httpx.HTTPStatusError, httpx.TransportError) as e:
+            code = getattr(getattr(e, "response", None), "status_code", 0)
+            if wait is None or (code and code < 500 and code != 429):
+                raise
+            print(f"  {type(e).__name__} {code or ''}, again in {wait} s", flush=True)
+            time.sleep(wait)
     part.replace(dest)
     return dest
 
