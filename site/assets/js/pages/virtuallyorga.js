@@ -24,7 +24,7 @@ const errKey = (e) => `vo.err.${String(e?.message || "").replace(/ /g, "_")}`;
 const errText = (e) => (t(errKey(e)) !== errKey(e) ? t(errKey(e)) : t("vo.err.any", { e: e?.message || String(e) }));
 
 /** The organisers' tab: their events and a new one. onPlay(event, course) tries an event in the game. */
-export async function renderOrga(el, { onPlay } = {}) {
+export async function renderOrga(el, { onPlay, onChange } = {}) {
   let stopPoll = null;
   const admin = !!auth.session()?.admin;
   const list = async () => {
@@ -154,16 +154,16 @@ export async function renderOrga(el, { onPlay } = {}) {
       try { const r = await post(`${API}/${id}/build`); if (!r.started) say(t("vo.notStarted")); detail(id); } catch (e) { say(errText(e)); }
     });
     $("#vo-pub", el)?.addEventListener("click", async () => {
-      try { await post(`${API}/${id}`, { published: !ev.published }, "PUT"); detail(id); } catch (e) { say(errText(e)); }
+      try { await post(`${API}/${id}`, { published: !ev.published }, "PUT"); onChange?.(); detail(id); } catch (e) { say(errText(e)); }
     });
     $("#vo-del", el).addEventListener("click", async () => {
       if (!(await confirmBox(t("vo.confirmDelete", { name: ev.name }), { ok: t("vo.delete") }))) return;
-      try { await call(`${API}/${id}`, { method: "DELETE" }); list(); } catch (e) { alertBox(errText(e)); }
+      try { await call(`${API}/${id}`, { method: "DELETE" }); onChange?.(); list(); } catch (e) { alertBox(errText(e)); }
     });
     $("#vo-save", el).addEventListener("click", async () => {
       const body = { name: $("#vo-name", el).value.trim(), type: $("#vo-type", el).value, from: $("#vo-from", el).value, to: $("#vo-to", el).value };
       if ($("#vo-courses", el)) body.courses = $("#vo-courses", el).value;
-      try { await post(`${API}/${id}`, body, "PUT"); detail(id); } catch (e) { say(errText(e)); }
+      try { await post(`${API}/${id}`, body, "PUT"); onChange?.(); detail(id); } catch (e) { say(errText(e)); }
     });
     $$(".vtp-course[data-course]", el).forEach((b) => b.addEventListener("click", () => onPlay?.(ev, ev.courses.find((c) => c.id === b.dataset.course))));
     if (building) poll(id);

@@ -99,7 +99,7 @@ export async function render(main, { query }) {
       if (k === "entrainement") await training(panel(k));
       else if (k === "resultats") await results(panel(k));
       else if (k === "classement") await ranking(panel(k));
-      else if (k === "orga") { stopOrga?.(); stopOrga = await (await import("./virtuallyorga.js")).renderOrga(panel(k), { onPlay: (ev, c) => tryEvent(ev, c) }); }
+      else if (k === "orga") { stopOrga?.(); stopOrga = await (await import("./virtuallyorga.js")).renderOrga(panel(k), { onPlay: (ev, c) => tryEvent(ev, c), onChange: listsChanged }); }
       else stopAn = await analysis(panel(k));
     } catch (e) {
       console.error(e);
@@ -115,6 +115,12 @@ export async function render(main, { query }) {
     await trainingPlay({ id: ev.id, event: ev, race: { courses: ev.courses } }, course);
   };
   const goTab = (k) => { game?.stop(); game = null; show(k); };
+  /** An event published, withdrawn, changed or deleted in « Orga »: the maps and their results are read again when next shown,
+   *  Training drawn afresh unless a race is under way there. */
+  function listsChanged() {
+    RACES = null; runsCache.clear();
+    if (!game) drawn.delete("entrainement");
+  }
 
   // ---- Entraînement ------------------------------------------------------------------------------------------------------
   async function training(el) {
