@@ -25,12 +25,23 @@ const routeOf = (race, id) => {
   if (!routeCache.has(k)) routeCache.set(k, getJson(`${API}runs/${race}/${id}`).then((d) => d.route || []));
   return routeCache.get(k);
 };
+/** The map drawn for the analysis, from the run's own package — a map's (/api/virtual/<id>/) or an event's
+ *  (/api/virtual/events/<id>/pkg/) —: its race.json gives the frame (an event's list carries its courses only), then its OCAD
+ *  file or, for an event made from the LiDAR alone (race.map "webp"), the generated map's image. { canvas, ppm, k }. */
 async function mapOf(race) {
   if (!mapCache.has(race.id)) mapCache.set(race.id, (async () => {
-    const r = await fetch(`${API}${race.id}/map.ocd`, { credentials: "same-origin" });
-    if (!r.ok) throw Object.assign(new Error(`map.ocd: ${r.status}`), { status: r.status });
+    const base = race.event ? `${API}events/${race.id}/pkg/` : `${API}${race.id}/`;
+    const get = async (f) => {
+      const r = await fetch(base + f, { credentials: "same-origin" });
+      if (!r.ok) throw Object.assign(new Error(`${f}: ${r.status}`), { status: r.status });
+      return r;
+    };
+    const full = await (await get("race.json")).json();
     const { drawMap } = await import("../games/virtually.js");
-    return drawMap({ race: race.race, ocd: new Uint8Array(await r.arrayBuffer()) });
+    const m = full.map === "webp"
+      ? await drawMap({ race: full, mapImage: await createImageBitmap(await (await get("map.webp")).blob()) })
+      : await drawMap({ race: full, ocd: new Uint8Array(await (await get("map.ocd")).arrayBuffer()) });
+    return { ...m, k: full.k };
   })());
   return mapCache.get(race.id);
 }
@@ -102,7 +113,7 @@ export async function drawAnalysis(el, { run, race, course, all, mineRuns, mapNa
   let img = null, stopped = false, playing = false, T = 0, raf = 0, lastNow = 0, legSel = null;
   const shown = new Map([[run.id, { colour: ME, route: [] }]]);
   const view = { cx: 0, cy: 0, z: 1, drag: null };
-  const mPer = () => img.ppm / race.race.k;
+  const mPer = () => img.ppm / img.k;
   const fit = (pts) => {
     if (!img || !pts.length) return;
     const xs = pts.map((p) => p[0] * mPer()), ys = pts.map((p) => p[1] * mPer());
@@ -208,7 +219,7 @@ export async function drawAnalysis(el, { run, race, course, all, mineRuns, mapNa
     const [m, route] = await Promise.all([mapOf(race), routeOf(run.race, run.id)]);
     if (stopped) return () => {};
     const { drawOverprint } = await import("../games/virtually.js");
-    img = { ...m, overprint: (g) => drawOverprint(g, ctl, m.ppm / race.race.k, m.ppm) };
+    img = { ...m, overprint: (g) => drawOverprint(g, ctl, m.ppm / m.k, m.ppm) };
     shown.get(run.id).route = route;
     $(".vtp-anload", box).remove();
     run.sp.forEach((s, i) => {
