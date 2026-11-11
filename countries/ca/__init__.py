@@ -20,12 +20,13 @@ import paths
 from countries import agenda
 from countries.base import Country
 
-# Canada's results on the site (« Résultats », its ranking): off until the owner has decided, the clubs once asked (the
-# calendar is published either way, as the other countries'; the archive and the index are computed every night)
-OPEN = False
+# Canada's results on the site (« Résultats », its ranking): built and published since 2026-11-11, but read by the
+# administrators only (`access` « admins », functions/_lib/access.js) until the clubs have been asked (owner); the calendar
+# is everyone's, as the other countries'. False: neither built nor in « Résultats »
+OPEN = True
 
 COUNTRY = Country(
-    code="CA", federation="Orienteering Canada", access="all", db=paths.DATA_DIR / "ca.sqlite3", results=OPEN,
+    code="CA", federation="Orienteering Canada", access="admins", db=paths.DATA_DIR / "ca.sqlite3", results=OPEN,
     time_zones=("America/Toronto", "America/Montreal", "America/Vancouver", "America/Edmonton", "America/Winnipeg",
                 "America/Regina", "America/Halifax", "America/Moncton", "America/St_Johns", "America/Whitehorse"),
     lang="en-CA,en;q=0.9,fr-CA;q=0.7,fr;q=0.5")

@@ -9,7 +9,7 @@
 // Needs one secret in the Pages project settings: SESSION_SECRET (any long
 // random string). Changing it logs everyone out.
 
-import { DATA_ACCESS } from "./_lib/access.js";
+import { DATA_ACCESS, adminOnly } from "./_lib/access.js";
 import { turnstileOn } from "./_lib/turnstile.js";
 import { countRefused } from "./_lib/robots.js";
 
@@ -57,6 +57,7 @@ export async function guestPass(request, env) {
 }
 /** May a visitor without an account read this path? */
 export function guestMay(path) {
+  if (adminOnly(path)) return false;
   if (GUEST.some((re) => re.test(path)) || DATA_FOR_ALL.some((re) => re.test(path))) return true;
   const m = /^\/data\/([a-z]{2})\//.exec(path);
   return !!m && DATA_ACCESS[m[1].toUpperCase()] === "all";
@@ -64,9 +65,11 @@ export function guestMay(path) {
 // the endpoints that serve France's data: FFCO's own pages, « IA » (it queries the French tables), the relay's added runners
 const FR_API = [/^\/api\/ffco-(cn|history)$/, /^\/api\/ask$/, /^\/api\/account\/relay$/];
 /**
- * What reading a path needs: null (any signed-in account), a country's code (an accepted membership of it), or "none".
+ * What reading a path needs: null (any signed-in account), a country's code (an accepted membership of it), "ADMIN" (an
+ * administrator), or "none".
  */
 export function needs(path) {
+  if (adminOnly(path)) return "ADMIN";              // (a country shown to the administrators only: Canada)
   if (FR_API.some((re) => re.test(path))) return "FR";
   if (!path.startsWith("/data/") || DATA_FOR_ALL.some((re) => re.test(path))) return null;
   const m = /^\/data\/([a-z]{2})\//.exec(path);
@@ -74,6 +77,13 @@ export function needs(path) {
   const cc = m[1].toUpperCase();
   const rule = DATA_ACCESS[cc];
   return !rule ? "none" : rule === "all" ? null : cc;
+}
+
+/** Is the session an administrator's (ADMIN_EMAILS, an active account with its e-mail confirmed)? */
+async function isAdmin(s, env) {
+  const u = env.DB && await env.DB.prepare("SELECT email, email_verified, status FROM users WHERE id = ?").bind(s.uid).first();
+  const admins = String(env.ADMIN_EMAILS || "").toLowerCase().split(/[\s,;]+/).filter(Boolean);
+  return !!(u && u.status === "active" && u.email_verified && admins.includes(String(u.email).toLowerCase()));
 }
 
 /**
@@ -193,7 +203,13 @@ export async function onRequest(context) {
     refreshed = `${COOKIE}=${token}; Path=/; Max-Age=${Math.max(60, Math.floor((s.exp - Date.now()) / 1000))}; HttpOnly; Secure; SameSite=Lax`;
   }
   const need = needs(path);
-  if (need && !(cc || []).includes(need)) {
+  if (need === "ADMIN") {
+    if (!(await isAdmin(s, env))) {
+      return new Response(JSON.stringify({ error: "admin" }), {
+        status: 403, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...(refreshed ? { "Set-Cookie": refreshed } : {}) },
+      });
+    }
+  } else if (need && !(cc || []).includes(need)) {
     return new Response(JSON.stringify({ error: "country", need }), {
       status: 403, headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...(refreshed ? { "Set-Cookie": refreshed } : {}) },
     });
@@ -206,12 +222,8 @@ export async function onRequest(context) {
     });
   }
   // the sites to follow up with (admin page, « Sites »): administrators only
-  if (path === "/data/prov/blocked.json") {
-    const u = env.DB && await env.DB.prepare("SELECT email, email_verified, status FROM users WHERE id = ?").bind(s.uid).first();
-    const admins = String(env.ADMIN_EMAILS || "").toLowerCase().split(/[\s,;]+/).filter(Boolean);
-    if (!u || u.status !== "active" || !u.email_verified || !admins.includes(u.email)) {
-      return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
-    }
+  if (path === "/data/prov/blocked.json" && !(await isAdmin(s, env))) {
+    return new Response("Not found", { status: 404, headers: { "Cache-Control": "no-store" } });
   }
   const res = await next();
   // a WebSocket handshake (/ws/<race>, « En direct ») goes back as it is: a copy of the response would lose its socket

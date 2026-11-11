@@ -3375,10 +3375,15 @@ Every multiple-choice game was played through to its score page at phone size, w
   alone (`identity.resolve` without clubs: Ottawa's files print none); clubs numbered once with their province's letters
   (« 0003ON », `ca_clubs`, WhyJustRun's organisations and the Quebec clubs, others numbered as met); the engine as Spain's
   (`bootstrap` with Spain's category levels — most of Canada's local races are courses by level: 0.75 —, seeds never
-  expire). **Not published** until the owner says so — one switch, `countries/ca` `OPEN` (False): the races stay out of
-  « Résultats » (`COUNTRY.results`) and the ranking's site files are not written (`ranking.PUBLISH`), while the calendar is
-  published as the other countries' and the archive and the index are computed every night; `functions/_lib/access.js`
-  lists CA as « all ». The page word for its regions is
+  expire). **The administrators' only for now** (owner, 2026-11-11, until the clubs have been asked): `countries/ca` `OPEN`
+  True (False: the races out of « Résultats », `COUNTRY.results`, and no ranking files, `ranking.PUBLISH`) and a third access
+  rule, « admins » (`countries/base.py ACCESS`, `functions/_lib/access.js` `DATA_ACCESS.CA`, `ADMIN_ONLY`, `adminOnly`): the
+  login gate (`_middleware.js` `needs` → "ADMIN", `isAdmin`: ADMIN_EMAILS, as « Sites ») refuses `/data/ca/` but its agenda
+  and Canada's race files of the provisional results (`/data/prov/[pub/]ca<…digit…>.json`) to everyone else, visitors
+  included; in the browser `auth.sees` is the session's `admin` for such a country, `country.ranks` false for the others
+  (« No ranking for this country yet »), `data.setHiddenRule` keeps `bootPrivate` from loading its runners, and `getProv`
+  drops its races from the results index (the index still names them: race names and counts only). The calendar is
+  everyone's, as the other countries'. To open Canada to all: `access="all"` in both places. The page word for its regions is
   « Province » (`f.region.CA`); the Documentation's note `doc.country.CA`. Measured locally on 2026-11-11: the archive 1,642 races 2010-2026 (Ottawa 85 files, Ramblers' lists, WhyJustRun 1,350 events with results of 3,474 asked), 43,526 results, 7,897 runners, 371 ranked in forest on the day, 744 site files; the index calls 77.2 % of forest duels right since 2012 (75.2 % since July 2025; each circuit weighing its runners, the index 15 days before; France about 81 %) — Canada's elite on top (McLaren, Smith, Harkavy, Kemp, Bergstrom).
   Letter to Orienteering Ottawa drafted (private doc https://claude.ai/artifact/N7qu8xM7zrU3wCa1vbXZxR).
 - **FFCO's national calendars in the Agenda** (owner, 2026-11-05): the « Calendrier national » PDFs of FFCO's page

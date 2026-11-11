@@ -48,7 +48,9 @@ export function session() {
  */
 export function sees(cc) {
   // a country whose results are all public (Spain): everyone, signed in or not (owner, 2026-10-30)
-  if (data.site()?.countries?.[cc]?.access === "all") return true;
+  const rule = data.site()?.countries?.[cc]?.access;
+  if (rule === "all") return true;
+  if (rule === "admins") return !!session()?.admin;      // (Canada for now: its results for the administrators; owner, 2026-11-11)
   const s = session();
   if (!s) return false;
   if (s.demo) return cc === "FR";

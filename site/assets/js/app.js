@@ -1122,6 +1122,8 @@ async function start() {
   pwa.boot();                                     // the service worker, the manifest's language, files opened with the app
   // a visitor without an account, or an account that has not joined a country, reads its public copy (data.js)
   data.setPublicRule((cc) => (!!auth.session() || auth.guest()) && data.site()?.countries?.[cc]?.access === "members" && !auth.sees(cc));
+  // a ranking only the administrators read (Canada for now): the others load nothing of it (the gate refuses its files)
+  data.setHiddenRule((cc) => data.site()?.countries?.[cc]?.access === "admins" && !auth.sees(cc));
   // a visit without an account reads the public data with its guest pass (guestpass.js); none to be had: the home page
   if (auth.guest()) await ensurePass().catch(() => { auth.setGuest(false); forgetPass(); });
   await data.bootPublic();

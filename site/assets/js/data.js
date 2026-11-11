@@ -14,6 +14,9 @@ let LOADED = null;                       // the country whose data is loaded ("F
 let publicOnly = () => false;
 /** Set the rule: does this visitor read country cc's public copy? */
 export const setPublicRule = (fn) => { publicOnly = fn; };
+// a country whose ranking only the administrators read (Canada for now, access « admins »): none for the others (app.js)
+let hiddenRanking = () => false;
+export const setHiddenRule = (fn) => { hiddenRanking = fn; };
 const SHARED = /^(agenda|evaluation|validation)\.json$/;
 const dirOf = (cc, path = "") => `data/${String(cc).toLowerCase()}/${publicOnly(cc) && !SHARED.test(path) ? "pub/" : ""}`;
 /** Is the loaded country read from its public copy (the federation's open seasons only)? */
@@ -117,7 +120,7 @@ export async function bootPrivate({ open = true } = {}) {
   if (RUNNERS) return;
   // (refused all the same — the country left on another device, this one not told yet —: the empty list too)
   const none = { cols: [], rows: [] };
-  const ranks = !!SITE?.countries?.[loadedCountry()]?.ranking;
+  const ranks = !!SITE?.countries?.[loadedCountry()]?.ranking && !hiddenRanking(loadedCountry());
   const [runners, comps] = await Promise.all([
     open && ranks ? getJson("runners.json").catch((e) => (/HTTP 403/.test(e.message) ? none : Promise.reject(e))) : none,
     ranks ? getJson("competitions.json").then((c) => c || { rows: {} }) : { rows: {} }]);

@@ -66,8 +66,9 @@ export const of = (x) => x?.country || "FR";
 export const info = (cc = current()) => data.site()?.countries?.[cc] || null;
 /** Who may read a country's data: "members" (France) or "all" (Spain); a country the site has no data for: null. */
 export const access = (cc) => info(cc)?.access || null;
-/** Does the site rank a country's runners (its runners, ranking, clubs… pages)? */
-export const ranks = (cc = current()) => !!info(cc)?.ranking;
+/** Does the site rank a country's runners (its runners, ranking, clubs… pages)? A ranking only the administrators see
+ *  (Canada, access « admins ») is none for the others. */
+export const ranks = (cc = current()) => !!info(cc)?.ranking && (info(cc)?.access !== "admins" || auth.sees(cc));
 
 /** A country's flag (owner, 2026-10-22: beside every country choice), or nothing for an unknown one. */
 export const flagImg = (cc, cls = "cty-flag") => (cc === WRE ? wreMark(cls) : cc && /^[A-Z]{2}$/.test(cc)

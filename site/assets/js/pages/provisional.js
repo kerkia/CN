@@ -44,7 +44,10 @@ const startClock = (s) => (s == null ? "" : `${String(Math.floor(s / 3600)).padS
 
 export const getProv = async (path) => {
   const r = await fetch(`${auth.provDir()}${path}`, { credentials: "same-origin", cache: "no-store" });
-  return r.ok && (r.headers.get("content-type") || "").includes("json") ? r.json() : null;
+  const out = r.ok && (r.headers.get("content-type") || "").includes("json") ? await r.json() : null;
+  // the races of a country only the administrators see (Canada for now: the gate refuses their files to the others)
+  if (out && Array.isArray(out.races)) out.races = out.races.filter((x) => !x.country || country.access(x.country) !== "admins" || auth.sees(x.country));
+  return out;
 };
 export const clock = (s) => {
   if (s == null) return "—";

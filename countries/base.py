@@ -20,8 +20,9 @@ ROOT = Path(__file__).resolve().parent.parent
 SITE_DATA = ROOT / "site" / "data"
 # who may read a country's data (functions/_lib/countries.js DATA_ACCESS — keep the two in step):
 #   "members": the accounts that joined the country (France: FFCO's older seasons are members-only on its own site);
-#   "all":     every signed-in account (Spain: every result is public, so what is computed from them is too; owner, 2026-10-22)
-ACCESS = ("members", "all")
+#   "all":     every signed-in account (Spain: every result is public, so what is computed from them is too; owner, 2026-10-22);
+#   "admins":  the administrators only, its calendar apart (Canada while its clubs are asked; owner, 2026-11-11)
+ACCESS = ("members", "all", "admins")
 
 
 @dataclass(frozen=True)
