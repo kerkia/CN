@@ -65,6 +65,8 @@ for k, ph in enumerate(photos):
         log("  skipped", ph["id"], e)
     if k % 50 == 0:
         log("downloaded", k, "/", len(photos))
+if os.environ.get("PX_DLONLY"):                                            # PX_DLONLY=1: the downloads only
+    sys.exit(0)
 
 # ---- the scene: the ground, the buildings with their roofs' heights -------------------------------------------------------------
 Z = np.load(SRC / "lidar_grids.npz"); dtm = Z["dtm"]; R = 0.5
@@ -164,7 +166,8 @@ def predicted_skyline(ph, cam_z, azs):
     return best
 
 
-samples = {}                                 # building index → list of (rgb, wall id, photo id)
+samples = {}                               # building index → list of (rgb, wall id, photo id)
+poses = []                                 # the photos used, with their corrected pose
 authors = {}
 used = 0
 for k, ph in enumerate(photos):
@@ -221,6 +224,9 @@ for k, ph in enumerate(photos):
     ph = {**ph, "x": ph["x"] + best[4], "y": ph["y"] + best[5]}
     cam_z = float(ground(ph["x"], ph["y"])) + 1.6
     yaw, pitch = ph["az"] + best[0], best[1]
+    # the pose kept for the façades' textures (town_facadetex.py)
+    poses.append({"id": ph["id"], "x": ph["x"], "y": ph["y"], "cam_z": cam_z, "yaw": yaw, "pitch": pitch, "fov": ph["fov"],
+                  "w": w, "h": h, "author": ph["author"], "licence": ph["licence"], "date": ph["date"], "fit": round(best[6], 3)})
     # the walls it sees
     took = 0
     for wi in wtree.query_ball_point([ph["x"], ph["y"]], 35):
@@ -273,4 +279,5 @@ for bi, ss in samples.items():
     out[bld[bi]["key"]] = {"rgb": [int(v) for v in rgb], "n": len(ss), "photos": len({s[2] for s in ss}), "mat": mat}
 json.dump({"source": "Panoramax (panoramax.openstreetmap.fr), CC BY-SA 4.0 photos; data derived under Licence Ouverte 2.0",
            "authors": sorted(authors, key=lambda a: -authors[a]), "photos": used, "buildings": out}, open(SRC / "facades.json", "w"), indent=1)
+json.dump(poses, open(SRC / "poses.json", "w"), indent=0)
 log("buildings coloured", len(out), "of", len(bld), "from", used, "photos; authors", authors)

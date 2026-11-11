@@ -995,14 +995,36 @@ Every multiple-choice game was played through to its score page at phone size, w
   in shade under an overcast sky (lightness ~0.35, some blue casts): `town_3d.py` `_fac_colours` takes them as relative colours —
   one gain bringing their median lightness to a plaster's 0.68, lightness kept in 0.42-0.88, blue casts neutral — for buildings
   read on two walls at least (Gif: 67 of 380 read, 45 used). **Data only**: Panoramax's photos are CC BY-SA 4.0, the data derived from them allowed under Licence Ouverte
-  2.0 / CC BY 4.0 / ODbL; the authors are named in the race's credit (`race.photoAuthors`, `vt.src.town`'s `{authors}`). **`games/vtown.js`** (`loadTown`, `Town`; vworld.js's only hooks: `loadRace` loads it when `race.town`, `World.town`,
+  2.0 / CC BY 4.0 / ODbL; the authors are named in the race's credit (`race.photoAuthors`, `vt.src.town`'s `{authors}`).
+  **Photo façades** (owner, 2026-11-11: « I don't mind sharing »; `town_facadetex.py`, run by `town_3d.py`): each building side
+  Panoramax's photos see is rectified from them into a tile, the tiles packed into `pkg/facades.webp` (WebP with alpha, one atlas),
+  each wall vertex given its atlas place `wtx` and its tile's rectangle `wtr` (town.bin; race.json `town.tex`); vtown.js lays the
+  photo over the drawn façade by its alpha. **Never below 2.5 m above the street** (`V0`): Panoramax blurs faces and plates at
+  upload (the OSM-FR instance, every photo of Gif CC BY-SA 4.0, checked in its API), but its blurring can miss one — passers-by
+  and cars are below that line, the ground floor keeps the drawn façade. A texture needs the camera far more exactly than a colour:
+  each photo's pose is refined on the buildings' own edges (`refine`: corners and wall tops from the LiDAR, position ± 3 m, heading,
+  camera height, pitch and a panorama's roll; cached in `src/poses_refined.json`, `TEX_REFINE=1` redoes it), then again for each
+  side and photo (`local`: the side rectified must come out straight — `axis_stats` — and anchored at its eaves and corners); a
+  tile is kept only when straight (≥ 0.5), anchored (eaves ≥ 0.75, corners ≥ 0.3 of its mean gradient) and 4 m wide or more
+  (`anchors`; `TEX_DEBUG=<folder>` writes every candidate and its figures). Set on Gif's 22 candidate tiles of 2026-11-11 so that
+  only the two clean ones passed (the rest showed pavement, roofs, a car, foliage: the GPS poses and 2 048 px photos are not
+  enough): **2 façades** textured (the « Le Village » archway, a yellow façade on its square), the rest drawn. Better coverage
+  would need the photos' poses from their sequences (structure from motion) and the HD pictures. **The atlas is CC BY-SA 4.0**
+  (derived from the photos): race.json `textures` says so with `photoCredits` (every photo the façades were read from — the 231 of
+  poses.json — by id, author, date, licence and Panoramax link), listed on the race's start screen (`vt.src.photos`); if Virtually
+  opens to the public, a package's facades.webp must be offered under CC BY-SA 4.0, as its OSM layers under the ODbL. Measured:
+  the same 59-60 fps at 1400 × 860 and at a phone's 390 × 844 (no LOD needed). **`games/vtown.js`** (`loadTown`, `Town`; vworld.js's only hooks: `loadRace` loads it when `race.town`, `World.town`,
   `hits()` asks it, `build()` hands it each chunk; virtually.js keeps the third-person camera out of buildings with `town.clear`):
   roofs and façades drawn by shaders (floors, bays, windows with frames and bars, shutters, doors, shop fronts, a church's stone and
   arched windows, stone courses, meulière, brick; tiles in rows at constant height, slates, zinc seams), walls/hedges as boxes,
   fences a wire mesh, hedges a dark core with the forest's leafy crowns along it (`world.K.bush`), kerbs, stairways treads at
   their ground's height, cars and chimneys and furniture instanced; **its own ground material** (`Town.ground`: the world's map,
-  vertex shade and normal map, the grain drawn by the surface code — asphalt grain, paving stones staggered, concrete slabs and
-  their joints, grass blades, gravel —, faded by the texel's footprint, the world's position from the vertex); the runner is
+  vertex shade and normal map, the grain by the surface code — asphalt, paving stones (setts) and concrete slabs photographed
+  (`town-ground.webp`, R G B, CC0 Poly Haven, `tools/virtually/town_textures.py`, credited in the textures' CREDITS.txt; drawn
+  procedurally when it fails to load), grass blades, gravel —, the world's position from the vertex); roofs' clay tiles and slates
+  photographed too (`town-roof.webp`, along the eaves and up the slope); **street-level ambient occlusion**: the ground baked darker
+  where it meets a building (`town_3d.py`, 26 % at the wall, half 0.8 m out), the façades darker at their foot and just under the
+  eaves (shader); the runner is
   stopped by the buildings' outlines, impassable walls/fences/hedges, cars and posts (8 m cells; the ground classes `building` /
   `block` then run as paving); the camera by the buildings alone.
   **`course_sprint.py`**: sites on outer building corners (the flag 1.1 m out), monuments, fountains, lone trees and bushes,
@@ -1015,8 +1037,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   headless Edge at 1400 × 860 and at a phone's 390 × 844. **Not usable** (study of 2026-11-11, notes `virtually-sprint-report.md` in the sessions' notes folder): Google's
   Photorealistic 3D Tiles (refused with 403 to an EEA project since 2025-07-08, and no storing, deriving or « with any map »
   anywhere), Street View (not « with any map »), Cesium ion's Google and Bing, Apple Look Around; Panoramax's photos are CC BY-SA
-  (facts read from them may be used freely; crops as textures would carry the share-alike). If Virtually opens to the public, the
-  OSM-derived layers of a package must be offered under the ODbL.
+  (facts read from them may be used freely; crops as textures carry the share-alike — the photo façades above). If Virtually opens
+  to the public, the OSM-derived layers of a package must be offered under the ODbL, its photo façades under CC BY-SA 4.0.
   **Events and the « Orga » tab** (owner, 2026-11-11: « events can be trainings, played many times by a same user and open to all,
   or competitions, only opened to registered users and played only once; rankings are computed from competitions only »):
   `pages/virtuallyorga.js` (`renderOrga`, the page's fifth tab, to accounts with Orga) — « Mes événements », « Nouvel événement »

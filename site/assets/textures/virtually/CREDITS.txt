@@ -4,4 +4,8 @@ Virtually's photo textures (games/vforest.js), made by tools/virtually/textures.
   bark*: Poly Haven, bark_brown_02 (https://polyhaven.com/a/bark_brown_02)
   stone*: Poly Haven, lichen_rock (https://polyhaven.com/a/lichen_rock)
   leaves-a, leaves-b: clusters of ambientCG's LeafSet009 and LeafSet010 (https://ambientcg.com, CC0)
+Virtually's town textures (games/vtown.js), made by tools/virtually/town_textures.py from CC0 sources (public domain):
+  town-ground (R asphalt, G paving stones, B concrete slabs): Poly Haven, clean_asphalt (https://polyhaven.com/a/clean_asphalt),
+    square_cobblestone (https://polyhaven.com/a/square_cobblestone), square_concrete_pavers (https://polyhaven.com/a/square_concrete_pavers)
+  town-roof (R clay tiles, G slates): Poly Haven, roof_tiles (https://polyhaven.com/a/roof_tiles), roof_slates_02 (https://polyhaven.com/a/roof_slates_02)
 Poly Haven and ambientCG license their assets CC0 1.0 Universal; no attribution is required, it is given with thanks.

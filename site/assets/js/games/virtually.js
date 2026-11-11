@@ -283,6 +283,8 @@ export function mount(root, raceId, opts = {}) {
       over(html`<div class="vt-card"><h2>${race.course.name}</h2>
         <p>${t("vt.info", { n: nC, km: num(race.course.length / 1000), scale: race.scale.toLocaleString(lang()) })}</p>
         <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
+        ${race.photoCredits?.length ? html`<details class="muted vt-photos"><summary>${t("vt.src.photos", { n: race.photoCredits.length })}</summary>
+          <p>${race.photoCredits.map((c, i) => html`${i ? ", " : ""}<a href="${c.url}" target="_blank" rel="noopener">${c.id.slice(0, 8)}</a> (${c.author})`)}</p></details>` : ""}
         <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "orient", "view", "pause", "pos", "speed"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-go">${t("vt.go")}</button>
 </div>

@@ -18,13 +18,21 @@ export async function loadTown(base, town, onFile = () => {}) {
     onFile(f);
     return v;
   };
-  const [meta, bin, surfBlob] = await Promise.all([get(town.file, "json"), get(town.bin, "buf"),
-    town.surf ? fetch(base + town.surf, { credentials: "same-origin" }).then((r) => (r.ok ? r.blob() : null)).catch(() => null) : null]);
+  const blob = (f) => (f ? fetch(base + f, { credentials: "same-origin" }).then((r) => (r.ok ? r.blob() : null)).catch(() => null) : null);
+  const grainOf = (n) => fetch(`/assets/textures/virtually/${n}.webp`).then((r) => (r.ok ? r.blob() : null)).catch(() => null);
+  const [meta, bin, surfBlob, texBlob, gBlob, rBlob] = await Promise.all([get(town.file, "json"), get(town.bin, "buf"), blob(town.surf),
+    blob(town.tex), grainOf("town-ground"), grainOf("town-roof")]);
   const T = { f32: Float32Array, u8: Uint8Array, u16: Uint16Array, u32: Uint32Array }, arrays = {};
   for (const [k, [tp, off, n]] of Object.entries(meta.arrays)) arrays[k] = new T[tp](bin, off, n);
   // the surfaces' codes, read exactly (no colour management): the ground's material reads them by nearest texel
   const surf = surfBlob ? await createImageBitmap(surfBlob, { colorSpaceConversion: "none", premultiplyAlpha: "none" }) : null;
-  return { meta, arrays, surf };
+  // the photo façades' atlas (Panoramax's photos rectified, CC BY-SA 4.0: race.json `textures`, `photoCredits`), when there is one
+  const tex = texBlob ? await createImageBitmap(texBlob, { colorSpaceConversion: "none", premultiplyAlpha: "none" }).catch(() => null) : null;
+  // the streets' and the roofs' photographed grain (CC0: Poly Haven; tools/virtually/town_textures.py, CREDITS.txt): R asphalt,
+  // G paving stones, B concrete slabs; R clay tiles, G slates — around mid-grey, multiplied by 2
+  const bm = (b) => (b ? createImageBitmap(b, { colorSpaceConversion: "none", premultiplyAlpha: "none" }).catch(() => null) : null);
+  const [gImg, rImg] = await Promise.all([bm(gBlob), bm(rBlob)]);
+  return { meta, arrays, surf, tex, grain: { ground: gImg, roof: rImg } };
 }
 
 const NOISE = /* glsl */`
@@ -40,7 +48,13 @@ export class Town {
     const C = world.C, sp = world.speedOf;
     for (const k of ["building", "block"]) if (C[k] != null) sp[C[k]] = sp[C.paved] || 1;
     this.index();
-    this.materials();
+    this.grain = {};
+    for (const [k, img] of Object.entries(data.grain || {})) {
+      if (!img) continue;
+      const t = new T.Texture(img); t.colorSpace = T.NoColorSpace; t.wrapS = t.wrapT = T.RepeatWrapping; t.anisotropy = 8;
+      t.generateMipmaps = true; t.minFilter = T.LinearMipmapLinearFilter; t.needsUpdate = true; this.grain[k] = t;
+    }
+    this.materials(data.tex);
     if (data.surf) this.ground(data.surf);
     const byChunk = (list, xi, zi) => { const m = new Map(); for (const v of list || []) { const k = `${Math.floor(v[xi] / 64)},${Math.floor(v[zi] / 64)}`; (m.get(k) || m.set(k, []).get(k)).push(v); } return m; };
     this.carsBy = byChunk(this.m.cars, 0, 1);
@@ -113,20 +127,32 @@ export class Town {
   }
 
   // ---- materials ----------------------------------------------------------------------------------------------------------
-  materials() {
+  materials(texImg) {
     const T = this.T;
     // façades: u along the wall's side (m), v above the building's base (m); seg = (side's length, eave, floor height, seed)
+    // the photo façades: the atlas place (aTx) and tile (aTr) where a photo saw the side
     this.facade = new T.MeshLambertMaterial({ vertexColors: true });
+    let ftex = null;
+    if (texImg) {
+      ftex = new T.Texture(texImg); ftex.colorSpace = T.NoColorSpace;      // read as the vertex colours are (raw bytes)
+      ftex.generateMipmaps = true; ftex.minFilter = T.LinearMipmapLinearFilter; ftex.anisotropy = 4; ftex.needsUpdate = true;
+      this.facade.defines = { USE_FTEX: "" };
+    }
     this.facade.onBeforeCompile = (sh) => {
-      sh.vertexShader = "attribute vec2 aUv; attribute vec4 aSeg; attribute float aSty; varying vec2 vF; varying vec4 vS; varying float vSty;\n" +
-        sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vF = aUv; vS = aSeg; vSty = aSty;");
-      sh.fragmentShader = "varying vec2 vF; varying vec4 vS; varying float vSty;\n" + NOISE + sh.fragmentShader.replace("#include <color_fragment>", FACADE);
+      if (ftex) sh.uniforms.fTex = { value: ftex };
+      sh.vertexShader = "attribute vec2 aUv; attribute vec4 aSeg; attribute float aSty; attribute vec2 aTx; attribute vec4 aTr;\n" +
+        "varying vec2 vF; varying vec4 vS; varying float vSty; varying vec2 vTx; varying vec4 vTr;\n" +
+        sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vF = aUv; vS = aSeg; vSty = aSty; vTx = aTx; vTr = aTr;");
+      sh.fragmentShader = "varying vec2 vF; varying vec4 vS; varying float vSty; varying vec2 vTx; varying vec4 vTr;\n" +
+        (ftex ? "uniform sampler2D fTex;\n" : "") + NOISE + sh.fragmentShader.replace("#include <color_fragment>", FACADE);
     };
     this.roof = new T.MeshLambertMaterial({ vertexColors: true, flatShading: true, side: T.DoubleSide });   // the eaves' underside
+    if (this.grain.roof) this.roof.defines = { USE_TR: "" };
     this.roof.onBeforeCompile = (sh) => {
+      if (this.grain.roof) sh.uniforms.tRoof = { value: this.grain.roof };
       sh.vertexShader = "attribute float aKind; varying vec3 vWP; varying float vKind;\n" +
         sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vKind = aKind;");
-      sh.fragmentShader = "varying vec3 vWP; varying float vKind;\n" + NOISE + sh.fragmentShader.replace("#include <color_fragment>", ROOF);
+      sh.fragmentShader = "varying vec3 vWP; varying float vKind;\n" + (this.grain.roof ? "uniform sampler2D tRoof;\n" : "") + NOISE + sh.fragmentShader.replace("#include <color_fragment>", ROOF);
     };
     this.solid = new T.MeshLambertMaterial({ vertexColors: true });
     // a fence's wire mesh: a canvas grid, its holes cut by alphaTest
@@ -144,10 +170,12 @@ export class Town {
     const tex = new T.Texture(img); tex.magFilter = tex.minFilter = T.NearestFilter; tex.generateMipmaps = false; tex.colorSpace = T.NoColorSpace;
     tex.needsUpdate = true;
     const m = new T.MeshLambertMaterial({ map: old.map, normalMap: old.normalMap, normalScale: new T.Vector2(0.25, 0.25), vertexColors: true });
+    if (this.grain.ground) m.defines = { USE_TG: "" };
     m.onBeforeCompile = (sh) => {
       sh.uniforms.surf = { value: tex }; sh.uniforms.wsize = { value: new T.Vector2(w.W, w.H) };
+      if (this.grain.ground) sh.uniforms.tGround = { value: this.grain.ground };
       sh.vertexShader = "varying vec2 vWxz;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n vWxz = (modelMatrix * vec4(transformed, 1.0)).xz;");
-      sh.fragmentShader = "uniform sampler2D surf; uniform vec2 wsize; varying vec2 vWxz;\n" + NOISE + sh.fragmentShader.replace("#include <map_fragment>", GROUND);
+      sh.fragmentShader = "uniform sampler2D surf; uniform vec2 wsize; varying vec2 vWxz;\n" + (this.grain.ground ? "uniform sampler2D tGround;\n" : "") + NOISE + sh.fragmentShader.replace("#include <map_fragment>", GROUND);
     };
     w.groundMat = m;
   }
@@ -173,6 +201,10 @@ export class Town {
       const col = A.wcol.subarray(v0 * 4, (v0 + nv) * 4), rgb = new Uint8Array(nv * 3), sty = new Float32Array(nv);
       for (let k = 0; k < nv; k++) { rgb[k * 3] = col[k * 4]; rgb[k * 3 + 1] = col[k * 4 + 1]; rgb[k * 3 + 2] = col[k * 4 + 2]; sty[k] = col[k * 4 + 3]; }
       geo.setAttribute("color", new T.BufferAttribute(rgb, 3, true)); geo.setAttribute("aSty", new T.BufferAttribute(sty, 1));
+      if (A.wtx) {
+        geo.setAttribute("aTx", new T.BufferAttribute(A.wtx.subarray(v0 * 2, (v0 + nv) * 2), 2));
+        geo.setAttribute("aTr", new T.BufferAttribute(A.wtr.subarray(v0 * 4, (v0 + nv) * 4), 4, true));
+      }
       geo.setIndex(new T.BufferAttribute(A.widx.subarray(i0, i0 + ni), 1)); geo.computeVertexNormals();
       const m = new T.Mesh(geo, this.facade); m.receiveShadow = true; m.userData.shadow = true; g.add(m);
     }
@@ -331,6 +363,15 @@ const GROUND = /* glsl */`
   float fw = max(fwidth(wp.x), fwidth(wp.y));
   float near = clamp(1.0 - fw * 9.0, 0.0, 1.0), mid = clamp(1.0 - fw * 2.5, 0.0, 1.0);
   float g = 1.0;
+#ifdef USE_TG
+  if (code < 1.5 && code > 0.5) {                                   // asphalt: the photographed grain (2.1 m), a few darker patches
+    g = 2.0 * texture2D(tGround, wp / 2.1).r * (0.95 + 0.08 * tNoise(wp * 0.9) * mid);
+  } else if (code < 2.5 && code > 0.5) {                            // paving stones (setts, 2 m)
+    g = mix(1.0, 2.0 * texture2D(tGround, wp / 2.0).g, 0.85);
+  } else if (code < 3.5 && code > 0.5) {                            // concrete slabs (1.8 m)
+    g = 2.0 * texture2D(tGround, wp / 1.8).b;
+  } else
+#endif
   if (code < 1.5 && code > 0.5) {                                   // asphalt: fine grain, a few darker patches
     g = (0.93 + 0.14 * tHash(floor(wp * 30.0)) * near) * (0.95 + 0.08 * tNoise(wp * 0.9) * mid);
   } else if (code < 2.5 && code > 0.5) {                            // paving stones, rows staggered
@@ -402,6 +443,14 @@ const FACADE = /* glsl */`
     float topA = min(eave, 9.0) - 1.0, r = 0.55;
     if (abs(d2) < r && v > 2.5 && (v < topA || length(vec2(d2, v - topA)) < r)) c = vec3(0.18, 0.2, 0.26) + 0.15 * tHash(vec2(floor(d2 * 4.0), floor(v * 3.0)));
   }
+  c *= (0.74 + 0.26 * smoothstep(-0.4, 1.6, v)) * (1.0 - 0.14 * smoothstep(eave - 0.9, eave, v) * step(0.5, eave));
+#ifdef USE_FTEX
+  // the photo, where one saw this side (from 2.5 m above the street up): over the drawn façade, by its alpha
+  if (vTr.z > 0.0 && vTx.x >= vTr.x && vTx.x <= vTr.z && vTx.y >= vTr.y && vTx.y <= vTr.w) {
+    vec4 ph = texture2D(fTex, vTx);
+    c = mix(c, ph.rgb, ph.a);
+  }
+#endif
   diffuseColor.rgb = c;
 }`;
 
@@ -415,7 +464,16 @@ const ROOF = /* glsl */`
   if (isFlat < 0.5 && wn.y < 0.97 && rm > 1.5) {                          // zinc: standing seams down the slope
     vec2 dir = normalize(vec2(-wn.z, wn.x) + 1e-5);
     c *= 0.92 + 0.12 * step(0.06, fract(dot(vWP.xz, dir) / 0.5));
-  } else if (isFlat < 0.5 && wn.y < 0.97) {
+  }
+#ifdef USE_TR
+  else if (isFlat < 0.5 && wn.y < 0.97) {
+    vec2 dir = normalize(vec2(-wn.z, wn.x) + 1e-5);
+    vec2 q = vec2(dot(vWP.xz, dir), vWP.y / max(sqrt(1.0 - wn.y * wn.y), 0.2));   // along the eaves, up the slope (m)
+    vec4 tr = texture2D(tRoof, rm > 0.5 ? q / 3.0 : q / 2.0);
+    c *= 2.0 * (rm > 0.5 ? tr.g : tr.r);
+  }
+#endif
+  else if (isFlat < 0.5 && wn.y < 0.97) {
     float rh = rm > 0.5 ? 0.12 : 0.26, cw = rm > 0.5 ? 0.3 : 0.24;  // slates are smaller and flatter than tiles
     float row = vWP.y / rh, fr = fract(row);
     vec2 dir = normalize(vec2(-wn.z, wn.x) + 1e-5);

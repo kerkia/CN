@@ -14,7 +14,8 @@ Everything in the world frame of build.py (x to the map's right, z down, metres)
 town.bin: the arrays listed in town.json `arrays` (name, type, offset in bytes, count), each 4-byte aligned:
   rpos f32 (x, y, z), rcol u8 (r, g, b, flat + 2 × material), ridx u16 or u32 (chunk-local) — roofs;
   wpos f32 (x, y, z), wuv f32 (u along the wall's side, v above the ground's median along the building), wseg f32 (segment length, eave height,
-  floor height, seed), wcol u8 (r, g, b, kind + 10 × material), widx u16 or u32 — walls.
+  floor height, seed), wcol u8 (r, g, b, kind + 10 × material), widx u16 or u32 — walls; wtx f32 (the photo
+  façades' atlas coordinates, −1 where none), wtr u16 (the tile's rectangle in the atlas, 0-65535) — town_facadetex.py.
 town.json: { arrays, chunks: { "a,b": { r: [v0, nv, i0, ni], w: [v0, nv, i0, ni] } }, foot: [[ [x, z]… ]…] (collision outlines),
   walls: [{ pts, kind, h, imp }], props: [[kind, x, z, angle]], credit }"""
 import json, math, os, sys, time
@@ -75,6 +76,30 @@ roof = np.load(SRC / "roofpts.npy")                               # x - EX0, y -
 roof[:, 0] += EX0 - WX0; roof[:, 1] = WZ0 - (roof[:, 1] + EY0)     # → world x, z
 rtree = cKDTree(roof[:, :2])
 world_box = shapely.box(0, 0, W, H)
+# ---- photo façades (town_facadetex.py): every building's outline in the world, the vegetation's top for the occlusions --------
+from town_facadetex import FacadeTex, pack as pack_tiles, PXM as TEX_PXM
+WPOLYS = []
+for f in feats:
+    g = shapely.transform(shapely.force_2d(shape(f["geometry"])).buffer(0), lambda c: np.c_[wx(c[:, 0]), wz(c[:, 1])]).intersection(world_box)
+    WPOLYS += [q.simplify(0.1) for q in getattr(g, "geoms", [g]) if q.geom_type == "Polygon" and q.area >= 4]
+_LG = np.load(SRC / "lidar_grids.npz"); _ZV, _ZB = _LG["zv"], _LG["zb"]
+
+
+def zv_at(x, z):
+    """The vegetation's top (absolute m, NaN where none) at world points."""
+    j = ((np.asarray(x) + WX0 - EX0) / 0.5).astype(int); i = ((EY1 - (WZ0 - np.asarray(z))) / 0.5).astype(int)
+    inside = (i >= 0) & (i < _ZV.shape[0]) & (j >= 0) & (j < _ZV.shape[1])
+    return np.where(inside, _ZV[np.clip(i, 0, _ZV.shape[0] - 1), np.clip(j, 0, _ZV.shape[1] - 1)], np.nan)
+
+
+def zb_at(x, z):
+    """The buildings' top (absolute m, far below the ground where none) at world points."""
+    j = ((np.asarray(x) + WX0 - EX0) / 0.5).astype(int); i = ((EY1 - (WZ0 - np.asarray(z))) / 0.5).astype(int)
+    return _ZB[np.clip(i, 0, _ZB.shape[0] - 1), np.clip(j, 0, _ZB.shape[1] - 1)]
+
+
+FT = FacadeTex(SRC, wx, wz, WPOLYS, zv_at, zb_at, lambda x, z: ground(x, z), log) if (SRC / "poses.json").exists() and not os.environ.get("NO_FACADETEX") else None
+TILES = {}                                                        # side id → (RGBA tile, v_lo, v_hi)
 USE = {"résidentiel": 0, "commercial et services": 1, "religieux": 2, "sportif": 3, "industriel": 4, "agricole": 4, "annexe": 5,
        "indifférencié": 0}
 FACADE = [  # plasters of the Île-de-France: cream, sand, grey, white, meulière (millstone)
@@ -176,13 +201,14 @@ def chunk_of(x, z):
 
 
 def push(key, part, pos, col, idx, extra=None):
-    c = chunks.setdefault(key, {"r": [[], [], []], "w": [[], [], [], [], []]})
+    c = chunks.setdefault(key, {"r": [[], [], []], "w": [[], [], [], [], [], []]})
     if part == "r":
         base = sum(len(p) for p in c["r"][0])
         c["r"][0].append(pos); c["r"][1].append(col); c["r"][2].append(idx + base)
     else:
         base = sum(len(p) for p in c["w"][0])
         c["w"][0].append(pos); c["w"][1].append(extra[0]); c["w"][2].append(extra[1]); c["w"][3].append(col); c["w"][4].append(idx + base)
+        c["w"][5].append(extra[2])
 
 
 for f in feats:
@@ -358,7 +384,7 @@ for f in feats:
             fc = FACRGB[pr["cleabs"]]; stats["panoramax"] += 1
         style = kind + 10 * mat
         off = 0
-        wp, wu, ws, wi = [], [], [], []
+        wp, wu, ws, wi, wt = [], [], [], [], []
         for b in bnd:
             n = len(b); zb = nz[off:off + n]; off += n
             # split the ring at the outline's own corners (the original vertices), each side its own segment
@@ -379,6 +405,12 @@ for f in feats:
                 Ls = float(s[-1])
                 if Ls < 0.3:
                     continue
+                # the side's photo texture, if Panoramax's photos see it
+                sid = -1
+                if FT is not None:
+                    got = FT.side(pts, zz, ground(pts[:, 0], pts[:, 1]), b0, poly)
+                    if got is not None:
+                        sid = len(TILES); TILES[sid] = got
                 # Douglas-Peucker on (s, z)
                 keepi = [0, len(s) - 1]
                 stack = [(0, len(s) - 1)]
@@ -398,16 +430,44 @@ for f in feats:
                     wp += [[ax, base, az], [bx, base, bz], [bx, zz[qb], bz], [ax, zz[qa], az]]
                     wu += [[s[qa], base - b0], [s[qb], base - b0], [s[qb], zz[qb] - b0], [s[qa], zz[qa] - b0]]
                     ws += [[Ls, eave, floor_h, seed]] * 4
+                    wt += [sid] * 4
                     wi += [v, v + 1, v + 2, v, v + 2, v + 3]
         if wp:
             push(key, "w", np.array(wp, np.float32), np.tile(np.array([*fc, style], np.uint8), (len(wp), 1)), np.array(wi, np.uint32),
-                 extra=(np.array(wu, np.float32), np.array(ws, np.float32)))
+                 extra=(np.array(wu, np.float32), np.array(ws, np.float32), np.array(wt, np.int32)))
 log("buildings", len(foot), stats)
 
 # ---- arrays -------------------------------------------------------------------------------------------------------------
 out = bytearray(); arrays = {}
 NAMES = {"rpos": ("f32", 3), "rcol": ("u8", 4), "ridx": ("u32", 1), "wpos": ("f32", 3), "wuv": ("f32", 2), "wseg": ("f32", 4),
-         "wcol": ("u8", 4), "widx": ("u32", 1)}
+         "wcol": ("u8", 4), "widx": ("u32", 1), "wtx": ("f32", 2), "wtr": ("u16", 4)}
+# the photo façades' atlas: each textured side's tile; per wall vertex its place in the atlas (wtx) and its tile's rectangle (wtr,
+# 0-65535; all 0 where the side has none)
+ATLAS = None
+if FT is not None:
+    FT.save()
+    log("façade tiles kept", len(TILES), "of", len(FT.tilelog), "rectified; photos used", len(FT.used))
+if TILES:
+    ATLAS, TEX_F, TEX_RECT = pack_tiles({k: t[0] for k, t in TILES.items()})
+    SH, SW = ATLAS.shape[:2]
+    Image.fromarray(ATLAS, "RGBA").save(PKG / "facades.webp", quality=82, method=6)
+    log("façade atlas", SW, "x", SH, "tiles", len(TILES), "scale", round(TEX_F, 3), round((PKG / "facades.webp").stat().st_size / 1e6, 2), "MB")
+elif (PKG / "facades.webp").exists():
+    (PKG / "facades.webp").unlink()
+
+
+def tex_attrs(uv, sid):
+    tx = np.full((len(uv), 2), -1, np.float32); tr = np.zeros((len(uv), 4), np.uint16)
+    if ATLAS is None:
+        return tx, tr
+    for k in np.unique(sid[sid >= 0]):
+        m = sid == k; x0, y0, w, h = TEX_RECT[int(k)]; vhi = TILES[int(k)][2]
+        tx[m, 0] = (x0 + uv[m, 0] * TEX_PXM * TEX_F) / SW; tx[m, 1] = (y0 + (vhi - uv[m, 1]) * TEX_PXM * TEX_F) / SH
+        tr[m] = np.round(np.array([x0 / SW, y0 / SH, (x0 + w) / SW, (y0 + h) / SH]) * 65535).astype(np.uint16)
+    return tx, tr
+
+
+
 bufs = {k: [] for k in NAMES}
 index = {}
 counts = {k: 0 for k in NAMES}
@@ -421,6 +481,7 @@ for key, c in chunks.items():
         pos = np.vstack(c["w"][0]); e["w"] = [counts["wpos"], len(pos), counts["widx"], 0]
         bufs["wpos"].append(pos); bufs["wuv"].append(np.vstack(c["w"][1])); bufs["wseg"].append(np.vstack(c["w"][2]))
         bufs["wcol"].append(np.vstack(c["w"][3])); idx = np.concatenate(c["w"][4]); bufs["widx"].append(idx)
+        t_x, t_r = tex_attrs(np.vstack(c["w"][1]), np.concatenate(c["w"][5])); bufs["wtx"].append(t_x); bufs["wtr"].append(t_r)
         e["w"][3] = len(idx); counts["wpos"] += len(pos); counts["widx"] += len(idx)
     index[key] = e
 for k, (tp, n) in NAMES.items():
@@ -594,6 +655,9 @@ grain = np.clip(lumi / np.maximum(gaussian_filter(lumi, 6), 1), 0.75, 1.25)[...,
 m = np.clip(np.maximum(canw * 1.3 - 0.15, outside.astype(np.float32)), 0, 1)[..., None]
 cg = gaussian_filter(cg, (3, 3, 0))
 img = (img * (1 - m) + cg * (0.9 + 0.1 * grain) * m) * 0.8          # the photograph's colours are lit already: the scene lights them again
+# the street's ambient occlusion: the ground darker where it meets a building (26 % at the wall, half that 0.8 m out)
+dwall = distance_transform_edt(surf != 8) * GR
+img = img * (1 - 0.26 * np.exp(-dwall / 1.15) * (surf != 8))[..., None]
 img = np.clip(img, 0, 255).astype(np.uint8)
 Image.fromarray(img).save(PKG / "ground.jpg", quality=88)
 Image.fromarray(surf[::2, ::2]).save(PKG / "surf.png", optimize=True)
@@ -631,7 +695,7 @@ for k in range(1, n_ + 1):
 log("cars", len(cars), "kerbs", sum(1 for w_ in walls if w_["kind"] == "kerb"))
 
 json.dump({"arrays": arrays, "chunks": index, "foot": foot, "walls": walls, "props": props, "chunk": CH, "chimneys": chimneys,
-           "cars": cars, "carColours": CARCOL, "surfRes": GR * 2,
+           "cars": cars, "carColours": CARCOL, "surfRes": GR * 2, **({"facadeTex": "facades.webp"} if ATLAS is not None else {}),
            "panoramax": {"authors": FAC.get("authors", []), "buildings": stats.get("panoramax", 0)},
            "credit": "© IGN (LiDAR HD, BD TOPO, BD ORTHO), Licence Ouverte 2.0; © OpenStreetMap contributors, ODbL; "
                      "Panoramax (" + ", ".join(FAC.get("authors", [])) + "), façade colours derived from CC BY-SA 4.0 photos"},
@@ -640,9 +704,23 @@ log("town.bin", round(len(out) / 1e6, 2), "MB; town.json", round((PKG / "town.js
     "props", len(props), "chimneys", len(chimneys), stats)
 # features.json: the town's walls are drawn by vtown.js, not as the forest's strips
 F = json.load(open(PKG / "feats.json")); F["walls"] = []; json.dump(F, open(PKG / "feats.json", "w"))
-race["town"] = {"file": "town.json", "bin": "town.bin", "surf": "surf.png"}
+race["town"] = {"file": "town.json", "bin": "town.bin", "surf": "surf.png", **({"tex": "facades.webp"} if ATLAS is not None else {})}
 race["source"] = "town"
-race["photoAuthors"] = FAC.get("authors", [])                      # Panoramax's photos read for the façades (credited)
+# Panoramax's photos read for the façades' colours and textures, credited: their authors, and every photo by its id
+# every photo the façades were read from (town_panoramax.py's poses: the colours; the textures' photos are among them)
+used = {p["id"]: p for p in (json.load(open(SRC / "poses.json")) if (SRC / "poses.json").exists() else [])}
+authors = sorted(set(FAC.get("authors", [])) | {p["author"] for p in used.values() if p.get("author")})
+race["photoAuthors"] = authors
+race["photoCredits"] = [{"id": p["id"], "author": p["author"], "date": p.get("date", ""), "licence": p.get("licence") or "CC-BY-SA-4.0",
+                         "url": f"https://panoramax.openstreetmap.fr/#focus=pic&pic={p['id']}"} for p in sorted(used.values(), key=lambda p: p["id"])]
+if ATLAS is not None:
+    race["textures"] = {"facades.webp": {
+        "licence": "CC BY-SA 4.0", "licenceUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "note": "Façade textures rectified from Panoramax street photos (CC BY-SA 4.0); this derived work is itself CC BY-SA 4.0. "
+                "Nothing below 2.5 m above the street is taken (people, number plates).",
+        "sources": "photoCredits"}}
+else:
+    race.pop("textures", None)
 race["groundRes"] = GR
 json.dump(race, open(PKG / "race.json", "w"), indent=1)
 log("ground.jpg", img.shape, round((PKG / "ground.jpg").stat().st_size / 1e6, 2), "MB")
