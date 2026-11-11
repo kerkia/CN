@@ -12,9 +12,9 @@
 Everything in the world frame of build.py (x to the map's right, z down, metres), grouped by 64 m chunks as vworld.js streams.
 
 town.bin: the arrays listed in town.json `arrays` (name, type, offset in bytes, count), each 4-byte aligned:
-  rpos f32 (x, y, z), rcol u8 (r, g, b, kind), ridx u32 (chunk-local) — roofs;
-  wpos f32 (x, y, z), wuv f32 (u along the wall's segment, v above the building's base), wseg f32 (segment length, eave height,
-  floor height, seed), wcol u8 (r, g, b, style), widx u32 — walls.
+  rpos f32 (x, y, z), rcol u8 (r, g, b, flat + 2 × material), ridx u16 or u32 (chunk-local) — roofs;
+  wpos f32 (x, y, z), wuv f32 (u along the wall's side, v above the ground's median along the building), wseg f32 (segment length, eave height,
+  floor height, seed), wcol u8 (r, g, b, kind + 10 × material), widx u16 or u32 — walls.
 town.json: { arrays, chunks: { "a,b": { r: [v0, nv, i0, ni], w: [v0, nv, i0, ni] } }, foot: [[ [x, z]… ]…] (collision outlines),
   walls: [{ pts, kind, h, imp }], props: [[kind, x, z, angle]], credit }"""
 import json, math, os, sys, time
@@ -204,6 +204,14 @@ for f in feats:
             bad = np.abs(nz - zloc) > 0.7
             nz[bad] = zloc[bad]
             nz = np.clip(nz, top_g + 2.2, zmax)
+            # the eaves: along each ring, a running median of 3 nodes (a node taking another plane than its neighbours made a saw)
+            off = 0
+            for b in bnd:
+                n = len(b)
+                if n >= 5:
+                    zr = nz[off:off + n]; ext = np.concatenate([zr[-1:], zr, zr[:1]])
+                    nz[off:off + n] = np.median(np.lib.stride_tricks.sliding_window_view(ext, 3), axis=1)
+                off += n
         else:
             stats["flat"] += 1
             z = float(pr.get("altitude_maximale_toit") or 0) or (top_g + max(hz, 3))
@@ -221,6 +229,8 @@ for f in feats:
         use = (pr.get("usage_1") or "indifférencié").lower()
         nat = (pr.get("nature") or "").lower()
         kind = 2 if ("église" in nat or "chapelle" in nat or use.startswith("religieux")) else USE.get(use, 0)
+        if poly.buffer(-0.9).is_empty:                                  # a sliver under 1.8 m wide: a wall, no windows
+            kind = 5
         flat = (nz.max() - nz.min()) < 0.6
         rpos = np.c_[nodes[:, 0], nz, nodes[:, 1]].astype(np.float32)
         # the roof's material (materiaux_de_la_toiture's first digit): 1 tiles, 2 slates, 3 zinc; its colour the photograph's

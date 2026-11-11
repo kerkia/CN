@@ -319,7 +319,10 @@ mid = (chm > 0.5) & (chm <= 3.0) & ((Z["n4"] + Z["n5"]) > 1)
 mid_cover = gaussian_filter(mid.astype(np.float32), 2.0)
 green_ground = ndvi > 0.12
 cl[:] = K["open"]
-cl[~green_ground & (lum > 60)] = K["paved"]                          # bare, unbuilt ground
+# bare, unbuilt ground: paving near buildings and streets (courtyards, schoolyards, forecourts), open land elsewhere (a field
+# out of season, a sports ground's earth)
+near_built = np.zeros((NY, NX), np.uint8); burn(B.buffer(12).union(PAVED.buffer(6)), 1, near_built)
+cl[~green_ground & (lum > 60) & (near_built == 1)] = K["paved"]
 cl[~green_ground & (lum <= 60)] = K["open"]
 cl[(canopy_cover > 0.25)] = K["open_t"]
 cl[(canopy_cover > 0.6)] = K["forest"]

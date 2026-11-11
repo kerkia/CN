@@ -951,7 +951,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   them), BD TOPO V3's layers (WFS), BD ORTHO colour and infrared at 0.2 m (WMS), the cadastre's parcels (Etalab) and OpenStreetMap
   (Overpass), 60 m beyond the area, into `DATA/<race>/src/`; `town_all.py <race> [--courses] [--from <step>]` then runs
   `town_map.py` (the **ISSprOM 2019-2 map at 1:4000**: 521 BD TOPO's buildings, 501 roads at their carriageway width plus sidewalks,
-  OSM's pedestrian areas, squares, parkings, paved footways and sidewalks, bare unbuilt ground by the infrared; 401/402/405 the
+  OSM's pedestrian areas, squares, parkings, paved footways and sidewalks, bare unbuilt ground by the infrared within 12 m of a building or 6 m of a
+  street (elsewhere open land: a field out of season); 401/402/405 the
   LiDAR's canopy over the infrared's grass; **520 olive for the cadastre's parcels holding a house** (under 6 000 m², no church or
   sports building), schools and the railway's corridor; 411 hedges; 513/515 walls and 516/518 fences passable or not by the
   LiDAR's height along them, 1.5 m; 505/506 paths, 532 stairways, 509 railway, 301/305 water; contours every 2.5 m from the
@@ -979,9 +980,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   outlines, impassable walls/fences/hedges and posts (8 m cells; the ground classes `building` / `block` then run as paving).
   **`course_sprint.py`**: sites on outer building corners (the flag 1.1 m out), monuments, fountains, lone trees and bushes,
   impassable walls' ends, stairways' feet; legs 60-260 m timed on the speeds grid (skimage `MCP_Geometric`, a 130 m window), a leg
-  scoring for its route choice (a second route kept 10 m off the best, within 12 % of its time); three courses written as
-  `race.courses` [{ id, level: yellow|orange|violet, name, controls, length }], the orange one also as `race.course`; review
-  pictures `course_<level>.png`. New feature names `vt.f.corner|monument|fountain|bush|stairs|wallend`, the credit `vt.src.town`
+  scoring for its route choice (a second route kept 10 m off the best, within 12 % of its time); four courses at the Coach
+  page's levels, `race.courses` [{ id: blue|yellow|orange_md|violet_md, controls, length, climb }] (6, 8, 12, 16 controls, 1.0 to
+  2.6 km), review pictures `course_review_<id>.png`; then `thumb.mjs <race>` and `upload.py <race> [--remote]`. New feature names `vt.f.corner|monument|fountain|bush|stairs|wallend`, the credit `vt.src.town`
   (IGN LiDAR HD, BD TOPO, BD ORTHO, Licence Ouverte 2.0; OpenStreetMap ODbL; cadastre). Measured 60 fps in headless Edge at
   1400 × 860. **Not usable** (study of 2026-11-11, notes `virtually-sprint-report.md` in the sessions' notes folder): Google's
   Photorealistic 3D Tiles (refused with 403 to an EEA project since 2025-07-08, and no storing, deriving or « with any map »
