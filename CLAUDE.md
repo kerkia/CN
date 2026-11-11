@@ -1033,6 +1033,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   `mapImage`, `drawMap`). Measured on Trois Pignons (Fontainebleau, 2 × 2 km, 2026-11-11, PC): mapgen 515 s (karttapullautin 278 s;
   the 1 GB of point clouds 25 min from IGN at the PC's pace), lidarrace 40 s, build.py 234 s, course.py 200 s; 44 747 trees, 9 727
   boulders, a package of 11 MB; 52-56 fps at 1400 × 860.
+  **The map and the world agree point by point** (owner, 2026-11-11): every boulder the race places is drawn on `map.webp` as its
+  ISOM dot (204 ⌀ 0.6 mm, 205 ⌀ 0.9 mm at the map's scale), the outcrops as 206 areas. **The map as an editable OCAD file**:
+  `lidarrace.editable_ocd` writes `map_objects.json` — the OpenStreetMap objects, the boulders, karttapullautin's contours (101/102/103
+  from its vectors) and vegetation areas (403/406/408/410 traced from `cls_base.png`, a median of 3, simplified 0.08 mm) — and
+  `mkocd.mjs` makes it an OCAD 2018 file through Cartographier's `ocadout.js` (Trois Pignons: 5 888 objects, 2.3 MB); the CI keeps it
+  as `virtual-events/<id>/lidar.ocd`, the event's organisers download it in Orga (`GET …/file/lidar.ocd`, `vo.lidarOcd.*`), correct it in
+  OCAD or Cartographier and send it back as the event's `map.ocd`: « Reconstruire » then builds the race from their map with the
+  LiDAR under it (`edited` in the event).
   **The forest's look** (owner, 2026-11-11: « a lot more realistic »; `games/vforest.js`, everything procedural — canvases and
   geometry made in the browser, no image or model from elsewhere): crowns of leaf cards (two broadleaf variants, a conifer of
   drooping needle whorls), each card's normals bent out of the crown so that it is lit as one mass, both faces with the same normals
@@ -1043,6 +1051,24 @@ Every multiple-choice game was played through to its score page at phone size, w
   are impostors**: each kind rendered once to a texture (`impostor`) and drawn as two crossed cards beyond 95 m (`DETAIL`), the low
   vegetation only within 85 m, shadows from the chunks within 80 m. Measured in headless Edge on Granites, the same PC and moment:
   1400 × 860 23 → 34 fps, a phone's 390 × 844 41 → 49 fps.
+  **Second round** (owner, 2026-11-11: « start all next steps »): **photographed textures**, CC0 from Poly Haven (forest_leaves_02,
+  forest_ground_04, bark_brown_02, lichen_rock) and ambientCG (LeafSet009/010), made once by `tools/virtually/textures.py` into
+  `site/assets/textures/virtually/` (0.63 MB, `CREDITS.txt`; downloads not kept in git), each normalised around mid-grey so that the
+  biome's and the map's colours still tint them, read as linear data × 2 (`vforest.loadPhotos`, `photoTextures`, `PHOTO_GAIN`;
+  `loadRace` fetches them beside the package, the drawn textures stand in for one that fails): the ground's litter or gravel by class
+  (`World.groundKinds`, the shader's `gm`: paths, tracks and stony ground gravel, roads and paving a faint grain, the forest by its
+  conifers' share, a town's ground a third of it) with a broad variation over tens of metres, bark with its normal map on trunks and
+  logs, lichen rock on stones, crown cards of real leaves (1 500 leaves a 512 px cluster, a ragged edge of sprigs, the colour carried
+  into the transparent pixels against dark mipmap fringes). **Baked occlusion** in vertex colours (`bakeAO`, `merge` keeps a colour
+  attribute): the ground's hollows (3 m around), the foot of trunks and rocks, the inside and underside of crowns and conifers, round
+  logs and rocks; shadows softer (radius 4.5). **More varied trees**: four crown shapes (round, lobed, tall and narrow, wide and flat;
+  `cardCrown`'s `wide`, `lobes`), spruce cones and, for a third of the tall conifers, pines with a bare trunk and a high rounded crown
+  (`cardConifer`'s `shape: "pine"`, its own impostor `farPine2`), saplings under the old trees, every tree's colour a little apart
+  (`tint`). **The runner** (`runnerFigure`, same signature): articulated — hips, thighs, shins, feet, torso, arms with elbows, head —,
+  walk and run cycles blended by the speed (strides ~0.9 a second walking, ~1.45 at 3.5 m/s), knees lifting and elbows bent when
+  running, the body bobbing twice a stride, leaning forward with the speed and into the turns (from the heading's rate). SSAO was not
+  taken (a phone's budget). Granites, headless Edge, same PC and moment: 1400 × 860 34.3 → 34.7 fps, 390 × 844 54.7 → 57.0 (Foley
+  Mountain 40 at 1400 × 860).
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
   open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only
