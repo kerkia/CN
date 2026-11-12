@@ -30,7 +30,7 @@ const T = "lidarmap/t/", Q = "lidarmap/req/";
 // the tile ids (mapgen/grids.py ID; keep the two in step)
 const ID = /^(?:(\d{4})_(\d{4})|(ch|nz)_(\d{4})_(\d{4})|(us|ca)_(\d{1,2})_(\d{4})_(\d{4}))$/;
 // a tile's files; the vectors and vegetation for Cartographier (2026-11-06)
-const FILE = /^((?:\d{4}_\d{4}|(?:ch|nz)_\d{4}_\d{4}|(?:us|ca)_\d{1,2}_\d{4}_\d{4}))(\.dem\.png|\.s\.png|\.png|\.json|\.(?:forest|sprint)(?:-\d{2})?\.(?:png|vec\.json|vege\.png|help\.json))$/;
+const FILE = /^((?:\d{4}_\d{4}|(?:ch|nz)_\d{4}_\d{4}|(?:us|ca)_\d{1,2}_\d{4}_\d{4}))(\.dem\.png|\.s\.png|\.png|\.json|\.(?:forest|sprint)(?:-\d{2})?\.(?:png|vec\.json|vege\.png|help\.json|steep\.json))$/;
 const STYLES = ["forest", "sprint"];
 // each style's contour intervals, its default first (mapgen/run.py INTERVALS), and a variant's version (VARIANT_V: sprint 3, its
 // contours every 2.5 m — they were every 0.5 m); keep the three in step (trace/lidarmap.js too)
@@ -128,7 +128,7 @@ export const onRequestGet = withUser(async ({ request, env, params }) => {
     const o = await env.BUCKET.get(T + path[1]);
     if (!o) return json({ error: "not found" }, 404);
     return new Response(o.body, { headers: { "Content-Length": String(o.size), "Content-Type": o.httpMetadata?.contentType || (path[1].endsWith(".json") ? "application/json" : "image/png"),
-      "Cache-Control": path[1].endsWith(".json") && !/\.(vec|help)\.json$/.test(path[1]) ? "private, no-cache" : "private, max-age=604800" } });
+      "Cache-Control": path[1].endsWith(".json") && !/\.(vec|help|steep)\.json$/.test(path[1]) ? "private, no-cache" : "private, max-age=604800" } });
   }
   const req = new URL(request.url).searchParams.get("req") || "";
   if (!/^[a-z0-9]{6,20}$/.test(req)) return json({ error: "bad request" }, 400);

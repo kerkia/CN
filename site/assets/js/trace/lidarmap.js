@@ -325,7 +325,7 @@ const composed = new Map();
 /**
  * The wait for a request (ask()'s answer r) shown to the user (owner, 2026-11-01, then 2026-11-07: « a progress bar with
  * relevant information »): say(key, vars, frac) every 2 s with the catalogue key of what happens and its figures — while it
- * waits unstarted, the requests before it (an.gen.ahead) or the next run (notStarted, waiting); while the workflow makes it
+ * waits unstarted, the requests before it (an.gen.ahead), else the making (an.gen.queued); while the workflow makes it
  * (mapgen/run.py Progress, read every 10 s), the stage with the country's source, the tiles done of the tiles, the part of a
  * run over several grids — and vars.t, the time waited (« m:ss »); frac the share done × share (null while unknown: the bar
  * then shows an hourglass). Resolves { tiles: { id: "ready" | "none" | "failed" } } or null when stop() is true.
@@ -343,7 +343,9 @@ export async function waitFor(r, tiles, say, stop = () => false, share = 1) {
       say(`an.gen.stage.${key}`, { n, t, part, src: SOURCE_SHORT[g.country] || "", tiles: tn("an.gen.tiles", g.tiles || n), done: g.done ?? 0,
         total: g.total ?? n, try: g.try || 1, server: g.server || "", st: elapsed(g.s || 0) }, share * (g.frac || 0));
     } else if (p?.ahead) say("an.gen.behind", { t, ahead: tn("an.gen.ahead", p.ahead) }, null);
-    else say(!r.started ? "an.gen.notStarted" : performance.now() - t0 < 20000 ? "an.gen.queued" : "an.gen.waiting", { n, t }, null);
+    // before the run reports anything (GitHub starting a runner, the runner installing): part of the map's making, said as such —
+    // never « waiting for a server » (owner, 2026-11-12: of no interest to the user); other users' requests ahead are said above
+    else say("an.gen.queued", { n, t }, null);
   };
   show();
   for (;;) {

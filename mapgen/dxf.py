@@ -1,6 +1,7 @@
 """karttapullautin's vector outputs as a compact JSON, for Cartographier (2026-11-06): the contours, form lines, cliffs, dot
 knolls and small depressions it writes as DXF beside its PNGs (batch mode with savetempfiles=1 and output_dxf=1: in out/,
-<cloud>_contours.dxf, _formlines.dxf, _c2g.dxf, _c3g.dxf, _dotknolls.dxf), cut to the tile's square kilometre (karttapullautin
+<cloud>_contours.dxf, _formlines.dxf, _c2g.dxf, _c3g.dxf, _dotknolls.dxf; c3g's steep marks written apart since 2026-11-12,
+<id>.<variant>.steep.json, run.vectors), cut to the tile's square kilometre (karttapullautin
 runs a little into the neighbours), in Lambert 93.
 
 The JSON, `t/<id>.<style>.vec.json`:

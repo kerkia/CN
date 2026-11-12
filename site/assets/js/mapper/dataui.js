@@ -20,6 +20,28 @@ const DRAFT = "draft", HELP_PART = "lidarhelp";
 /** The rectangle (map mm) the data is asked for: the one chosen, else the print area, else the screen. */
 function areaOf(E) { return E.dataArea || E.doc.printArea || E.view.visibleRect(); }
 const styleOf = (E) => (/ISSprOM/i.test(E.doc.standard || "") || E.doc.scale <= 5000 ? "sprint" : "forest");
+/** A draft contour from an import (101-103: contours, index contours, form lines, their slope lines), by its source. */
+const CONTOUR_SRC = new Set(["dem", "town", "lidar"]);
+const isDraftContour = (o) => o.draft && CONTOUR_SRC.has(o.src) && Math.floor(o.sym / 1000) >= 101 && Math.floor(o.sym / 1000) <= 103;
+const isContourSym = (sym) => Math.floor(sym / 1000) >= 101 && Math.floor(sym / 1000) <= 103;
+/**
+ * One set of contours in the draft (owner, 2026-11-12: the terrain model's, the town plan's and the LiDAR's came in together, « un
+ * million de courbes »): before an import brings contours from `src` ("dem", "town", "lidar"), draft contours already there from an
+ * earlier import are offered for replacement. Resolves true when the new contours are to come in (the old ones then removed, or
+ * none there), false when the old ones are kept (the import then brings no contours).
+ */
+async function oneContourSet(E, src) {
+  const old = E.doc.objects.filter(isDraftContour);
+  if (!old.length) return true;
+  const from = [...new Set(old.map((o) => o.src))].map((k) => t(`map.data.csrc.${k}`)).join(", ");
+  const { confirmBox } = await import("../askbox.js");
+  const yes = await confirmBox(tn("map.data.contoursReplace", old.length, { from, to: t(`map.data.csrc.${src}`) }),
+    { ok: t("map.data.contoursReplaceOk"), cancel: t("map.data.contoursKeep") });
+  if (!yes) return false;
+  E.live.transact(t("map.undo.reject"), () => { for (const o of old) E.live.remove(o.id); });
+  E.sel?.clear?.(); E.selChanged?.();
+  return true;
+}
 function draftPart(E) {
   if (!E.doc.parts.some((p) => p.id === DRAFT)) E.live.setDocField("parts", [...E.doc.parts, { id: DRAFT, name: t("map.parts.draft"), hidden: false, locked: false }]);
   return DRAFT;
@@ -121,6 +143,7 @@ async function contours(E) {
   const sprint = styleOf(E) === "sprint";
   const v = await modal(E, { title: t("map.rib.data-contours"), body: field(t("map.data.interval"), sel("i", [["2.5", "2,5 m"], ["5", "5 m"], ["10", "10 m"]], sprint ? "2.5" : "5")) + `<p class="mp-hint">${esc(t("map.data.contoursHint"))}</p>` + (sprint ? `<p class="mp-hint">${esc(t("map.data.contoursSprint"))}</p>` : "") + (P ? P.SP.noteHtml(P.s, P.lat, P.lon, ["dem"]) : "") });
   if (!v) return;
+  if (!(await oneContourSet(E, "dem"))) return;
   const say = progress(E);
   say(t("map.data.loadingDem"));
   const C = await import("./data/contours.js");
@@ -241,7 +264,9 @@ async function waitTown(E, p) {
       if (r?.status === "failed" || r?.status === "gone") { keepTown(E, null); E.say(r.status === "gone" ? t("map.data.town.gone") : t("map.data.town.failed", { error: r.error || "" }), "bad"); return; }
       const pr = r?.progress;
       if (pr) say(`${townStage(pr)} · ${waited}`, pr.stage === "setup" ? null : pr.frac);
-      else say(`${r?.ahead ? tn("map.data.town.ahead", r.ahead) : t("map.data.town.queued")} · ${waited}`);
+      // before the run reports its sources (GitHub starting a runner, the runner installing): « préparation », part of the making —
+      // never « waiting for a server » (owner, 2026-11-12); only other users' requests ahead are a queue worth saying
+      else say(`${r?.ahead ? tn("map.data.town.ahead", r.ahead) : t("map.data.town.preparing")} · ${waited}`);
       await new Promise((ok) => setTimeout(ok, 10000));
     }
     say(t("map.data.town.reading"));
@@ -250,15 +275,16 @@ async function waitTown(E, p) {
     const j = await res.json();
     const f = await frameOrSay(E); if (!f) return;
     await ensureTownSymbols(E);
-    const objects = townObjects(j, f, { contours: p.contours });
+    const objects = townObjects(j, f, { contours: p.contours && (await oneContourSet(E, "town")) });
     const n = bring(E, objects, t("map.undo.data"));
     keepTown(E, null);
     E.say(tn("map.data.brought", n) + ` · ${t("map.data.town.credit", { date: lidarYear(j) })}`);
   } finally { if (E._townWait === p.req) E._townWait = null; }
 }
-/** What the workflow is doing (townmap_ci.py's progress, 2026-11-12): « setup » while GitHub's runner installs its libraries, the
+/** What the workflow is doing (townmap_ci.py's progress, 2026-11-12): « setup » (the runner installing) said as the preparation, the
  *  sources still awaited while they download (read at the same time), the map's step while it is computed. */
 function townStage(pr) {
+  if (pr.stage === "setup") return t("map.data.town.preparing");
   if (pr.stage === "fetch" && pr.pending?.length) {
     const names = pr.pending.map((k) => (k === "osm" && pr.osmTry > 1 ? t("map.data.town.src.osmTry", { n: pr.osmTry }) : t(`map.data.town.src.${k}`)));
     let list = names.join(", ");
@@ -332,7 +358,10 @@ async function lidar(E) {
   try { r = await L.loadLidar(f, areaOf(E), style, { interval, helpers, say: (key, vars, frac) => say(t(key, { n: "", t: "", ...vars }), frac), progress: (key, vars, frac) => say(t(key, vars), frac), stop: () => E._stopData, ...town }); }
   catch (e) { E.say(e.message === "tooLarge" ? t("map.data.tooLarge") : e.message === "nogeo" ? t("map.data.nogeo") : e.message, "bad"); return; }
   if (!r) { E.say(""); return; }
-  const n = bring(E, r.objects, t("map.undo.data"));
+  // a forest map: the LiDAR's contours replace another source's draft contours, if the mapper agrees, else they stay out (cliffs,
+  // knolls and vegetation come all the same); a sprint map's own relief already keeps them out where it lies (reliefCover)
+  const keepOld = style !== "sprint" && !(await oneContourSet(E, "lidar"));
+  const n = bring(E, keepOld ? r.objects.filter((o) => !isContourSym(o.sym)) : r.objects, t("map.undo.data"));
   let nh = 0;
   if (r.helpers?.length) {
     const Lay = await import("./layout.js");

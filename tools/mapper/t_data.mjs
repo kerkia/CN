@@ -176,8 +176,9 @@ function splitRings(coords) {
   ok(cl.length === 1 && near(cl[0][0][0], 391300, 0.2) && near(cl[0].at(-1)[0], 391312.9, 0.2), `six strokes, one cliff line from ${cl[0][0][0].toFixed(1)} to ${cl[0].at(-1)[0].toFixed(1)}`);
   const doc = { scale: 10000, realWorld: { x: 391500, y: 6818500, angle: 0, epsg: 2154 } }, f = makeFrame(doc, gridDef(doc.realWorld, table), null);
   const r = vectorObjects([vec], f);
-  const want = { 101000: 1, 102000: 1, 201000: 1, 202000: 1, 109000: 1, 111000: 1 };
-  ok(Object.entries(want).every(([s, n]) => r.counts[s] === n), `hand-made tile → ${JSON.stringify(r.counts)}`);
+  // karttapullautin's « cliff3 » (its steep spots, not cliffs) left out since 2026-11-12: no 201.0
+  const want = { 101000: 1, 102000: 1, 202000: 1, 109000: 1, 111000: 1 };
+  ok(Object.entries(want).every(([s, n]) => r.counts[s] === n) && !r.counts[201000], `hand-made tile → ${JSON.stringify(r.counts)}`);
   const k = r.objects.find((o) => o.sym === 109000);
   ok(near(mmX(k.coords[0]), -10, 0.01) && near(mmY(k.coords[0]), -10, 0.01) && k.src === "lidar" && k.draft, "a knoll at its place in map mm, src lidar");
   const bg = backgrounds([{ id: "0391_6819", record: { x0: 391000, y1: 6819000, vec: { forest: 1 } } }], "forest", f);

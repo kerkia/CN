@@ -2681,7 +2681,15 @@ Every multiple-choice game was played through to its score page at phone size, w
   made before gets the symbol and its colour from its set, `layout.addSetSymbols`), **karttapullautin credited** (Jarkko Ryyppö,
   GPL-3, MapAnt's tool, its GitHub) and its **settings listed** (« Réglages de karttapullautin »: `data/lidar.js kpRows`, a mirror
   of run.py's, each with what it does, `map.data.kp.*`); they are not adjustable: a tile serves every mapper. The guide's « Le
-  LiDAR et karttapullautin ». (2026-11-12; ribbon Données › `data-town`, `dataui.town`): a sprint map's town made by **the
+  LiDAR et karttapullautin ».
+  **One set of contours** (owner, 2026-11-12: « un million de courbes » — the terrain model's, the town plan's and the LiDAR's came
+  in together): a new forest map takes the LiDAR's when ticked (the terrain model's box then unticked and greyed), else the terrain
+  model's; a sprint map keeps the town plan's or the terrain model's (drawn by the town plan's rules), the LiDAR's coming only where
+  those are not (`reliefCover`); an import over draft contours of another import asks to replace them (`dataui.oneContourSet`:
+  « Remplacer » / « Garder les anciennes »; a forest map's LiDAR import, its cliffs, knolls and vegetation coming either way). **karttapullautin's c3g** (« cliff3 », « cliff4 ») is every steep spot — 30 times c2g's strokes along the same cliffs in
+  Gif's town, 1.2 million over an Autrans tile (28 MB of its 28.4) —, while its own image draws c2g's: mapgen writes it apart
+  (`<id>.<variant>.steep.json`, read by Virtually's lidarrace.py for its rock) and Carto takes c2g's cliffs only, as 202 (the
+  mapper makes one impassable on the ground); the Autrans tile: 502 objects in 1.4 s, 80 cliffs. (2026-11-12; ribbon Données › `data-town`, `dataui.town`): a sprint map's town made by **the
   generator Pixel's town races use** (Virtually › « Sprint in a town », « A mapper's review »), run on GitHub — the owner's choice
   the same day, after a browser port of its rules had been written (JSTS, removed): « any mapper will rather wait many more minutes
   if it saves tons later; what matters is quality », and one engine keeps every future review in one place. The page sends the
@@ -2714,9 +2722,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   files `ortho2_…`; Virtually keeps 0.2 m); `town_map.py` reads the point clouds by their COPC octree, the area only and the fields
   used (`laspy.CopcReader.query`: ~20 s → ~2 s a tile) and prints `@@step <name>`; `townmap_ci.py` streams the steps' output
   (`stream`) into the request's progress (`pending` sources, `osmTry`, the map's `step`), and `--setup` marks the waiting requests
-  « setup » as the job starts (townmap.yml, before pip — cached); the page says « GitHub démarre un serveur de calcul », « le serveur
-  installe Python… », « téléchargement, encore la photo aérienne et OpenStreetMap », « calcul de la carte — surfaces… »
-  (`townStage`, `map.data.town.*`). Measured on the PC, the same 500 × 500 m of Gif with its LiDAR there: 229 s → 90 s (sources
+  « setup » as the job starts (townmap.yml, before pip — cached); the page says « préparation du calcul » until the sources come
+  (the runner starting and installing counted as part of the making, never « waiting for a server »: owner, 2026-11-12; only other
+  users' requests ahead are said, `ahead`), then « téléchargement, encore la photo aérienne et OpenStreetMap », « calcul de la carte —
+  surfaces… » (`townStage`, `map.data.town.*`); the LiDAR's wait likewise (`waitFor`: `an.gen.queued`, no `an.gen.waiting`). Measured on the PC, the same 500 × 500 m of Gif with its LiDAR there: 229 s → 90 s (sources
   2:14 → 47 s, the map 95 → 41 s), the same objects (2 524 against 2 508: the paving read on the 0.5 m photo).
   Not done: a run on GitHub itself (the first real request will be it), other countries (their LiDAR, cadastre and photographs).
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,

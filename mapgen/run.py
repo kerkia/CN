@@ -524,9 +524,15 @@ def vectors(home: Path, tid: str, x0: int, y1: int, v: str, tdir: Path, log=prin
     try:
         files = dxf.find(home / "out", tid)
         helper = files.pop("basemap", None)
+        # karttapullautin's c3g (« cliff3 », « cliff4 »): every steep spot, 30 times c2g's strokes along the same cliffs in a town and
+        # 1.2 million over Autrans' slopes (2026-11-12) — not what a map draws (its own image draws c2g's cliffs): apart, in
+        # <id>.<variant>.steep.json, for Virtually's rock (lidarrace.py), never in Cartographier's vectors (28 MB a tile there)
+        steep = files.pop("c3g", None)
         if not files:
             return False
         n = dxf.write(tdir / f"{tid}.{v}.vec.json", dxf.tile_vectors(files, tid, x0, y1, v, crs=crs))
+        if steep:
+            dxf.write(tdir / f"{tid}.{v}.steep.json", dxf.tile_vectors({"c3g": steep}, tid, x0, y1, v, crs=crs))
         if helper:
             h = dxf.write(tdir / f"{tid}.{v}.help.json", dxf.tile_vectors({"basemap": helper}, tid, x0, y1, v, crs=crs, simplify=dxf.HELP_TOL))
             log(f"{tid}: helper contours {h} bytes")

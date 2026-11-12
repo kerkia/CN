@@ -203,6 +203,11 @@ async function newMap() {
       form.querySelectorAll("[name=kind]").forEach((r) => r.addEventListener("change", () => { form.querySelector("[data-fscale]").style.display = form.kind.value === "forest" ? "" : "none"; }));
       // ⓘ: the source in a tooltip; a tap (no hover on a phone) shows it under the line
       form.querySelectorAll("[data-tip]").forEach((b) => b.addEventListener("click", () => { const p = b.parentElement.querySelector(".mp-tip"); p.style.display = p.style.display === "none" ? "block" : "none"; }));
+      // one set of contours: the LiDAR's replace the terrain model's
+      // (a forest map: a sprint map's contours follow the town plan's rules, and the LiDAR's stay out where they lie)
+      const contoursBox = () => { const on = form.lidar.checked && form.kind.value === "forest"; if (on) form.dem.checked = false; form.dem.disabled = on; form.dem.closest("label").title = on ? t("map.new.demByLidar") : ""; };
+      form.lidar.addEventListener("change", contoursBox);
+      form.querySelectorAll("[name=kind]").forEach((r) => r.addEventListener("change", contoursBox));
       form.querySelector("[data-here]").addEventListener("click", () => navigator.geolocation?.getCurrentPosition((p) => { form.place.value = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`; support(); }, () => {}, { enableHighAccuracy: true, timeout: 15000 }));
     },
     validate: (x) => (!x.kind ? t("map.new.needKind") : x.place && !parsePlace(x.place) ? t("map.new.badPlace") : null) });
@@ -225,12 +230,18 @@ async function newMap() {
     const D = await import("../mapper/dataui.js");
     const nat = E.frame?.geo ? await D.nationalSource(E, E.frame) : null;
     if (v.bdtopo && !nat) v.osm = true;
+    // one set of contours (owner, 2026-11-12: three came in together): a forest map the LiDAR's when it is asked for, else the
+    // terrain model's; a sprint map the town plan's or the terrain model's by the town plan's rules, the LiDAR's only where those
+    // are not (dataui.js reliefCover)
     if (sprint && nat === "bdtopo" && (v.bdtopo || v.osm)) {
       // a sprint map in France: the town map of the generator Pixel's races use (LiDAR, BD TOPO, BD ORTHO, cadastre,
       // OpenStreetMap; the townmap workflow, several minutes), its contours with it — one engine, not the separate imports
       await D.town(E, { contours: !!v.dem });
       if (v.lidar) await E.act("data-lidar");
-    } else for (const [k, act] of [["dem", "data-contours"], ["bdtopo", "data-national"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) if (v[k] && (k !== "bdtopo" || nat)) await E.act(act);
+    } else for (const [k, act] of [["dem", "data-contours"], ["bdtopo", "data-national"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) {
+      if (k === "dem" && v.lidar && !sprint) continue;            // a forest map: the LiDAR's contours, not the terrain model's
+      if (v[k] && (k !== "bdtopo" || nat)) await E.act(act);
+    }
   }
 }
 /** A data checkbox with its ⓘ (outside the label, so that a tap on it does not tick the box). */

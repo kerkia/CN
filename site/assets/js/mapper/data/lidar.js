@@ -2,7 +2,8 @@
 // GitHub by lidarmap.yml, kept in R2, read through /api/lidarmap; trace/lidarmap.js asks for them and waits) carry, beside
 // their images, karttapullautin's own vectors in Lambert 93 (t/<id>.<style>.vec.json, mapgen/dxf.py): contours, index
 // contours, form lines, cliffs, dot knolls and small depressions. They become objects — 101.0 contour, 102.0 index contour,
-// 103.0 form line, 201.0 impassable cliff (karttapullautin's « cliff3 »), 202.0 cliff (« cliff2 »), 109.0 small knoll,
+// 103.0 form line, 202.0 cliff (karttapullautin's « cliff2 », the cliffs its own map draws; its « cliff3 » are the steep spots,
+// tens of times as many, left out since 2026-11-12: the mapper makes a cliff impassable on the ground), 109.0 small knoll,
 // 111.0 small depression — tagged { src: "lidar", srcId: "<tile>:<layer>", draft: true }; the contours cut at the tiles'
 // edges joined again, the cliffs' short strokes gathered into lines. The vegetation stays a raster: a background per tile
 // (its image's address and its world file in Lambert 93, its corners in map mm).
@@ -18,10 +19,10 @@ const API = "/api/lidarmap";
 const PX = 0.4233333333333334, SIZE = 2362;
 /** karttapullautin's line layers → symbols (null: left out). */
 export const LINE_SYM = { contour: 101000, contour_index: 102000, formline: 103000, small_depression: 101000, depression_intermed: 103000,
-  cliff2: 202000, cliff3: 201000 };
+  cliff2: 202000 };
 /** Its point layers → symbols (the « ugly » ones are those karttapullautin leaves off its image for legibility). */
 export const POINT_SYM = { dotknoll: 109000, uglydotknoll: 109000, udepression: 111000, uglyudepression: 111000 };
-const CLIFFS = new Set(["cliff2", "cliff3"]);
+const CLIFFS = new Set(["cliff2"]);
 /** The helper contours' symbol (karttapullautin's « basemap » layer "cont"). */
 export const HELP_SYM = 996000;
 export { INTERVALS, helpInterval, variantOf };
@@ -296,10 +297,11 @@ export function vectorObjects(vecs, frame, rect = null, opts = {}) {
   const all = [], points = [];
   let dense = 0;
   for (const { grid, vecs: list } of byGrid.values()) {
-    const mm = toMm(frame, grid), lines = [], strokes = { cliff2: [], cliff3: [] }, here = [];
+    const mm = toMm(frame, grid), lines = [], strokes = { cliff2: [] }, here = [];
     for (const v of list) {
       const d = decode(v);
-      for (const l of d.lines) { if (CLIFFS.has(l.layer)) { if (cliffs) strokes[l.layer].push(l.pts); } else lines.push(l); }
+      // « cliff3 » (tiles made before 2026-11-12 carry it here) left out: karttapullautin's steep spots, not cliffs
+      for (const l of d.lines) { if (CLIFFS.has(l.layer)) { if (cliffs) strokes[l.layer].push(l.pts); } else if (l.layer !== "cliff3") lines.push(l); }
       here.push(...d.points);
     }
     const joined = joinLines(lines);

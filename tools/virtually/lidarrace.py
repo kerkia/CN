@@ -172,8 +172,8 @@ from PIL import ImageDraw
 from scipy import ndimage
 from scipy.spatial import cKDTree
 rockm = Image.new("L", (W, H), 0); dr = ImageDraw.Draw(rockm)
-for t in ids:
-    p = tiles / "t" / f"{t}.forest.vec.json"
+for t, kind in ((t, kind) for t in ids for kind in ("vec", "steep")):       # c3g's steep marks apart since 2026-11-12 (mapgen)
+    p = tiles / "t" / f"{t}.forest.{kind}.json"
     if not p.exists():
         continue
     v = json.loads(p.read_text(encoding="utf-8"))
