@@ -20,6 +20,7 @@
  "stairs": "532",
  "stairsOnPavingShare": 0.5,
  "bridgeMouth": "512.1",
+ "bridgeSides": { "line": "515", "low": ["301", "305", "306", "509.1"], "apartM": [1, 6], "maxLengthM": 40 },
  "passage": "993",
  "contours": ["101", "102"],
  "contourEndMm": 0.25,

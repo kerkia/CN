@@ -120,6 +120,36 @@ function nearIdx(ix, x, y, rmax) {
   return best.d <= rmax ? best : { d: Infinity, x, y };
 }
 
+/** A bridge's sides, drawn as 515 (ISSprOM: « a simple bridge, which cannot be passed underneath, shall be represented using
+ *  symbol Uncrossable wall »): two near-parallel 515 lines 1-6 m apart with water, a stream or the railway by them — no gap. */
+function bridgeSides(E, parts, idx) {
+  const R_ = LEG.bridgeSides, out = new Set();
+  if (!R_) return out;
+  const k = E.doc.scale / 1000, lo = R_.apartM[0] / k, hi = R_.apartM[1] / k, maxL = R_.maxLengthM / k, lows = new Set(R_.low);
+  const walls = E.doc.objects.filter((o) => o.otp === 2 && codeOf(o.sym) === R_.line);
+  const geo = (o) => { const p = parts(o)[0]?.pts || []; return { p, l: G.polyLength(p), h: p.length > 1 ? Math.atan2(p[p.length - 1][1] - p[0][1], p[p.length - 1][0] - p[0][0]) : 0 }; };
+  const nearLow = (o, p) => {
+    const b = G.bboxOf(p), r = 3 / k;
+    return E.live.near([b[0] - r, b[1] - r, b[2] + r, b[3] + r]).some((n) => lows.has(codeOf(n.sym))
+      && p.some(([x, y]) => (n.otp === 3 && inIdx(idx(n), x, y)) || nearIdx(idx(n), x, y, r).d < Infinity));
+  };
+  for (const o of walls) {
+    const a = geo(o);
+    if (a.l > maxL || a.p.length < 2 || !nearLow(o, a.p)) continue;
+    const b = G.bboxOf(a.p);
+    for (const n of E.live.near([b[0] - hi, b[1] - hi, b[2] + hi, b[3] + hi])) {
+      if (n.id === o.id || n.otp !== 2 || codeOf(n.sym) !== R_.line) continue;
+      const c = geo(n);
+      if (c.l > maxL || c.p.length < 2) continue;
+      const turn = Math.abs(((a.h - c.h + Math.PI / 2) % Math.PI + Math.PI) % Math.PI - Math.PI / 2);
+      const d = Math.min(...a.p.map(([x, y]) => G.nearestOn(c.p, x, y).d));
+      const mid = a.p[Math.floor(a.p.length / 2)];
+      if (d >= lo && d <= hi && turn < (25 * Math.PI) / 180 && G.nearestOn(c.p, mid[0], mid[1]).d <= hi + 1 / k) { out.add(o.id); out.add(n.id); }
+    }
+  }
+  return out;
+}
+
 /** The sprint map's legibility rules (sets/legibility.json, shared with the town map generator's check). */
 function sprintRules(E, out) {
   const geo = new Map();
@@ -127,7 +157,8 @@ function sprintRules(E, out) {
   const idxs = new Map();
   const idx = (o) => { let v = idxs.get(o.id); if (!v) { v = edgesOf(parts(o), o.otp === 3); idxs.set(o.id, v); } return v; };
   const gapA = new Set(LEG.gap.areas), gapL = new Set(LEG.gap.lines), gap = LEG.gap.mm;
-  const imp = (o) => o.sym > 0 && ((o.otp === 3 && gapA.has(codeOf(o.sym))) || (o.otp === 2 && gapL.has(codeOf(o.sym))));
+  const sides = bridgeSides(E, parts, idx);
+  const imp = (o) => o.sym > 0 && !sides.has(o.id) && ((o.otp === 3 && gapA.has(codeOf(o.sym))) || (o.otp === 2 && gapL.has(codeOf(o.sym))));
   const half = (o) => (o.otp === 2 ? (LEG.gap.lineWidthMm[codeOf(o.sym)] || 0.4) / 2 : 0);
   // impassable features less than 0.4 mm apart: a passage nobody can read (ISSprOM: closed, or widened)
   const pairs = new Set();

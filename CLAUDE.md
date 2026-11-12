@@ -1210,8 +1210,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   paved footway on paving (cut). Two fixing passes then a plain check, before the curves are made: ~3.5 min on top of the
   generator's 5 on Gif's 1.4 km². On Gif (2026-11-12, with the mapper's third review): ~2 190 white slivers and ~400 narrow parts
   mended, 121 small areas given away, 52 gaps and 185 notches closed, 122 trees thinned, 6 stairways paved, 3 paths cut off
-  paving; left 160 wall ends beside another feature (short pieces along one another), 10 gaps a way runs through, 17 short lines,
-  4 contour ends; Cartographier's checks on its map.ocd: 107 gaps, mostly those walls.
+  paving; left 15 gaps, 6 a way runs through, 17 short lines, 4 contour ends. **A bridge's sides are no gap** (the sprint
+  session, same evening: 95 of Gif's 107 lines in 515 are the decks' sides, two short parallel lines over the water): `town_map.py`
+  passes its decks (`decks=DECK_ALL`), the 515 lines along them leave the gap search; without decks (a file, Cartographier) two
+  near-parallel 515 lines 1-6 m apart, 40 m long at most, by water, a stream or the railway (legibility.json `bridgeSides`; 79 of
+  the 95 found that way). Cartographier's checks on Gif's map.ocd: 35 gaps (107 before that rule).
   Not redrawn after a fix: the paved edge 501.1 and the 995 boundaries keep their place. **The rules are shared**:
   `site/assets/js/mapper/sets/legibility.json` (symbols, the gap, the paving, the stairs…), which Cartographier's checks read too
   (`checks.js` `sprintRules`, on a map of 1:5000 or larger or ISSprOM: gaps under 0.4 mm with the same touching and wedge rules, a

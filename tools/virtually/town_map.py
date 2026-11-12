@@ -1327,7 +1327,7 @@ for xm in np.arange(math.floor((X0 - CX) / 120) * 120, (X1 - CX) + 1, 120):
 import legibility
 DOC = {"title": f"{RACE} sprint", "scale": SCALE, "set": "issprom2019-2", "realWorld": {"x": CX, "y": CY, "epsg": 2154},
        "objects": objects}
-LEG = legibility.check(DOC, fix="--no-fix" not in sys.argv, frame=CLIP, log=log)
+LEG = legibility.check(DOC, fix="--no-fix" not in sys.argv, frame=CLIP, log=log, decks=DECK_ALL)   # (its sides: 515, no gap)
 for line in ["legibility"] + LEG.lines():
     log(line)
 json.dump(LEG.json(), open(SRC / "legibility.json", "w"))

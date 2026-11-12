@@ -16,7 +16,8 @@ the report says what is really left; about 3.5 min on Gif's 1.4 km²):
   parallel pieces), the gap between areas filled with the area's symbol (two buildings: one building; olive on either side:
   olive) — long gaps by a closing, two corners near each other by the hull of their near parts; a gap a path, stairway or passage
   runs through is left for the mapper to widen (`gap_way`); the wedge where two features meet at an angle is a dead end, not a
-  gap; a notch or a hole narrower than 0.4 mm in one feature is filled (`notch`);
+  gap; a notch or a hole narrower than 0.4 mm in one feature is filled (`notch`); a bridge's sides, two short 515 lines along a
+  deck (`decks`, else found by their shape: `bridge_sides`), are no gap;
 - width / sliver: an area's part narrower than its symbol's minimum width (minimums.json, else 0.3 mm), and the white strips left
   between areas: a runnable area's strip goes to the neighbour sharing most of its edge, an impassable one (olive, 411, water) is
   widened to its minimum; a building's narrow part is reported only;
@@ -133,6 +134,38 @@ def opened_away(U, w):
     return out
 
 
+def bridge_sides(by, decks=None):
+    """The indexes of the 515 objects that are a bridge's sides: along a deck when the generator gives them, else two
+    near-parallel 515 lines 1-6 m apart with water, a stream or the railway by them."""
+    walls = [f for f in by.get(RULES["bridgeSides"]["line"], []) if f["otp"] == 2]
+    if decks is not None and not getattr(decks, "is_empty", True):
+        near = decks.buffer(1.0)
+        return {f["i"] for f in walls if f["g"].intersection(near).length >= 0.5 * f["g"].length}
+    lows = unary_union([f["g"] for c in RULES["bridgeSides"]["low"] for f in by.get(c, []) if f["g"] is not None])
+    if lows.is_empty or not walls:
+        return set()
+    lo, hi = RULES["bridgeSides"]["apartM"]
+    tree = shapely.STRtree([f["g"] for f in walls])
+    out = set()
+
+    def heading(g):
+        (x0, y0), (x1, y1) = g.coords[0], g.coords[-1]
+        return math.atan2(y1 - y0, x1 - x0)
+
+    for j, f in enumerate(walls):
+        if f["g"].length > RULES["bridgeSides"]["maxLengthM"] or f["g"].distance(lows) > 3.0:
+            continue
+        for m in tree.query(f["g"].buffer(hi)):
+            g = walls[m]
+            if m == j or g["g"].length > RULES["bridgeSides"]["maxLengthM"]:
+                continue
+            d = f["g"].distance(g["g"])
+            a = abs((heading(f["g"]) - heading(g["g"]) + math.pi / 2) % math.pi - math.pi / 2)
+            if lo <= d <= hi and a < math.radians(25) and g["g"].distance(f["g"].centroid) <= hi + 1:
+                out |= {f["i"], g["i"]}
+    return out
+
+
 def overlaps(cover, codes_a, codes_b, min_area=0.05):
     """The pieces where an area of codes_a lies over one of codes_b: {(a, b): [polygons]} (an index, not whole-class
     intersections)."""
@@ -189,24 +222,27 @@ class Report:
                           for r in sorted(set(self.found) | set(self.fixed))}}
 
 
-def check(doc, fix=False, frame=None, log=print, passes=2):
+def check(doc, fix=False, frame=None, log=print, passes=2, decks=None):
     """Checks a map_objects.json document; with fix, mends it in place in up to `passes` passes (a fix can leave a scrap the
-    next one takes), then checks it once more so that the report says what is really left."""
+    next one takes), then checks it once more so that the report says what is really left. decks: the bridges' decks (Lambert
+    93), whose sides the generator draws as 515 (ISSprOM: « a simple bridge, which cannot be passed underneath, shall be
+    represented using symbol Uncrossable wall »); without them, two near-parallel 515 lines 1-6 m apart by water, a stream or the
+    railway are taken for a bridge's sides (as Cartographier's checks do)."""
     total = {}
     rep = None
     for n in range(passes if fix else 1):
-        rep = _once(doc, fix, frame, log, f"pass {n + 1}" if fix else "check", areas_only=n > 0)
+        rep = _once(doc, fix, frame, log, f"pass {n + 1}" if fix else "check", areas_only=n > 0, decks=decks)
         for r, v in rep.fixed.items():
             total[r] = total.get(r, 0) + v
         if not fix or sum(rep.fixed.values()) == 0:
             break
     if fix and sum(rep.fixed.values()):
-        rep = _once(doc, False, frame, log, "check")
+        rep = _once(doc, False, frame, log, "check", decks=decks)
     rep.fixed = total
     return rep
 
 
-def _once(doc, fix, frame, log, what, areas_only=False):
+def _once(doc, fix, frame, log, what, areas_only=False, decks=None):
     """Checks (and with fix, mends) a map_objects.json document in place; returns the Report. Coordinates in map mm about
     doc['realWorld']; frame: the map's box in Lambert 93 (default the extent of its areas)."""
     k = doc["scale"] / 1000.0                                  # metres a map mm
@@ -278,7 +314,9 @@ def _once(doc, fix, frame, log, what, areas_only=False):
     def printed(f):
         return f["g"].buffer(hw[f["c"]], cap_style="flat") if f["otp"] == 2 else f["g"]
 
-    imp = [f for c in gap_areas for f in by.get(c, []) if f["otp"] == 3] + line_feats(gap_lines)
+    # a bridge's sides (two short 515 lines over the water, a stream or the railway it crosses) are no gap to close: left out
+    sides = bridge_sides(by, decks)
+    imp = [f for c in gap_areas for f in by.get(c, []) if f["otp"] == 3] + [f for f in line_feats(gap_lines) if f["i"] not in sides]
     imp_g = [printed(f) for f in imp]
     # ---- 1a. holes narrower than the gap in an impassable area (what a merge left): filled
     for j, f in enumerate(imp):
