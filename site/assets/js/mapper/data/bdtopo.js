@@ -1,8 +1,8 @@
 // IGN's BD TOPO as map objects (Cartographier, owner 2026-11-06): France's topographic database read from IGN's WFS
 // (data.geopf.fr, open, CORS, Licence Ouverte 2.0) in Lambert 93, layer by layer, and classified in either style:
 // - forest (ISOM 2017-2): 521 buildings, 502 / 503 roads by their width, 504 tracks (« Chemin », « Route empierrée »), 505 paths
-//   (« Sentier »), 532 stairways, 301 water bodies, 304 / 305 / 306 watercourses by width and ditches, 513 / 515 walls, 514 ruins,
-//   104 earth banks (« Talus »), 105 earth walls (« Levée »), 412 / 413 / 414 cultivation, 410 hedges, 416 hedge lines, 401 sports
+//   (« Sentier »), 532 stairways, 301 water bodies, 304 / 305 / 306 watercourses by width and ditches, 513.1 / 515 walls, 513.2
+//   retaining walls and quays, 514 ruins, 104 earth banks (« Talus »), 105.1 earth walls (« Levée »), 412 / 413 / 414 cultivation, 410 hedges, 416 hedge lines, 401 sports
 //   grounds, 501 parkings;
 // - sprint (ISSprOM 2019-2): every road as paved area 501 at its width on the ground (« largeur de chaussée », sidewalks added in
 //   town), paths 505, stairways 532, buildings 521, walls 515 and retaining walls 513.2, water, banks, parkings 501, sports 401.
@@ -74,14 +74,14 @@ export function classify(layer, p, style) {
       return [];
     case "haie": return line(416);
     case "construction_lineaire":
-      if (nat === "mur") return sprint ? line(515) : line(513);
-      if (nat === "mur de soutenement") return sprint ? line(513, 2) : line(513);
+      if (nat === "mur") return sprint ? line(515) : line(513, 1);
+      if (nat === "mur de soutenement") return line(513, 2);
       if (nat === "ruines") return sprint ? line(513, 1) : line(514);
-      if (nat === "quai") return sprint ? line(513, 2) : line(513);
+      if (nat === "quai") return line(513, 2);
       return [];
     case "ligne_orographique":
       if (nat === "talus") return line(104);
-      if (nat === "levee") return sprint ? line(105, 1) : line(105);
+      if (nat === "levee") return line(105, 1);
       return [];
     case "terrain_de_sport": return area(401);
     case "equipement_de_transport": return /parking|service dedie/.test(nat) ? area(501) : [];

@@ -3,7 +3,7 @@
 // pixels on the generated maps) and classified as mapgen/osm.py classifies them, in either style:
 // - forest (ISOM 2017-2): 502 wide road, 503 road, 504 vehicle track, 505 footpath, 506 / 507 small and less distinct paths (by
 //   trail_visibility / informal), 501 paved area, 521 building, 522 canopy, 301 water, 304 / 305 / 306 watercourses, 509
-//   railway, 510 / 511 power lines, 513 / 515 walls, 516 / 518 fences, 401 open land, 520 private ground;
+//   railway, 510 / 511 power lines, 513.1 / 515 walls, 513.2 retaining walls, 516 / 518 fences, 401 open land, 520 private ground;
 // - sprint (ISSprOM 2019-2): every paved way as paved area 501 at its width on the ground (OSM's width, else its class's,
 //   STREET_W, and its sidewalks), unpaved paths 505 / 506, 532 stairway, 521 building, 522 canopy, 515 wall, 513.2
 //   retaining wall, 516 / 518 fences, 509.1 railway, 509.2 tramway, 305 / 306 watercourses, 401 open land, 520 private ground.
@@ -195,9 +195,9 @@ export function classify(f, style) {
     case "wall": {
       const h = height(tg);
       if (sprint) return line(...(tg.barrier === "wall" && h != null && h < 1.5 ? [513, 1] : [515]));
-      return line(tg.barrier === "city_wall" || (h != null && h >= 1.5) ? 515 : 513);
+      return tg.barrier === "city_wall" || (h != null && h >= 1.5) ? line(515) : line(513, 1);
     }
-    case "lowwall": return sprint ? line(513, 2) : line(513);
+    case "lowwall": return line(513, 2);
     case "fence": return line((height(tg) || 0) >= 1.8 ? 518 : 516);
   }
   if (k.startsWith("stream:")) {

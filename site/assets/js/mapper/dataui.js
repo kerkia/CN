@@ -24,15 +24,23 @@ function draftPart(E) {
   if (!E.doc.parts.some((p) => p.id === DRAFT)) E.live.setDocField("parts", [...E.doc.parts, { id: DRAFT, name: t("map.parts.draft"), hidden: false, locked: false }]);
   return DRAFT;
 }
-/** Objects from a data module into the document, in the draft part; symbols the map lacks are named and their objects left out. */
+/** Objects from a data module into the document, in the draft part; symbols the map lacks are named and their objects left out.
+ *  ISOM 2017-2's revision 6 numbered 105, 203 and 513 as 105.1, 203.1 and 513.1 and added .2 forms: a map made with the set of
+ *  before takes them on its plain number, and a plain number finds its .1. */
 function bring(E, objects, label) {
   const have = new Set(E.doc.symbols.map((s) => s.sym)), missing = new Map();
+  const symIn = (sym) => {
+    if (have.has(sym)) return sym;
+    const base = sym - (sym % 1000);
+    return sym % 1000 ? (have.has(base) ? base : sym) : have.has(base + 1) ? base + 1 : sym;
+  };
   let n = 0;
   E.live.transact(label, () => {
     const part = draftPart(E);
     for (const o of objects) {
-      if (!have.has(o.sym)) { missing.set(o.sym, (missing.get(o.sym) || 0) + 1); continue; }
-      E.live.add({ ang: 0, col: 0, lineWidth: 0, diamFlags: 0, ...o, part, draft: true });
+      const sym = symIn(o.sym);
+      if (!have.has(sym)) { missing.set(o.sym, (missing.get(o.sym) || 0) + 1); continue; }
+      E.live.add({ ang: 0, col: 0, lineWidth: 0, diamFlags: 0, ...o, sym, part, draft: true });
       n++;
     }
   });

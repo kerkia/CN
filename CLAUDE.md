@@ -2457,7 +2457,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   408's stripes green 30 %, 709 hatching 0.2 every 1.2, 520 without its black stripes (a path through it on white), 417/419's
   white masks (`isom.js` only: a set would need a green of its own above them), and the minimum sizes. ISSprOM's set: bare rock
   black 35 % and 513.2's 1.4 mm (its drawings were already revision 6). Maps made with the earlier set keep 105, 203, 513:
-  `symName` finds them as `.1`. The set's `standard` stays « ISOM2017-2 » (the IOF's name for every revision).
+  `symName` finds them as `.1`, and the importers' walls (513.1, 513.2) and earth walls (105.1: `osm.js`, `bdtopo.js`, `ch.js`) land on
+  their plain number there (`dataui.bring`'s `symIn`; a plain number finds its `.1` too). The set's `standard` stays « ISOM2017-2 » (the IOF's name for every revision).
   **The page**: start (one's maps, « Nouvelle carte » — sprint or forest, its place in Lambert 93 in France else UTM, its size, the
   open data to start from —, « Importer » OCAD/Mapper/.ozmap); the editor (`editor.js`): ribbon (`ribbon.js` data: Dessiner,
   Modifier, Fonds, Données, Terrain, Vérifier, Mise en page, Imprimer, Équipe, a contextual tab by the selection's kind, Alt+Q

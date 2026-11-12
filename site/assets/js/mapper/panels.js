@@ -304,7 +304,7 @@ export function minimumOf(E, sym) {
   if (!MINS) return null;
   const std = /sprint|ISSprOM/i.test(E.doc.standard || "") || E.doc.scale <= 5000 ? "issprom" : "isom";
   const n = `${Math.floor(sym / 1000)}${sym % 1000 ? "." + (sym % 1000) : ""}`;
-  const m = MINS[std]?.[n] || MINS[std]?.[String(Math.floor(sym / 1000))];
+  const m = MINS[std]?.[n] || MINS[std]?.[String(Math.floor(sym / 1000))] || MINS[std]?.[`${Math.floor(sym / 1000)}.1`];
   if (!m) return null;
   // the specification's sizes are at its scale (ISOM: 1:15 000); a 1:10 000 map is printed 150 % larger
   const f = std === "isom" && E.doc.scale <= 10000 ? 1.5 : 1;

@@ -3,7 +3,7 @@
 // zoom 14 — a tile of ~1.7 km across in 4096 units, ~0.4 m a unit —, classified in either style as bdtopo.js does France's:
 // - forest (ISOM 2017-2): 521 buildings (522 roofs without walls), 502 main roads, 503 minor roads, 504 tracks (« 2 m Weg »),
 //   505 footpaths (« 1 m Weg »), 506 small paths (« Wegfragment »), 507 the faintest (marked routes, over rock or scree), 532
-//   steps, 509 railways, 301 water, 304 / 305 / 306 watercourses by width and season, 513 walls, 401 parks and pitches, 501
+//   steps, 509 railways, 301 water, 304 / 305 / 306 watercourses by width and season, 513.1 walls, 401 parks and pitches, 501
 //   parkings, 414 vineyards;
 // - sprint (ISSprOM 2019-2): every paved road and paved footway as paved area 501 at its class's width on the ground, unpaved
 //   paths 505 / 506, steps 532, buildings 521 / canopies 522, walls 515 (dry-stone walls 513.1), railways 509.1, tramways 509.2,
@@ -35,8 +35,8 @@ export function classify(layer, p, style) {
       if (cls === "underground") return [];
       return cls === "roof" || cls === "coverage" ? area(522) : area(521);
     case "building_ln":
-      if (cls === "wall") return sprint ? line(515) : line(513);
-      if (cls === "dry_wall") return sprint ? line(513, 1) : line(513);
+      if (cls === "wall") return sprint ? line(515) : line(513, 1);
+      if (cls === "dry_wall") return line(513, 1);
       return [];
     case "transportation": {
       if (p.brunnel === "tunnel") return [];
