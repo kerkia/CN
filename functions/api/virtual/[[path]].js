@@ -1,4 +1,6 @@
-// /api/virtual/… — « Virtually » (Coach › Virtually, pages/virtually.js), administrators only for now (owner, 2026-11-10/11).
+// /api/virtual/… — « Virtually » (Ozimut Pixel, pages/virtually.js). Every account since 2026-11-12 (owner: Pixel for all, its
+// Entraînement and Avatar pages): the maps, their packages, the runs' list (the training's palmarès), one's own training runs;
+// a run's route (the analysis) and competitions stay the administrators' (administrators only 2026-11-10 to 12).
 //   GET  races                         the maps: [{ id, race }] (each race.json, read here so that the page asks once)
 //   GET  <race>/<file>                 a map's package (made offline by tools/virtually: race.json — its courses —, h.png,
 //                                      cls.png, veg.png, ground.jpg, feats.json, trees.bin when LiDAR, map.ocd, thumb.webp; a town's town.json, town.bin, surf.png and facades.webp, tools/virtually/town_3d.py)
@@ -68,6 +70,7 @@ export const onRequestGet = withUser(async ({ request, env, params }, user) => {
     }
     const [, race, run] = path;
     if (!ID.test(race || "") || !RUN.test(run || "")) return json({ error: "bad request" }, 400);
+    if (!run.startsWith(`${me}-`) && !isAdmin(env, user)) return json({ error: "forbidden" }, 403);   // the analysis: the administrators'
     const found = await env.BUCKET.list({ prefix: `${RUNS}${race}/`, include: ["customMetadata"] });
     const o = found.objects.find((x) => x.key.endsWith(`/${run}.json`));
     if (!o) return json({ error: "not found" }, 404);
@@ -83,7 +86,7 @@ export const onRequestGet = withUser(async ({ request, env, params }, user) => {
   const headers = { "Content-Type": TYPES[p.split(".").pop()], "Cache-Control": "private, max-age=3600", ETag: `"${o.etag}"` };
   if (!("body" in o) || !o.body) return new Response(null, { status: 304, headers });
   return new Response(o.body, { headers });
-}, { admin: true });
+});
 
 export const onRequestPost = withUser(async ({ request, env, params }, user) => {
   if (!env.BUCKET) return json({ error: "storage not configured" }, 500);
@@ -100,6 +103,7 @@ export const onRequestPost = withUser(async ({ request, env, params }, user) => 
     .filter((p) => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite)).map(([a, x, z]) => [Math.round(a * 10) / 10, Math.round(x * 10) / 10, Math.round(z * 10) / 10]);
   const kind = b?.kind === "competition" ? "competition" : "training", event = String(b?.event || "");
   if (event && !ID.test(event)) return json({ error: "bad request" }, 400);
+  if (kind === "competition" && !isAdmin(env, user)) return json({ error: "forbidden" }, 403);   // competitions: the administrators' for now
   const u = await runnerHash(env, user.id);
   if (kind === "competition") {
     const mine = await listAll(env, `${RUNS}${race}/${course}/${u}-`, { include: ["customMetadata"] });
@@ -112,7 +116,7 @@ export const onRequestPost = withUser(async ({ request, env, params }, user) => 
   await env.BUCKET.put(`${RUNS}${race}/${course}/${id}.json`, JSON.stringify({ route }),
     { httpMetadata: { contentType: "application/json" }, customMetadata: meta });
   return json({ id, at });
-}, { admin: true });
+});
 
 export const onRequestDelete = withUser(async ({ env, params }, user) => {
   if (!env.BUCKET) return json({ error: "storage not configured" }, 500);
@@ -125,4 +129,4 @@ export const onRequestDelete = withUser(async ({ env, params }, user) => {
   if (!o) return json({ error: "not found" }, 404);
   await env.BUCKET.delete(o.key);
   return json({ ok: true });
-}, { admin: true });
+});

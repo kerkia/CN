@@ -39,24 +39,82 @@ const num = (v, d = 1) => v.toLocaleString(lang(), { minimumFractionDigits: d, m
 /** A map's course: race.json's `courses` (six levels, tools/virtually/course.py), or the single `course` of before. */
 export const coursesOf = (race) => race.courses || (race.course ? [{ id: "course", ...race.course }] : []);
 
+// ---- the commands, before the start, at the pause and at any time of the race (« ? » or H; owner, 2026-11-12) ------------------
+const touchScreen = () => matchMedia("(hover: none) and (pointer: coarse)").matches;
+const KEYS = ["move", "turn", "strafe", "walk", "look", "punch", "map", "views", "sheet", "orient", "view", "help", "pause", "pos", "speed", "energy"];
+const TOUCH_KEYS = ["touch.move", "touch.look", "touch.punch", "touch.map", "touch.views", "touch.pause", "pos", "speed", "energy"];
+const keysHtml = () => html`<ul class="vt-keys">${(touchScreen() ? TOUCH_KEYS : KEYS).map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>`;
+
+/** The course's description sheet before the world is built (the briefing): the features' symbols, no direction read from a town. */
+function briefSheet(course, title, cd) {
+  const cs = course.controls, sym = (id) => (cd && id ? cd.symbol(id, "2018") : null);
+  const cell = (id) => { const s = sym(id); return s ? html`<td title="${cd.name(s)}">${cd.svg(s, 40, "vt-cds")}</td>` : html`<td></td>`; };
+  const fin = cs[cs.length - 1], before = cs[cs.length - 2], toFin = Math.round(Math.hypot(fin.x - before.x, fin.z - before.z) / 10) * 10;
+  const finSym = sym("14.3");
+  return html`<table class="vt-cd"><tbody>
+    <tr class="vt-cdtitle"><td colspan="8">${title}</td></tr>
+    <tr class="vt-cdtitle"><td colspan="4">${num((course.length || 0) / 1000)} km</td><td colspan="4">${course.climb ? `${Math.round(course.climb)} m` : ""}</td></tr>
+    <tr class="vt-cdstart"><td>${sym("start") ? cd.svg(sym("start"), 40, "vt-cds") : "▷"}</td><td colspan="7"></td></tr>
+    ${cs.slice(1, -1).map((c, i) => { const f = FEATURE_CD[c.feature] || [], words = c.feature ? t(`vt.f.${c.feature}`) : "";
+      return html`<tr title="${words}"><td class="vt-cdn">${i + 1}</td><td class="vt-cdc">${c.code || ""}</td><td></td>${cd && f[0]
+        ? html`${cell(f[0])}${cell(f[1])}${cell(f[2])}<td></td>` : html`<td colspan="4" class="vt-cdw">${words}</td>`}<td></td></tr>`; })}
+    <tr class="vt-cdfin"><td colspan="8">${finSym ? html`<span class="vt-cdfinw">${cd.svg(finSym, 40, "vt-cds")}<b>${toFin} m</b></span>` : t("vt.sheet.finish")}</td></tr>
+  </tbody></table>`;
+}
+
+/** The card before the start (owner, 2026-11-12: shown while the race loads): the course, its descriptions, the commands, « Partir »
+ *  once everything is ready. `race`/`course` null while unknown, `sheet` null while the symbols load. */
+function briefCard({ race, course, title, sheet, ready, msg = "" }) {
+  return html`<div class="vt-card vt-brief"><h2>${title}</h2>
+    ${race && course ? html`<p>${t("vt.info", { n: course.controls.length - 2, km: num(course.length / 1000), scale: (race.scale || 0).toLocaleString(lang()) })}</p>
+      <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
+      ${race.photoCredits?.length ? html`<details class="muted vt-photos"><summary>${t("vt.src.photos", { n: race.photoCredits.length })}</summary>
+        <p>${race.photoCredits.map((c, i) => html`${i ? ", " : ""}<a href="${c.url}" target="_blank" rel="noopener">${c.id.slice(0, 8)}</a> (${c.author})`)}</p></details>` : ""}` : ""}
+    <div class="vt-brief-cols">
+      <section><h3>${t("vt.brief.cd")}</h3><div class="vt-bsheet" id="vt-bsheet">${sheet || html`<div class="spinner vt-spin"></div>`}</div></section>
+      <section><h3>${t("vt.brief.keys")}</h3>${keysHtml()}</section>
+    </div>
+    <div class="vt-brief-go"><button type="button" class="btn btn-primary" id="vt-go" ${raw(ready ? "" : "disabled")}>${t("vt.go")}</button>
+      <span class="vt-brief-msg">${ready ? "" : html`<span class="spinner vt-spin" id="vt-wait"></span>`}<span id="vt-msg">${msg}</span></span></div>
+    ${race?.std ? html`<p class="muted vt-credit">${t("vt.credit", { std: race.std })}</p>` : ""}</div>`;
+}
+
 /**
  * Mount the game for map `raceId` in `root` (Coach › Virtually's Training tab); returns { stop }.
  * opts: course (its id), title (the course's name as the page writes it), onFinish(run) once the finish is punched —
  * run { course, t (the race time, « Ma position »'s penalties included), sp (cumulative splits, s, the same), d (m run),
  * route [[t, x, z]] (the clock's time) } —, onNav("results" | "analysis") the finish card's buttons; base the package's address
- * when it is not a built-in map's (an event's: /api/virtual/events/<id>/pkg/).
+ * when it is not a built-in map's (an event's: /api/virtual/events/<id>/pkg/); race the map's race.json as the page's list has it
+ * (the briefing shows the course and its descriptions while the package loads).
  */
 export function mount(root, raceId, opts = {}) {
   let stopped = false, raf = 0, cleanup = [];
-  root.innerHTML = html`<div class="vt-load"><div class="spinner"></div><p id="vt-msg">${t("vt.loading")}</p></div>`;
+  // the briefing at once, over the game's dark box: the course, its descriptions, the commands; « Partir » once all is loaded
+  const courseIn = (r) => { const cs = coursesOf(r || {}); return cs.find((c) => c.id === opts.course) || cs[0] || null; };
+  const brief = { race: opts.race || null, course: courseIn(opts.race), sheet: null };
+  brief.title = opts.title || brief.course?.name || raceId;
+  root.innerHTML = html`<div class="vt" tabindex="0" data-view="scene"><div class="vt-over" id="vt-over">${briefCard({ ...brief, msg: t("vt.loading") })}</div></div>`;
   const say = (k, v) => { const m = $("#vt-msg", root); if (m) m.textContent = t(k, v); };
+  const cdLoaded = loadDescriptions();
+  const fillSheet = async () => {
+    if (!brief.course) return;
+    const cd = await cdLoaded;
+    if (stopped || brief.sheet) return;
+    brief.sheet = briefSheet(brief.course, brief.title, cd);
+    const el = $("#vt-bsheet", root); if (el) el.innerHTML = String(brief.sheet);
+  };
+  fillSheet();
   (async () => {
     try {
-      const [THREE, data, cd] = await Promise.all([import(THREE_URL), loadRace(opts.base || `${BASE}${raceId}/`), loadDescriptions()]);
+      const [THREE, data, cd] = await Promise.all([import(THREE_URL), loadRace(opts.base || `${BASE}${raceId}/`), cdLoaded]);
       data.cd = cd;
       if (stopped) return;
+      if (!brief.course) { brief.race = data.race; brief.course = courseIn(data.race); fillSheet(); }
       say("vt.drawingMap");
       const mapImg = await drawMap(data);
+      if (stopped) return;
+      say("vt.preparing");
+      await new Promise((r) => setTimeout(r, 60));   // the message shown before the world is built (no animation frame: a hidden tab has none)
       if (stopped) return;
       cleanup = start(root, THREE, data, mapImg, raceId);
     } catch (e) {
@@ -71,7 +129,7 @@ export function mount(root, raceId, opts = {}) {
     const race = data.race, cs = coursesOf(race), C0 = cs.find((c) => c.id === opts.course) || cs[0];
     race.course = { ...C0, name: opts.title || C0.name || race.id };
     const course = race.course.controls, nC = course.length - 2;
-    root.innerHTML = html`<div class="vt" tabindex="0" data-view="scene">
+    $("#vt-over", root).insertAdjacentHTML("beforebegin", String(html`
       <canvas class="vt-view"></canvas>
       <div class="vt-hud"><b>${race.course.name}</b><span id="vt-time">0:00</span><span id="vt-pen" hidden></span><span id="vt-next"></span></div>
       <div class="vt-cue" id="vt-cue" hidden></div>
@@ -80,6 +138,7 @@ export function mount(root, raceId, opts = {}) {
         <span class="vt-views" role="group">${VIEW_ICONS.map(([v, svg]) => html`<button type="button" class="btn${v === "scene" ? " on" : ""}" data-view="${v}" title="${t(`vt.view.${v}`)}" aria-label="${t(`vt.view.${v}`)}">${raw(svg)}</button>`)}</span>
         <button type="button" class="btn" id="vt-pos" title="${t("vt.pos.tip")}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg><span class="vt-lbl" id="vt-poslbl">${t("vt.pos.btn")}</span></button>
         <span class="vt-pace"><button type="button" class="btn" id="vt-slower" title="${t("vt.pace.slower")}" aria-label="${t("vt.pace.slower")}">−</button><button type="button" class="btn" id="vt-speed" title="${t("vt.speed.tip")}"><span id="vt-pacelbl">×1</span><span class="vt-energy" aria-hidden="true"><i></i></span></button><button type="button" class="btn" id="vt-faster" title="${t("vt.pace.faster")}" aria-label="${t("vt.pace.faster")}">+</button></span>
+        <button type="button" class="btn" id="vt-help" title="${t("vt.help.tip")}" aria-label="${t("vt.help.title")}" aria-expanded="false">?</button>
         <button type="button" class="btn" id="vt-pause" title="${t("vt.pause.tip")}" aria-label="${t("vt.pause")}"><span aria-hidden="true">❚❚</span><span class="vt-lbl">${t("vt.pause")}</span></button>
         <button type="button" class="btn" id="vt-full" aria-pressed="false" title="${t("vt.full")}" aria-label="${t("vt.full")}">⤢</button>
       </div>
@@ -96,10 +155,11 @@ export function mount(root, raceId, opts = {}) {
       <div class="vt-sheet" id="vt-sheet"></div>
       <div class="vt-pad" id="vt-pad">
         <button type="button" data-k="ArrowLeft">◀</button><button type="button" data-k="ArrowUp">▲</button><button type="button" data-k="ArrowRight">▶</button>
-        <button type="button" data-k="Space" class="vt-padpunch">${t("vt.punchBtn")}</button><button type="button" data-k="ArrowDown">▼</button><button type="button" data-k="View">${t("vt.mapBtn")}</button>
+        <button type="button" data-k="Space" class="vt-padpunch">${t("vt.punchBtn")}</button><button type="button" data-k="ArrowDown">▼</button><button type="button" data-k="View" id="vt-padview">${t("vt.mapBtn")}</button>
       </div>
-      <div class="vt-over" id="vt-over"></div>
-    </div>`;
+      <button type="button" class="btn btn-primary vt-back" id="vt-back">${t("vt.backToRace")}</button>
+      <div class="vt-help" id="vt-helpbox" hidden><div class="vt-help-h"><b>${t("vt.help.title")}</b>
+        <button type="button" id="vt-helpx" title="${t("vt.help.close")}" aria-label="${t("vt.help.close")}">✕</button></div>${keysHtml()}</div>`));
     const box = $(".vt", root), view = $(".vt-view", root), comp = $(".vt-compass", root), mapEl = $(".vt-map", root), mapC = $(".vt-mapc", root);
     // ---- renderer and scene ----
     const renderer = new T.WebGLRenderer({ canvas: view, antialias: true });
@@ -221,7 +281,8 @@ export function mount(root, raceId, opts = {}) {
           <tr class="vt-cdstart"><td>${cdSym("start") ? cd.svg(cdSym("start"), 40, "vt-cds") : "▷"}</td><td colspan="7"></td></tr>
           ${rows}
           <tr class="vt-cdfin ${next >= last ? "cur" : ""}"><td colspan="8">${finSym ? html`<span class="vt-cdfinw">${cd.svg(finSym, 40, "vt-cds")}<b>${toFin} m</b></span>` : t("vt.sheet.finish")}</td></tr>
-        </tbody></table>`;
+        </tbody></table>
+        <button type="button" class="btn btn-primary vt-sheet-back">${t("vt.backToRace")}</button>`;
       sheet.classList.toggle("open", open);
     }
     const toggleSheet = () => {
@@ -230,16 +291,24 @@ export function mount(root, raceId, opts = {}) {
       describe();
     };
     // on a touch screen a tap on it opens the descriptions' view: a phone has no room for the whole sheet over the scene
-    sheet.addEventListener("click", () => { if (box.dataset.view !== "desc") (touch ? setView("desc") : toggleSheet()); box.focus(); });
+    sheet.addEventListener("click", (e) => {
+      if (e.target.closest(".vt-sheet-back")) setView("scene");      // the descriptions' view: back to the race (owner, 2026-11-12)
+      else if (box.dataset.view !== "desc") (touch ? setView("desc") : toggleSheet());
+      box.focus();
+    });
     describe();
     // ---- what fills the screen (owner, 2026-11-12: « toggle very fast between the scene, the map and the descriptions »): the switch
     // at the top, Tab, the pad's map button, a tap on the small map ----
     const VIEWS = ["scene", "map", "desc"];
+    // the map's and the descriptions' views say how to go back (owner, 2026-11-12: on a phone it was not clear): « Retour à la
+    // course » on them, and the pad's « Carte » says « Retour » while either fills the screen
     function setView(v) {
       box.dataset.view = v;
       $$$(root, ".vt-views button").forEach((b) => b.classList.toggle("on", b.dataset.view === v));
+      const pv = $("#vt-padview", root); if (pv) pv.textContent = t(v === "scene" ? "vt.mapBtn" : "vt.padBack");
       requestAnimationFrame(drawMapPanel);
     }
+    $("#vt-back", root).addEventListener("click", () => { setView("scene"); box.focus(); });
     $$$(root, ".vt-views button").forEach((b) => b.addEventListener("click", () => {
       setView(b.dataset.view !== "scene" && box.dataset.view === b.dataset.view ? "scene" : b.dataset.view); box.focus();
     }));
@@ -358,9 +427,13 @@ export function mount(root, raceId, opts = {}) {
     const onKey = (e) => {
       if (!box.isConnected || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName)) return;
       if (e.type === "keydown") {
+        if (e.code === "Escape" && !helpEl.hidden) { help(false); return; }
+        if (e.code === "Escape" && st.phase === "run" && box.dataset.view !== "scene") { setView("scene"); return; }
         if (e.code === "Escape" && st.phase === "run") { pause(); return; }
         if (st.phase === "run" && GAMEKEYS.has(e.code)) e.preventDefault();
         if (e.repeat) return;
+        if ((e.code === "KeyH" || e.key === "?") && !e.ctrlKey && !e.metaKey && !e.altKey) { if (st.phase === "run") help(helpEl.hidden); return; }
+        if (e.code === "Enter" && st.phase === "ready") { const go = $("#vt-go", root); if (go && !go.disabled) { e.preventDefault(); go.click(); } return; }
         if (st.phase === "run") pressStep(e.code);
         if (e.code === "Space" && st.phase === "run") punch();
         else if (e.code === "KeyM") mapSize(mapEl.dataset.size === "small" ? "large" : mapEl.dataset.size === "large" ? "hidden" : "small");
@@ -384,15 +457,41 @@ export function mount(root, raceId, opts = {}) {
     view.addEventListener("pointerup", () => (look = null));
     $$$(root, "#vt-pad button").forEach((b) => {
       const k = b.dataset.k;
-      b.addEventListener("pointerdown", (e) => { e.preventDefault(); if (k === "Space") punch(); else if (k === "View") setView(box.dataset.view === "map" ? "scene" : "map"); else { if (!keys.has(k)) pressStep(k); keys.add(k); } });
-      for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, () => keys.delete(k));
+      // the finger held is captured, so that a thumb sliding off the button does not stop the runner
+      b.addEventListener("pointerdown", (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (x) { /* none */ }
+        if (k === "Space") punch(); else if (k === "View") setView(box.dataset.view === "scene" ? "map" : "scene"); else { if (!keys.has(k)) pressStep(k); keys.add(k); } });
+      for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(ev, () => keys.delete(k));
+      b.addEventListener("contextmenu", (e) => e.preventDefault());
     });
     $("#vt-pause", root).addEventListener("click", () => (st.phase === "run" ? pause() : null));
+    // full screen: the browser's own where it allows it, else the game fixed over the whole window (owner, 2026-11-12: the button did
+    // nothing on a phone — an iPhone has no full screen but for videos); a touch screen enters it at « Partir ». Pressed while on, as
+    // the site's other « ⤢ »; Échap or the button leaves it
     const fullBtn = $("#vt-full", root);
-    fullBtn.addEventListener("click", () => { (document.fullscreenElement ? document.exitFullscreen() : box.requestFullscreen?.())?.catch?.(() => {}); box.focus(); });
-    // pressed while the game fills the screen, as the site's other « ⤢ » (owner, 2026-11-12); Échap or the button leaves it
-    const onFs = () => { const on = document.fullscreenElement === box; fullBtn.setAttribute("aria-pressed", String(on)); fullBtn.textContent = on ? "⤡" : "⤢"; };
-    document.addEventListener("fullscreenchange", onFs);
+    const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+    const isFull = () => fsEl() === box || box.classList.contains("vt-fs");
+    const onFs = () => {
+      if (!fsEl()) { /* the browser's ended: nothing else to undo */ }
+      const on = isFull(); fullBtn.setAttribute("aria-pressed", String(on)); fullBtn.textContent = on ? "⤡" : "⤢";
+      fullBtn.title = t(on ? "vt.fullOff" : "vt.full"); fullBtn.setAttribute("aria-label", fullBtn.title);
+      document.documentElement.classList.toggle("vt-fs-on", box.classList.contains("vt-fs"));
+    };
+    function full(on) {
+      if (!on) { if (fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document)?.catch?.(() => {}); box.classList.remove("vt-fs"); onFs(); return; }
+      const req = box.requestFullscreen || box.webkitRequestFullscreen;
+      let p = null;
+      try { p = req ? req.call(box, { navigationUI: "hide" }) : null; } catch (e) { p = null; }
+      const fallback = () => { if (fsEl() !== box) { box.classList.add("vt-fs"); onFs(); } };
+      if (p?.then) { p.then(onFs, fallback); setTimeout(fallback, 600); }   // a request refused, or never answered
+      else fallback();
+      box.focus();
+    }
+    fullBtn.addEventListener("click", () => full(!isFull()));
+    document.addEventListener("fullscreenchange", onFs); document.addEventListener("webkitfullscreenchange", onFs);
+    const helpEl = $("#vt-helpbox", root), helpBtn = $("#vt-help", root);
+    const help = (on) => { helpEl.hidden = !on; helpBtn.classList.toggle("on", on); helpBtn.setAttribute("aria-expanded", String(on)); box.focus(); };
+    helpBtn.addEventListener("click", () => help(helpEl.hidden));
+    $("#vt-helpx", root).addEventListener("click", () => help(false));
     // the runner's pace, changed during the race: − and + (F and R, 1 to 4); the pace button itself goes up, then round to ×0.5
     const speedBtn = $("#vt-speed", root), paceLbl = $("#vt-pacelbl", root), bar = $(".vt-energy i", root);
     const paceText = (p) => `×${p.toLocaleString(lang())}`;
@@ -438,24 +537,27 @@ export function mount(root, raceId, opts = {}) {
     // ---- messages and overlays ----
     const toast = (msg, ok = true) => { const e = $("#vt-toast", root); e.textContent = msg; e.className = `vt-toast ${ok ? "ok" : "bad"}`; e.hidden = false; st.msgUntil = performance.now() + 2600; };
     const over = (h) => { const o = $("#vt-over", root); o.innerHTML = h; o.hidden = !h; };
+    // the briefing (mount's card, else drawn again after « Abandonner » or « Recommencer »): the race's own sheet, « Partir » enabled
     function startScreen() {
-      over(html`<div class="vt-card"><h2>${race.course.name}</h2>
-        <p>${t("vt.info", { n: nC, km: num(race.course.length / 1000), scale: race.scale.toLocaleString(lang()) })}</p>
-        <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
-        ${race.photoCredits?.length ? html`<details class="muted vt-photos"><summary>${t("vt.src.photos", { n: race.photoCredits.length })}</summary>
-          <p>${race.photoCredits.map((c, i) => html`${i ? ", " : ""}<a href="${c.url}" target="_blank" rel="noopener">${c.id.slice(0, 8)}</a> (${c.author})`)}</p></details>` : ""}
-        <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "views", "sheet", "orient", "view", "pause", "pos", "speed", "energy"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
-        <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-go">${t("vt.go")}</button>
-</div>
-        <p class="muted vt-credit">${t("vt.credit", { std: race.std })}</p></div>`);
-      $("#vt-go", root).addEventListener("click", () => {
+      brief.race = race; brief.course = race.course; brief.title = race.course.name;
+      const full_ = $("table.vt-cd", sheet); if (full_) brief.sheet = raw(full_.outerHTML.replace(/ class="cur"/g, ""));
+      let go = $("#vt-go", root);
+      if (!go) { over(briefCard({ ...brief, ready: true })); go = $("#vt-go", root); }
+      else {
+        go.disabled = false; $("#vt-wait", root)?.remove(); $("#vt-msg", root).textContent = t("vt.brief.ready");
+        const bs = $("#vt-bsheet", root); if (bs && brief.sheet) bs.innerHTML = String(brief.sheet);
+      }
+      go.addEventListener("click", () => {
+        if (touchScreen() && !isFull()) full(true);
         st.phase = "run"; over(""); box.focus(); toast(t("vt.started"));
       });
+      go.focus({ preventScroll: true });
     }
     function pause() {
-      st.phase = "pause"; keys.clear();
+      st.phase = "pause"; keys.clear(); help(false);
       over(html`<div class="vt-card"><h2>${t("vt.paused")}</h2><div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-resume">${t("vt.resume")}</button>
-        <button type="button" class="btn" id="vt-quit">${t("vt.quit")}</button></div></div>`);
+        <button type="button" class="btn" id="vt-quit">${t("vt.quit")}</button></div>
+        <h3 class="vt-pause-h">${t("vt.brief.keys")}</h3>${keysHtml()}</div>`);
       $("#vt-resume", root).addEventListener("click", () => { st.phase = "run"; over(""); box.focus(); });
       $("#vt-quit", root).addEventListener("click", () => { reset(); startScreen(); });
     }
@@ -465,7 +567,7 @@ export function mount(root, raceId, opts = {}) {
       showPosBtn(); showSpeed(); showEnergy(); setView("scene"); sheet.hidden = false; describe(); mapSize("small"); mv.cx = course[0].x * mPer; mv.cy = course[0].z * mPer; fitZoom(700); drawMapPanel();
     }
     function finished() {
-      st.phase = "done"; keys.clear(); st.posLeft = 0; showPosBtn();
+      st.phase = "done"; keys.clear(); st.posLeft = 0; showPosBtn(); help(false);
       const legs = st.splits.map((s, i) => [s - (i ? st.splits[i - 1] : 0), s]);   // the splits hold the race time, penalties included
       const straight = race.course.length, T = total();
       opts.onFinish?.({ course: C0.id, t: T, sp: st.splits.slice(), d: st.dist, route: st.track.concat([[st.t, st.x, st.z]]) });
@@ -606,13 +708,15 @@ export function mount(root, raceId, opts = {}) {
         if (Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) > 0.004) drawMapPanel();
       }
     };
-    reset(); startScreen(); resize();
+    reset(); resize();
     window.vtDebug = { st, mv, course, world };          // for support and scripted tests (the console)
-    // build the chunks around the start before the first frame
+    // build the chunks around the start before the first frame, then « Partir »
     while (world.update(st.x, st.z, 6) > 0) { /* all near chunks */ }
+    startScreen();
     raf = requestAnimationFrame(step);
     return [() => { ro.disconnect(); removeEventListener("keydown", onKey); removeEventListener("keyup", onKey); removeEventListener("blur", onBlur);
-      document.removeEventListener("visibilitychange", onVis); document.removeEventListener("fullscreenchange", onFs); if (document.fullscreenElement === box) document.exitFullscreen().catch(() => {});
+      document.removeEventListener("visibilitychange", onVis); document.removeEventListener("fullscreenchange", onFs); document.removeEventListener("webkitfullscreenchange", onFs);
+      if (document.fullscreenElement === box) document.exitFullscreen().catch(() => {}); document.documentElement.classList.remove("vt-fs-on");
       renderer.dispose(); renderer.forceContextLoss?.(); actx?.close?.(); }];
   }
 }

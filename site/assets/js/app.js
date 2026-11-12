@@ -109,7 +109,7 @@ const ownerOnly = auth.owner;
 // « Nutrition » and its authors' « Rédaction » (owner, 2026-11-01): those given the right on the admin page, its authors and
 // the administrators; nobody else sees them in the menus, and their addresses lead the others to the modules page
 // « Virtually » (2026-11-11) likewise, the administrators' only for now (api/virtual refuses the others)
-const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites, virtually: () => !!auth.session()?.admin };
+const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.nutritionWrites };   // Pixel (virtually): every account since 2026-11-12
 // the map analyses out of beta on 2026-11-05; « Résultats » and « Horaires » marked beta on 2026-11-07 (owner)
 const BETA_ROUTES = new Set(["orgDirect", "orgTracer", "orgMapper", "orgResults", "orgStarts", "orgManage"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
@@ -416,9 +416,9 @@ export const MODULES = ["arena", "stats", "coach", "orga", "carto", "pixel"];
 // starts to (functions/_lib/modules.js). Never hidden by themselves. **Hidden never blocks**: a module's addresses always open
 // (an invitation, an e-mail's link, a bookmark).
 export const CREATOR_MODULES = ["orga", "carto"];
-/** Is this module shown in the bar and on the modules page (Pixel to the administrators only, as its page; Orga never on a phone)? */
+/** Is this module shown in the bar and on the modules page (Orga never on a phone)? Pixel: every account since 2026-11-12 (owner;
+ *  the administrators' before), its Entraînement and Avatar tabs only (pages/virtually.js). */
 export function moduleShown(m, me = auth.session()) {
-  if (m === "pixel" && !me?.admin) return false;
   if (m === "orga" && isPhone()) return false;
   if (CREATOR_MODULES.includes(m)) return !!me?.[m];
   return !(me?.hiddenModules || []).includes(m);

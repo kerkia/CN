@@ -81,7 +81,9 @@ export async function render(main, { query }) {
   await loadArea("virtually");
   if (location.hash.startsWith("#/jeux")) history.replaceState(null, "", "#/virtually");     // « Jeux »'s tab of before
   const tabs = [["entrainement", t("vt.tab.training")], ["resultats", t("vt.tab.results")], ["classement", t("vt.tab.ranking")], ["analyse", t("vt.tab.analysis")],
-    ["avatar", t("vt.tab.avatar")], ...(auth.session()?.orga !== false ? [["orga", t("vt.tab.orga")]] : [])];
+    ["avatar", t("vt.tab.avatar")], ...(auth.session()?.orga !== false ? [["orga", t("vt.tab.orga")]] : [])]
+    // every account sees Pixel since 2026-11-12, the administrators alone its other tabs (owner: Entraînement and Avatar for all)
+    .filter(([k]) => auth.session()?.admin || k === "entrainement" || k === "avatar");
   const tab = tabFrom(tabs, query);
   const sel = { race: query.carte || null, course: query.circuit || null, run: query.run || null };
   main.innerHTML = html`
@@ -135,23 +137,29 @@ export async function render(main, { query }) {
     const drawChooser = () => {
       const race = list.find((r) => r.id === sel.race), courses = race?.race.courses || [];
       if (!courses.some((c) => c.id === sel.course)) sel.course = null;
-      el.innerHTML = html`<p class="muted vtp-intro">${t("vt.tr.intro")}</p>
+      // on a phone the chosen map's circuits and « Commencer » come right under that map, not under the whole list (owner, 2026-11-12)
+      const inline = !!race && matchMedia("(max-width: 640px)").matches;
+      el.innerHTML = html`<p class="muted vtp-intro">${t(auth.session()?.admin ? "vt.tr.intro" : "vt.tr.introAll")}</p>
         <h2 class="vtp-h">${t("vt.tr.maps")}</h2>
         <div class="vtp-maps">${list.map((r) => html`<button type="button" class="vtp-map card" data-race="${r.id}" aria-pressed="${r.id === sel.race}">
           ${r.thumb ? html`<img src="${r.event ? `${API}events/${r.id}/pkg/` : `${API}${r.id}/`}thumb.webp" alt="" loading="lazy">` : html`<span class="vtp-nothumb"></span>`}
           <b>${mapName(r.id)}</b><span class="muted">${t("vt.tr.mapLine", { scale: fmt(r.race.scale), std: r.race.std || "", n: r.race.courses.length })}</span>
           ${r.event ? html`<span><span class="tag ${r.event.type === "competition" ? "vo-comp" : ""}">${t(`vo.type.${r.event.type}`)}</span> <span class="muted">${r.event.org}</span></span>` : ""}
-          <span class="muted">${t(`vt.src.${r.race.source}`, { authors: (r.race.photoAuthors || []).join(", ") || "—" })}</span></button>`)}</div>
-        ${race ? html`<h2 class="vtp-h">${t("vt.tr.courses", { map: mapName(race.id) })}</h2>
+          <span class="muted">${t(`vt.src.${r.race.source}`, { authors: (r.race.photoAuthors || []).join(", ") || "—" })}</span></button>${inline && r.id === race.id ? raw('<div class="vtp-inline"></div>') : ""}`)}</div>
+        <div class="vtp-below">${race ? html`<h2 class="vtp-h vtp-h-row"><span>${t("vt.tr.courses", { map: mapName(race.id) })}</span>
+          <button type="button" class="btn btn-sm" id="vtp-palm" title="${t("vt.palm.tip")}">🏆 ${t("vt.palm.btn")}</button></h2>
           ${race.event?.type === "competition" ? html`<p class="muted">${t(race.event.open ? "vo.compRule" : "vo.compClosed")}</p>` : ""}
           <div class="vtp-courses">${courses.map((c) => html`<button type="button" class="vtp-course" data-course="${c.id}" aria-pressed="${c.id === sel.course}"
             ${raw(race.event?.type === "competition" && !race.event.mine && (race.event.played?.includes(c.id) || !race.event.open) ? "disabled" : "")}>
             ${swatch(c.id)}<b>${courseName(c)}</b><span>${t("vt.tr.courseLine", { km: fmt(c.length / 1000, 1), climb: fmt(c.climb || 0), n: c.controls.length - 2 })}</span>
             <span class="muted">${race.event?.played?.includes(c.id) ? t("vo.played") : t(`vt.lvlHint.${LEVELS.includes(c.id) ? c.id : "other"}`)}</span></button>`)}</div>` : ""}
         <div class="vtp-go"><button type="button" class="btn btn-primary" id="vtp-go" ${raw(race && sel.course ? "" : "disabled")}>${t("vt.tr.start")}</button>
-          <span class="muted">${!race ? t("vt.tr.needMap") : !sel.course ? t("vt.tr.needCourse") : t("vt.tr.ready", { course: courseName(courses.find((c) => c.id === sel.course)), map: mapName(race.id) })}</span></div>`;
-      $$(".vtp-map", el).forEach((b) => b.addEventListener("click", () => { sel.race = b.dataset.race; sel.course = null; setQuery({ carte: sel.race, circuit: null }); drawChooser(); }));
-      $$(".vtp-course", el).forEach((b) => b.addEventListener("click", () => { sel.course = b.dataset.course; setQuery({ circuit: sel.course }); drawChooser(); }));
+          <span class="muted">${!race ? t("vt.tr.needMap") : !sel.course ? t("vt.tr.needCourse") : t("vt.tr.ready", { course: courseName(courses.find((c) => c.id === sel.course)), map: mapName(race.id) })}</span></div></div>`;
+      if (inline) $(".vtp-inline", el).append($(".vtp-below", el));
+      const into = (q) => requestAnimationFrame(() => $(q, el)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+      $$(".vtp-map", el).forEach((b) => b.addEventListener("click", () => { sel.race = b.dataset.race; sel.course = null; setQuery({ carte: sel.race, circuit: null }); drawChooser(); into(".vtp-below"); }));
+      $$(".vtp-course", el).forEach((b) => b.addEventListener("click", () => { sel.course = b.dataset.course; setQuery({ circuit: sel.course }); drawChooser(); into("#vtp-go"); }));
+      $("#vtp-palm", el)?.addEventListener("click", () => palmares(race, sel.course));
       $("#vtp-go", el)?.addEventListener("click", () => play(race, courses.find((c) => c.id === sel.course)));
     };
     const play = async (race, course) => {
@@ -161,7 +169,7 @@ export async function render(main, { query }) {
       const { mount } = await import("../games/virtually.js");
       const ev = race.event;
       game = mount($(".vtp-game .card-body", el), race.id, {
-        course: course.id, title: `${mapName(race.id)} · ${courseName(course)}`, base: ev ? `/api/virtual/events/${ev.id}/pkg/` : undefined,
+        course: course.id, title: `${mapName(race.id)} · ${courseName(course)}`, base: ev ? `/api/virtual/events/${ev.id}/pkg/` : undefined, race: race.race,
         onFinish: async (run) => {
           const note = () => $("#vt-saved", el);
           try {
@@ -182,6 +190,41 @@ export async function render(main, { query }) {
     };
     trainingPlay = play;
     drawChooser();
+  }
+
+  /** A map's training palmarès (owner, 2026-11-12: beside its circuits, a pop-up as the games' palmarès): for one circuit, the 20
+   *  best training times, each runner's best; the circuit chosen above the table. */
+  async function palmares(race, courseId) {
+    const courses = race.race.courses || [];
+    let cur = courses.find((c) => c.id === courseId)?.id || courses[0]?.id;
+    const dlg = document.createElement("dialog");
+    dlg.className = "g-palm vtp-palm";
+    dlg.innerHTML = String(html`<div class="g-palm-head"><h2>${t("g.palm")} <span class="muted">· ${mapName(race.id)}</span></h2>
+      <button type="button" class="btn btn-sm" data-close>${t("g.palm.close")}</button></div>
+      <div class="seg vtp-palm-seg" role="group">${courses.map((c) => html`<button type="button" data-c="${c.id}" aria-pressed="${c.id === cur}">${swatch(c.id)} ${courseName(c)}</button>`)}</div>
+      <div class="g-palm-body"><div class="boot"><div class="spinner"></div></div></div>`);
+    document.body.append(dlg);
+    const close = () => { dlg.close(); dlg.remove(); };
+    dlg.addEventListener("click", (e) => { if (e.target === dlg || e.target.closest("[data-close]")) close(); });
+    dlg.addEventListener("cancel", (e) => { e.preventDefault(); close(); });
+    dlg.showModal();
+    let runs = null;
+    try { runs = await runsOf(race.id); } catch (e) { runs = null; }
+    const body = $(".g-palm-body", dlg);
+    const drawTop = () => {
+      $$(".vtp-palm-seg button", dlg).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.c === cur)));
+      if (!runs) { body.innerHTML = String(html`<p class="muted">${t("g.palm.err")}</p>`); return; }
+      const best = new Map();
+      for (const r of runs) if (r.course === cur && r.kind !== "competition" && !r.event && (!best.has(r.u) || r.t < best.get(r.u).t)) best.set(r.u, r);
+      const top = [...best.values()].sort((a, b) => a.t - b.t).slice(0, 20);
+      body.innerHTML = String(top.length ? html`<p class="muted">${t("vt.palm.hint")}</p><table class="data g-palm-t"><thead><tr><th class="num">${t("vt.col.place")}</th>
+          <th>${t("vt.col.runner")}</th><th class="num">${t("vt.col.time")}</th><th>${t("vt.col.date")}</th></tr></thead>
+        <tbody>${top.map((r, i) => html`<tr class="${r.mine ? "g-palm-me" : ""}"><td class="num">${i + 1}</td><td>${displayName(r.name)}${r.mine ? html` <span class="tag">${t("vt.me")}</span>` : ""}</td>
+          <td class="num"><b>${clock(r.t)}</b></td><td>${fmtDate(String(r.at).slice(0, 10))}</td></tr>`)}</tbody></table>`
+        : html`<p class="muted">${t("vt.res.none")}</p>`);
+    };
+    $$(".vtp-palm-seg button", dlg).forEach((b) => b.addEventListener("click", () => { cur = b.dataset.c; drawTop(); }));
+    drawTop();
   }
 
   // ---- Résultats ---------------------------------------------------------------------------------------------------------

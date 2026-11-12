@@ -270,7 +270,9 @@ holds `#nav` as Arena's). An administrator's « Tous les événements » is reme
 organisers, and it works on a phone — every signed-in account, no Orga needed, in the map's contour brown (`--carto`); its editor's top line (the map's name, undo, redo, search, ⤢) sits in the site's bar on a computer out of full window, over the
 ribbon in full window and under 900 px (`mapper/editor.js` `placeTop`; owner, 2026-11-12); a home-page
 section (`tour.js` `carto`, no screenshot yet) and a column in the pricing table. **Ozimut Pixel** (`#/pixel`, route `virtually`;
-`#/virtually` still opens it): « Virtually » renamed and out of Coach, administrators only, in teal (`--pixel`); no documentation
+`#/virtually` still opens it): « Virtually » renamed and out of Coach, in teal (`--pixel`); **every account's since 2026-11-12**
+(owner), its Entraînement and Avatar tabs only — Résultats, Classement, Analyse and Orga stay the administrators' (`pages/virtually.js`
+filters the tabs, `app.moduleShown` no longer hides Pixel, `NUTRITION_ROUTES` no longer names it); no documentation
 (its page explains itself: the documentation lists `DOC_MODS`, Pixel apart) and no home-page section yet. The modules page's cards of
 one-page modules list what they offer (`hub.js` `STEPS`, `hub.<module>.step.<key>`); Orga's card is still hidden on a phone, Carto's
 and Pixel's are not.
@@ -923,8 +925,21 @@ buttons a pad, the view itself tapped (left/right third turns, middle steps, a s
 Every multiple-choice game was played through to its score page at phone size, without errors. Local test: the dev config `pages-dev-games` (port 8790) passes `--binding ADMIN_EMAILS=<the local test account>` so the games show.
 - **Virtually** (Coach › Virtually, `#/virtually`, route `virtually`, `pages/virtually.js`; the game `games/virtually.js` +
   `games/vworld.js`; owner, 2026-11-10, after Catching Features and Virtual-O — a tab of « Jeux » that day, a Coach page of its own
-  since 2026-11-11, `#/jeux?onglet=virtually` leading there; **administrators only**: `app.js` `NUTRITION_ROUTES.virtually` keeps
-  the menu entry and the address to `auth.session().admin`, and `functions/api/virtual` `admin: true`):
+  since 2026-11-11, `#/jeux?onglet=virtually` leading there; administrators only until 2026-11-12, then every account for its
+  Entraînement and Avatar tabs (« Ozimut Pixel » above): `functions/api/virtual` serves every account the maps, their packages, the
+  runs' list and their own training runs; a run's route (the analysis) is one's own or an administrator's, competitions the
+  administrators'). **Owner, 2026-11-12, the phone and the start**: the briefing — a card over the game's box from the click on
+  « Commencer », while the package loads: the course, its description sheet (`briefSheet`, from the page's race.json and the
+  symbols, before the world exists; the race's own sheet once built), the commands (`keysHtml`: the keyboard's, or a touch screen's
+  own list), « Partir » greyed beside a status line until the chunks round the start are built (Enter starts too); the same card
+  after « Abandonner » / « Recommencer ». The commands at any time: « ? » or H (a panel, the clock running on; not on a touch screen,
+  where the pause card lists them — every pause card does). The map's and the descriptions' views say how to go back: « ‹ Retour à
+  la course » over the map (bottom), at the foot of the sheet (sticky), Escape, and the pad's « Carte » reads « Retour » while
+  either fills the screen. Full screen: the browser's own, else (no API — iPhones —, refused, or no answer within 0.6 s) the game
+  fixed over the window (`.vt-fs`, `html.vt-fs-on`); a touch screen enters it at « Partir ». The pad's buttons capture the finger
+  (a thumb sliding off no longer stops the runner). The finish card goes under the map on a phone held upright. On a phone the
+  chosen map's circuits and « Commencer » come right under that map (`.vtp-inline`). **The training's palmarès** (a button beside
+  a map's circuits, a pop-up as the games'): per circuit, the 20 best training times, each runner's best (`runs?race=`):
   a virtual race in a 3D forest made from a real orienteering map. The runner is seen from behind (V: through their eyes), the map
   with the course in a panel (M: small, large, hidden), a compass
   (baseplate, red needle north, the dial turning with the runner: the map's north is the world's, the world being the map's paper
