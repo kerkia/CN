@@ -455,6 +455,18 @@ export function holeTool(E) {
     overlay(g) { drawSelection(g, E); if (pts.length) strokePath(g, E.view, this.cur ? [...pts, [...this.cur, 0]] : pts, { closed: true, dash: [4, 3], color: "#d32f2f" }); },
   };
 }
+/** The hand: a drag moves the view, whatever is under it (owner, 2026-11-12: the middle button and Space + drag were not
+ *  found; OpenOrienteering Mapper has its « Pan » tool). */
+export function panTool(E) {
+  let from = null;
+  return {
+    name: "pan", cursor: "grab",
+    down(ev) { from = [ev.clientX, ev.clientY]; E.$("#mp-map").style.cursor = "grabbing"; },
+    move(ev) { if (!from) return; E.view.panPx(ev.clientX - from[0], ev.clientY - from[1]); from = [ev.clientX, ev.clientY]; },
+    up() { from = null; E.$("#mp-map").style.cursor = "grab"; },
+    cancel() { from = null; },
+  };
+}
 export function measureTool(E) {
   let pts = [], cur = null;
   return {

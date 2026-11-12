@@ -12,14 +12,14 @@ const B = (act, icon, big = false, extra = {}) => ({ act, icon, big, ...extra })
 /** The tabs: [{ id, groups: [{ id, items: [item | { stack: [items] }] }] }]; labels from `map.rib.<act>`, groups `map.grp.<id>`. */
 export const TABS = [
   { id: "draw", groups: [
-    { id: "tools", items: [B("tool:select", "select", true), B("tool:vertex", "vertex", true)] },
+    { id: "tools", items: [B("tool:select", "select", true), B("tool:vertex", "vertex", true), B("tool:pan", "move", true)] },
     { id: "draw", items: [B("tool:draw", "pencil", true), { stack: [B("mode:straight", "line"), B("mode:curve", "route"), B("mode:free", "string")] },
       { stack: [B("mode:rect", "rect"), B("mode:circle", "ellipse"), B("tool:fill", "water")] }] },
     { id: "snap", items: [{ stack: [B("snap", "target"), B("pipette", "palette"), B("tool:measure", "ruler")] }] },
     { id: "history", items: [{ stack: [B("undo", "undo"), B("redo", "redo")] }] },
   ] },
   { id: "edit", groups: [
-    { id: "pick", items: [B("tool:select", "select", true), B("tool:vertex", "vertex", true)] },
+    { id: "pick", items: [B("tool:select", "select", true), B("tool:vertex", "vertex", true), B("tool:pan", "move", true)] },
     { id: "cut", items: [B("tool:cut", "scan", true), { stack: [B("tool:hole", "removecircle"), B("join", "link"), B("reverse", "swap")] }] },
     { id: "combine", items: [{ stack: [B("union", "plus"), B("difference", "minus"), B("intersection", "box")] }] },
     { id: "shape", items: [{ stack: [B("smooth", "route"), B("simplify", "line"), B("toggleCurves", "bend")] }] },

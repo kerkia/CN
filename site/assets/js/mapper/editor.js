@@ -22,7 +22,7 @@ const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits
 const PREF = "ocn.mp.prefs";
 const pref = (k, d) => { try { return JSON.parse(localStorage.getItem(PREF) || "{}")[k] ?? d; } catch (e) { return d; } };
 const setPref = (k, v) => { try { const o = JSON.parse(localStorage.getItem(PREF) || "{}"); o[k] = v; localStorage.setItem(PREF, JSON.stringify(o)); } catch (e) { /* this visit */ } };
-const KEYS = { "tool:select": "S", "tool:vertex": "V", "tool:draw": "D", "tool:fill": "F", "tool:cut": "X", "tool:measure": "M", undo: "Ctrl+Z", redo: "Ctrl+Y", delete: "Suppr", duplicate: "Ctrl+D", snap: "N", "mode:straight": "1", "mode:curve": "2", "mode:free": "3", "mode:rect": "4", "mode:circle": "5" };
+const KEYS = { "tool:pan": "H", "tool:select": "S", "tool:vertex": "V", "tool:draw": "D", "tool:fill": "F", "tool:cut": "X", "tool:measure": "M", undo: "Ctrl+Z", redo: "Ctrl+Y", delete: "Suppr", duplicate: "Ctrl+D", snap: "N", "mode:straight": "1", "mode:curve": "2", "mode:free": "3", "mode:rect": "4", "mode:circle": "5" };
 
 /**
  * Open the editor in `container`. opts: { id (the map on the server, null for a file opened locally), card, role, doc (map.json),
@@ -228,7 +228,7 @@ export async function openEditor(opts) {
   E.why = (act) => {
     if (!act) return "";
     if (E.blank && !/^(zoom|file:(new|open|import))/.test(act)) return t("map.ed.needMap");
-    if (E.readOnly && !/^(tool:select|tool:measure|zoom|export|gps|stats|check|versions|comments|members|bg-toggle|map-fade|file:)/.test(act)) return t("map.why.readOnly");
+    if (E.readOnly && !/^(tool:select|tool:pan|tool:measure|zoom|export|gps|stats|check|versions|comments|members|bg-toggle|map-fade|file:)/.test(act)) return t("map.why.readOnly");
     if (needsSel.has(act) && !E.sel.size) return t("map.why.noSel");
     if (["union", "intersection", "difference"].includes(act) && E.selected().filter((o) => o.otp === 3).length < 2) return t("map.why.twoAreas");
     if (act === "join" && E.selected().filter((o) => o.otp === 2).length < 2) return t("map.why.twoLines");
@@ -253,7 +253,7 @@ export async function openEditor(opts) {
   E.keyOf = (act) => KEYS[act] || "";
 
   // ---- tools ---------------------------------------------------------------------------------------------------------------
-  const TOOLS = { select: T.selectTool, vertex: T.vertexTool, draw: T.drawTool, fill: T.fillTool, cut: T.cutTool, hole: T.holeTool, measure: T.measureTool };
+  const TOOLS = { pan: T.panTool, select: T.selectTool, vertex: T.vertexTool, draw: T.drawTool, fill: T.fillTool, cut: T.cutTool, hole: T.holeTool, measure: T.measureTool };
   E.setTool = (name) => {
     E.tool?.cancel?.();
     E.toolName = name; E.tool = TOOLS[name](E);
@@ -517,7 +517,7 @@ export async function openEditor(opts) {
     if (ev.key === "Delete" || ev.key === "Backspace") { if (E.sel.size) { ev.preventDefault(); E.act("delete"); } return; }
     if (ev.key === "Escape") { if (E.toolName !== "select") E.setTool("select"); else if (E.sel.size) { E.sel.clear(); E.selChanged(); } return; }
     if (ctrl || ev.altKey) return;
-    const tool = { s: "select", v: "vertex", d: "draw", f: "fill", x: "cut", m: "measure" }[k];
+    const tool = { h: "pan", s: "select", v: "vertex", d: "draw", f: "fill", x: "cut", m: "measure" }[k];
     if (tool) { E.setTool(tool); return; }
     const mode = { 1: "straight", 2: "curve", 3: "free", 4: "rect", 5: "circle" }[ev.key];
     if (mode) { E.act(`mode:${mode}`); return; }

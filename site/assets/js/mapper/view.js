@@ -100,9 +100,12 @@ export class View {
     const g = c.getContext("2d");
     const base = new Matrix(k, 0, 0, -k, -rect[0] * k, rect[3] * k);
     const tg = new CanvasTarget(g, base, { minRes: 1 / k });
-    drawRect(this.live, tg, rect, { minRes: 1 / k, hide: this.hiddenColors, overprint: this.overprint });
-    tg.flush?.();
-    const t = { canvas: c, rect, L, i, j, used: performance.now(), stale: false };
+    // an object that cannot be drawn must not leave a hole (owner, 2026-11-12: white bands across a LiDAR import, zoomed in):
+    // the tile keeps what was drawn, and the error is said once
+    let failed = false;
+    try { drawRect(this.live, tg, rect, { minRes: 1 / k, hide: this.hiddenColors, overprint: this.overprint }); tg.flush?.(); }
+    catch (e) { failed = true; if (!this.drawError) { this.drawError = true; console.error("map tile", e); } }
+    const t = { canvas: c, rect, L, i, j, used: performance.now(), stale: false, failed };
     this.tiles.set(key, t);
     if (this.tiles.size > MAX_TILES) {
       const old = [...this.tiles.values()].sort((a, b) => a.used - b.used).slice(0, this.tiles.size - MAX_TILES);
@@ -127,12 +130,9 @@ export class View {
     for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
       const key = `${L}:${i}:${j}`, t = this.tiles.get(key);
       if (t) { t.used = t0; this.blit(g, m, t); if (t.stale) want.push([i, j]); continue; }
-      // a coarser tile until this one is drawn
-      for (let up = 1; up <= 8; up++) {
-        const Lc = L - up, Sc = TILE / kOf(Lc), ic = Math.floor((i + 0.5) * S / Sc), jc = Math.floor((j + 0.5) * S / Sc);
-        const tc = this.tiles.get(`${Lc}:${ic}:${jc}`);
-        if (tc) { this.blit(g, m, tc, this.tileRect(L, i, j)); break; }
-      }
+      // until this one is drawn, the tiles of other levels that cover it: a finer level first (zooming out), else a coarser
+      // one (zooming in); those used are kept from eviction, so a slow drawing never shows white in their place
+      this.standIn(g, m, L, i, j, t0);
       want.push([i, j]);
     }
     // draw what is missing, the centre first, within the frame's budget
@@ -146,6 +146,31 @@ export class View {
     g.globalAlpha = 1;
     this.drawOv();
     if (more) this.request();
+  }
+  /** Tiles of other levels drawn in place of tile (L, i, j): the finer level's (one or two levels down: all it has of the
+   *  rectangle), then the nearest coarser tile. */
+  standIn(g, m, L, i, j, now) {
+    const rect = this.tileRect(L, i, j);
+    for (let down = 1; down <= 2; down++) {
+      const Lf = L + down, Sf = TILE / kOf(Lf);
+      const i0 = Math.floor(rect[0] / Sf), i1 = Math.ceil(rect[2] / Sf) - 1, j0 = Math.floor(rect[1] / Sf), j1 = Math.ceil(rect[3] / Sf) - 1;
+      const found = [];
+      for (let a = i0; a <= i1; a++) for (let b = j0; b <= j1; b++) { const tf = this.tiles.get(`${Lf}:${a}:${b}`); if (tf) found.push(tf); }
+      if (found.length === (i1 - i0 + 1) * (j1 - j0 + 1)) {
+        for (const tf of found) {
+          tf.used = now;
+          const r = [Math.max(rect[0], tf.rect[0]), Math.max(rect[1], tf.rect[1]), Math.min(rect[2], tf.rect[2]), Math.min(rect[3], tf.rect[3])];
+          if (r[2] > r[0] && r[3] > r[1]) this.blit(g, m, tf, r);
+        }
+        return;
+      }
+    }
+    const S = TILE / kOf(L);
+    for (let up = 1; up <= 8; up++) {
+      const Lc = L - up, Sc = TILE / kOf(Lc), ic = Math.floor((i + 0.5) * S / Sc), jc = Math.floor((j + 0.5) * S / Sc);
+      const tc = this.tiles.get(`${Lc}:${ic}:${jc}`);
+      if (tc) { tc.used = now; this.blit(g, m, tc, rect); return; }
+    }
   }
   /** A tile drawn on the view (clipped to `clip`, mm, when a coarser tile stands in for a finer one). */
   blit(g, m, t, clip = null) {
