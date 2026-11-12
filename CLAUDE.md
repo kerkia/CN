@@ -1064,7 +1064,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`src/facades.json`, by BD TOPO's `cleabs`), a brick or meulière hint where the registry gives no material. The photos are read
   in shade under an overcast sky (lightness ~0.35, some blue casts): `town_3d.py` `_fac_colours` takes them as relative colours —
   one gain bringing their median lightness to a plaster's 0.68, lightness kept in 0.42-0.88, blue casts neutral — for buildings
-  read on two walls at least (Gif: 67 of 380 read, 45 used). **Data only**: Panoramax's photos are CC BY-SA 4.0, the data derived from them allowed under Licence Ouverte
+  read on two walls at least (Gif: 67 of 380 read, 45 used; on the enlarged area of 2026-11-12, 753 photos, 171 of 1 062 buildings read, 124 used, the
+  photo list `src/panoramax/list.json` asked again — it is kept, so an enlarged area needs it moved aside). **Data only**: Panoramax's photos are CC BY-SA 4.0, the data derived from them allowed under Licence Ouverte
   2.0 / CC BY 4.0 / ODbL; the authors are named in the race's credit (`race.photoAuthors`, `vt.src.town`'s `{authors}`).
   **Photo façades** (owner, 2026-11-11: « I don't mind sharing »; `town_facadetex.py`, run by `town_3d.py`): each building side
   Panoramax's photos see is rectified from them into a tile, the tiles packed into `pkg/facades.webp` (WebP with alpha, one atlas),
@@ -1073,7 +1074,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   upload (the OSM-FR instance, every photo of Gif CC BY-SA 4.0, checked in its API), but its blurring can miss one — passers-by
   and cars are below that line, the ground floor keeps the drawn façade. A texture needs the camera far more exactly than a colour:
   each photo's pose is refined on the buildings' own edges (`refine`: corners and wall tops from the LiDAR, position ± 3 m, heading,
-  camera height, pitch and a panorama's roll; cached in `src/poses_refined.json`, `TEX_REFINE=1` redoes it), then again for each
+  camera height, pitch and a panorama's roll; cached in `src/poses_refined.json` with the area it was computed for — another area, as an enlarged race, recomputes it —,
+  `TEX_REFINE=1` redoes it), then again for each
   side and photo (`local`: the side rectified must come out straight — `axis_stats` — and anchored at its eaves and corners); a
   tile is kept only when straight (≥ 0.5), anchored (eaves ≥ 0.75, corners ≥ 0.3 of its mean gradient) and 4 m wide or more
   (`anchors`; `TEX_DEBUG=<folder>` writes every candidate and its figures). Set on Gif's 22 candidate tiles of 2026-11-11 so that

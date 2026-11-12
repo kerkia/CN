@@ -62,8 +62,12 @@ class FacadeTex:
         self.cache = OrderedDict()
         self.refined = {}                               # photo id → refined pose, or None (not used)
         self.ref_file = src / "poses_refined.json"      # kept between runs: refining is the slow part
+        # the poses are in the world's frame: kept only while the area is the same (a race enlarged moves its origin)
+        self.frame = json.load(open(src.parent / "area.json"))["ext"]
         if self.ref_file.exists() and not os.environ.get("TEX_REFINE"):
-            self.refined = json.load(open(self.ref_file))
+            kept = json.load(open(self.ref_file))
+            if kept.pop("_frame", None) == self.frame:
+                self.refined = kept
         self.tilelog = []
         self.debug = os.environ.get("TEX_DEBUG")
         self.used = {}                                  # photo id → pose (those a kept tile was taken from)
@@ -90,7 +94,7 @@ class FacadeTex:
         self.side_mid = cKDTree([(s[0] + s[1]) / 2 for s in self.sides])
 
     def save(self):
-        json.dump({k: v for k, v in self.refined.items()}, open(self.ref_file, "w"))
+        json.dump({"_frame": self.frame, **self.refined}, open(self.ref_file, "w"))
         if self.debug:
             json.dump(self.tilelog, open(Path(self.debug) / "tiles.json", "w"), indent=0)
 
