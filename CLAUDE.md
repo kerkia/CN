@@ -267,7 +267,8 @@ analysis tab drops its own title and day (`managePage`'s `embed`). **The event's
 chooser, the type, club and place, « ✎ Modifier » on one line; its tabs in the bar (`data-bar-tabs`, `app.placeBarTabs`: Orga's bar
 holds `#nav` as Arena's). An administrator's « Tous les événements » is remembered (`localStorage ocn.mg.all`). **Ozimut Carto** (`#/carto`, route
 `orgMapper`; `#/orga-carto` still opens it): « Cartographier » as a module of its own — a map outlives its events, mappers are not
-organisers, and it works on a phone — every signed-in account, no Orga needed, in the map's contour brown (`--carto`); a home-page
+organisers, and it works on a phone — every signed-in account, no Orga needed, in the map's contour brown (`--carto`); its editor's top line (the map's name, undo, redo, search, ⤢) sits in the site's bar on a computer out of full window, over the
+ribbon in full window and under 900 px (`mapper/editor.js` `placeTop`; owner, 2026-11-12); a home-page
 section (`tour.js` `carto`, no screenshot yet) and a column in the pricing table. **Ozimut Pixel** (`#/pixel`, route `virtually`;
 `#/virtually` still opens it): « Virtually » renamed and out of Coach, administrators only, in teal (`--pixel`); no documentation
 (its page explains itself: the documentation lists `DOC_MODS`, Pixel apart) and no home-page section yet. The modules page's cards of

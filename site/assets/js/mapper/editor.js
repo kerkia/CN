@@ -65,7 +65,10 @@ export async function openEditor(opts) {
   container.appendChild(root);
   document.body.classList.add("tr-open", "mp-open");
   E.root = root;
-  E.$ = (s) => root.querySelector(s);
+  // the top line (the map's name, undo, redo, search, ⤢) goes into the site's bar on a computer, out of full window (placeTop below):
+  // looked for there too
+  const topLine = root.querySelector(".tr-top");
+  E.$ = (s) => root.querySelector(s) || topLine.querySelector(s);
 
   // ---- the document --------------------------------------------------------------------------------------------------------
   E.live = new D.Live(opts.doc, { onChange: (c) => changed(c) });
@@ -525,7 +528,7 @@ export async function openEditor(opts) {
   document.addEventListener("keydown", onKey);
   document.addEventListener("keyup", onKey);
   P.bindSearch(E, E.$("#mp-search"));
-  root.querySelector(".tr-top").addEventListener("click", (ev) => {
+  topLine.addEventListener("click", (ev) => {
     const b = ev.target.closest("[data-act]"); if (b) E.act(b.dataset.act);
     if (ev.target.closest("[data-top=maps]")) save(true).then(() => E.onStart("open"));
     const dr = ev.target.closest("[data-top=left],[data-top=right]");
@@ -616,6 +619,7 @@ export async function openEditor(opts) {
     window.removeEventListener("beforeunload", beforeUnload);
     E.view.destroy();
     document.body.classList.remove("tr-open", "mp-open");
+    unplaceTop();
     root.remove();
     if (window.__mapper === E) window.__mapper = null;
     opts.onClose?.();
@@ -632,8 +636,28 @@ export async function openEditor(opts) {
   mountRibbon(E, E.$("#mp-ribbon"));
   P.drawLeft(E); P.drawRight(E);
   const fit = () => { const top = root.getBoundingClientRect().top + window.scrollY; root.style.height = `${Math.max(420, window.innerHeight - Math.max(0, top - window.scrollY) - (FW.isFull?.() ? 0 : 8))}px`; };
-  fit(); window.addEventListener("resize", fit);
-  E._unfit = () => window.removeEventListener("resize", fit);
+  // the top line in the site's bar, where there is room (owner, 2026-11-12): on a computer, out of full window (which hides the bar);
+  // over the ribbon otherwise. The bar is drawn again on some changes (country, language): put back then (the observer)
+  const wide = matchMedia("(min-width: 901px)");
+  function placeTop() {
+    const inner = document.querySelector("#topbar .topbar-inner");
+    if (!/^#\/(carto|orga-carto)(?:[?/]|$)/.test(location.hash)) { topLine.remove(); return; }   // another page: the editor goes
+    if (inner && root.isConnected && wide.matches && !FW.isFull?.()) {
+      if (topLine.parentElement !== inner) inner.insertBefore(topLine, inner.querySelector(".topbar-tools"));
+      topLine.classList.add("mp-bartop");
+    } else {
+      if (topLine.parentElement !== root) root.prepend(topLine);
+      topLine.classList.remove("mp-bartop");
+    }
+    fit();
+  }
+  const barWatch = new MutationObserver(() => { if (!topLine.isConnected) placeTop(); });
+  const topbar = document.querySelector("#topbar");
+  if (topbar) barWatch.observe(topbar, { childList: true });
+  wide.addEventListener("change", placeTop);
+  function unplaceTop() { barWatch.disconnect(); wide.removeEventListener("change", placeTop); window.removeEventListener("resize", placeTop); topLine.remove(); }
+  placeTop(); window.addEventListener("resize", placeTop);
+  E._unfit = () => window.removeEventListener("resize", placeTop);
   await takeLock();
   if (E.id) S.comments(E.id).then((c) => { E.comments = c; E.view.overlay(); }).catch(() => {});
   status(); if (E.blank) saveState(""); else saveState(E.id ? "saved" : "local");

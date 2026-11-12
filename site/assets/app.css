@@ -4061,6 +4061,10 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
    three canvases, the selection, parts, backgrounds and colours on the right, a status bar */
 .mp-app { --mp-left: 250px; --mp-right: 270px; min-width: 0; max-width: 100%; overflow: hidden; }
 .mp-app .tr-ribbon, .mp-app .tr-top { min-width: 0; max-width: 100%; }
+/* Carto's top line in the site's bar (owner, 2026-11-12: room there, a line less over the map) */
+.tr-top.mp-bartop { flex: 1 1 auto; min-width: 0; border: 0; background: none; padding: 0; flex-wrap: nowrap; }
+.tr-top.mp-bartop .tr-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-top.mp-bartop .mp-drawer { display: none; }
 .mp-app .tr-rbody { overflow-x: auto; scrollbar-width: thin; }
 .mp-main { flex: 1; display: grid; grid-template-columns: var(--mp-left) 1fr var(--mp-right); min-height: 0; }
 .mp-left, .mp-right { overflow: auto; background: var(--surface); min-width: 0; font-size: 12.8px; }
