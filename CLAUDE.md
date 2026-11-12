@@ -1194,6 +1194,29 @@ Every multiple-choice game was played through to its score page at phone size, w
   line across the street where two sections meet). `town_fetch.py` reads a city's municipal arrondissement first (Paris, Lyon,
   Marseille) and takes IGN's PCI parcels over the area (`parcelles_pci.json`, the same DGFiP parcels) when geo.api.gouv.fr or
   Etalab does not serve a commune.
+  **The legibility check** (2026-11-12, after the mapper's remark that OCAD has one: « add tests that the standards are applied »):
+  `tools/virtually/legibility.py`, run by `town_map.py` on its objects before it writes them (`--no-fix`: report only; alone:
+  `py legibility.py <race> [--fix] [--in F] [--out F]`), so Pixel's town races and Cartographier's « Plan de ville (sprint) » come
+  out checked; the report rule by rule with the first places in Lambert 93 in the log and `src/legibility.json`. ISSprOM 2019-2's
+  rules: impassable features (521, 520, 411, 301, 709, walls 515/529, fences 518) under 0.4 mm apart (1.6 m; under 0.02 mm they
+  touch, OCAD's grid) — closed: a wall's end drawn on to what lies straight ahead (beside it: reported, drawn sideways it made
+  zigzags), the space between areas filled with the area's symbol (buildings merged, olive extended), long gaps by a closing, two
+  corners by the hull of their near parts; not where a path, stairway or passage runs through (`gap_way`, to widen by hand); the
+  wedge where two features meet at an angle is a dead end, not a gap; notches and holes under 0.4 mm filled —; areas under their
+  symbol's minimum width or area (minimums.json) and white slivers between areas: a runnable strip given to the neighbour sharing
+  most of its edge, an impassable one widened, a building's reported; lines under their minimum length, contours ending in the
+  open, 512.1 away from a passage's mouth (reported); lines and trees inside buildings (cut, dropped), trees drawn over each other
+  (the smaller dropped), the LiDAR's vegetation over a vector area (cut); a stairway off paving (paving drawn under it); a path or
+  paved footway on paving (cut). Two fixing passes then a plain check, before the curves are made: ~3.5 min on top of the
+  generator's 5 on Gif's 1.4 km². On Gif (2026-11-12, with the mapper's third review): ~2 190 white slivers and ~400 narrow parts
+  mended, 121 small areas given away, 52 gaps and 185 notches closed, 122 trees thinned, 6 stairways paved, 3 paths cut off
+  paving; left 160 wall ends beside another feature (short pieces along one another), 10 gaps a way runs through, 17 short lines,
+  4 contour ends; Cartographier's checks on its map.ocd: 107 gaps, mostly those walls.
+  Not redrawn after a fix: the paved edge 501.1 and the 995 boundaries keep their place. **The rules are shared**:
+  `site/assets/js/mapper/sets/legibility.json` (symbols, the gap, the paving, the stairs…), which Cartographier's checks read too
+  (`checks.js` `sprintRules`, on a map of 1:5000 or larger or ISSprOM: gaps under 0.4 mm with the same touching and wedge rules, a
+  path on paving, a stairway off it; « Vérifier » and « Lisibilité »; edges bucketed by 1 mm cells: 1 s on Gif's 11 000 objects);
+  `tools/mapper/t_legibility.mjs` runs them on a map file.
   **Sports grounds** (owner, 2026-11-11: « a rugby field, soccer fields, tennis courts, a track: can the scene show them? »):
   `town_map.py` reads OpenStreetMap's `leisure=pitch|track` with their `sport` and `surface` (BD TOPO's `terrain_de_sport` where
   OSM has none, its `nature_detaillee` giving the sport; a filled oval's track 8.5 m wide) into `src/sports.json`; the map (owner,

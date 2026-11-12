@@ -1,6 +1,6 @@
 """A sprint map (ISSprOM 2019-2, 1:4000) of a town from open data, for « Virtually » (town_fetch.py first):
 
-  py town_map.py <race> [--clip]    DATA/<race>/map_objects.json, then  node --import ../mapper/shim.mjs mkocd.mjs … map.ocd
+  py town_map.py <race> [--clip] [--no-fix]    DATA/<race>/map_objects.json, then  node --import ../mapper/shim.mjs mkocd.mjs … map.ocd
 
 --clip: the objects cut to the area asked for (area.json `box`) instead of the area fetched with its margin (`ext`, the 3D
 scene's horizon) — Cartographier's « Plan de ville » (townmap_ci.py), whose map is exactly that area; the margin still serves the
@@ -1321,6 +1321,18 @@ log("OpenStreetMap objects kept hidden", n_osm)
 for xm in np.arange(math.floor((X0 - CX) / 120) * 120, (X1 - CX) + 1, 120):
     objects.append({"sym": S(601, 1), "otp": 2, "rings": [[mm(CX + xm, Y0), mm(CX + xm, Y1)]]})
 
+# the legibility check (legibility.py: ISSprOM's rules, shared with Cartographier's checks), on the polylines before they are
+# curved: what can be mended safely is (gaps under 0.4 mm between impassable features closed, slivers given to their
+# neighbour…), the rest reported in src/legibility.json
+import legibility
+DOC = {"title": f"{RACE} sprint", "scale": SCALE, "set": "issprom2019-2", "realWorld": {"x": CX, "y": CY, "epsg": 2154},
+       "objects": objects}
+LEG = legibility.check(DOC, fix="--no-fix" not in sys.argv, frame=CLIP, log=log)
+for line in ["legibility"] + LEG.lines():
+    log(line)
+json.dump(LEG.json(), open(SRC / "legibility.json", "w"))
+objects = DOC["objects"]
+
 # ---- curves (the owner's mapper, 2026-11-12: « polylines not turned into curves, as OOM does and as I said last time »): every
 # line and every area's outline becomes Bézier curves through its points (Catmull-Rom tangents), as OpenOrienteering Mapper's
 # « smooth » does — but the buildings, canopies, walls, fences, stairways, the courts' hatching and the helpers, which keep their
@@ -1391,8 +1403,7 @@ for o in objects:
     o["bez"] = [_bez(r, o["otp"] == 3 or _closed(r)) for r in _rings(o)]
     o.pop("curve", None); n_curved += 1
 log("curved objects", n_curved)
-json.dump({"title": f"{RACE} sprint", "scale": SCALE, "set": "issprom2019-2", "realWorld": {"x": CX, "y": CY, "epsg": 2154},
-           "objects": objects}, open(RD / "map_objects.json", "w"))
+json.dump(DOC, open(RD / "map_objects.json", "w"))
 np.savez_compressed(SRC / "classes.npz", cl=cl, chm=chm, canopy=canopy_cover)
 json.dump({"walls": wall_out, "origin": [X0, Y1], "res": R}, open(SRC / "walls.json", "w"))
 log("objects", len(objects), {s: sum(1 for o in objects if o["sym"] == s) for s in sorted({o["sym"] for o in objects})})
