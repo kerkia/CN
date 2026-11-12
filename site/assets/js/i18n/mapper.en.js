@@ -443,6 +443,7 @@ export default {
   "map.data.kind.sprint": "Sprint map (ISSprOM 2019-2)",
   "map.data.kind.forest": "Forest map (ISOM 2017-2)",
   "map.data.needKind": "Choose sprint or forest.",
+  "map.data.contoursSprint": "Sprint map: the ground smoothed over 4 m, each contour rounded, loops under 600 m² and open lines under 40 m left out, each contour cut at the map's buildings — as the town plan does.",
   "map.data.lidarHint": "The national LiDAR (IGN in France, swisstopo in Switzerland, USGS in the USA, NRCan in Canada, LINZ in New Zealand) processed by karttapullautin: a few minutes for tiles not made yet, longer outside France.",
   "map.data.lidar.interval": "Contour interval",
   "map.data.lidar.m": "{m} m",

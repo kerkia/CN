@@ -443,6 +443,7 @@ export default {
   "map.data.kind.sprint": "Mapa de sprint (ISSprOM 2019-2)",
   "map.data.kind.forest": "Mapa de bosque (ISOM 2017-2)",
   "map.data.needKind": "Elige sprint o bosque.",
+  "map.data.contoursSprint": "Mapa de sprint: el terreno suavizado en 4 m, cada curva redondeada, los bucles de menos de 600 m² y las curvas abiertas de menos de 40 m descartados, cada curva cortada en los edificios del mapa, como en el plano urbano.",
   "map.data.lidarHint": "El LiDAR nacional (IGN en Francia, swisstopo en Suiza, USGS en EE. UU., NRCan en Canadá, LINZ en Nueva Zelanda) procesado con karttapullautin: unos minutos para las teselas aún no hechas, más fuera de Francia.",
   "map.data.lidar.interval": "Equidistancia de las curvas",
   "map.data.lidar.m": "{m} m",

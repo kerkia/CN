@@ -7,6 +7,7 @@
 // where the ground is gentle). A closed contour too small to be drawn as a loop becomes a point: 109.0 small knoll or
 // 111.0 small depression. Every object is { sym, otp, ang, coords, src: "dem", draft: true } (the document gives ids).
 // The lines are Bézier curves through their points (a mapper's review, 2026-11-12: a contour bends on the ground; `curve`).
+// A sprint map's follow the town plan's rules (sprintObjects: smoothed over 4 m, rounded, dropped or kept whole, cut at buildings).
 
 import { ocad, simplify, bezier } from "./frame.js";
 import { loadGrid, CREDIT } from "../../trace/terrain.js";
@@ -117,13 +118,167 @@ const smooth1 = (pts, closed) => {
 };
 const lengthOf = (pts) => { let s = 0; for (let i = 1; i < pts.length; i++) s += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return s; };
 
+// ---- a sprint map's contours (owner, 2026-11-12): the town plan's rules (tools/virtually/town_map.py, its contours) — a town's
+// ground holds kerbs, walls, embankments and the model's gaps, whose raw isolines follow every one of them ----------------------
+export const SPRINT = {
+  smoothM: 4,           // m: the ground smoothed over 4 m (a Gaussian, σ)
+  chaikin: 2,           // passes of Chaikin's corner cutting
+  tolM: 0.3,            // m: Douglas-Peucker after it
+  minLoopM2: 600,       // m²: a closed contour smaller than this is dropped whole (no knoll or depression point)
+  minLineM: 40,         // m: an open contour shorter than this is dropped whole
+  minPieceM: 3,         // m: a piece left between two buildings shorter than this is left out
+};
+
+/** z smoothed by a Gaussian of σ cells (separable, the missing nodes left out of each mean). */
+export function gaussian(z, nx, ny, sigma) {
+  if (!(sigma > 0.3)) return z;
+  const r = Math.ceil(3 * sigma), w = [];
+  for (let d = -r; d <= r; d++) w.push(Math.exp(-(d * d) / (2 * sigma * sigma)));
+  const pass = (src, horiz) => {
+    const out = new Float64Array(src.length);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      let s = 0, ws = 0;
+      for (let d = -r; d <= r; d++) {
+        const ii = horiz ? i + d : i, jj = horiz ? j : j + d;
+        if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue;
+        const v = src[jj * nx + ii];
+        if (Number.isNaN(v)) continue;
+        s += w[d + r] * v; ws += w[d + r];
+      }
+      out[j * nx + i] = Number.isNaN(src[j * nx + i]) || !ws ? NaN : s / ws;
+    }
+    return out;
+  };
+  return pass(pass(z, true), false);
+}
+
+/** Chaikin's corner cutting, n passes (a closed line repeats its first point, and keeps doing so). As town_map.py's chaikin. */
+export function chaikin(pts, n = 2, closed = false) {
+  let p = pts;
+  for (let k = 0; k < n && p.length > 2; k++) {
+    const mid = [];
+    for (let i = 1; i < p.length; i++) {
+      const a = p[i - 1], b = p[i];
+      mid.push([0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]], [0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]]);
+    }
+    p = closed ? [...mid, mid[0]] : [p[0], ...mid, p[p.length - 1]];
+  }
+  return p;
+}
+
+/**
+ * Areas (each [[x, y]…] rings, the first outer, the others holes; even-odd) made ready for cutting lines: their edges in a grid of
+ * cells, their boxes. cell in map mm.
+ */
+export function areaIndex(areas, cell = 2) {
+  const polys = [], cells = new Map(), key = (i, j) => `${i},${j}`;
+  for (const rings of areas) {
+    const rs = rings.filter((r) => r.length >= 3);
+    if (!rs.length) continue;
+    const b = [Infinity, Infinity, -Infinity, -Infinity];
+    for (const r of rs) for (const [x, y] of r) { if (x < b[0]) b[0] = x; if (y < b[1]) b[1] = y; if (x > b[2]) b[2] = x; if (y > b[3]) b[3] = y; }
+    const pi = polys.push({ rings: rs, b }) - 1;
+    for (const r of rs) for (let k = 0; k < r.length; k++) {
+      const a = r[k], c = r[(k + 1) % r.length];
+      if (a[0] === c[0] && a[1] === c[1]) continue;
+      const i0 = Math.floor(Math.min(a[0], c[0]) / cell), i1 = Math.floor(Math.max(a[0], c[0]) / cell);
+      const j0 = Math.floor(Math.min(a[1], c[1]) / cell), j1 = Math.floor(Math.max(a[1], c[1]) / cell);
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) (cells.get(key(i, j)) || cells.set(key(i, j), []).get(key(i, j))).push([a, c, pi]);
+    }
+  }
+  const inside = (x, y) => polys.some(({ rings, b }) => {
+    if (x < b[0] || x > b[2] || y < b[1] || y > b[3]) return false;
+    let c = false;
+    for (const r of rings) for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+      const [xi, yi] = r[i], [xj, yj] = r[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  });
+  return { polys, cells, cell, inside, empty: !polys.length };
+}
+
+/** A line [[x, y]…] less the areas of an areaIndex: the pieces outside, cut exactly at the areas' edges. */
+export function cutLine(pts, idx) {
+  if (idx.empty || pts.length < 2) return [pts];
+  const out = [];
+  let cur = null;
+  const keep = (a, b) => {
+    if (cur && cur[cur.length - 1][0] === a[0] && cur[cur.length - 1][1] === a[1]) cur.push(b);
+    else { if (cur) out.push(cur); cur = [a, b]; }
+  };
+  for (let s = 1; s < pts.length; s++) {
+    const a = pts[s - 1], b = pts[s], dx = b[0] - a[0], dy = b[1] - a[1];
+    // the edges near the segment: their crossings' parameters along it
+    const c = idx.cell, ts = [0, 1], seen = new Set();
+    const i0 = Math.floor(Math.min(a[0], b[0]) / c), i1 = Math.floor(Math.max(a[0], b[0]) / c);
+    const j0 = Math.floor(Math.min(a[1], b[1]) / c), j1 = Math.floor(Math.max(a[1], b[1]) / c);
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) for (const e of idx.cells.get(`${i},${j}`) || []) {
+      if (seen.has(e)) continue;
+      seen.add(e);
+      const [p, q] = e, ex = q[0] - p[0], ey = q[1] - p[1], den = dx * ey - dy * ex;
+      if (Math.abs(den) < 1e-12) continue;
+      const t = ((p[0] - a[0]) * ey - (p[1] - a[1]) * ex) / den, u = ((p[0] - a[0]) * dy - (p[1] - a[1]) * dx) / den;
+      if (t > 0 && t < 1 && u >= 0 && u <= 1) ts.push(t);
+    }
+    ts.sort((x, y) => x - y);
+    for (let k = 1; k < ts.length; k++) {
+      const t0 = ts[k - 1], t1 = ts[k];
+      if (t1 - t0 < 1e-9) continue;
+      const tm = (t0 + t1) / 2;
+      if (idx.inside(a[0] + dx * tm, a[1] + dy * tm)) { if (cur) { out.push(cur); cur = null; } continue; }
+      const at = (t) => (t === 0 ? a : t === 1 ? b : [a[0] + dx * t, a[1] + dy * t]);   // the line's own points kept exact: pieces join
+      keep(at(t0), at(t1));
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+/**
+ * A sprint map's contours from the grid (contourObjects' grid): the ground smoothed over 4 m, each line rounded (Chaikin), a
+ * line dropped or kept whole — no closed loop under 600 m², no open line under 40 m —, then cut exactly at the buildings'
+ * outlines (opts.buildings: [[ring…]…] in map mm), so that a contour ends only at a building or the map's edge. No form lines,
+ * knolls or depressions. Returns { objects, counts }.
+ */
+function sprintObjects(grid, o) {
+  const { z, nx, ny, x0, y0, step } = grid, S = { ...SPRINT, ...(o.sprintRules || {}) };
+  const scale = o.scale || 4000, mPerMm = scale / 1000, stepM = step * mPerMm;
+  const sm = gaussian(z, nx, ny, S.smoothM / stepM);
+  const idx = areaIndex(o.buildings || [], Math.max(1, 4 / mPerMm));
+  const toMm = ([i, j]) => [x0 + i * step, y0 - j * step];
+  const objects = [], counts = { contour: 0, index: 0, form: 0, knoll: 0, depression: 0, dropped: 0, cut: 0 };
+  for (const c of isolines(sm, nx, ny, o.interval)) {
+    if (c.pts.length < 6) { counts.dropped++; continue; }
+    let mm = c.pts.map(toMm);
+    if (c.closed) {
+      let a = 0;
+      for (let i = 1; i < mm.length; i++) a += mm[i - 1][0] * mm[i][1] - mm[i][0] * mm[i - 1][1];
+      if ((Math.abs(a) / 2) * mPerMm * mPerMm < S.minLoopM2) { counts.dropped++; continue; }
+    }
+    mm = simplify(chaikin(mm, S.chaikin, c.closed), S.tolM / mPerMm);
+    if (!c.closed && lengthOf(mm) * mPerMm < S.minLineM) { counts.dropped++; continue; }
+    const index = o.indexEvery > 0 && c.k % o.indexEvery === 0, sym = index ? SYM.index : SYM.contour;
+    const pieces = cutLine(mm, idx);
+    if (pieces.length !== 1 || pieces[0].length !== mm.length) counts.cut++;
+    for (const p of pieces) {
+      if (lengthOf(p) * mPerMm < S.minPieceM) continue;
+      objects.push({ sym, otp: 2, ang: 0, coords: o.curve ? bezier(p) : p.map(([x, y]) => ocad(x, y)), src: "dem", draft: true });
+      counts[index ? "index" : "contour"]++;
+    }
+  }
+  return { objects, counts };
+}
+
 /**
  * Contour objects from a grid { z, nx, ny, x0, y0, step }: node (i, j) at map mm (x0 + i × step, y0 − j × step) — row 0 at
  * the top, step in map mm —, heights in metres. opts: interval, indexEvery, formLines, scale (the map's, for the form lines'
- * gentleness), and DEFAULTS' others. Returns { objects, counts }.
+ * gentleness), and DEFAULTS' others; sprint true: a town's sprint map's rules (sprintObjects, opts.buildings). Returns
+ * { objects, counts }.
  */
 export function contourObjects(grid, opts = {}) {
   const o = { ...DEFAULTS, ...opts };
+  if (o.sprint) return sprintObjects(grid, o);
   const { z, nx, ny, x0, y0, step } = grid;
   const scale = o.scale || 10000, stepM = (step * scale) / 1000;
   const toMm = ([i, j]) => [x0 + i * step, y0 - j * step];
@@ -206,7 +361,7 @@ export function contourObjects(grid, opts = {}) {
 /**
  * Contours for a rectangle of the map ([x0, y0, x1, y1] in map mm) through the frame (frame.js): the heights asked of
  * IGN (France), a national model (terrain.js sourcesAt) or the terrain tiles every opts.stepM metres (2 by default; coarser when the grid would pass maxNodes), then
- * contourObjects. Resolves { objects, counts, source, credit, grid: { nx, ny, stepM } }. onProgress(f) from 0 to 1.
+ * contourObjects (opts.sprint, opts.buildings: a sprint map's rules). Resolves { objects, counts, source, credit, grid: { nx, ny, stepM } }. onProgress(f) from 0 to 1.
  */
 export async function loadContours(frame, rect, opts = {}) {
   const [x0, y0, x1, y1] = rect, scale = frame.scale;

@@ -443,6 +443,7 @@ export default {
   "map.data.kind.sprint": "Sprintkarte (ISSprOM 2019-2)",
   "map.data.kind.forest": "Waldkarte (ISOM 2017-2)",
   "map.data.needKind": "Wähle Sprint oder Wald.",
+  "map.data.contoursSprint": "Sprintkarte: der Boden über 4 m geglättet, jede Höhenlinie gerundet, Schleifen unter 600 m² und offene Linien unter 40 m weggelassen, jede Höhenlinie an den Gebäuden der Karte geschnitten — wie beim Stadtplan.",
   "map.data.lidarHint": "Das nationale LiDAR (IGN in Frankreich, swisstopo in der Schweiz, USGS in den USA, NRCan in Kanada, LINZ in Neuseeland), verarbeitet mit karttapullautin: einige Minuten für noch nicht erstellte Kacheln, außerhalb Frankreichs länger.",
   "map.data.lidar.interval": "Äquidistanz",
   "map.data.lidar.m": "{m} m",

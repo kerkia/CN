@@ -47,6 +47,28 @@ export function kpRows(style, interval = null) {
   ];
 }
 
+/** The relief's layers: in a sprint map left out where the map has its own relief (vectorObjects' covered). */
+const RELIEF = new Set(["contour", "contour_index", "formline", "small_depression", "depression_intermed", "dotknoll", "uglydotknoll", "udepression", "uglyudepression"]);
+
+/** A line [[x, y]…] in pieces where keep(x, y) holds, judged every `step` mm at most along it (long segments cut into steps);
+ *  pieces shorter than min (mm) left out. */
+export function splitWhere(pts, keep, min = 0, step = Infinity) {
+  const out = [];
+  let cur = null;
+  for (let i = 1; i < pts.length; i++) {
+    const A = pts[i - 1], B = pts[i], n = Math.max(1, Math.ceil(Math.hypot(B[0] - A[0], B[1] - A[1]) / step));
+    for (let k = 0; k < n; k++) {
+      const a = k ? [A[0] + ((B[0] - A[0]) * k) / n, A[1] + ((B[1] - A[1]) * k) / n] : A;
+      const b = k + 1 < n ? [A[0] + ((B[0] - A[0]) * (k + 1)) / n, A[1] + ((B[1] - A[1]) * (k + 1)) / n] : B;
+      if (keep((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)) { if (!cur) cur = [a]; cur.push(b); }
+      else if (cur) { out.push(cur); cur = null; }
+    }
+  }
+  if (cur) out.push(cur);
+  const len = (p) => { let s = 0; for (let i = 1; i < p.length; i++) s += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]); return s; };
+  return out.filter((p) => p.length >= 2 && len(p) >= min);
+}
+
 /** The 1 km tiles a rectangle of the map ([x0, y0, x1, y1] mm) touches: { box, ids, km2 } (trace/lidarmap.js). */
 export const tilesOf = (frame, rect) => areaOfPoints(frame.areaLatLon(rect).pts, 0, "auto");
 /** A tile's grid from its id (France's 0450_6800, ch_2583_1219, us_13_0475_4427…: trace/lidarmap.js). */
@@ -255,12 +277,15 @@ const DENSE = 1200;   // strokes a 50 m cell: above France's densest (1 039)
 
 /**
  * The objects of the tiles' vectors in the map's mm (each tile placed by its own grid: toMm), clipped to rect when given. opts: tolerance (mm,
- * Douglas-Peucker, 0.05), ugly (keep the knolls and depressions karttapullautin leaves off its image; true).
+ * Douglas-Peucker, 0.05), ugly (keep the knolls and depressions karttapullautin leaves off its image; true), cliffs (false: none,
+ * a sprint map's — in a town karttapullautin's « cliffs » are every building's edge; true), covered(x, y) (map mm: the map has its
+ * own relief there — a sprint map's town plan —, karttapullautin's contours and knolls left out; none by default).
  * Returns { objects, counts: { <sym>: n }, dense: the cliff strokes thinned out (sparse) }. The helper contours' files (layer
  * "cont") give HELP_SYM objects, tagged { src: "lidar-help" }.
  */
 export function vectorObjects(vecs, frame, rect = null, opts = {}) {
-  const tol = opts.tolerance ?? 0.05, ugly = opts.ugly ?? true;
+  const tol = opts.tolerance ?? 0.05, ugly = opts.ugly ?? true, cliffs = opts.cliffs ?? true, covered = opts.covered || null;
+  const minPiece = 10 / ((frame.scale || 10000) / 1000);      // a contour's piece outside the covered ground: 10 m at least
   // the tiles joined in their own grid's metres (France's Lambert 93, LV95, a UTM zone…), each grid's lines then put in map mm
   const byGrid = new Map();
   for (const v of vecs) {
@@ -274,7 +299,7 @@ export function vectorObjects(vecs, frame, rect = null, opts = {}) {
     const mm = toMm(frame, grid), lines = [], strokes = { cliff2: [], cliff3: [] }, here = [];
     for (const v of list) {
       const d = decode(v);
-      for (const l of d.lines) (CLIFFS.has(l.layer) ? strokes[l.layer].push(l.pts) : lines.push(l));
+      for (const l of d.lines) { if (CLIFFS.has(l.layer)) { if (cliffs) strokes[l.layer].push(l.pts); } else lines.push(l); }
       here.push(...d.points);
     }
     const joined = joinLines(lines);
@@ -292,7 +317,9 @@ export function vectorObjects(vecs, frame, rect = null, opts = {}) {
     const sym = l.layer === "cont" ? HELP_SYM : LINE_SYM[l.layer];
     if (!sym) continue;
     const mm = simplify(l.pts, tol);
-    for (const piece of rect ? clipLine(mm, rect) : [mm]) {
+    let pieces = rect ? clipLine(mm, rect) : [mm];
+    if (covered && RELIEF.has(l.layer)) pieces = pieces.flatMap((p) => splitWhere(p, (x, y) => !covered(x, y), minPiece, minPiece / 4));
+    for (const piece of pieces) {
       if (piece.length >= 2) add({ sym, otp: 2, ang: 0, coords: piece.map(([x, y]) => ocad(x, y)), src: sym === HELP_SYM ? "lidar-help" : "lidar", srcId: `lidar:${l.layer}`, draft: true });
     }
   }
@@ -301,6 +328,7 @@ export function vectorObjects(vecs, frame, rect = null, opts = {}) {
     if (!sym || (!ugly && p.layer.startsWith("ugly"))) continue;
     const { x, y } = p;
     if (rect && (x < rect[0] || x > rect[2] || y < rect[1] || y > rect[3])) continue;
+    if (covered && RELIEF.has(p.layer) && covered(x, y)) continue;
     add({ sym, otp: 1, ang: 0, coords: [ocad(x, y)], src: "lidar", srcId: `${p.tile}:${p.layer}`, draft: true });
   }
   return { objects, counts, dense };
@@ -326,12 +354,12 @@ export function backgrounds(tiles, variant, frame) {
 
 /**
  * LiDAR objects and backgrounds for a rectangle of the map (map mm) in a style ("forest" | "sprint") at a contour interval
- * (opts.interval, m: INTERVALS, the style's default when left out), with the helper contours (opts.helpers): the tiles asked for
+ * (opts.interval, m: INTERVALS, the style's default when left out), with the helper contours (opts.helpers), a sprint map's rules (opts.cliffs, opts.covered: vectorObjects'): the tiles asked for
  * (at most MAX_TILES), waited for, read. Resolves { objects, helpers (the helper contours' objects), counts, backgrounds,
  * tiles: { ready, none, failed, noVectors }, credit, settings (karttapullautin's settings the tiles were made with, the first
  * tile's) } or null when stopped. Throws Error("tooLarge") past MAX_TILES tiles, Error("nogeo") without a georeference.
  */
-export async function loadLidar(frame, rect, style = "forest", { say, stop, fetch: f = fetch, progress = () => {}, interval = null, helpers = false } = {}) {
+export async function loadLidar(frame, rect, style = "forest", { say, stop, fetch: f = fetch, progress = () => {}, interval = null, helpers = false, cliffs, covered } = {}) {
   if (!frame.geo) throw new Error("nogeo");
   const area = tilesOf(frame, rect);
   if (area.ids.length > MAX_TILES) throw new Error("tooLarge");
@@ -344,7 +372,7 @@ export async function loadLidar(frame, rect, style = "forest", { say, stop, fetc
   const vecs = tiles.filter((t) => t.vec).map((t) => t.vec);
   progress("map.data.lidar.reading", { total: vecs.length }, 0.95);
   await new Promise((res) => setTimeout(res, 30));          // the toast drawn before the vectors are read (a few seconds abroad)
-  const r = vectorObjects(vecs, frame, rect);
+  const r = vectorObjects(vecs, frame, rect, { cliffs, covered });
   const h = helpers ? vectorObjects(tiles.filter((t) => t.help).map((t) => t.help), frame, rect, { tolerance: 0.03 }) : { objects: [] };
   const settings = tiles.map((t) => t.record?.kp?.[variant]).find((x) => x && typeof x === "object") || null;
   return { ...r, helpers: h.objects, backgrounds: backgrounds(tiles, variant, frame), credit: CREDITS[area.country] || CREDIT_LIDAR, settings, variant,

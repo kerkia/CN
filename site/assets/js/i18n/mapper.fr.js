@@ -443,6 +443,7 @@ export default {
   "map.data.kind.sprint": "Carte sprint (ISSprOM 2019-2)",
   "map.data.kind.forest": "Carte forêt (ISOM 2017-2)",
   "map.data.needKind": "Choisissez sprint ou forêt.",
+  "map.data.contoursSprint": "Carte de sprint : le sol lissé sur 4 m, chaque courbe arrondie, les boucles de moins de 600 m² et les courbes ouvertes de moins de 40 m laissées de côté, chaque courbe coupée aux bâtiments de la carte — comme le plan de ville.",
   "map.data.lidarHint": "Le LiDAR national (IGN en France, swisstopo en Suisse, USGS aux États-Unis, NRCan au Canada, LINZ en Nouvelle-Zélande) traité par karttapullautin : quelques minutes pour les tuiles qui ne sont pas encore prêtes, davantage hors de France.",
   "map.data.lidar.interval": "Équidistance des courbes",
   "map.data.lidar.m": "{m} m",

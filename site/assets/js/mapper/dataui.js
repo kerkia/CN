@@ -87,15 +87,45 @@ async function placeOf(E, f) {
   const SP = await import("./support.js");
   return { lat, lon, s: await SP.at(lat, lon), SP };
 }
+/** The map's buildings (521 areas, the town plan's included) as rings [[x, y]…] in map mm: where a sprint map's contours stop. */
+function buildingRings(E) {
+  return E.doc.objects.filter((o) => o.otp === 3 && Math.floor(o.sym / 1000) === 521)
+    .map((o) => G.partsOf(o.coords).map((p) => G.flatten(p.pts, 0.05).map(([x, y]) => [x, y])));
+}
+/**
+ * Where a sprint map already has its own relief, as covered(x, y) in map mm: 25 m cells under a town plan's objects (their boxes)
+ * or near contours not from karttapullautin (two cells round each line's points). karttapullautin's contours and knolls are left
+ * out there (owner, 2026-11-12: its dense lines over the town plan's own).
+ */
+function reliefCover(E) {
+  const c = 25000 / E.doc.scale, cells = new Set(), key = (i, j) => `${i},${j}`;
+  for (const o of E.doc.objects) {
+    const n = Math.floor(o.sym / 1000), town = o.src === "town", contour = n >= 101 && n <= 103 && o.src !== "lidar";
+    if (!town && !contour) continue;
+    const xs = o.coords.map(G.mmX), ys = o.coords.map(G.mmY);
+    if (town) {
+      const lo = (v) => v.reduce((m, x) => (x < m ? x : m), Infinity), hi = (v) => v.reduce((m, x) => (x > m ? x : m), -Infinity);
+      const i0 = Math.floor(lo(xs) / c), i1 = Math.floor(hi(xs) / c), j0 = Math.floor(lo(ys) / c), j1 = Math.floor(hi(ys) / c);
+      if ((i1 - i0 + 1) * (j1 - j0 + 1) > 40000) continue;
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) cells.add(key(i, j));
+    } else for (let k = 0; k < xs.length; k++) {
+      const i = Math.floor(xs[k] / c), j = Math.floor(ys[k] / c);
+      for (let di = -2; di <= 2; di++) for (let dj = -2; dj <= 2; dj++) cells.add(key(i + di, j + dj));
+    }
+  }
+  return cells.size ? (x, y) => cells.has(key(Math.floor(x / c), Math.floor(y / c))) : null;
+}
 async function contours(E) {
   const f = await frameOrSay(E); if (!f) return;
   const P = await placeOf(E, f).catch(() => null);
-  const v = await modal(E, { title: t("map.rib.data-contours"), body: field(t("map.data.interval"), sel("i", [["2.5", "2,5 m"], ["5", "5 m"], ["10", "10 m"]], styleOf(E) === "sprint" ? "2.5" : "5")) + `<p class="mp-hint">${esc(t("map.data.contoursHint"))}</p>` + (P ? P.SP.noteHtml(P.s, P.lat, P.lon, ["dem"]) : "") });
+  const sprint = styleOf(E) === "sprint";
+  const v = await modal(E, { title: t("map.rib.data-contours"), body: field(t("map.data.interval"), sel("i", [["2.5", "2,5 m"], ["5", "5 m"], ["10", "10 m"]], sprint ? "2.5" : "5")) + `<p class="mp-hint">${esc(t("map.data.contoursHint"))}</p>` + (sprint ? `<p class="mp-hint">${esc(t("map.data.contoursSprint"))}</p>` : "") + (P ? P.SP.noteHtml(P.s, P.lat, P.lon, ["dem"]) : "") });
   if (!v) return;
   const say = progress(E);
   say(t("map.data.loadingDem"));
   const C = await import("./data/contours.js");
-  const r = await C.loadContours(f, areaOf(E), { interval: Number(v.i), onProgress: (x) => say(t("map.data.loadingDem"), x) });
+  // a sprint map's: the town plan's rules, cut at the map's buildings (owner, 2026-11-12: the raw isolines followed every kerb)
+  const r = await C.loadContours(f, areaOf(E), { interval: Number(v.i), onProgress: (x) => say(t("map.data.loadingDem"), x), ...(sprint ? { sprint: true, buildings: buildingRings(E) } : {}) });
   const n = bring(E, r.objects, t("map.undo.data"));
   E.say(tn("map.data.brought", n) + (r.credit ? ` · ${r.credit.text || r.credit}` : ""));
 }
@@ -297,7 +327,9 @@ async function lidar(E) {
   try { localStorage.setItem(prefKey, JSON.stringify({ i: interval, h: helpers })); } catch (e) { /* private window */ }
   const say = progress(E);
   let r;
-  try { r = await L.loadLidar(f, areaOf(E), style, { interval, helpers, say: (key, vars, frac) => say(t(key, { n: "", t: "", ...vars }), frac), progress: (key, vars, frac) => say(t(key, vars), frac), stop: () => E._stopData }); }
+  // a sprint map: no cliffs (in a town karttapullautin's are every building's edge), no contours where the map has its own
+  const town = style === "sprint" ? { cliffs: false, covered: reliefCover(E) } : {};
+  try { r = await L.loadLidar(f, areaOf(E), style, { interval, helpers, say: (key, vars, frac) => say(t(key, { n: "", t: "", ...vars }), frac), progress: (key, vars, frac) => say(t(key, vars), frac), stop: () => E._stopData, ...town }); }
   catch (e) { E.say(e.message === "tooLarge" ? t("map.data.tooLarge") : e.message === "nogeo" ? t("map.data.nogeo") : e.message, "bad"); return; }
   if (!r) { E.say(""); return; }
   const n = bring(E, r.objects, t("map.undo.data"));
