@@ -771,7 +771,11 @@ json.dump({"arrays": arrays, "chunks": index, "foot": foot, "walls": walls, "pro
 log("town.bin", round(len(out) / 1e6, 2), "MB; town.json", round((PKG / "town.json").stat().st_size / 1e6, 2), "MB; walls", len(walls),
     "props", len(props), "chimneys", len(chimneys), stats)
 # features.json: the town's walls are drawn by vtown.js, not as the forest's strips
-F = json.load(open(PKG / "feats.json")); F["walls"] = []; json.dump(F, open(PKG / "feats.json", "w"))
+F = json.load(open(PKG / "feats.json")); F["walls"] = []
+# a goal's or rugby posts' cross on the map (531) is drawn by this town's own props: no « man-made » box of vworld.js there
+GOALS = [(p_[1], p_[2]) for s_ in SPORTS for p_ in s_["props"] if p_[0] in ("goal", "goal5", "rugby", "citygoal")]
+F["features"] = [f for f in F.get("features", []) if not (f.get("k") == "manmade" and any(math.hypot(f["x"] - x, f["z"] - z) < 4 for x, z in GOALS))]
+json.dump(F, open(PKG / "feats.json", "w"))
 race["town"] = {"file": "town.json", "bin": "town.bin", "surf": "surf.png", **({"tex": "facades.webp"} if ATLAS is not None else {})}
 race["source"] = "town"
 # Panoramax's photos read for the façades' colours and textures, credited: their authors, and every photo by its id

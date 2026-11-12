@@ -1052,23 +1052,39 @@ Every multiple-choice game was played through to its score page at phone size, w
   parcels closed by 20 m less the parcels), so a street's paving runs to the property line, the strip at its side a sidewalk,
   its grass verges open land, its street trees points —; the areas are **one coverage simplified together**
   (`shapely.coverage_simplify`, 0.9 m: the cells' staircases gone, two neighbours keeping one shared edge); **no 402 ring**: a
-  wood of 400 m² or more is forest, every tree outside it a 417/418 point; **contours** smoothed over 2.5 m, kept 1.5 m off the
-  buildings, no loop under 400 m² nor piece under 25 m; **paths** OpenStreetMap's, BD TOPO's only where OSM has none within 4 m
-  (they were doubled); **stairways at their width** (OSM's `width`, else 2 m; 532 was one line 1.66 mm wide, 6.6 m on the ground:
+  wood of 400 m² or more is forest, every tree outside it a 417/418 point; **contours** from the ground smoothed over 4 m, each line
+  rounded (Chaikin), dropped or kept whole (no loop under 600 m², no line under 40 m at the map's edge), cut exactly at the
+  buildings' outlines — a contour never ends in the open (the mapper: « not allowed »); **the paved area with its edge** (501.1
+  « step or edge of paved area » where it meets anything but a building or a wall, fence or hedge already drawn, and the
+  carriageways' kerbs in town — OpenOrienteering Mapper's 501 is the area with that edge), the through roads (BD TOPO's importance
+  1-3) as paved area with heavy traffic (501.4, Mapper's 501.10); **paths and stairways** from both sources (« what one source has exists, the other is incomplete »: BD TOPO's kept wherever OSM has none of the same kind within 4 m)
+  (they were doubled); **stairways at their width** (OSM's `width`, else 2 m; BD TOPO's where OSM has no stairway within 4 m; 532 was one line 1.66 mm wide, 6.6 m on the ground:
   `mkocd.mjs` makes 532.1-532.6 from the set's 532, 0.5-2 mm; the 3D's treads take the width from walls.json's `h`); **every
   tennis court fenced all round** (518, OSM giving each court); a **« boundary to confirm »** (995, purple 50 %, a helper made by
   `mkocd.mjs`): the edge of the ground not to be entered where no wall, fence, hedge or building is known within 1.5 m — on the
   ground it is one of them, the mapper replaces it; and **every OpenStreetMap way and tagged node** on hidden helper symbols (990
   lines, 991 points: status hidden, shown at will in Cartographier or OCAD). The race's map and its thumbnail do not draw symbols
   900 and up (`virtually.js`, `thumb.mjs`). BD TOPO stays for the buildings (footprints with height, use, wall and roof materials
-  for the 3D), the carriageways' widths, walls, hedges, water and the sports grounds OSM lacks.
+  for the 3D), the carriageways' widths, walls, hedges, water and the sports grounds OSM lacks. Also (same day): **buildings that
+  touch drawn as one** (no line between them); **inside the ground not to be entered** its sheds under 20 m², hedges, walls,
+  fences, paths and lone trees left out (generalised: the runner never goes in); **contours, streams and paths as Bézier curves**
+  (`curve` in map_objects.json, written by mkocd.mjs with Catmull-Rom tangents; build.py flattens them); **a paved footway or
+  cycle path is a line**, OpenOrienteering Mapper's 501.6-501.9 « paved area, footprint 1.4 / 2 / 3 / 4 m » (the strip in brown
+  30 % between two black edges, made by mkocd.mjs; build.py draws it as paving at its width), not a borderless paved area; **the
+  path network joined** before it is drawn (noded, merged through its junctions, an end stopping within 4 m of another path drawn
+  on to it); **a grass pitch's edge** as 415 (distinct cultivation boundary). These rules are the generator's (`town_map.py`,
+  `mkocd.mjs`), so every town map made after Gif has them; Cartographier's « Nouvelle carte » imports OSM and BD TOPO by its own
+  code (`mapper/data/osm.js`, `bdtopo.js`) and does not have them yet.
   **Sports grounds** (owner, 2026-11-11: « a rugby field, soccer fields, tennis courts, a track: can the scene show them? »):
   `town_map.py` reads OpenStreetMap's `leisure=pitch|track` with their `sport` and `surface` (BD TOPO's `terrain_de_sport` where
   OSM has none, its `nature_detaillee` giving the sport; a filled oval's track 8.5 m wide) into `src/sports.json`; the map (owner,
-  the same evening: « courts and track lanes not crossable, the posts shown ») draws the tennis and multi-sport courts and the
-  athletics track as 520 (not to be entered: impassable in the game, the courses go round; the track's inner field an island),
-  a grass or turf pitch as open land 401, a hard pitch as paved area 501, the goals and rugby posts as 528 (prominent line
-  feature) across the goal mouth, post to post; the
+  the same evening: « courts and track lanes not crossable, the posts shown »; Alec, 2026-11-12: « the track is obviously a paved
+  area ») draws the tennis and multi-sport courts and the athletics track as paved area 501, the tennis courts fenced all round,
+  the track and the multi-sport courts under the setter's 709 out-of-bounds hatching (impassable in the game, the courses go
+  round; the track's inner field an island),
+  a grass or turf pitch as open land 401, a hard pitch as paved area 501, each goal and pair of rugby posts as a black cross 531
+  (prominent man-made feature; 528, a line feature of 8.8 m at least, did not fit: Alec), town_3d.py dropping vworld's « man-made »
+  box there; the
   tennis and multi-sport courts' outlines are fenced (518, the 3D's wire mesh up to 4 m) where the LiDAR sees 1.5 m along them in
   2 m pieces (gates and open sides stay open). `town_sports.py` lays each one out in its own frame (the outline's minimum rotated
   rectangle): football (IFAB: penalty and goal areas, arcs, corners; a pitch under 100 m in proportion), rugby union (in-goal

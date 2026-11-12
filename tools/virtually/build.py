@@ -227,6 +227,8 @@ for o in objs:
         if n in LINE:
             name, w = LINE[n]
             dr.line(rings[0], fill=C[name], width=max(1, round(w)), joint="curve")
+        elif SPRINT and 501006 <= s <= 501009:                     # a paved footway drawn as a line (town_map.py): paved at its width
+            dr.line(rings[0], fill=C["paved"], width=round([1.4, 2, 3, 4][s - 501006] + 0.4), joint="curve")
         if n in WALL:
             kind, h = WALL[n]
             walls.append({"kind": kind, "h": h, "pts": [[round(x, 2), round(z, 2)] for x, z in rings[0]]})
