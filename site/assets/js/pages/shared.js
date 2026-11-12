@@ -804,7 +804,8 @@ async function managePage(main, id, data, race, embed = false) {
   main.innerHTML = html`
     <div class="sh-top">
       ${embed ? "" : html`<a class="btn btn-sm" href="${ORG_ROUTE}">← ${t("nav.orgAnalyses")}</a>`}
-      <b class="sh-title">${A.title}</b><span class="muted" id="sh-m-facts"></span>
+      <!-- in an event's tab, the event's chooser above names it (owner, 2026-11-12): no title, day or type again -->
+      <b class="sh-title" ${raw(embed ? "hidden" : "")}>${A.title}</b><span class="muted" id="sh-m-facts" ${raw(embed ? "hidden" : "")}></span>
       <span class="tag" id="sh-m-state"></span><span class="muted sh-m-by" id="sh-m-by"></span>
       <a class="btn btn-sm" href="${runnersHref}" target="_blank" rel="opener" title="${t("sh.m.asRunner.hint")}" style="margin-left:auto">${t("sh.org.asRunner")} ↗</a></div>
     <div id="sh-editor"></div>
@@ -945,7 +946,7 @@ async function managePage(main, id, data, race, embed = false) {
   const isVec = (f) => /\.(ocd|omap|xmap)$/i.test(f.name);
   const nm = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
   const raceCircuits = race ? [...new Set((race.docs || []).filter((d) => d.by !== "category").flatMap((d) => (d.classes || []).map((k) => k.name)))] : [];
-  const imp = { got: [], read: null, err: "", busy: false, note: "", frac: null, on: new Map(), circ: new Map(), renders: new Map(), prev: null, consent: false, token: null };
+  const imp = { got: [], read: null, err: "", busy: false, note: "", frac: null, on: new Map(), circ: new Map(), renders: new Map(), prev: null, consent: false, keep: true, token: null };
   const clearImp = () => { Object.assign(imp, { got: [], read: null, err: "", busy: false, note: "", frac: null, prev: null, token: null }); imp.on.clear(); imp.circ.clear(); imp.renders.clear(); };
   const picked = () => (imp.read ? imp.read.designs.map((d, i) => ({ d, i })).filter(({ i }) => imp.on.get(i)) : []);
   async function take(list) {
@@ -1044,6 +1045,16 @@ async function managePage(main, id, data, race, embed = false) {
       }
       const courses = [...A.courses.filter((c) => !out.some((o) => o.n === c.n)), ...out].sort((a, b) => a.n - b.n);
       await api(`/${id}`, { method: "PUT", body: { courses }, key: keyOf(id) });
+      // the files themselves, for the event's course setting (owner, 2026-11-12: no second upload); the organisers' alone.
+      // The circuits are in: a failure here is said, not undone
+      if (imp.keep) {
+        const used = [...new Set([read.info.courses, read.info.map])].map((n) => imp.got.find((g) => g.name === n)).filter((g) => g && /\.(ocd|omap|xmap)$/i.test(g.name));
+        try {
+          note(t("sh.imp.keeping"), 0.98);
+          await api(`/${id}/source`, { method: "DELETE", key: keyOf(id) });
+          for (let k = 0; k < used.length; k++) await api(`/${id}/source/${k}?name=${encodeURIComponent(used[k].name)}`, { method: "PUT", body: used[k], type: "application/octet-stream", key: keyOf(id) });
+        } catch (e) { console.warn(e); await alertBox(t("sh.imp.keepFailed", { err: errText(e) })); }
+      }
       clearImp();
       sel = out[0]?.n ?? sel;
       reload();
@@ -1072,6 +1083,7 @@ async function managePage(main, id, data, race, embed = false) {
           ${raceCircuits.length ? html`<td><select data-k="${i}" ${raw(dis)}><option value="">—</option>${raceCircuits.map((c) => html`<option ${raw(imp.circ.get(i) === c ? "selected" : "")}>${c}</option>`)}</select></td>` : ""}</tr>`)}</tbody></table></div>
       ${imp.err ? html`<p class="sh-imp-err">${imp.err}</p>` : html`<p class="hint">${t("sh.imp.hint")}</p>`}
       <label class="an-opt"><input type="checkbox" id="sh-imp-ok" ${raw(imp.consent ? "checked" : "")} ${raw(dis)}> ${t("sh.e.consent")}</label>
+      <label class="an-opt" title="${t("sh.imp.keep.tip")}"><input type="checkbox" id="sh-imp-keep" ${raw(imp.keep ? "checked" : "")} ${raw(dis)}> ${t("sh.imp.keep")}</label>
       <div class="row sh-imp-go"><button type="button" class="btn btn-primary" id="sh-imp-add" ${raw(imp.busy || imp.err || !n ? "disabled" : "")}>${n ? tn("sh.imp.add", n) : t("sh.ocad.none")}</button>
         <button type="button" class="btn btn-sm" id="sh-imp-cancel" ${raw(dis)}>${t("sh.cancel")}</button><span class="muted" id="sh-imp-note">${imp.note}</span></div>
       <div id="sh-imp-bar" ${raw(imp.frac == null ? "hidden" : "")}>${raw(bar(imp.frac))}</div></div>`;
@@ -1079,6 +1091,7 @@ async function managePage(main, id, data, race, embed = false) {
   function bindImp(box) {
     $("#sh-imp-cancel", box)?.addEventListener("click", () => { clearImp(); coursesCard(); showMap(); });
     $("#sh-imp-add", box)?.addEventListener("click", addImport);
+    $("#sh-imp-keep", box)?.addEventListener("change", (e) => { imp.keep = e.target.checked; });
     $("#sh-imp-ok", box)?.addEventListener("change", (e) => { imp.consent = e.target.checked; if (imp.consent && imp.note === t("sh.e.consentNeeded")) { imp.note = ""; $("#sh-imp-note").textContent = ""; } });
     $$("[data-o]", box).forEach((cb) => cb.addEventListener("change", () => {
       imp.on.set(Number(cb.dataset.o), cb.checked);

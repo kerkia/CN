@@ -34,6 +34,17 @@ let current = null, pageMain = null, leaving = false;
 // the event of Orga the page was opened from (its « Tracé » tab, ?ev=<id>; owner, 2026-11-12): a new course setting is that
 // event's — its competition, or its name and day for a training — and tied to it (functions/api/tracer `event`)
 let forEvent = null;
+/** The OCAD / Mapper files the event's analysis kept from its circuits' import (owner, 2026-11-12: no second upload), as Files. */
+async function analysisFiles(aid) {
+  const get = async (p) => {
+    const r = await fetch(`api/analyses/${encodeURIComponent(aid)}/source${p}`, { credentials: "same-origin", cache: "no-store" });
+    if (!r.ok) throw Object.assign(new Error(`http ${r.status}`), { code: (await r.json().catch(() => null))?.error });
+    return r;
+  };
+  const { files } = await (await get("")).json();
+  if (!files?.length) throw Object.assign(new Error("none"), { code: "none" });
+  return Promise.all(files.map(async (x) => new File([await (await get(`/${x.i}`)).blob()], x.name || `file-${x.i}.ocd`)));
+}
 async function loadOrgaEvent(id) {
   try {
     const r = await fetch(`api/events/${encodeURIComponent(id)}`, { credentials: "same-origin", cache: "no-store" });
@@ -55,7 +66,9 @@ export async function render(main, r) {
     if (r.query.id && r.query.invite) await joinByInvite(r.query.id, r.query.invite);
     if (r.query.id) openEvent(r.query.id);
     else if (forEvent && r.query.nouveau) choose("new");
-    else if (forEvent && r.query.importer) choose("import");        // Orga's « Importer les fichiers des circuits »
+    else if (forEvent && r.query.importer) choose("import");
+    else if (forEvent?.analysis && r.query.depuis === "analyse") analysisFiles(forEvent.analysis).then((f) => choose("import", f))
+      .catch((e) => { alertBox(t("trc.page.fromAnalysisErr", { err: e.code || e.message })); startScreen(); });        // Orga's « Importer les fichiers des circuits »
     // a map handed over by Cartographier (« Créer un événement du tracé sur cette carte »): a new event on it (pwa.js inbox)
     else if (r.query.recu) import("../pwa.js").then((m) => m.takeInbox()).then((f) => (f.length ? choose("new", f) : startScreen())).catch(() => startScreen());
     else startScreen();

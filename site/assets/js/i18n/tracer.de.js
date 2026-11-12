@@ -808,6 +808,7 @@ export default {
   "trc.page.needRace": "Wähle den Wettkampf.",
   "trc.page.needTitle": "Gib dem Training einen Titel.",
   "trc.page.notOrganiser": "Nur Mitglieder des veranstaltenden Vereins können die Veranstaltung eines Wettkampfs erstellen.",
+  "trc.page.fromAnalysisErr": "Die Dateien der Analyse konnten nicht gelesen werden ({err}).",
   "trc.page.createErr": "Erstellen nicht möglich: {err}",
   "trc.page.mb": "{n} MB",
   "trc.page.georef": "georeferenziert ({name})",

@@ -98,7 +98,7 @@ export const body = (SITE, { world = false } = {}) => `
         el análisis, según lo que elija el organizador: todos los federados con sesión iniciada, los miembros de su club o quienes tengan la
         contraseña. Cada participante puede retirar su track en cualquier momento; se borra con el análisis y con su cuenta. Los
         mapas de un análisis se conservan mientras este exista; si el organizador elimina su cuenta, el análisis se mantiene,
-        sin su nombre. En el análisis de un evento, tus propias gráficas (ritmo, frecuencia cardiaca, cadencia, etc.) proceden de tu
+        sin su nombre. Los archivos OCAD o Mapper de los que proceden sus recorridos solo se guardan si el organizador lo elige («Ponerlos a disposición del trazado del evento», marcado por defecto): solo los organizadores del análisis tienen acceso a ellos, para el trazado del evento, y se eliminan con él. En el análisis de un evento, tus propias gráficas (ritmo, frecuencia cardiaca, cadencia, etc.) proceden de tu
         archivo, guardado en tu navegador en este dispositivo: no se transmite, y solo tú tienes acceso a él.</p>
       <p>El comentario que escribes sobre tu carrera lo ven
         las mismas personas que tu track; lo cambias o lo borras cuando quieras. Si el organizador abre el análisis a los visitantes sin

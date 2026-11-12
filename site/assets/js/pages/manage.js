@@ -444,9 +444,12 @@ async function traceTab(panel, D) {
   // the analysis keeps each circuit as a picture (the map with its course printed), its controls and georeference — never the
   // OCAD or Purple Pen files it was made from: the course setting takes those same files (owner, 2026-11-12)
   const circuits = (A?.analysis?.courses || []).length;
+  // the files the analysis kept (its OCAD import's « rendre disponibles pour le tracé »)
+  const kept = circuits ? ((await get(`api/analyses/${encodeURIComponent(ev.analysis)}/source`))?.files || []) : [];
   const open = (x) => `#/orga-tracer?${new URLSearchParams({ id: x.id, ev: ev.id })}`;
   const startHref = `#/orga-tracer?${new URLSearchParams({ ev: ev.id, nouveau: "1" })}`;
   const importHref = `#/orga-tracer?${new URLSearchParams({ ev: ev.id, importer: "1" })}`;
+  const fromHref = `#/orga-tracer?${new URLSearchParams({ ev: ev.id, depuis: "analyse" })}`;
   const pending = ev.linkState === "pending";
   panel.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("mg.tr.title")}</h2><div class="hint">${t("mg.tr.hint")}</div></div></div>
     <div class="card-body">
@@ -454,10 +457,12 @@ async function traceTab(panel, D) {
           <div><b>${x.title}</b>${x.encrypted ? html` <span class="tag">${t("mg.tr.encrypted")}</span>` : ""}<div class="muted">${t("mg.tr.by", { by: x.by, n: x.team })}</div></div>
           ${x.member ? html`<a class="btn btn-primary btn-sm" href="${open(x)}">${t("mg.tr.open")}</a>`
             : html`<span class="muted mg-tr-closed">${t("mg.tr.secret", { by: x.by })}</span>`}</div>`)}</div>`
-        : html`<p>${t(pending ? "mg.link.waitTools" : "mg.tr.none")}</p>${!pending && circuits ? html`<p class="notice">${tn("mg.tr.fromAnalysis", circuits, { n: circuits })}</p>` : ""}`}
+        : html`<p>${t(pending ? "mg.link.waitTools" : "mg.tr.none")}</p>${pending || !circuits ? "" : kept.length ? html`<p class="notice">${tn("mg.tr.kept", circuits, { n: circuits, files: kept.map((x) => x.name).join(", ") })}</p>`
+          : html`<p class="notice">${tn("mg.tr.fromAnalysis", circuits, { n: circuits })}</p>`}`}
       ${pending ? "" : html`<div class="row" style="gap:10px;margin-top:12px;flex-wrap:wrap">
+        ${!list.length && kept.length ? html`<a class="btn btn-primary" href="${fromHref}">${t("mg.tr.fromFiles")}</a>` : ""}
         <a class="btn ${list.length || circuits ? "" : "btn-primary"}" href="${startHref}">${t(list.length ? "mg.tr.another" : "mg.tr.start")}</a>
-        <a class="btn ${!list.length && circuits ? "btn-primary" : ""}" href="${importHref}" title="${t("mg.tr.importTip")}">${t("mg.tr.import")}</a></div>`}
+        <a class="btn ${!list.length && circuits && !kept.length ? "btn-primary" : ""}" href="${importHref}" title="${t("mg.tr.importTip")}">${t("mg.tr.import")}</a></div>`}
     </div></section>`;
 }
 

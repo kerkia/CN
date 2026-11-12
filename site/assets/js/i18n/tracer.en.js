@@ -807,6 +807,7 @@ export default {
   "trc.page.needRace": "Choose the competition.",
   "trc.page.needTitle": "Give the training session a title.",
   "trc.page.notOrganiser": "Only members of the organising club can create a competition's event.",
+  "trc.page.fromAnalysisErr": "The analysis's files could not be read ({err}).",
   "trc.page.createErr": "Could not create the event: {err}",
   "trc.page.mb": "{n} MB",
   "trc.page.georef": "georeferenced ({name})",

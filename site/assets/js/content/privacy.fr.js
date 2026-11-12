@@ -99,7 +99,7 @@ export const body = (SITE, { world = false } = {}) => `
         l'analyse, selon le choix de l'organisateur : tous les licenciés connectés, les membres de son club ou les détenteurs du mot
         de passe. Chaque participant peut retirer sa trace à tout moment ; elle est effacée avec l'analyse et avec son compte. Les
         cartes d'une analyse sont conservées tant que celle-ci existe ; si l'organisateur supprime son compte, l'analyse est maintenue,
-        sans son nom. Dans l'analyse d'un événement, vos propres courbes (allure, fréquence cardiaque, cadence, etc.) proviennent de votre
+        sans son nom. Les fichiers OCAD ou Mapper dont viennent ses circuits ne sont gardés que si l'organisateur le choisit (« Les rendre disponibles pour le tracé de l'événement », coché par défaut) : seuls les organisateurs de l'analyse y ont accès, pour le tracé de l'événement, et ils sont effacés avec elle. Dans l'analyse d'un événement, vos propres courbes (allure, fréquence cardiaque, cadence, etc.) proviennent de votre
         fichier, conservé dans votre navigateur sur cet appareil : il n'est pas transmis, et vous seul y avez accès.</p>
       <p>Le commentaire que vous écrivez sur
         votre course est visible des mêmes personnes que votre trace ; vous le modifiez ou l'effacez à tout moment. Si l'organisateur

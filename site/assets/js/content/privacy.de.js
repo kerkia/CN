@@ -102,7 +102,7 @@ export const body = (SITE, { world = false } = {}) => `
         je nach Wahl des Veranstalters: alle angemeldeten Lizenzinhaber, die Mitglieder seines Vereins oder die Inhaber des
         Passworts. Jeder Teilnehmer kann seinen GPS-Track jederzeit entfernen; er wird mit der Analyse und mit seinem Konto gelöscht. Die
         Karten einer Analyse werden aufbewahrt, solange die Analyse besteht; löscht der Veranstalter sein Konto, bleibt die Analyse erhalten,
-        ohne seinen Namen. In der Analyse einer Veranstaltung stammen deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz usw.) aus deiner
+        ohne seinen Namen. Die OCAD- oder Mapper-Dateien, aus denen ihre Bahnen stammen, werden nur aufbewahrt, wenn der Veranstalter es wählt („Für die Bahnlegung der Veranstaltung bereitstellen“, standardmäßig angehakt): Nur die Veranstalter der Analyse haben Zugriff darauf, für die Bahnlegung der Veranstaltung, und sie werden mit ihr gelöscht. In der Analyse einer Veranstaltung stammen deine eigenen Kurven (Tempo, Herzfrequenz, Kadenz usw.) aus deiner
         Datei, die in deinem Browser auf diesem Gerät gespeichert ist: Sie wird nicht übertragen, und nur du hast Zugriff darauf.</p>
       <p>Dein Kommentar zu deinem
         Lauf ist für dieselben Personen sichtbar wie dein Track; du kannst ihn jederzeit ändern oder löschen. Öffnet der Veranstalter die

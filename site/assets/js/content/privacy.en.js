@@ -89,7 +89,7 @@ export const body = (SITE, { world = false } = {}) => `
         is visible to the people allowed to open the analysis, as the organiser chooses: all logged-in licence holders, the members
         of their club, or those who hold the password. Each participant can remove their track at any time; it is erased with the
         analysis and with their account. An analysis's maps are kept as long as it exists; if the organiser deletes their account,
-        the analysis remains, without their name. In an event's analysis, your own graphs (pace, heart rate, cadence, etc.) come from
+        the analysis remains, without their name. The OCAD or Mapper files its circuits come from are kept only if the organiser chooses so (“Make them available to the event's course setting”, ticked by default): only the analysis's organisers have access to them, for the event's course setting, and they are deleted with it. In an event's analysis, your own graphs (pace, heart rate, cadence, etc.) come from
         your file, kept in your browser on this device: it is not sent, and only you have access to it.</p>
       <p>The comment you write on your race is seen by
         the same people as your trace; you change or delete it at any time. If the organiser opens the analysis to visitors without an

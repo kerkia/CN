@@ -807,6 +807,7 @@ export default {
   "trc.page.needRace": "Choisissez la compétition.",
   "trc.page.needTitle": "Le titre de l'entraînement.",
   "trc.page.notOrganiser": "Seuls les membres du club organisateur créent l'événement d'une compétition.",
+  "trc.page.fromAnalysisErr": "Les fichiers de l'analyse n'ont pas pu être lus ({err}).",
   "trc.page.createErr": "Création impossible : {err}",
   "trc.page.mb": "{n} Mo",
   "trc.page.georef": "géoréférencée ({name})",

@@ -808,6 +808,7 @@ export default {
   "trc.page.needRace": "Elige la competición.",
   "trc.page.needTitle": "Ponle un título al entrenamiento.",
   "trc.page.notOrganiser": "Solo los miembros del club organizador pueden crear el evento de una competición.",
+  "trc.page.fromAnalysisErr": "No se han podido leer los archivos del análisis ({err}).",
   "trc.page.createErr": "No se ha podido crear el evento: {err}",
   "trc.page.mb": "{n} MB",
   "trc.page.georef": "georreferenciado ({name})",

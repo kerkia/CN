@@ -7,6 +7,8 @@
 //   analyses/<id>/layers-<n>               — the route choices' layers of a circuit printed from an OCAD or Mapper map (its
 //                                            symbols drawn on the circuit image's pixels by the organiser's browser, the map file
 //                                            itself never sent; trace/vectorroutes.js packLayers; owner, 2026-11-05)
+//   analyses/<id>/src-<i>                  — the OCAD / Mapper files of the circuits' import (the courses file, its map), kept
+//                                            for the event's course setting, the organisers' alone (owner, 2026-11-12)
 //   analyses/<id>/trace-<n>-<uid>.json     — one account's trace on circuit n: positions and times only, cropped to
 //                                            the map by the browser; the name and licence are the account's
 //   analyses/<id>/view-<uid>.json          — an account opened the analysis (not its organisers): its first and last day and
@@ -42,6 +44,10 @@
 //   GET|PUT /api/analyses/<id>/layers/<n>              its route choices' layers (PUT: the organiser, 30 MB at most); the circuit
 //                                                      says `layers: { map }`, the map's version they were drawn on
 //   GET    /api/analyses/<id>/traces/<n>               every trace of circuit n, one JSON array
+//   GET    /api/analyses/<id>/source[/<i>]            the organisers: the OCAD or Mapper files the circuits were imported from
+//   PUT    /api/analyses/<id>/source/<i>?name=<file>   (`src-<i>`, kept when the organiser leaves « Les rendre disponibles pour le
+//   DELETE /api/analyses/<id>/source                   tracé » ticked; owner, 2026-11-12: the event's course setting starts from
+//                                                      them, no second upload). Never the runners', never the visitors'.
 //   PATCH  /api/analyses/<id>/trace/<n>                one's own trace's comment and visitors' consent: { note?, visitors? }
 //   GET    /api/analyses/v[/<id>[/map/<n> | /traces/<n>]]   visitors without an account (owner, 2026-11-02, after RouteGadget):
 //                                                      the analyses an organiser opened to them (public, `visitors`), each
@@ -560,6 +566,41 @@ const forUsers = withUser(async (ctx, user) => {
   if (sub === "stats" && method === "GET") {
     if (!organiser) return json({ error: "forbidden" }, 403);
     return json(await statsOf(env, meta), 200, { "Cache-Control": "no-store" });
+  }
+
+  // the files the circuits were imported from, for the event's course setting: the organisers' alone
+  if (sub === "source") {
+    if (!organiser) return json({ error: "forbidden" }, 403);
+    const pre = `${DATA}${id}/src-`;
+    if (parts.length === 2 && method === "GET") {
+      const files = (await listAll(env, pre)).map((o) => ({ i: Number(o.key.slice(pre.length)), name: o.customMetadata?.name || "", size: o.size,
+        at: o.customMetadata?.at || "" })).filter((x) => Number.isInteger(x.i)).sort((x, y) => x.i - y.i);
+      return json({ files }, 200, { "Cache-Control": "no-store" });
+    }
+    if (parts.length === 2 && method === "DELETE") {
+      const keys = (await listAll(env, pre, false)).map((o) => o.key);
+      if (keys.length) await env.BUCKET.delete(keys);
+      return json({ ok: true });
+    }
+    const i = Number(parts[2]);
+    if (parts.length !== 3 || !Number.isInteger(i) || i < 0 || i > 7) return json({ error: "not found" }, 404);
+    if (method === "GET") {
+      const o = await env.BUCKET.get(`${pre}${i}`);
+      if (!o) return json({ error: "not found" }, 404);
+      return new Response(o.body, { headers: { "Content-Type": "application/octet-stream", "Cache-Control": "private, no-store",
+        "X-File-Name": encodeURIComponent(o.customMetadata?.name || `file-${i}`) } });
+    }
+    if (method === "PUT") {
+      const name = clean(new URL(request.url).searchParams.get("name") || "", 120);
+      if (!/\.(ocd|omap|xmap)$/i.test(name)) return json({ error: "type" }, 415);
+      const size = Number(request.headers.get("Content-Length") || 0);
+      if (!size) return json({ error: "empty" }, 400);
+      if (size > MAX_MAP) return json({ error: "too big" }, 413);
+      if (!(await allow(env, `anmap:${user.id}`, 60, 86400))) return json({ error: "too many" }, 429);
+      await env.BUCKET.put(`${pre}${i}`, request.body, { httpMetadata: { contentType: "application/octet-stream" }, customMetadata: { name, at: nowIso() } });
+      return json({ ok: true });
+    }
+    return json({ error: "method" }, 405);
   }
 
   const n = Number(parts[2]);
