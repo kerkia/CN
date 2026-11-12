@@ -125,7 +125,7 @@ export function selectTool(E) {
       } else {
         const b = [Math.min(d.from[0], d.to[0]), Math.min(d.from[1], d.to[1]), Math.max(d.from[0], d.to[0]), Math.max(d.from[1], d.to[1])];
         if (b[2] - b[0] > 2 * E.view.mmPerPx || b[3] - b[1] > 2 * E.view.mmPerPx) {
-          for (const o of E.live.near(b)) if (o.bb && o.bb[0] >= b[0] && o.bb[2] <= b[2] && o.bb[1] >= b[1] && o.bb[3] <= b[3] && o.inst?.visible !== false && !E.lockedPart(o)) E.sel.add(o.id);
+          for (const o of E.live.near(b)) if (o.bb && o.bb[0] >= b[0] && o.bb[2] <= b[2] && o.bb[1] >= b[1] && o.bb[3] <= b[3] && o.inst?.visible !== false && o.inst?.def?.visible !== false && !E.lockedPart(o)) E.sel.add(o.id);
           E.selChanged();
         }
       }

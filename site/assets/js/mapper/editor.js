@@ -597,9 +597,12 @@ export async function openEditor(opts) {
       // a teammate saved since: their version and ours merged, object by object (collab.js), and saved on theirs
       if (e.status === 409) { saveState("saving"); try { await C.mergeAndSave(E); saveState("saved"); } catch (e2) { saveState("conflict"); await P.conflict(E, e.data, save); } }
       else {
-        // without the network: kept on this device, sent when it returns (field.js)
-        if (!e.status) { const F = await import("./field.js"); await F.savePending(E).catch(() => {}); saveState("local"); }
-        else saveState("error");
+        // without the network: kept on this device, sent when it returns (field.js) — said « kept » only once it is
+        // (owner, 2026-11-12: changes lost after F5; a copy that could not be kept was announced as kept)
+        let kept = false;
+        if (!e.status && !(e instanceof RangeError)) { const F = await import("./field.js"); kept = await F.savePending(E).then(() => true, () => false); }
+        saveState(kept ? "local" : "error");
+        if (!kept) E.say(t("map.save.failed", { error: e.status ? `${e.status} ${e.message || ""}`.trim() : e.message || String(e) }), "bad");
         E._save = setTimeout(() => save(), 15000);
       }
     } finally {

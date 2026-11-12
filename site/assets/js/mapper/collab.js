@@ -83,7 +83,8 @@ export function stop(E) { clearInterval(E._collab); if (E.id) S.leave(E.id).catc
 /** A teammate's newer version taken here (nothing unsaved, or merged with what is). */
 export async function pull(E) {
   const { doc, version } = await S.loadDoc(E.id);
-  if (!doc) return;
+  // while it loaded, this editor may have saved a newer version itself: an older document never replaces it
+  if (!doc || version <= E.version || E.saving) return;
   const base = JSON.parse(E.baseJSON || "{}"), mine = E.live.toJSON();
   const { doc: merged, conflicts } = E.dirty ? merge3(base, mine, doc, { mySector: E.mySector }) : { doc, conflicts: [] };
   reload(E, merged);

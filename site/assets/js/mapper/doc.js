@@ -149,7 +149,9 @@ export class Live {
     const hits = [];
     const zOf = (o) => { const i = this.map.symdefs.indexOf(o.inst?.def); return i < 0 ? 0 : i; };
     for (const o of this.near([x - tol, y - tol, x + tol, y + tol])) {
-      if (o.inst?.visible === false || (filter && !filter(o))) continue;
+      // what cannot be seen is never picked: a hidden part or object, a hidden symbol (owner, 2026-11-12: a click « did nothing »,
+      // it had chosen the town plan's OpenStreetMap lines kept on the hidden 990/991 under the visible objects)
+      if (o.inst?.visible === false || o.inst?.def?.visible === false || (filter && !filter(o))) continue;
       const part = this.doc.parts.find((p) => p.id === (o.part || "p1"));
       if (part?.locked) continue;
       const d = this.distance(o, x, y);

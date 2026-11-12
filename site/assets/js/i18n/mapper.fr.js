@@ -74,6 +74,7 @@ export default {
   "map.save.local": "Gardé sur cet appareil",
   "map.save.error": "Enregistrement impossible, nouvel essai bientôt",
   "map.save.conflict": "Conflit avec une autre version",
+  "map.save.failed": "La carte n'a pas pu être enregistrée ({error}) : nouvel essai dans 15 s. Ne fermez pas la page avant « Enregistré ».",
   "map.save.auto": "Enregistrement automatique",
   "map.conflict.title": "Une autre version a été enregistrée",
   "map.conflict.text": "{by} a enregistré la carte ({at}) pendant que vous la modifiiez. Garder votre version remplace la sienne ; reprendre la sienne abandonne vos modifications non enregistrées.",

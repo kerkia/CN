@@ -74,6 +74,7 @@ export default {
   "map.save.local": "Auf diesem Gerät behalten",
   "map.save.error": "Speichern nicht möglich, neuer Versuch gleich",
   "map.save.conflict": "Konflikt mit einer anderen Version",
+  "map.save.failed": "Die Karte konnte nicht gespeichert werden ({error}): neuer Versuch in 15 s. Schließe die Seite nicht vor „Gespeichert“.",
   "map.save.auto": "Automatische Speicherung",
   "map.conflict.title": "Eine andere Version wurde gespeichert",
   "map.conflict.text": "{by} hat die Karte gespeichert ({at}), während du sie bearbeitet hast. Deine Version behalten ersetzt die andere; die andere übernehmen verwirft deine ungespeicherten Änderungen.",

@@ -74,6 +74,7 @@ export default {
   "map.save.local": "Kept on this device",
   "map.save.error": "Could not save, trying again soon",
   "map.save.conflict": "Conflict with another version",
+  "map.save.failed": "The map could not be saved ({error}): trying again in 15 s. Do not close the page before “Saved”.",
   "map.save.auto": "Automatic save",
   "map.conflict.title": "Another version was saved",
   "map.conflict.text": "{by} saved the map ({at}) while you were editing it. Keeping your version replaces theirs; taking theirs drops your unsaved changes.",

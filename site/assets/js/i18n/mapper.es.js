@@ -74,6 +74,7 @@ export default {
   "map.save.local": "Guardado en este dispositivo",
   "map.save.error": "No se pudo guardar, se reintentará pronto",
   "map.save.conflict": "Conflicto con otra versión",
+  "map.save.failed": "No se pudo guardar el mapa ({error}): nuevo intento en 15 s. No cierres la página antes de «Guardado».",
   "map.save.auto": "Guardado automático",
   "map.conflict.title": "Se guardó otra versión",
   "map.conflict.text": "{by} guardó el mapa ({at}) mientras lo editabas. Conservar tu versión sustituye la suya; tomar la suya descarta tus cambios sin guardar.",
