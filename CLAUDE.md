@@ -1011,6 +1011,38 @@ Every multiple-choice game was played through to its score page at phone size, w
   copyright stays the club's. **Granites** (Victoria, Australia: « Donated to and copyright Bendigo Orienteers » in the file) and
   **Foley Mountain** (Orienteering Ottawa's), the first two races, were removed from R2, live and local, that day; their inputs stay
   outside git in `data\virtual\` for tests only. The work of the day (Desquinemarre's movies, `C:\kerkia\Ozimut\work\vr3d`) stays outside git.
+  **Invented terrain** (owner, 2026-11-12, after the proposal https://claude.ai/artifact/HnhtgdpVfLAbZoFmS9S3RR; prototype and
+  pictures in `C:\Kerkia\Ozimut\work\study\pixel-mapgen\`): `games/vgen.js` makes a world from a seed — five terrain types (`TYPES`:
+  moraine — knolls, pits, boulders, marshes, small lakes, eskers —, karst — dolines, rock and stony ground, clearings —, sandrock —
+  east-west sandstone crests, boulder fields, gigantic boulders, pines —, valley — V-shaped valleys, spurs, streams, small cliffs —,
+  pine — flat plantation parcels, tracks and rides, few features), sliders detail / relief / green / paths (0-1, 0.5 the type's own)
+  and a size — and draws from that one model both the package (heights on a 2 m grid, the 1 m ground their bilinear interpolation;
+  ground classes in build.py's order; vegetation densities; ground colours by the type's biome; rocks, cliffs, features) and the
+  ISOM 2017-2 map's objects at 1:10 000 (contours traced on the same grid by marching squares, each area the region where its smooth
+  field is positive, each feature — knoll, pit, boulder, cliff — an object first, paths routed by Dijkstra on 4 m and stamped into
+  the classes), so map and 3D agree by construction. **Deterministic**: only arithmetic, `Math.sqrt`, `Math.floor` and integer
+  hashing decide the world (trigonometry only for drawing a tick or a symbol's angle), no time budget anywhere; Node and Edge gave the
+  day's courses the same signature. `games/vcourse.js` is course.py's rules in JS (six levels, seeded, a fixed number of tries, Bleu
+  three times as many); `GEN_LEVELS` lets the Bleu's straight legs run 45 / 110 m from a handrail (35 / 90 m found no Bleu on three
+  of the five types: invented path networks are sparser). `games/vgenmap.js` writes the map as OCAD 2018 with Cartographier's
+  `writeOcadDoc` (`mapper/symscale.js`, split out of layout.js, so that the game does not load Cartographier's dialogs). **In the
+  browser** (`games/vgenworker.js` a module worker, `games/vgenpack.js` the package as loadRace returns it; mount's `load`): Training's
+  « Terrain imaginaire » (`pages/virtuallygen.js`, under the maps, tagged « inventé ») — **« Carte du jour »**: one seed a Paris day
+  (`parisDay`, `dayOpts`: `seedOf("pixel-day-<YYYYMMDD>")`, the terrain type in turn, 1.2 km, sliders 0.5), the same world and six
+  courses for everyone; runs kept as race `day-YYYYMMDD` (functions/api/virtual accepts it without a package, today's or yesterday's
+  only, training only, its event the courses' signature `courseSig`, 1-8 hex, so that a browser that made another world never mixes
+  its runs with the others'); the day's results under it rank each runner's first run of a course (later runs are training); no
+  ghosts and the whole map on those runs; **not counted in the virtual index** (it counts competitions alone, the administrators'
+  for now) — and **« Terrain libre »**: type, number (a number always gives the same terrain: shared to run the same forest), size
+  0.8-1.6 km, detail, relief, vegetation, paths (`localStorage ocn.vt.gen`); played, never kept (the finish card says so); the
+  runner's saved map option applies (its chooser is not shown on that card). The worlds made stay in memory for the visit. **Offline**
+  (`tools/virtually/gen.mjs` — the same generator and course setter, 1 200 tries a level —, then `genpack.py` for the package's
+  pictures, `thumb.mjs`, `upload.py`): five races among Pixel's maps, source « gen » (`vt.src.gen`), 1.6 km — gen-moraine (seed
+  20261112), gen-karst (20261113), gen-sandrock (20261114), gen-valley (20261115), gen-pine (20261116), in live R2 since 2026-11-12;
+  no map, LiDAR or licence involved. **Measured** 2026-11-12 in headless Edge on the local server (`C:\Kerkia\Ozimut\workr3d\gentest.mjs`):
+  a 1.2 km world and its six courses in 3-5 s (Node 2-3 s; a 1.6 km offline race 5-10 s); 30-43 fps at 1400 × 860 and at a phone's
+  390 × 844 viewport, Autrans 33 fps the same way; not yet on a real phone. Local test: launch config `pixel-gen` (8772, its own copy
+  of the local state, `.wrangler/state-gen`).
   **Sprint in a town** (owner, 2026-11-11: « LiDAR + OpenStreetMap, as realistic as possible »; race **Gif-sur-Yvette**, `gif`, its
   centre 600 × 600 m between the RER station and the church until 2026-11-12, then 1 320 × 1 040 m round 48.6989 N 2.1315 E, Lambert 93
   635420-636740 × 6844142-6845182 — the owner's area drawn on IGN's map (0.48 km², the sports grounds, Le Clos, the station and
