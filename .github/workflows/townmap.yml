@@ -4,6 +4,8 @@
 # (workflow_dispatch, GH_DISPATCH_TOKEN); tools/virtually/townmap_ci.py makes each map into R2 townmap/out/<id>.json.gz, its
 # progress written into the request as it goes. Runs never overlap; each run takes the requests waiting, again until none is left.
 # Only the area's extent goes to the data services; the point clouds stay on the runner and go with it.
+# The waiting requests are marked « setup » as soon as the job starts (2026-11-12: the page said « waiting for a server » while the
+# runner was installing its libraries), pip's downloads kept between runs.
 
 name: townmap
 
@@ -34,6 +36,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.14"
+          cache: pip
+          cache-dependency-path: .github/workflows/townmap.yml
+
+      - name: Requests marked « setup »
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/req"
+          aws s3 sync "$BUCKET/townmap/req/" "$RUNNER_TEMP/req/" --endpoint-url "$R2" --only-show-errors || true
+          python tools/virtually/townmap_ci.py --setup --reqs "$RUNNER_TEMP/req"
 
       - run: pip install "numpy>=2.0" "pillow>=11" "scipy>=1.14" "pyproj>=3.7" "requests>=2.31" "laspy[lazrs]>=2.5" "rasterio>=1.4" "shapely>=2.0" "scikit-image>=0.24"
 

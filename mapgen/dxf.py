@@ -10,6 +10,10 @@ coordinates in decimetres (q) from the tile's south-west corner (x0, y0) in the 
 LV95, UTM or NZTM2000 beyond, mapgen/grids.py), each line's first point then the steps to the next,
 z its height in decimetres (null when the DXF gives none); a point layer one flat list, the same way.
 
+The helper contours (2026-11-12): karttapullautin's « basemap » contours (basemapinterval, every 0.5 or 1 m; <cloud>_basemap.dxf,
+layer "cont", no heights), the same JSON with their one layer, written apart as t/<id>.<variant>.help.json, each line simplified
+(Douglas-Peucker, HELP_TOL m: they are a guide to draw by, and half a tile's weight otherwise).
+
 Only karttapullautin's output files are read: nothing of its code (GPL-3) is here."""
 from __future__ import annotations
 
@@ -23,7 +27,9 @@ FILES = {
     "c2g": {"cliff2"},
     "c3g": {"cliff3"},
     "dotknolls": {"dotknoll", "uglydotknoll", "udepression", "uglyudepression"},
+    "basemap": {"cont"},
 }
+HELP_TOL = 0.15
 VERSION = 1
 Q = 0.1
 
@@ -120,6 +126,30 @@ def clip(pts, x0, y0, x1, y1):
     return [p for p in out if len(p) >= 2]
 
 
+def simplified(pts, tol: float):
+    """Douglas-Peucker within tol (m), iterative."""
+    if tol <= 0 or len(pts) < 3:
+        return pts
+    keep = [False] * len(pts)
+    keep[0] = keep[-1] = True
+    stack = [(0, len(pts) - 1)]
+    while stack:
+        a, b = stack.pop()
+        (ax, ay), (bx, by) = pts[a], pts[b]
+        dx, dy = bx - ax, by - ay
+        L = (dx * dx + dy * dy) ** 0.5
+        best, at = 0.0, -1
+        for i in range(a + 1, b):
+            px, py = pts[i]
+            d = abs(dy * (px - ax) - dx * (py - ay)) / L if L else ((px - ax) ** 2 + (py - ay) ** 2) ** 0.5
+            if d > best:
+                best, at = d, i
+        if best > tol and at > 0:
+            keep[at] = True
+            stack += [(a, at), (at, b)]
+    return [p for p, k in zip(pts, keep) if k]
+
+
 def _encode(pts, x0, y0):
     """[x, y, dx, dy, …] in decimetres from (x0, y0), repeated points dropped."""
     q = []
@@ -136,9 +166,9 @@ def _encode(pts, x0, y0):
 
 
 def tile_vectors(files: dict[str, Path], tid: str, x0: float, y1: float, style: str, size: float = 1000.0,
-                 crs: str = "EPSG:2154") -> dict:
+                 crs: str = "EPSG:2154", simplify: float = 0.0) -> dict:
     """The tile's vectors from karttapullautin's DXF files ({"contours": path, …}; missing ones skipped), cut to the tile,
-    in the tile's system (crs: Lambert 93 in France, the grid's beyond: mapgen/grids.py)."""
+    in the tile's system (crs: Lambert 93 in France, the grid's beyond: mapgen/grids.py); simplify: the lines' tolerance (m)."""
     y0, x1 = y1 - size, x0 + size
     lines: dict[str, list] = {}
     points: dict[str, list] = {}
@@ -166,7 +196,7 @@ def tile_vectors(files: dict[str, Path], tid: str, x0: float, y1: float, style: 
                 last[layer] = p
                 continue
             for piece in clip(pts, x0, y0, x1, y1):
-                enc = _encode(piece, x0, y0)
+                enc = _encode(simplified(piece, simplify), x0, y0)
                 if enc:
                     lines.setdefault(layer, []).append([zq] + enc)
     return {"v": VERSION, "id": tid, "style": style, "crs": crs, "x0": x0, "y0": y0, "q": Q, "lines": lines, "points": points}

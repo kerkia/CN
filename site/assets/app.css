@@ -4112,6 +4112,15 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .mp-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .mp-btns { display: flex; flex-wrap: wrap; gap: 6px; }
 .mp-hint, .mp-empty { color: var(--ink-3); font-size: 12px; margin: 0; }
+/* the LiDAR dialog's karttapullautin settings (2026-11-12) */
+.mp-check { flex-wrap: nowrap; align-items: flex-start; }
+.mp-check input { flex: none; margin-top: 3px; }
+.mp-kpbox summary { cursor: pointer; font-weight: 600; margin: 4px 0; }
+.mp-kpbox > div { max-height: 40vh; overflow: auto; }
+.mp-kp { border-collapse: collapse; font-size: 12px; width: 100%; }
+.mp-kp th, .mp-kp td { text-align: left; vertical-align: top; padding: 3px 6px; border-bottom: 1px solid var(--line, rgba(127, 127, 127, 0.25)); }
+.mp-kp td:nth-child(2) { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mp-kp code { font-size: 11px; }
 .mp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
 .mp-list li { display: flex; align-items: center; gap: 4px; }
 .mp-list li > span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

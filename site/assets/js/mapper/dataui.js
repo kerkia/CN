@@ -11,11 +11,11 @@
 import * as G from "./geom.js";
 import { modal, field, sel } from "../tracer/dialogs.js";
 import { setBar } from "../waitbar.js";
-import { t, tn } from "./lang.js";
+import { t, tn, locale } from "./lang.js";
 import { areaCoords as areaCoordsOf, bezier as bezierOf, lineCoords as lineCoordsOf } from "./data/frame.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
-const DRAFT = "draft";
+const DRAFT = "draft", HELP_PART = "lidarhelp";
 
 /** The rectangle (map mm) the data is asked for: the one chosen, else the print area, else the screen. */
 function areaOf(E) { return E.dataArea || E.doc.printArea || E.view.visibleRect(); }
@@ -24,10 +24,16 @@ function draftPart(E) {
   if (!E.doc.parts.some((p) => p.id === DRAFT)) E.live.setDocField("parts", [...E.doc.parts, { id: DRAFT, name: t("map.parts.draft"), hidden: false, locked: false }]);
   return DRAFT;
 }
-/** Objects from a data module into the document, in the draft part; symbols the map lacks are named and their objects left out.
+/** The LiDAR's helper contours' part (2026-11-12): apart from the draft, never « accepted » into the map, hidden at will. */
+function helpPart(E) {
+  if (!E.doc.parts.some((p) => p.id === HELP_PART)) E.live.setDocField("parts", [...E.doc.parts, { id: HELP_PART, name: t("map.parts.lidarHelp"), hidden: false, locked: false }]);
+  return HELP_PART;
+}
+/** Objects from a data module into the document, in the draft part (opts.helpers: the helper contours' part, not drafts);
+ *  symbols the map lacks are named and their objects left out.
  *  ISOM 2017-2's revision 6 numbered 105, 203 and 513 as 105.1, 203.1 and 513.1 and added .2 forms: a map made with the set of
  *  before takes them on its plain number, and a plain number finds its .1. */
-function bring(E, objects, label) {
+function bring(E, objects, label, opts = {}) {
   const have = new Set(E.doc.symbols.map((s) => s.sym)), missing = new Map();
   const symIn = (sym) => {
     if (have.has(sym)) return sym;
@@ -36,11 +42,11 @@ function bring(E, objects, label) {
   };
   let n = 0;
   E.live.transact(label, () => {
-    const part = draftPart(E);
+    const part = opts.helpers ? helpPart(E) : draftPart(E), draft = !opts.helpers;
     for (const o of objects) {
       const sym = symIn(o.sym);
       if (!have.has(sym)) { missing.set(o.sym, (missing.get(o.sym) || 0) + 1); continue; }
-      E.live.add({ ang: 0, col: 0, lineWidth: 0, diamFlags: 0, ...o, sym, part, draft: true });
+      E.live.add({ ang: 0, col: 0, lineWidth: 0, diamFlags: 0, ...o, sym, part, draft });
       n++;
     }
   });
@@ -204,7 +210,7 @@ async function waitTown(E, p) {
       if (r?.status === "done") break;
       if (r?.status === "failed" || r?.status === "gone") { keepTown(E, null); E.say(r.status === "gone" ? t("map.data.town.gone") : t("map.data.town.failed", { error: r.error || "" }), "bad"); return; }
       const pr = r?.progress;
-      if (pr) say(`${t(`map.data.town.stage.${pr.stage}`)} · ${waited}`, pr.frac);
+      if (pr) say(`${townStage(pr)} · ${waited}`, pr.stage === "setup" ? null : pr.frac);
       else say(`${r?.ahead ? tn("map.data.town.ahead", r.ahead) : t("map.data.town.queued")} · ${waited}`);
       await new Promise((ok) => setTimeout(ok, 10000));
     }
@@ -219,6 +225,18 @@ async function waitTown(E, p) {
     keepTown(E, null);
     E.say(tn("map.data.brought", n) + ` · ${t("map.data.town.credit", { date: lidarYear(j) })}`);
   } finally { if (E._townWait === p.req) E._townWait = null; }
+}
+/** What the workflow is doing (townmap_ci.py's progress, 2026-11-12): « setup » while GitHub's runner installs its libraries, the
+ *  sources still awaited while they download (read at the same time), the map's step while it is computed. */
+function townStage(pr) {
+  if (pr.stage === "fetch" && pr.pending?.length) {
+    const names = pr.pending.map((k) => (k === "osm" && pr.osmTry > 1 ? t("map.data.town.src.osmTry", { n: pr.osmTry }) : t(`map.data.town.src.${k}`)));
+    let list = names.join(", ");
+    try { list = new Intl.ListFormat(locale(), { type: "conjunction" }).format(names); } catch (e) { /* an older browser */ }
+    return t("map.data.town.stage.fetchList", { list });
+  }
+  if (pr.stage === "map" && pr.step) return t("map.data.town.stage.mapStep", { step: t(`map.data.town.step.${pr.step}`) });
+  return t(`map.data.town.stage.${pr.stage}`);
 }
 /** The LiDAR's year (its latest tile's acquisition), with its space, or nothing. */
 const lidarYear = (j) => { const y = Object.values(j.lidar || {}).sort().pop()?.slice(0, 4); return y ? ` ${y}` : ""; };
@@ -243,24 +261,55 @@ export function townObjects(j, f, { contours = true } = {}) {
   }
   return out;
 }
+/**
+ * The LiDAR through karttapullautin (owner, 2026-11-12: no black box): the map's style (its standard, else its scale) decides the
+ * intervals offered — ISSprOM 2 or 2.5 m, ISOM 2.5 or 5 m —, the helper contours (karttapullautin's dense « basemap » contours,
+ * every 0.5 or 1 m) come into a part of their own in light violet, never printed, and the dialog names karttapullautin and lists
+ * the settings the tiles are made with (data/lidar.js kpRows).
+ */
 async function lidar(E) {
   const f = await frameOrSay(E); if (!f) return;
   const P = await placeOf(E, f).catch(() => null);
   if (P && !P.s.lidar) { await P.SP.explain(E, P.s, P.lat, P.lon, ["lidar"]); return; }
-  // the style is the map's own (its standard, else its scale): not asked again (owner, 2026-11-12)
-  const style = styleOf(E);
-  const v = await modal(E, { title: t("map.rib.data-lidar"), body: `<p><b>${esc(t(`map.data.kind.${style}`))}</b></p><p class="mp-hint">${esc(t("map.data.lidarHint"))}</p>` });
-  if (!v) return;
-  v.s = style;
-  const say = progress(E);
   const L = await import("./data/lidar.js");
+  // the style is the map's own (its standard, else its scale): not asked again (owner, 2026-11-12)
+  const style = styleOf(E), [def, other] = L.INTERVALS[style];
+  const prefKey = `ocn.map.lidar.${style}`;
+  let pref = {};
+  try { pref = JSON.parse(localStorage.getItem(prefKey) || "{}") || {}; } catch (e) { /* private window */ }
+  const ivs = [def, other].sort((a, b) => a - b);
+  const mFmt = (x) => t("map.data.lidar.m", { m: x.toLocaleString(locale()) });
+  const table = (iv) => `<table class="mp-kp"><thead><tr><th>${esc(t("map.data.kp.setting"))}</th><th>${esc(t("map.data.kp.value"))}</th><th>${esc(t("map.data.kp.what"))}</th></tr></thead><tbody>${
+    L.kpRows(style, iv).map(([k, v]) => `<tr><td><code>${esc(k)}</code></td><td>${esc(v === "auto" ? t("map.data.kp.auto") : v)}</td><td>${esc(t(`map.data.kp.${k}`, { iv: mFmt(iv), h: mFmt(L.helpInterval(iv)) }))}</td></tr>`).join("")}</tbody></table>`;
+  const body = `<p><b>${esc(t(`map.data.kind.${style}`))}</b></p>`
+    + field(t("map.data.lidar.interval"), sel("i", ivs.map((x) => [String(x), mFmt(x) + (x === def ? ` (${t("map.data.lidar.default")})` : "")]), String(pref.i ?? def)))
+    + `<p class="mp-hint">${esc(t(`map.data.lidar.intervalHint.${style}`))}</p>`
+    + `<label class="mp-row mp-check"><input type="checkbox" name="h"${pref.h === false ? "" : " checked"}> <span>${esc(t("map.data.lidar.helpers"))}</span></label>`
+    + `<p class="mp-hint">${esc(t("map.data.lidarHint"))}</p>`
+    + `<p class="mp-hint">${esc(t("map.data.lidar.credit"))} <a href="https://github.com/karttapullautin/karttapullautin" target="_blank" rel="noopener">github.com/karttapullautin</a></p>`
+    + `<details class="mp-kpbox"><summary>${esc(t("map.data.kp.title"))}</summary><p class="mp-hint">${esc(t("map.data.kp.lede"))}</p><div data-kp>${table(+(pref.i ?? def))}</div></details>`;
+  const v = await modal(E, { title: t("map.rib.data-lidar"), body, wide: true, onOpen: (root) => {
+    const s = root.querySelector('select[name="i"]'), box = root.querySelector("[data-kp]");
+    s?.addEventListener("change", () => { box.innerHTML = table(+s.value); });
+  } });
+  if (!v) return;
+  const interval = +v.i, helpers = !!v.h;
+  try { localStorage.setItem(prefKey, JSON.stringify({ i: interval, h: helpers })); } catch (e) { /* private window */ }
+  const say = progress(E);
   let r;
-  try { r = await L.loadLidar(f, areaOf(E), v.s, { say: (key, vars, frac) => say(t(key, { n: "", t: "", ...vars }), frac), progress: (key, vars, frac) => say(t(key, vars), frac), stop: () => E._stopData }); }
+  try { r = await L.loadLidar(f, areaOf(E), style, { interval, helpers, say: (key, vars, frac) => say(t(key, { n: "", t: "", ...vars }), frac), progress: (key, vars, frac) => say(t(key, vars), frac), stop: () => E._stopData }); }
   catch (e) { E.say(e.message === "tooLarge" ? t("map.data.tooLarge") : e.message === "nogeo" ? t("map.data.nogeo") : e.message, "bad"); return; }
   if (!r) { E.say(""); return; }
   const n = bring(E, r.objects, t("map.undo.data"));
+  let nh = 0;
+  if (r.helpers?.length) {
+    const Lay = await import("./layout.js");
+    await Lay.addSetSymbols(E, [L.HELP_SYM]).catch((e) => console.warn("helper symbol", e));
+    nh = bring(E, r.helpers, t("map.undo.data"), { helpers: true });
+  }
   if (r.backgrounds?.length) { const B = await import("./backgrounds.js"); await B.addUrls(E, r.backgrounds); }
-  E.say(tn("map.data.brought", n) + ` · ${r.credit?.text || r.credit}` + (r.tiles?.noVectors?.length ? ` · ${tn("map.data.noVectors", r.tiles.noVectors.length)}` : ""));
+  E.say(tn("map.data.brought", n) + (nh ? ` · ${tn("map.data.lidar.helpersIn", nh)}` : "") + ` · ${r.credit?.text || r.credit} · karttapullautin`
+    + (r.tiles?.noVectors?.length ? ` · ${tn("map.data.noVectors", r.tiles.noVectors.length)}` : ""));
 }
 function accept(E, kind) {
   const sel = E.selected().filter((o) => o.draft);

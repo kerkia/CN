@@ -5719,4 +5719,7 @@ export default {
   "ms.sp.s.995": "Límite por confirmar (muro, valla o seto)",
   // « Cartographier » (Orga, 2026-11-06)
   "ms.sp.s.993": "Paso en el nivel inferior (oculto)",
+  // « Cartographier » (Orga, 2026-11-06)
+  "ms.s.996": "Curva de ayuda (LiDAR)",
+  "ms.sp.s.996": "Curva de ayuda (LiDAR)",
 };

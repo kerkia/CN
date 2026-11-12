@@ -184,6 +184,37 @@ export async function loadSet(name) {
 }
 // the symbols' scaling lives in symscale.js (light: Pixel's invented maps use it without Cartographier's interface)
 export { scaled, scaleSymbol };
+/** The symbol set's colours a map lacks, added at the top of its table (matched by name): { cols, recolor(symbol) } — the
+ *  map's colour table (changed when cols.length grew) and a function giving a set's symbol the map's colour numbers. */
+function mergeColors(E, set) {
+  const cols = E.doc.colors.slice(), byName = new Map(cols.map((c) => [c.name.toLowerCase(), c]));
+  const remap = new Map();
+  let next = Math.max(0, ...cols.map((c) => c.num)) + 1;
+  for (const c of set.colors) { const have = byName.get(c.name.toLowerCase()); if (have) remap.set(c.num, have.num); else { const nc = { ...c, num: next++ }; cols.push(nc); remap.set(c.num, nc.num); } }
+  const recolor = (s) => JSON.parse(JSON.stringify(s), (k, x) => (/(^|[a-z])Color$|^color$/.test(k) && typeof x === "number" && remap.has(x) ? remap.get(x) : x));
+  return { cols, recolor };
+}
+/**
+ * Symbols of the map's own IOF set (ISSprOM for a sprint map, else ISOM) the map lacks, added at its scale with the colours they
+ * need (the LiDAR's helper contours, 996, on a map made before them). nums: OCAD numbers (996000). Resolves the numbers added.
+ */
+export async function addSetSymbols(E, nums) {
+  const miss = nums.filter((n) => !E.live.symbol(n));
+  if (!miss.length) return [];
+  const key = /ISSprOM/i.test(E.doc.standard || "") || (!E.doc.standard && E.doc.scale <= 5000) ? "issprom2019-2" : "isom2017-2";
+  const set = await loadSet(key);
+  const want = scaled(set, E.doc.scale).filter((s) => miss.includes(s.sym));
+  if (!want.length) return [];
+  const used = new Set(want.flatMap((s) => JSON.stringify(s).match(/"(?:[a-z]*Color|color)":\d+/gi) || []).map((m) => +m.split(":")[1]));
+  const { cols, recolor } = mergeColors(E, { colors: set.colors.filter((c) => used.has(c.num)) });
+  E.live.transact(t("map.undo.set"), () => {
+    if (cols.length !== E.doc.colors.length) E.live.setColors(cols);
+    for (const s0 of want) E.live.addSymbol({ ...recolor(s0), set: key });
+  });
+  E.live.compile(); E.view.setLive(E.live); E.view.clearTiles();
+  const Pn = await import("./panels.js"); Pn.drawLeft(E);
+  return want.map((s) => s.sym);
+}
 async function symbolSet(E) {
   const v = await modal(E, { title: t("map.rib.symbol-set"), body: field(t("map.lay.set"), sel("s", Object.entries(SETS).map(([k, n]) => [k, n]), E.doc.scale <= 5000 ? "issprom2019-2" : "isom2017-2"))
     + `<fieldset class="mp-choice"><legend>${esc(t("map.lay.setHow"))}</legend><label><input type="radio" name="h" value="add" checked> ${esc(t("map.lay.setAdd"))}</label><label><input type="radio" name="h" value="replace"> ${esc(t("map.lay.setReplace"))}</label></fieldset>` });
@@ -191,11 +222,7 @@ async function symbolSet(E) {
   const set = await loadSet(v.s), syms = scaled(set, E.doc.scale);
   let added = 0, replaced = 0;
   // the set's colours the map lacks are added at the top of its table (by name)
-  const cols = E.doc.colors.slice(), byName = new Map(cols.map((c) => [c.name.toLowerCase(), c]));
-  const remap = new Map();
-  let next = Math.max(0, ...cols.map((c) => c.num)) + 1;
-  for (const c of set.colors) { const have = byName.get(c.name.toLowerCase()); if (have) remap.set(c.num, have.num); else { const nc = { ...c, num: next++ }; cols.push(nc); remap.set(c.num, nc.num); } }
-  const recolor = (s) => JSON.parse(JSON.stringify(s), (k, x) => (/(^|[a-z])Color$|^color$/.test(k) && typeof x === "number" && remap.has(x) ? remap.get(x) : x));
+  const { cols, recolor } = mergeColors(E, set);
   E.live.transact(t("map.undo.set"), () => {
     if (cols.length !== E.doc.colors.length) E.live.setColors(cols);
     for (const s0 of syms) {

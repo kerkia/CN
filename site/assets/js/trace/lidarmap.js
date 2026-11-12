@@ -236,15 +236,24 @@ async function call(url, opts) {
   if (!r.ok) { const e = new Error(body.error || `http ${r.status}`); e.status = r.status; throw e; }
   return body;
 }
-/** The tiles' state in a style ("forest" | "sprint"), the missing ones asked for: { req?, tiles: { id: "ready" | "none" | "queued" }, started? }. */
-export const ask = (ids, style = "forest") => call(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ tiles: ids, style }) });
+/** The tiles' state in a style ("forest" | "sprint"), the missing ones asked for: { req?, tiles: { id: "ready" | "none" | "queued" }, started? }.
+ *  opts: { interval (m, INTERVALS: the style's default when left out), helpers (the helper contours wanted too) }. */
+export const ask = (ids, style = "forest", opts = {}) => call(API, { method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ tiles: ids, style, ...(opts.interval != null ? { interval: opts.interval } : {}), ...(opts.helpers ? { helpers: true } : {}) }) });
 /** A request's state: { status: "queued" | "done" | "failed", result: { id: "done" | "none" | "error…" } }. */
 export const poll = (req) => call(`${API}?req=${encodeURIComponent(req)}`);
 
 const tileUrl = (id, ext) => `${API}/t/${id}${ext}`;
-// a style's version, as the server's (functions/api/lidarmap): in its tiles' address, so that a browser does not keep a
-// tile of the version before (they are cached a week)
-const STYLE_V = { forest: 1, sprint: 2 };
+// each style's contour intervals, its default first (owner, 2026-11-12: ISSprOM 2 or 2.5 m, ISOM 2.5 or 5 m; mapgen/run.py
+// INTERVALS), and a variant's version, as the server's (functions/api/lidarmap VARIANT_V): in its tiles' address, so that a
+// browser does not keep a tile of the version before (they are cached a week)
+export const INTERVALS = { sprint: [2.5, 2], forest: [5, 2.5] };
+export const VARIANT_V = { forest: 1, "forest-25": 1, sprint: 3, "sprint-20": 1 };
+const STYLE_V = { forest: VARIANT_V.forest, sprint: VARIANT_V.sprint };
+/** A style at a contour interval: "forest", "forest-25", "sprint", "sprint-20" (the style's own name at its default). */
+export const variantOf = (style, interval) => (interval == null || +interval === INTERVALS[style][0] ? style : `${style}-${Math.round(+interval * 10)}`);
+/** The helper contours' interval under contours of `interval` m (mapgen/run.py help_interval). */
+export const helpInterval = (interval) => (interval >= 5 ? 1 : 0.5);
 async function bitmap(url) {
   const r = await fetch(url, { credentials: "same-origin" });
   if (!r.ok) throw new Error(`tile ${r.status}`);

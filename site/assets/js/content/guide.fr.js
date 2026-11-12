@@ -600,13 +600,35 @@ export function build(X) {
               fermer la page, elle arrive en brouillon à la prochaine ouverture. Les objets d'OpenStreetMap sont gardés sur des symboles masqués
               (990, 991). La « Nouvelle carte » sprint l'utilise en France ; ailleurs, OpenStreetMap.`,
             html`<b>Le LiDAR</b>, là où un LiDAR national est ouvert (France, Suisse, États-Unis, Canada, Nouvelle-Zélande) : le relief, les falaises
-              et la végétation qu'en tire karttapullautin. Les dalles se calculent à la demande, en quelques minutes ; une barre dit où en est le calcul.`,
+              et la végétation qu'en tire karttapullautin, à l'équidistance de la carte, avec des courbes d'aide denses si on le souhaite (voir
+              plus bas). Les dalles se calculent à la demande, en quelques minutes ; une barre dit où en est le calcul.`,
           ])}
           <p>Tout arrive <b>en brouillon</b>, dans une partie à part : on accepte ce qui est juste et on rejette le reste, objet par objet ou d'un
             coup. Les données ouvertes sont un point de départ ; le terrain, lui, se relève sur place. Là où un pays n'a pas encore ses données,
             Carto le dit et propose d'en demander la prise en charge.</p>
           <p>Les <b>fonds</b> se posent sous la carte : une photo aérienne ou une carte en ligne selon le pays, une image ou un PDF calé, une trace
-            GPS.</p>`)}`,
+            GPS.</p>`)}
+        ${slide("Carto", "Le LiDAR et karttapullautin", html`
+          <p>Le relief, les falaises et la végétation du LiDAR sont calculés par <b>karttapullautin</b>, le logiciel libre (licence GPL-3) de
+            Jarkko Ryyppö, celui de MapAnt. Ozimut le télécharge depuis sa publication et l'exécute tel quel sur des serveurs de calcul, dalle de
+            1 km par dalle ; chaque dalle est calculée une fois, puis sert à tous les cartographes
+            (<a href="https://github.com/karttapullautin/karttapullautin" target="_blank" rel="noopener">github.com/karttapullautin</a>).</p>
+          ${list([
+            html`<b>L'équidistance</b> suit la norme de la carte : 2 ou 2,5 m pour une carte sprint (ISSprOM), 2,5 ou 5 m pour une carte forêt
+              (ISOM). À 5 m, karttapullautin ajoute des courbes de forme à mi-équidistance là où le relief le demande.`,
+            html`<b>Les courbes d'aide</b> : les courbes « basemap » de karttapullautin, tous les 0,5 m (tous les mètres sous des courbes de 5 m),
+              arrivent en violet clair dans une partie à part, « Courbes d'aide (LiDAR) », qu'on masque à volonté, et ne sont jamais imprimées
+              (symbole 996, un auxiliaire). Elles montrent les formes entre deux courbes : on y dessine à la main les courbes de forme, les petites
+              buttes et les petits creux.`,
+            html`<b>Les points lus</b> : karttapullautin garde une part des points du nuage (<code>thinfactor</code>), réglée sur sa densité pour en
+              garder environ 6 par m², soit 15 à 20 % des points de l'IGN. Mesuré sur deux dalles de l'IGN (la ville et les bois de Gif-sur-Yvette, la
+              forêt de Fontainebleau) : même végétation, mêmes courbes, quelques petites falaises de moins, et une dalle calculée en 20 à 45 s au
+              lieu de 40 à 70 s (la lecture du fichier LiDAR reste).`,
+            html`<b>Les autres réglages</b> sont ceux de karttapullautin 2.15.4 ; la fenêtre « LiDAR » les liste avec ce qu'ils font : lissage et
+              accentuation des courbes, sélection des buttes, pente d'une falaise franchissable (1,15 m par mètre) et infranchissable (2 m par
+              mètre), hauteurs du terrain découvert et de la végétation, seuil des rayures de sous-bois. Ils ne se changent pas dans Carto, puisqu'une
+              dalle sert à tous ; karttapullautin s'utilise aussi sur son propre ordinateur, avec ses réglages à soi.`,
+          ])}`)}`,
       terrain: () => html`
         ${slide("Carto", "Sur le terrain, avec le téléphone", html`
           <p>Le mode terrain (onglet « Terrain ») est fait pour le téléphone :</p>

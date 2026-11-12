@@ -9,12 +9,17 @@
 //                             { none: true }: no LiDAR there yet
 //   lidarmap/req/<id>.json    a request: { id, tiles, style, by, at, status: queued | done | failed, result, progress: { stage:
 //                             lidar | kp | osm | draw, frac, at } while the workflow makes it }
-// Each style has its own karttapullautin render (the sprint one 2.5 m contours drawn at 1:4000), made only when asked.
+// Each style has its own karttapullautin render (the sprint one 2.5 m contours drawn at 1:4000), made only when asked; and
+// each style its other contour interval (2026-11-12: ISSprOM 2 or 2.5 m, ISOM 2.5 or 5 m), a « variant » with files of its own:
+//   lidarmap/t/<id>.<variant>.png, .<variant>.vec.json, .<variant>.vege.png ("forest-25", "sprint-20"; the default intervals keep
+//                             the style's names), .<variant>.help.json the helper contours (karttapullautin's « basemap » contours
+//                             every 0.5 or 1 m, for drawing form lines; the record's "help" { variant: interval })
 // A tile's id is IGN's in France: its west and north edges in Lambert 93 kilometres ("0391_6819"). Beyond France (2026-11-06,
 // mapgen/grids.py) it names its country and grid, by its west and south edges in km: "ch_2583_1219" (Switzerland, LV95),
 // "nz_1571_5172" (New Zealand, NZTM2000), "us_13_0475_4427" / "ca_18_0433_5038" (the United States, Canada: UTM zone, WGS 84).
-//   POST { tiles: [ids], style }   the tiles' state in that style ("forest" or "sprint"; a tile made in an older version
-//                             of the style, STYLE_V, is made again); the missing ones are asked of the workflow
+//   POST { tiles: [ids], style, interval?, helpers? }   the tiles' state in that style ("forest" or "sprint") at that contour
+//                             interval (INTERVALS; a tile made in an older version of the variant, VARIANT_V, is made again;
+//                             helpers: a tile without its helper contours is made again); the missing ones are asked of the workflow
 //                             → { req?, tiles: { id: state } }
 //   GET ?req=<id>             a request's state (the page asks every ~15 s while it waits)
 //   GET /t/<file>             a tile's file
@@ -25,10 +30,18 @@ const T = "lidarmap/t/", Q = "lidarmap/req/";
 // the tile ids (mapgen/grids.py ID; keep the two in step)
 const ID = /^(?:(\d{4})_(\d{4})|(ch|nz)_(\d{4})_(\d{4})|(us|ca)_(\d{1,2})_(\d{4})_(\d{4}))$/;
 // a tile's files; the vectors and vegetation for Cartographier (2026-11-06)
-const FILE = /^((?:\d{4}_\d{4}|(?:ch|nz)_\d{4}_\d{4}|(?:us|ca)_\d{1,2}_\d{4}_\d{4}))(\.dem\.png|\.s\.png|\.png|\.json|\.(?:forest|sprint)\.(?:vec\.json|vege\.png))$/;
+const FILE = /^((?:\d{4}_\d{4}|(?:ch|nz)_\d{4}_\d{4}|(?:us|ca)_\d{1,2}_\d{4}_\d{4}))(\.dem\.png|\.s\.png|\.png|\.json|\.(?:forest|sprint)(?:-\d{2})?\.(?:png|vec\.json|vege\.png|help\.json))$/;
 const STYLES = ["forest", "sprint"];
-// a style's version, as mapgen/run.py's STYLE_V (sprint 2: its own render, 2.5 m contours at 1:4000)
-const STYLE_V = { forest: 1, sprint: 2 };
+// each style's contour intervals, its default first (mapgen/run.py INTERVALS), and a variant's version (VARIANT_V: sprint 3, its
+// contours every 2.5 m — they were every 0.5 m); keep the three in step (trace/lidarmap.js too)
+const INTERVALS = { sprint: [2.5, 2], forest: [5, 2.5] };
+const VARIANT_V = { forest: 1, "forest-25": 1, sprint: 3, "sprint-20": 1 };
+/** A style at an interval: "forest", "forest-25", "sprint", "sprint-20"; null for an interval the style does not draw. */
+const variantOf = (style, interval) => {
+  const ok = INTERVALS[style];
+  if (interval == null || interval === "" || +interval === ok[0]) return style;
+  return ok.includes(+interval) ? `${style}-${Math.round(+interval * 10)}` : null;
+};
 const MAX_TILES = 12;
 // where each grid's numbers may lie (km; mapgen/grids.py RANGE, ZONES): France's metropolitan France and Corsica in Lambert 93
 // (IGN's LiDAR HD covers nothing else), the others their countries
@@ -63,14 +76,15 @@ async function aheadOf(env, id) {
   return n;
 }
 
-/** A tile's state in a style: "ready", "none" (no LiDAR there yet) or "missing". */
-async function tileState(env, id, style) {
+/** A tile's state in a variant: "ready", "none" (no LiDAR there yet) or "missing" (helpers: its helper contours wanted too). */
+async function tileState(env, id, variant, helpers = false) {
   const o = await env.BUCKET.get(`${T}${id}.json`);
   if (!o) return "missing";
   const m = await o.json().catch(() => ({}));
   if (m.none) return "none";
-  const v = m.v ? m.v[style] || 0 : (m.styles || ["forest"]).includes(style) ? 1 : 0;   // a record of before: version 1
-  return v >= STYLE_V[style] ? "ready" : "missing";
+  const v = m.v ? m.v[variant] || 0 : (m.styles || ["forest"]).includes(variant) ? 1 : 0;   // a record of before: version 1
+  if (v < VARIANT_V[variant]) return "missing";
+  return helpers && !m.help?.[variant] ? "missing" : "ready";
 }
 
 /** The workflow started (GitHub workflow_dispatch); false without the token. */
@@ -90,17 +104,20 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
   const body = await readBody(request);
   const ids = [...new Set(Array.isArray(body?.tiles) ? body.tiles.map(String) : [])];
   const style = STYLES.includes(body?.style) ? body.style : "forest";
+  const variant = variantOf(style, body?.interval), helpers = !!body?.helpers;
+  if (!variant) return json({ error: "bad interval", intervals: INTERVALS[style] }, 400);
   if (!ids.length || ids.length > MAX_TILES || !ids.every(validTile)) return json({ error: "bad tiles", max: MAX_TILES }, 400);
   const tiles = {};
-  for (const id of ids) tiles[id] = await tileState(env, id, style);
+  for (const id of ids) tiles[id] = await tileState(env, id, variant, helpers);
   const missing = ids.filter((id) => tiles[id] === "missing");
   if (!missing.length) return json({ tiles });
   if (!(await allow(env, `lidarmap:${user.id}`, isAdmin(env, user) ? 20 : 5, 86400))) return json({ error: "too many requests" }, 429);
   const id = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  await env.BUCKET.put(`${Q}${id}.json`, JSON.stringify({ id, tiles: missing, style, by: user.id, at: nowIso(), status: "queued" }),
+  const interval = variant === style ? INTERVALS[style][0] : +body.interval;
+  await env.BUCKET.put(`${Q}${id}.json`, JSON.stringify({ id, tiles: missing, style, interval, variant, by: user.id, at: nowIso(), status: "queued" }),
     { httpMetadata: { contentType: "application/json" } });
   for (const t of missing) tiles[t] = "queued";
-  return json({ req: id, tiles, started: await startMaps(env) });
+  return json({ req: id, tiles, variant, started: await startMaps(env) });
 });
 
 export const onRequestGet = withUser(async ({ request, env, params }) => {
@@ -111,7 +128,7 @@ export const onRequestGet = withUser(async ({ request, env, params }) => {
     const o = await env.BUCKET.get(T + path[1]);
     if (!o) return json({ error: "not found" }, 404);
     return new Response(o.body, { headers: { "Content-Length": String(o.size), "Content-Type": o.httpMetadata?.contentType || (path[1].endsWith(".json") ? "application/json" : "image/png"),
-      "Cache-Control": path[1].endsWith(".json") && !path[1].endsWith(".vec.json") ? "private, no-cache" : "private, max-age=604800" } });
+      "Cache-Control": path[1].endsWith(".json") && !/\.(vec|help)\.json$/.test(path[1]) ? "private, no-cache" : "private, max-age=604800" } });
   }
   const req = new URL(request.url).searchParams.get("req") || "";
   if (!/^[a-z0-9]{6,20}$/.test(req)) return json({ error: "bad request" }, 400);

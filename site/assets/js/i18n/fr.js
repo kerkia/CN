@@ -4677,4 +4677,7 @@ export default {
   "ms.sp.s.995": "Limite à confirmer (mur, clôture ou haie)",
   // « Cartographier » (Orga, 2026-11-06)
   "ms.sp.s.993": "Passage au niveau inférieur (masqué)",
+  // « Cartographier » (Orga, 2026-11-06)
+  "ms.s.996": "Courbe d'aide (LiDAR)",
+  "ms.sp.s.996": "Courbe d'aide (LiDAR)",
 };

@@ -65,6 +65,9 @@ SCALE = 4000
 CX, CY = (A["box"][0] + A["box"][2]) / 2, (A["box"][1] + A["box"][3]) / 2
 T0 = time.time()
 log = lambda *a: print(f"[{time.time() - T0:5.0f}s]", *a, flush=True)
+# the computation's steps for the page that waits (townmap_ci.py reads « @@step <name> »: points, photo, vectors, areas, lines,
+# contours, objects)
+step = lambda name: print(f"@@step {name}", flush=True)
 S = lambda n, sub=0: n * 1000 + sub
 
 
@@ -97,25 +100,41 @@ else:
     zmax = {k: np.full(N, -1e9, np.float32) for k in ("v", "b", "o")}  # vegetation 3-5, building 6, other non-ground (1, 9…)
     cnt = {k: np.zeros(N, np.int32) for k in (0, 2, 3, 4, 5, 6)}
     roofs = []
-    for f in sorted((RD / "lidar" / "laz").glob("*.laz")):
+
+    def chunks(f):
+        """The point cloud's points within the area: a COPC file (IGN's) read by its octree, only the nodes the area touches and
+        only the fields used (2026-11-12: whole 1 km tiles were read for a few hundred metres, ~20 s a tile; now ~2 s), else
+        every point in chunks."""
+        from laspy import DecompressionSelection as D
+        try:
+            rd = laspy.CopcReader.open(f, decompression_selection=D.XY_RETURNS_CHANNEL | D.Z | D.CLASSIFICATION)
+        except Exception:
+            rd = None
+        if rd is not None:
+            with rd:
+                yield rd.query(laspy.copc.Bounds(mins=np.array([X0, Y0], float), maxs=np.array([X1, Y1], float)))
+            return
         with laspy.open(f) as rd:
-            for ch in rd.chunk_iterator(4_000_000):
-                x, y = np.asarray(ch.x), np.asarray(ch.y)
-                m = (x >= X0) & (x < X1) & (y > Y0) & (y <= Y1)
-                if not m.any():
-                    continue
-                x, y, z, c = x[m], y[m], np.asarray(ch.z)[m], np.asarray(ch.classification)[m]
-                px, py = to_px(x, y); idx = py.astype(np.int64) * NX + px.astype(np.int64)
-                keep = c != 7
-                cnt[0] += np.bincount(idx[keep], minlength=N).astype(np.int32)
-                for k in (2, 3, 4, 5, 6):
-                    cnt[k] += np.bincount(idx[c == k], minlength=N).astype(np.int32)
-                g = c == 2
-                gs += np.bincount(idx[g], weights=z[g], minlength=N); gc += np.bincount(idx[g], minlength=N)
-                for key, sel in (("v", (c >= 3) & (c <= 5)), ("b", c == 6), ("o", (c == 1) | (c == 9) | (c == 17) | (c == 64) | (c == 65) | (c == 66))):
-                    np.maximum.at(zmax[key], idx[sel], z[sel].astype(np.float32))
-                b = c == 6
-                roofs.append(np.c_[x[b] - X0, y[b] - Y0, z[b]].astype(np.float32))
+            yield from rd.chunk_iterator(4_000_000)
+    step("points")
+    for f in sorted((RD / "lidar" / "laz").glob("*.laz")):
+        for ch in chunks(f):
+            x, y = np.asarray(ch.x), np.asarray(ch.y)
+            m = (x >= X0) & (x < X1) & (y > Y0) & (y <= Y1)
+            if not m.any():
+                continue
+            x, y, z, c = x[m], y[m], np.asarray(ch.z)[m], np.asarray(ch.classification)[m]
+            px, py = to_px(x, y); idx = py.astype(np.int64) * NX + px.astype(np.int64)
+            keep = c != 7
+            cnt[0] += np.bincount(idx[keep], minlength=N).astype(np.int32)
+            for k in (2, 3, 4, 5, 6):
+                cnt[k] += np.bincount(idx[c == k], minlength=N).astype(np.int32)
+            g = c == 2
+            gs += np.bincount(idx[g], weights=z[g], minlength=N); gc += np.bincount(idx[g], minlength=N)
+            for key, sel in (("v", (c >= 3) & (c <= 5)), ("b", c == 6), ("o", (c == 1) | (c == 9) | (c == 17) | (c == 64) | (c == 65) | (c == 66))):
+                np.maximum.at(zmax[key], idx[sel], z[sel].astype(np.float32))
+            b = c == 6
+            roofs.append(np.c_[x[b] - X0, y[b] - Y0, z[b]].astype(np.float32))
         log("LiDAR", f.name)
     has = gc > 0
     dtm = np.where(has, gs / np.maximum(gc, 1), np.nan).reshape(NY, NX)
@@ -134,13 +153,16 @@ cover4 = gaussian_filter(Z["n4"] / nall, 1.0)
 log("LiDAR grids", dtm.shape, f"ground {dtm.min():.1f}-{dtm.max():.1f} m", "roof points", len(roof))
 
 # ---- the photograph's infrared: a vegetation index ---------------------------------------------------------------------------
+step("photo")
 def mosaic(tag, res):
     W, H = int(round((X1 - X0) / res)), int(round((Y1 - Y0) / res))
     out = np.zeros((H, W, 3), np.uint8)
-    for f in SRC.glob(f"ortho_{tag}_*.jpg"):
-        _, _, x0, y0 = f.stem.split("_"); x0, y0 = int(x0), int(y0)
+    # town_fetch.py's photographs: ortho_… at 5 pixels a metre, ortho<ppm>_… at another resolution (Cartographier's: 2)
+    for f in SRC.glob(f"ortho*_{tag}_*.jpg"):
+        pre, _, x0, y0 = f.stem.split("_"); x0, y0 = int(x0), int(y0)
+        ppm = float(pre[5:] or 5)
         im = Image.open(f).convert("RGB")
-        w_m, h_m = im.width / 5, im.height / 5
+        w_m, h_m = im.width / ppm, im.height / ppm
         im = im.resize((int(round(w_m / res)), int(round(h_m / res))), Image.LANCZOS)
         c, r = int(round((x0 - X0) / res)), int(round((Y1 - (y0 + h_m)) / res))
         a = np.asarray(im); out[r:r + a.shape[0], c:c + a.shape[1]] = a[: H - r, : W - c]
@@ -152,6 +174,7 @@ lum = rgb.mean(axis=2)
 log("NDVI", f"{np.percentile(ndvi, 5):.2f}…{np.percentile(ndvi, 95):.2f}")
 
 # ---- vectors -----------------------------------------------------------------------------------------------------------------
+step("vectors")
 osm = json.load(open(SRC / "osm.json"))["elements"]
 L93 = None
 
@@ -581,6 +604,7 @@ if parcels:
 log("public road space", round(PUBLIC.area), "m²")
 
 # ---- the classes raster (priority: water > building > private > paved > vegetation/ground) --------------------------------------
+step("areas")
 def burn(g, val, arr, all_touched=False):
     from rasterio.features import rasterize
     from rasterio.transform import from_origin
@@ -861,6 +885,7 @@ for g in COVER.get("water", []):
             add_line(q.exterior, S(301, 9))
 
 # ---- lines ------------------------------------------------------------------------------------------------------------------
+step("lines")
 def along(line, arr, step=0.5):
     pts = [line.interpolate(d) for d in np.arange(0, line.length + 1e-6, step)]
     if not pts:
@@ -1032,6 +1057,7 @@ if not RAIL.is_empty:
     add_line(RAIL.intersection(CLIP), S(509, 1), 3)
 
 # contours: every 2.5 m from the LiDAR's ground, smoothed, out of the buildings
+step("contours")
 from skimage.measure import find_contours
 # the owner's mapper, 2026-11-12: « parasite relief » and « contours that stop in the middle of nowhere — not allowed »: the
 # ground smoothed over 4 m (a town's ground holds kerbs, walls, embankments and the LiDAR's gaps), each line rounded (Chaikin);
@@ -1070,6 +1096,7 @@ for lv in np.arange(lo, hi + 0.01, 2.5):
 log("contour pieces", nc, f"{lo}-{hi} m")
 
 # ---- points -----------------------------------------------------------------------------------------------------------------
+step("objects")
 # trees standing alone: the LiDAR's crowns over paved or open ground
 c = gaussian_filter(chm, 1.0)
 pk = (c == maximum_filter(c, size=9)) & (c > 4)

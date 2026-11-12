@@ -66,9 +66,11 @@ const COLORS = [
   ["whiteK", "White over black", [0, 0, 0, 0]],
   ["purple50", "Purple 50%", screen("purple", 0.5)],
   ["purple", "Purple 100%", BASE.purple],
+  // the helper contours' light violet (2026-11-12), last so that every other colour keeps its number
+  ["violet", "Violet 30% (helper contours)", screen("purple", 0.3)],
 ];
 const NUM = Object.fromEntries(COLORS.map(([k], i) => [k, i + 1]));
-const OVERPRINT = new Set(["purple", "purple50"]);
+const OVERPRINT = new Set(["purple", "purple50", "violet"]);
 const c = (k) => { if (!NUM[k]) throw new Error(`colour ${k}`); return NUM[k]; };
 
 // ---- geometry: map mm, y up; coordinates as OCAD integers ------------------------------------------------------------------
@@ -417,6 +419,9 @@ function forest() {
   add(point(603, N(603), [dot("black", 0.3)]));
   add(text(603.9, "Spot height, figures", "black", 1.5, { note: "Figures 1.5 mm high (Arial)." }));
   course(add, N, false);
+  // the LiDAR's helper contours (2026-11-12): karttapullautin's dense contours, every 0.5 or 1 m, in a thin light violet, for
+  // drawing form lines by hand; a helper (900 and up), never printed
+  add(line(996, N(996), { color: "violet", w: 0.08 }, { note: "A helper: the LiDAR's dense contours, to draw form lines and small landforms by; never printed." }));
   return S;
 }
 
@@ -630,6 +635,9 @@ function sprint() {
   add(point(991, N(991), [ring("purple50", 0.1, 0.3)], { status: 2, note: "Hidden: every tagged OpenStreetMap node of the area, for reference." }));
   // a passage beneath a bridge, the railway or a building (tools/virtually/town_map.py): hidden, for the game, which makes it runnable
   add({ ...area(993, N(993), { fill: "brown30" }, { note: "Hidden: a passage at the lower level, which Pixel's game makes runnable whatever lies above it." }), status: 2 });
+  // the LiDAR's helper contours (2026-11-12): karttapullautin's dense contours, every 0.5 or 1 m, in a thin light violet, for
+  // drawing form lines by hand; a helper (900 and up), never printed
+  add(line(996, N(996), { color: "violet", w: 0.08 }, { note: "A helper: the LiDAR's dense contours, to draw form lines and small landforms by; never printed." }));
   return S;
 }
 

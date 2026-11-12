@@ -1960,7 +1960,22 @@ Every multiple-choice game was played through to its score page at phone size, w
   as version 1, so the sprint tiles of before — the forest render under sprint symbols — are made again); a run keeps the other
   style's entry (`run._versions`: the workflow syncs R2's tile records to `known/` first). A request carries its `style`; a round of
   the workflow makes the oldest request's style, the other style's requests wait for the next round. The tiles' addresses carry
-  `?v=<version>` (cached a week). The API answers a tile ready only in the style asked and its version (`POST { tiles, style }`). « Analyse solo » offers the style beside the button (sprint by default for a race whose name says so),
+  `?v=<version>` (cached a week). The API answers a tile ready only in the style asked and its version (`POST { tiles, style }`).
+  **Contour interval by standard, helper contours, thinning** (owner's review as a mapper, 2026-11-12: « less of a black box,
+  faster »): each style also at its other interval — ISSprOM 2 or 2.5 m, ISOM 2.5 or 5 m, never 5 m for sprint (`run.INTERVALS`,
+  the default first) —, a **variant** with files of its own (`<id>.sprint-20.png|.vec.json|.vege.png|.help.json`, `forest-25`; the
+  defaults keep their names), its version in `VARIANT_V` (run.py, the API, trace/lidarmap.js; **sprint 3**: its contours had been
+  every **0.5 m** — karttapullautin draws, without form lines, a contour every `contour_interval / 2 × scalefactor`, measured; now
+  `contour_interval` = 2 × interval / 0.4, `indexcontours` 5 × interval: `kp_settings`), asked as `POST { tiles, style, interval,
+  helpers }` (a request's `variant`; a round of the workflow makes one variant). **Helper contours**: karttapullautin's « basemap »
+  contours (`basemapinterval`, absolute, measured: 0.5 m under 2-2.5 m contours, 1 m under 5 m), DXF layer `cont` without heights,
+  simplified 0.15 m into `t/<id>.<variant>.help.json` (dxf.py `HELP_TOL`; ~0.3-1 MB a tile), the record's `help` {variant: interval};
+  `helpers: true` makes a tile without them again. **Thinning**: `thinfactor` from the clouds' LAS headers for ~`THIN_TARGET` 6
+  points a m² (France 0.14-0.19). Measured on the PC (Gif-sur-Yvette's town tile, 29 points a m²; Fontainebleau's forest, 42): a
+  tile 40 → 22-30 s and 55-74 → 47 s — karttapullautin's LAZ reading (~35 s for 42 M points) stays, the rest ~5 times faster —,
+  vegetation and contours as with every point (the owner found 10 % enough), small cliffs fewer (20 → 5-19 on the forest tile);
+  COPC octree levels as thinning were tried and dropped (they bias the green: half the forest turned dark green). The record's
+  `kp` {variant: settings used} and `kpv` (karttapullautin's version; `kp` was that string before). « Analyse solo » offers the style beside the button (sprint by default for a race whose name says so),
   the files named `ozimut-lidar-sprint-…`. The shared steps — ask, wait, put together — are `lidarmap.make(area, style, say, stop)`.
   **The Tracer's base map** (use case 4): « Nouvel événement » has, for administrators, « Pas de carte ? Générer une carte d'après le
   LiDAR (essai) » (`pages/tracer.js` `genHtml`/`bindGen`): no base map to pick from (no third-party map in the site), so the area is a
@@ -2659,7 +2674,14 @@ Every multiple-choice game was played through to its score page at phone size, w
   and online backgrounds' dialogs, and as a dialog of its own for « Données nationales » and « LiDAR » there; Analyse solo's map
   generation outside the LiDAR countries likewise (`an.gen.ask`).
   Not done: other countries' data (the Netherlands, Sweden, Spain, Belgium, Germany's open Länder next).
-  **« Plan de ville (sprint) »** (2026-11-12; ribbon Données › `data-town`, `dataui.town`): a sprint map's town made by **the
+  **The LiDAR dialog** (`dataui.lidar`; owner, 2026-11-12): the map's style decides, the **contour interval** is chosen (sprint 2.5
+  or 2 m, forest 5 or 2.5 m; kept in `localStorage ocn.map.lidar.<style>`), **helper contours** offered (on by default: symbol
+  **996**, « Courbe d'aide (LiDAR) », a 0.08 mm line in a new colour « Violet 30% (helper contours) », the sets' colour 32, last so
+  no number moves — a helper, never printed —, into a part of their own, « Courbes d'aide (LiDAR) » (`HELP_PART`), not drafts; a map
+  made before gets the symbol and its colour from its set, `layout.addSetSymbols`), **karttapullautin credited** (Jarkko Ryyppö,
+  GPL-3, MapAnt's tool, its GitHub) and its **settings listed** (« Réglages de karttapullautin »: `data/lidar.js kpRows`, a mirror
+  of run.py's, each with what it does, `map.data.kp.*`); they are not adjustable: a tile serves every mapper. The guide's « Le
+  LiDAR et karttapullautin ». (2026-11-12; ribbon Données › `data-town`, `dataui.town`): a sprint map's town made by **the
   generator Pixel's town races use** (Virtually › « Sprint in a town », « A mapper's review »), run on GitHub — the owner's choice
   the same day, after a browser port of its rules had been written (JSTS, removed): « any mapper will rather wait many more minutes
   if it saves tons later; what matters is quality », and one engine keeps every future review in one place. The page sends the
@@ -2686,6 +2708,16 @@ Every multiple-choice game was played through to its score page at phone size, w
   LiDAR of April 2023; the dev server's API checked (a request, its state, the refusals: too large, the rough box), the import by
   putting that result in its local R2 and reopening the map (`resumeTown`: 2 421 objects, the north lines and 222 empty OSM ways
   left out — `town_map.py` no longer writes the latter).
+  **Faster and said** (owner, 2026-11-12: « en attente d'un serveur de calcul » then « calcul de la carte · 8:34 »): `town_fetch.py`
+  asks its sources at the same time (a thread each: IGN's downloads two at a time, IGN's WFS/WMS, the cadastre, Overpass; a request
+  a second to each service, `Pace`) and prints `@@done <source>`; the photographs at 0.5 m for the town plan (`TOWN_ORTHO_PPM` 2,
+  files `ortho2_…`; Virtually keeps 0.2 m); `town_map.py` reads the point clouds by their COPC octree, the area only and the fields
+  used (`laspy.CopcReader.query`: ~20 s → ~2 s a tile) and prints `@@step <name>`; `townmap_ci.py` streams the steps' output
+  (`stream`) into the request's progress (`pending` sources, `osmTry`, the map's `step`), and `--setup` marks the waiting requests
+  « setup » as the job starts (townmap.yml, before pip — cached); the page says « GitHub démarre un serveur de calcul », « le serveur
+  installe Python… », « téléchargement, encore la photo aérienne et OpenStreetMap », « calcul de la carte — surfaces… »
+  (`townStage`, `map.data.town.*`). Measured on the PC, the same 500 × 500 m of Gif with its LiDAR there: 229 s → 90 s (sources
+  2:14 → 47 s, the map 95 → 41 s), the same objects (2 524 against 2 508: the paving read on the 0.5 m photo).
   Not done: a run on GitHub itself (the first real request will be it), other countries (their LiDAR, cadastre and photographs).
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen

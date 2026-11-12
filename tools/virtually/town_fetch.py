@@ -11,9 +11,16 @@ DATA/<race>/src/ (outside git; DATA = paths.DATA_DIR / "virtual", or env VIRTUAL
   ground's texture, the roofs' colours and grass (the infrared's vegetation index);
 - OpenStreetMap (Overpass, ODbL): what IGN does not hold — footways, steps, surfaces, barriers, street furniture, trees,
   gardens and private ground, roof shapes and colours.
-Only the area's extent is sent to these services. Polite: our user agent, one request at a time, files kept (a second run reuses
-them). The area in Lambert 93 is written to DATA/<race>/area.json."""
-import json, math, os, sys, time
+Only the area's extent is sent to these services. Polite: our user agent, a request a second to each service, files kept (a
+second run reuses them). The area in Lambert 93 is written to DATA/<race>/area.json.
+
+The services are asked at the same time, each by a thread of its own (2026-11-12, the town plan's wait: one after the other, a slow
+Overpass held everything up): IGN's download service (the point clouds, two at a time), IGN's WFS and WMS (BD TOPO, then BD ORTHO),
+the cadastre, OpenStreetMap. Each source prints « @@done <source> » once it is in (townmap_ci.py tells the page what is still
+awaited). TOWN_ORTHO_PPM (pixels a metre, 5 by default: 0.2 m) asks the photographs at a coarser resolution — Cartographier's town
+plan reads them at 0.5 m (2), Virtually's 3D scene wants 0.2 m —, such files named ortho<ppm>_… ."""
+import json, math, os, sys, threading, time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import requests
@@ -32,11 +39,32 @@ BDTOPO = ["batiment", "troncon_de_route", "construction_lineaire", "construction
 MARGIN = 60                                                          # m fetched beyond the area (the 3D scene's horizon)
 
 
-def get(url, dest: Path, **kw):
+class Pace:
+    """A request a second to a service, whatever the threads asking it."""
+    def __init__(self, s: float = 1.1):
+        self.s, self.last, self.lock = s, 0.0, threading.Lock()
+
+    def wait(self):
+        with self.lock:
+            dt = self.s - (time.monotonic() - self.last)
+            if dt > 0:
+                time.sleep(dt)
+            self.last = time.monotonic()
+
+
+PACE = {"dl": Pace(), "ign": Pace(), "cad": Pace()}           # IGN's downloads, IGN's WFS/WMS, the cadastre
+ORTHO_PPM = float(os.environ.get("TOWN_ORTHO_PPM") or 5)
+
+
+def done(name: str):
+    print(f"@@done {name}", flush=True)
+
+
+def get(url, dest: Path, pace: str = "ign", **kw):
     if dest.exists() and dest.stat().st_size:
         return dest
-    time.sleep(1.1)
     for attempt in range(4):
+        PACE[pace].wait()
         try:
             r = requests.get(url, headers=UA, timeout=600, stream=True, **kw)
             r.raise_for_status()
@@ -63,10 +91,29 @@ def main():
     corners = [lambert93.inverse(x, y) for x in (ext[0], ext[2]) for y in (ext[1], ext[3])]
     s, n = min(c[0] for c in corners), max(c[0] for c in corners)
     wl, e = min(c[1] for c in corners), max(c[1] for c in corners)
+    t0 = time.monotonic()
+    ll = (s, wl, n, e)
+    jobs = {"lidar": lambda: lidar(rd, src, ext, ll), "ign": lambda: ign(src, ext), "cadastre": lambda: cadastre(src, ext, corners, lat, lon),
+            "osm": lambda: osm(src, ll)}
+    errors = []
+    with ThreadPoolExecutor(len(jobs)) as pool:
+        futs = {k: pool.submit(f) for k, f in jobs.items()}
+        for k, f in futs.items():
+            try:
+                f.result()
+            except Exception as ex:                          # every source is waited for; any failure then stops the map
+                errors.append(f"{k}: {ex}")
+    if errors:
+        raise RuntimeError("; ".join(errors))
+    print(f"done in {time.monotonic() - t0:.0f} s", flush=True)
 
-    # ---- IGN LiDAR HD ------------------------------------------------------------------------------------------------------
+
+def lidar(rd: Path, src: Path, ext, ll):
+    """IGN LiDAR HD: the tiles' list from the WFS, then the point clouds, two at a time (a request a second)."""
+    s, wl, n, e = ll
     tids = [f"{x:04d}_{y:04d}" for y in range(math.floor(ext[1] / 1000) + 1, math.ceil(ext[3] / 1000) + 1)
             for x in range(math.floor(ext[0] / 1000), math.ceil(ext[2] / 1000))]
+    PACE["ign"].wait()
     r = requests.get(WFS, headers=UA, timeout=60, params={"SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
                      "TYPENAMES": "IGNF_LIDAR-HD_METADONNEE:metadata", "OUTPUTFORMAT": "application/json",
                      "BBOX": f"{wl},{s},{e},{n},urn:ogc:def:crs:OGC:1.3:CRS84"})
@@ -79,17 +126,25 @@ def main():
             cat[tid] = {"laz": p.get("url_npl"), "date": (p.get("date_fin_acquisition") or "")[:10]}
     json.dump(cat, open(src / "lidar.json", "w"), indent=1)
     print("LiDAR tiles", {k: v["date"] for k, v in cat.items()}, flush=True)
-    for tid, c in cat.items():
-        t0 = time.time(); get(c["laz"], laz / f"{tid}.copc.laz")
-        print(" ", tid, round((laz / f"{tid}.copc.laz").stat().st_size / 1e6), "MB", round(time.time() - t0), "s", flush=True)
 
-    # ---- BD TOPO ------------------------------------------------------------------------------------------------------------
+    def one(item):
+        tid, c = item
+        t0 = time.time(); get(c["laz"], laz / f"{tid}.copc.laz", "dl")
+        print(" ", tid, round((laz / f"{tid}.copc.laz").stat().st_size / 1e6), "MB", round(time.time() - t0), "s", flush=True)
+    with ThreadPoolExecutor(2) as pool:
+        list(pool.map(one, cat.items()))
+    done("lidar")
+
+
+def ign(src: Path, ext):
+    """IGN's WFS and WMS: BD TOPO's layers, then BD ORTHO, colour and infrared, in requests of 2 000 pixels a side."""
     for layer in BDTOPO:
         dest = src / f"bdtopo_{layer}.json"
         if dest.exists():
             continue
         feats = []
         for page in range(20):
+            PACE["ign"].wait()
             r = requests.get(WFS, headers=UA, timeout=120, params={"SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
                              "TYPENAMES": f"BDTOPO_V3:{layer}", "SRSNAME": "EPSG:2154", "OUTPUTFORMAT": "application/json",
                              "BBOX": f"{ext[0]},{ext[1]},{ext[2]},{ext[3]},urn:ogc:def:crs:EPSG::2154", "COUNT": "5000",
@@ -100,31 +155,34 @@ def main():
             feats += got
             if len(got) < 5000:
                 break
-            time.sleep(1)
         json.dump({"type": "FeatureCollection", "features": feats}, open(dest, "w"))
         print("BD TOPO", layer, len(feats), flush=True)
-        time.sleep(1)
-
-    # ---- BD ORTHO, colour and infrared, 0.2 m, in 400 m tiles ---------------------------------------------------------------
+    done("bdtopo")
+    ppm = ORTHO_PPM
+    pre = "ortho" if ppm == 5 else f"ortho{ppm:g}"
+    step = int(round(2000 / ppm))                                     # metres a request: 2 000 pixels a side
     for layer, tag, fmt in (("ORTHOIMAGERY.ORTHOPHOTOS", "rgb", "image/jpeg"), ("ORTHOIMAGERY.ORTHOPHOTOS.IRC", "irc", "image/jpeg")):
-        step = 400
         for y0 in range(ext[1], ext[3], step):
             for x0 in range(ext[0], ext[2], step):
                 x1, y1 = min(x0 + step, ext[2]), min(y0 + step, ext[3])
-                dest = src / f"ortho_{tag}_{x0}_{y0}.jpg"
+                dest = src / f"{pre}_{tag}_{x0}_{y0}.jpg"
                 get(WMS, dest, params={"SERVICE": "WMS", "VERSION": "1.3.0", "REQUEST": "GetMap", "LAYERS": layer, "STYLES": "",
-                                       "CRS": "EPSG:2154", "BBOX": f"{x0},{y0},{x1},{y1}", "WIDTH": str(round((x1 - x0) * 5)),
-                                       "HEIGHT": str(round((y1 - y0) * 5)), "FORMAT": fmt})
+                                       "CRS": "EPSG:2154", "BBOX": f"{x0},{y0},{x1},{y1}", "WIDTH": str(round((x1 - x0) * ppm)),
+                                       "HEIGHT": str(round((y1 - y0) * ppm)), "FORMAT": fmt})
         print("BD ORTHO", tag, "done", flush=True)
+    done("ortho")
 
-    # ---- the cadastre's parcels (Etalab, Licence Ouverte 2.0): which ground is a private garden -------------------------------
-    # the communes at the area's corners and centre, a city's municipal arrondissement first (Paris, Lyon and Marseille are filed
-    # by them); a commune Etalab cannot serve, or no answer from geo.api.gouv.fr: IGN's PCI parcels over the area instead (the
-    # same DGFiP parcels, « Parcellaire Express », on the WFS, in longitude/latitude as Etalab's)
+
+def cadastre(src: Path, ext, corners, lat, lon):
+    """The cadastre's parcels (Etalab, Licence Ouverte 2.0): which ground is a private garden. The communes at the area's corners
+    and centre, a city's municipal arrondissement first (Paris, Lyon and Marseille are filed by them); a commune Etalab cannot serve,
+    or no answer from geo.api.gouv.fr: IGN's PCI parcels over the area instead (the same DGFiP parcels, « Parcellaire Express », on
+    the WFS, in longitude/latitude as Etalab's)."""
     codes, missed = set(), False
     for la, lo in corners + [(lat, lon)]:
         for kind in ("arrondissement-municipal", None):
             try:
+                PACE["cad"].wait()
                 r = requests.get("https://geo.api.gouv.fr/communes", params={"lat": la, "lon": lo, "fields": "code", **({"type": kind} if kind else {})},
                                  headers=UA, timeout=60)
                 found = [c["code"] for c in r.json()] if r.ok else []
@@ -134,7 +192,7 @@ def main():
                 codes.update(found); break
     for code in sorted(codes):
         try:
-            get(f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code}/geojson/parcelles", src / f"parcelles_{code}.json")
+            get(f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code}/geojson/parcelles", src / f"parcelles_{code}.json", "cad")
         except RuntimeError:
             missed = True
     if missed or not codes:
@@ -142,6 +200,7 @@ def main():
             f.unlink()
         feats = []
         for page in range(20):
+            PACE["ign"].wait()
             r = requests.get(WFS, headers=UA, timeout=120, params={"SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
                              "TYPENAMES": "CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle", "SRSNAME": "urn:ogc:def:crs:OGC:1.3:CRS84",
                              "OUTPUTFORMAT": "application/json", "BBOX": f"{ext[0]},{ext[1]},{ext[2]},{ext[3]},urn:ogc:def:crs:EPSG::2154",
@@ -151,13 +210,16 @@ def main():
             feats += got
             if len(got) < 5000:
                 break
-            time.sleep(1)
         json.dump({"type": "FeatureCollection", "features": feats}, open(src / "parcelles_pci.json", "w"))
         print("cadastre: IGN's PCI parcels", len(feats), flush=True)
     else:
         print("cadastre", sorted(codes), flush=True)
+    done("cadastre")
 
-    # ---- OpenStreetMap ------------------------------------------------------------------------------------------------------
+
+def osm(src: Path, ll):
+    """OpenStreetMap through Overpass (two servers in turn); « @@retry osm <n> » for each new try."""
+    s, wl, n, e = ll
     dest = src / "osm.json"
     if not dest.exists():
         b = f"{s:.6f},{wl:.6f},{n:.6f},{e:.6f}"
@@ -179,9 +241,13 @@ out geom;"""
                 r = requests.post(OVERPASS[attempt % 2], data={"data": q}, headers=UA, timeout=200)
                 r.raise_for_status(); dest.write_bytes(r.content); break
             except requests.RequestException as ex:
-                print("  Overpass retry", attempt + 1, ex, flush=True); time.sleep(10 * (attempt + 1))
+                print("  Overpass retry", attempt + 1, ex, flush=True)
+                print(f"@@retry osm {attempt + 2}", flush=True)
+                time.sleep(10 * (attempt + 1))
+        else:
+            raise RuntimeError("OpenStreetMap's Overpass did not answer")
         print("OSM", len(json.load(open(dest))["elements"]), "elements", flush=True)
-    print("done")
+    done("osm")
 
 
 if __name__ == "__main__":

@@ -573,13 +573,34 @@ export function build(X) {
               working or close the page, it comes in as a draft the next time you open the map. OpenStreetMap's objects are kept on hidden symbols
               (990, 991). A sprint « New map » uses it in France; elsewhere, OpenStreetMap.`,
             html`<b>LiDAR</b>, where a national LiDAR is open (France, Switzerland, the United States, Canada, New Zealand): the relief, cliffs and
-              vegetation karttapullautin draws from it. The tiles are computed on request, in a few minutes; a bar shows how far along it is.`,
+              vegetation karttapullautin draws from it, at the map's contour interval, with dense helper contours if you wish (see below). The
+              tiles are computed on request, in a few minutes; a bar shows how far along it is.`,
           ])}
           <p>Everything arrives <b>as a draft</b>, in a part of its own: you accept what is right and reject the rest, object by object or all at
             once. Open data is a starting point; the terrain itself is surveyed on the spot. Where a country does not have its data yet, Carto says
             so and offers to ask for it.</p>
           <p><b>Backgrounds</b> go under the map: an aerial photo or an online map depending on the country, a placed image or PDF, a GPS
-            track.</p>`)}`,
+            track.</p>`)}
+        ${slide("Carto", "LiDAR and karttapullautin", html`
+          <p>The LiDAR's relief, cliffs and vegetation are computed by <b>karttapullautin</b>, Jarkko Ryyppö's free software (GPL-3 licence),
+            MapAnt's tool. Ozimut downloads it from its own release and runs it as it is on computing servers, one 1 km tile at a time; each tile
+            is computed once, then serves every mapper
+            (<a href="https://github.com/karttapullautin/karttapullautin" target="_blank" rel="noopener">github.com/karttapullautin</a>).</p>
+          ${list([
+            html`<b>The contour interval</b> follows the map's standard: 2 or 2.5 m for a sprint map (ISSprOM), 2.5 or 5 m for a forest map
+              (ISOM). At 5 m, karttapullautin adds form lines at half the interval where the relief calls for them.`,
+            html`<b>The helper contours</b>: karttapullautin's “basemap” contours, every 0.5 m (every metre under 5 m contours), come in light
+              violet in a part of their own, “Helper contours (LiDAR)”, which you hide at will, and are never printed (symbol 996, a helper). They
+              show the shapes between two contours: you draw form lines, small knolls and small depressions on them by hand.`,
+            html`<b>The points read</b>: karttapullautin keeps a share of the cloud's points (<code>thinfactor</code>), set from its density to
+              keep about 6 per m², 15 to 20 % of IGN's points. Measured on two IGN tiles (the town and woods of Gif-sur-Yvette, the forest of
+              Fontainebleau): the same vegetation, the same contours, a few small cliffs fewer, and a tile computed in 20 to 45 s instead of 40 to
+              70 s (reading the LiDAR file remains).`,
+            html`<b>The other settings</b> are karttapullautin 2.15.4's own; the “LiDAR” window lists them with what they do: smoothing and
+              curviness of the contours, knoll selection, the slope of a passable cliff (1.15 m per metre) and of an impassable one (2 m per
+              metre), the heights of open land and vegetation, the undergrowth stripes' threshold. They cannot be changed in Carto, since a tile
+              serves everyone; karttapullautin can also be run on your own computer, with your own settings.`,
+          ])}`)}`,
       terrain: () => html`
         ${slide("Carto", "In the field, with your phone", html`
           <p>The field mode (the “Field” tab) is made for the phone:</p>

@@ -6,8 +6,11 @@
 // 111.0 small depression — tagged { src: "lidar", srcId: "<tile>:<layer>", draft: true }; the contours cut at the tiles'
 // edges joined again, the cliffs' short strokes gathered into lines. The vegetation stays a raster: a background per tile
 // (its image's address and its world file in Lambert 93, its corners in map mm).
+// The contour interval follows the map's standard (owner, 2026-11-12: ISSprOM 2 or 2.5 m, ISOM 2.5 or 5 m; each a « variant » of
+// the tiles, trace/lidarmap.js variantOf), and karttapullautin's dense « basemap » contours (every 0.5 or 1 m) come as helper
+// contours — 996.0, a light violet line never printed (900 and up), in a part of their own — for drawing form lines by hand.
 
-import { areaOfPoints, ask, waitFor, MAX_TILES, CREDIT_LIDAR, CREDITS, gridOfName } from "../../trace/lidarmap.js";
+import { areaOfPoints, ask, waitFor, MAX_TILES, CREDIT_LIDAR, CREDITS, gridOfName, variantOf, VARIANT_V, INTERVALS, helpInterval } from "../../trace/lidarmap.js";
 import { ocad, simplify, clipLine } from "./frame.js";
 
 export { CREDIT_LIDAR };
@@ -19,6 +22,30 @@ export const LINE_SYM = { contour: 101000, contour_index: 102000, formline: 1030
 /** Its point layers → symbols (the « ugly » ones are those karttapullautin leaves off its image for legibility). */
 export const POINT_SYM = { dotknoll: 109000, uglydotknoll: 109000, udepression: 111000, uglyudepression: 111000 };
 const CLIFFS = new Set(["cliff2", "cliff3"]);
+/** The helper contours' symbol (karttapullautin's « basemap » layer "cont"). */
+export const HELP_SYM = 996000;
+export { INTERVALS, helpInterval, variantOf };
+
+/**
+ * karttapullautin's main settings for a style at an interval, as the tiles are made with them (mapgen/run.py KP_STYLE, kp_settings,
+ * THIN_TARGET; the others karttapullautin 2.15.4's own defaults; keep them in step): [[setting, value, what it does (catalogue key
+ * map.data.kp.<setting>)]]. The thinning is set from each cloud's density (about 6 points a m² kept): "auto".
+ */
+export function kpRows(style, interval = null) {
+  const iv = interval ?? INTERVALS[style][0], sprint = style === "sprint", fmt = (x) => String(+x.toFixed(3));
+  return [
+    ["contour_interval", sprint ? fmt(2 * iv / 0.4) : fmt(iv)],
+    ["formline", sprint ? "0" : "2"],
+    ...(sprint ? [["indexcontours", fmt(5 * iv)]] : [["formlinesteepness", "0.37"]]),
+    ["basemapinterval", fmt(helpInterval(iv))],
+    ["thinfactor", "auto"],
+    ...(sprint ? [["scalefactor", "0.4"], ["remove_touching_contours", "1"]] : []),
+    ["smoothing", "0.7"], ["curviness", "1.1"], ["knolls", "0.6"],
+    ["cliff1", "1.15"], ["cliff2", "2.0"],
+    ["yellowheight", "0.9"], ["yellowthresold", "0.9"],
+    ["greenground", "0.9"], ["greenhigh", "2"], ["undergrowth", "0.35"],
+  ];
+}
 
 /** The 1 km tiles a rectangle of the map ([x0, y0, x1, y1] mm) touches: { box, ids, km2 } (trace/lidarmap.js). */
 export const tilesOf = (frame, rect) => areaOfPoints(frame.areaLatLon(rect).pts, 0, "auto");
@@ -33,12 +60,12 @@ export function toMm(frame, grid) {
 
 /**
  * The tiles made in a style, asking for the missing ones and waiting for the workflow (trace/lidarmap.js make's way, without
- * putting an image together). say(key, vars, frac) as make's (keys an.gen.*); stop() true gives up. Resolves
- * { ready: [ids], none: [ids], failed: [ids] } or null when stopped.
+ * putting an image together). say(key, vars, frac) as make's (keys an.gen.*); stop() true gives up; opts { interval, helpers }
+ * as ask's. Resolves { ready: [ids], none: [ids], failed: [ids] } or null when stopped.
  */
-export async function ensureTiles(ids, style, say = () => {}, stop = () => false, share = 1) {
+export async function ensureTiles(ids, style, say = () => {}, stop = () => false, share = 1, opts = {}) {
   say("an.gen.asking", {}, null);
-  const r = await ask(ids, style);
+  const r = await ask(ids, style, opts);
   const w = await waitFor(r, { ...r.tiles }, say, stop, share);
   if (!w) return null;
   const tiles = w.tiles;
@@ -60,18 +87,23 @@ async function getJsonCounted(url, f, onBytes) {
   for (;;) { const { done, value } = await rd.read(); if (done) break; parts.push(value); onBytes(value.length); }
   try { return JSON.parse(await new Blob(parts).text()); } catch (e) { return null; }
 }
+/** A variant's files carry its version in their address (they are cached a week; a variant made again is another file). */
+const verQ = (record, variant) => `?v=${record?.v?.[variant] || VARIANT_V[variant] || 1}`;
 /**
- * Each tile's record and vectors in a style: [{ id, record, vec | null }] (vec null: a tile made before the vectors).
- * onProgress(done, total, bytes): the tiles read and the bytes received (a tile's vectors weigh up to tens of MB abroad).
+ * Each tile's record, vectors and helper contours in a variant ("forest", "sprint-20"…): [{ id, record, vec | null, help | null }]
+ * (vec null: a tile made before the vectors; help only when asked, opts.helpers). onProgress(done, total, bytes): the tiles read
+ * and the bytes received (a tile's vectors weigh up to tens of MB abroad).
  */
-export async function fetchTiles(ids, style, f = fetch, onProgress = () => {}) {
+export async function fetchTiles(ids, variant, f = fetch, onProgress = () => {}, opts = {}) {
   let done = 0, bytes = 0;
   onProgress(0, ids.length, 0);
+  const counted = (n) => { bytes += n; onProgress(done, ids.length, bytes); };
   return Promise.all(ids.map(async (id) => {
     const record = await getJson(`${API}/t/${id}.json`, f);
-    const vec = record?.vec?.[style] ? await getJsonCounted(`${API}/t/${id}.${style}.vec.json`, f, (n) => { bytes += n; onProgress(done, ids.length, bytes); }) : null;
+    const vec = record?.vec?.[variant] ? await getJsonCounted(`${API}/t/${id}.${variant}.vec.json${verQ(record, variant)}`, f, counted) : null;
+    const help = opts.helpers && record?.help?.[variant] ? await getJsonCounted(`${API}/t/${id}.${variant}.help.json${verQ(record, variant)}`, f, counted) : null;
     onProgress(++done, ids.length, bytes);
-    return { id, record, vec };
+    return { id, record, vec, help };
   }));
 }
 
@@ -224,7 +256,8 @@ const DENSE = 1200;   // strokes a 50 m cell: above France's densest (1 039)
 /**
  * The objects of the tiles' vectors in the map's mm (each tile placed by its own grid: toMm), clipped to rect when given. opts: tolerance (mm,
  * Douglas-Peucker, 0.05), ugly (keep the knolls and depressions karttapullautin leaves off its image; true).
- * Returns { objects, counts: { <sym>: n }, dense: the cliff strokes thinned out (sparse) }.
+ * Returns { objects, counts: { <sym>: n }, dense: the cliff strokes thinned out (sparse) }. The helper contours' files (layer
+ * "cont") give HELP_SYM objects, tagged { src: "lidar-help" }.
  */
 export function vectorObjects(vecs, frame, rect = null, opts = {}) {
   const tol = opts.tolerance ?? 0.05, ugly = opts.ugly ?? true;
@@ -256,11 +289,11 @@ export function vectorObjects(vecs, frame, rect = null, opts = {}) {
   const objects = [], counts = {};
   const add = (o) => { objects.push(o); counts[o.sym] = (counts[o.sym] || 0) + 1; };
   for (const l of all) {
-    const sym = LINE_SYM[l.layer];
+    const sym = l.layer === "cont" ? HELP_SYM : LINE_SYM[l.layer];
     if (!sym) continue;
     const mm = simplify(l.pts, tol);
     for (const piece of rect ? clipLine(mm, rect) : [mm]) {
-      if (piece.length >= 2) add({ sym, otp: 2, ang: 0, coords: piece.map(([x, y]) => ocad(x, y)), src: "lidar", srcId: `lidar:${l.layer}`, draft: true });
+      if (piece.length >= 2) add({ sym, otp: 2, ang: 0, coords: piece.map(([x, y]) => ocad(x, y)), src: sym === HELP_SYM ? "lidar-help" : "lidar", srcId: `lidar:${l.layer}`, draft: true });
     }
   }
   for (const p of points) {
@@ -278,11 +311,12 @@ export function vectorObjects(vecs, frame, rect = null, opts = {}) {
  * image (0.42 m a pixel). Each { id, kind: "image", name, url, crs (the tile's grid, "EPSG:2154" in France), worldFile: [A, D, B, E, C, F] (the first
  * pixel's centre), w, h, cornersMm: [[x, y] × 4] (top-left, top-right, bottom-right, bottom-left) }.
  */
-export function backgrounds(tiles, style, frame) {
+export function backgrounds(tiles, variant, frame) {
   return tiles.filter((t) => t.record && !t.record.none).map(({ id, record }) => {
-    const vege = !!record.vec?.[style], x0 = record.x0, y1 = record.y1;
+    const vege = !!record.vec?.[variant], x0 = record.x0, y1 = record.y1;
     const px = vege ? 1 : PX, n = vege ? 1000 : SIZE;
-    const url = vege ? `${API}/t/${id}.${style}.vege.png` : `${API}/t/${id}${style === "sprint" ? ".s.png" : ".png"}`;
+    const img = variant === "sprint" ? ".s.png" : variant === "forest" ? ".png" : `.${variant}.png`;
+    const url = `${API}/t/${id}${vege ? `.${variant}.vege.png` : img}${verQ(record, variant)}`;
     const ground = [[x0, y1], [x0 + n * px, y1], [x0 + n * px, y1 - n * px], [x0, y1 - n * px]];
     const grid = gridOfTile(id), mm = toMm(frame, grid);
     return { id, kind: "image", name: `LiDAR ${id}`, url, vege, crs: `EPSG:${record.crs || grid.epsg}`, w: n, h: n,
@@ -291,23 +325,28 @@ export function backgrounds(tiles, style, frame) {
 }
 
 /**
- * LiDAR objects and backgrounds for a rectangle of the map (map mm) in a style ("forest" | "sprint"): the tiles asked for
- * (at most MAX_TILES), waited for, read. Resolves { objects, counts, backgrounds, tiles: { ready, none, failed, noVectors },
- * credit } or null when stopped. Throws Error("tooLarge") past MAX_TILES tiles, Error("nogeo") without a georeference.
+ * LiDAR objects and backgrounds for a rectangle of the map (map mm) in a style ("forest" | "sprint") at a contour interval
+ * (opts.interval, m: INTERVALS, the style's default when left out), with the helper contours (opts.helpers): the tiles asked for
+ * (at most MAX_TILES), waited for, read. Resolves { objects, helpers (the helper contours' objects), counts, backgrounds,
+ * tiles: { ready, none, failed, noVectors }, credit, settings (karttapullautin's settings the tiles were made with, the first
+ * tile's) } or null when stopped. Throws Error("tooLarge") past MAX_TILES tiles, Error("nogeo") without a georeference.
  */
-export async function loadLidar(frame, rect, style = "forest", { say, stop, fetch: f = fetch, progress = () => {} } = {}) {
+export async function loadLidar(frame, rect, style = "forest", { say, stop, fetch: f = fetch, progress = () => {}, interval = null, helpers = false } = {}) {
   if (!frame.geo) throw new Error("nogeo");
   const area = tilesOf(frame, rect);
   if (area.ids.length > MAX_TILES) throw new Error("tooLarge");
+  const variant = variantOf(style, interval);
   // the bar: the workflow 80 %, the tiles' files 15 %, reading their vectors the rest (progress(key, vars, frac))
-  const st = await ensureTiles(area.ids, style, say, stop, 0.8);
+  const st = await ensureTiles(area.ids, style, say, stop, 0.8, { interval, helpers });
   if (!st) return null;
-  const tiles = await fetchTiles(st.ready, style, f, (done, total, bytes) =>
-    progress("map.data.lidar.fetching", { done, total, mb: (bytes / 1048576).toFixed(1) }, 0.8 + 0.15 * (total ? done / total : 1)));
+  const tiles = await fetchTiles(st.ready, variant, f, (done, total, bytes) =>
+    progress("map.data.lidar.fetching", { done, total, mb: (bytes / 1048576).toFixed(1) }, 0.8 + 0.15 * (total ? done / total : 1)), { helpers });
   const vecs = tiles.filter((t) => t.vec).map((t) => t.vec);
   progress("map.data.lidar.reading", { total: vecs.length }, 0.95);
   await new Promise((res) => setTimeout(res, 30));          // the toast drawn before the vectors are read (a few seconds abroad)
   const r = vectorObjects(vecs, frame, rect);
-  return { ...r, backgrounds: backgrounds(tiles, style, frame), credit: CREDITS[area.country] || CREDIT_LIDAR,
+  const h = helpers ? vectorObjects(tiles.filter((t) => t.help).map((t) => t.help), frame, rect, { tolerance: 0.03 }) : { objects: [] };
+  const settings = tiles.map((t) => t.record?.kp?.[variant]).find((x) => x && typeof x === "object") || null;
+  return { ...r, helpers: h.objects, backgrounds: backgrounds(tiles, variant, frame), credit: CREDITS[area.country] || CREDIT_LIDAR, settings, variant,
     tiles: { ...st, noVectors: tiles.filter((t) => !t.vec).map((t) => t.id) } };
 }

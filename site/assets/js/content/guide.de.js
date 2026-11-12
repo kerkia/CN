@@ -605,14 +605,35 @@ export function build(X) {
               oder die Seite schließen, sie kommt beim nächsten Öffnen als Entwurf. Die Objekte von OpenStreetMap bleiben auf ausgeblendeten
               Signaturen (990, 991). Eine « Neue Karte » im Sprint nutzt ihn in Frankreich; anderswo OpenStreetMap.`,
             html`<b>Das LiDAR</b>, wo ein nationales LiDAR offen ist (Frankreich, Schweiz, Vereinigte Staaten, Kanada, Neuseeland): das Relief, die
-              Felsen und die Vegetation, die karttapullautin daraus gewinnt. Die Kacheln werden auf Anfrage berechnet, in wenigen Minuten; ein
-              Balken zeigt, wie weit die Berechnung ist.`,
+              Felsen und die Vegetation, die karttapullautin daraus gewinnt, in der Äquidistanz der Karte, auf Wunsch mit dichten Hilfshöhenlinien
+              (siehe unten). Die Kacheln werden auf Anfrage berechnet, in wenigen Minuten; ein Balken zeigt, wie weit die Berechnung ist.`,
           ])}
           <p>Alles kommt <b>als Entwurf</b>, in einem eigenen Teil: Du nimmst an, was stimmt, und verwirfst den Rest, Objekt für Objekt oder auf
             einmal. Offene Daten sind ein Ausgangspunkt; das Gelände selbst wird vor Ort aufgenommen. Wo ein Land seine Daten noch nicht hat, sagt
             Carto es und bietet an, ihre Unterstützung anzufragen.</p>
           <p><b>Hintergründe</b> liegen unter der Karte: ein Luftbild oder eine Online-Karte je nach Land, ein eingepasstes Bild oder PDF, ein
-            GPS-Track.</p>`)}`,
+            GPS-Track.</p>`)}
+        ${slide("Carto", "Das LiDAR und karttapullautin", html`
+          <p>Relief, Felsen und Vegetation des LiDAR berechnet <b>karttapullautin</b>, die freie Software (Lizenz GPL-3) von Jarkko Ryyppö, das
+            Werkzeug von MapAnt. Ozimut lädt es von seiner eigenen Veröffentlichung herunter und führt es unverändert auf Rechenservern aus,
+            Kachel für Kachel zu 1 km; jede Kachel wird einmal berechnet und dient dann allen Kartografen
+            (<a href="https://github.com/karttapullautin/karttapullautin" target="_blank" rel="noopener">github.com/karttapullautin</a>).</p>
+          ${list([
+            html`<b>Die Äquidistanz</b> folgt der Norm der Karte: 2 oder 2,5 m für eine Sprintkarte (ISSprOM), 2,5 oder 5 m für eine Waldkarte
+              (ISOM). Bei 5 m fügt karttapullautin Formlinien bei halber Äquidistanz hinzu, wo das Relief sie verlangt.`,
+            html`<b>Die Hilfshöhenlinien</b>: die „basemap“-Höhenlinien von karttapullautin, alle 0,5 m (unter 5-m-Höhenlinien jeden Meter),
+              kommen hellviolett in einen eigenen Teil, „Hilfshöhenlinien (LiDAR)“, den du nach Belieben ausblendest, und werden nie gedruckt
+              (Signatur 996, ein Hilfsmittel). Sie zeigen die Formen zwischen zwei Höhenlinien: Darauf zeichnest du Formlinien, kleine Kuppen und
+              kleine Senken von Hand.`,
+            html`<b>Die gelesenen Punkte</b>: karttapullautin behält einen Teil der Punkte der Wolke (<code>thinfactor</code>), nach ihrer
+              Dichte so gewählt, dass etwa 6 pro m² bleiben, 15 bis 20 % der Punkte des IGN. Gemessen auf zwei Kacheln des IGN (Stadt und Wald von
+              Gif-sur-Yvette, Wald von Fontainebleau): gleiche Vegetation, gleiche Höhenlinien, ein paar kleine Felsen weniger, und eine Kachel in
+              20 bis 45 s statt 40 bis 70 s berechnet (das Lesen der LiDAR-Datei bleibt).`,
+            html`<b>Die übrigen Einstellungen</b> sind die von karttapullautin 2.15.4; das Fenster „LiDAR“ listet sie mit ihrer Wirkung auf:
+              Glättung und Betonung der Höhenlinien, Auswahl der Kuppen, Neigung eines passierbaren (1,15 m pro Meter) und eines unpassierbaren
+              Felsens (2 m pro Meter), Höhen von offenem Gelände und Vegetation, Schwelle der Unterwuchs-Streifen. In Carto lassen sie sich nicht
+              ändern, da eine Kachel allen dient; karttapullautin lässt sich auch auf dem eigenen Rechner nutzen, mit eigenen Einstellungen.`,
+          ])}`)}`,
       terrain: () => html`
         ${slide("Carto", "Im Gelände, mit dem Handy", html`
           <p>Der Geländemodus (Reiter „Gelände“) ist für das Handy gemacht:</p>

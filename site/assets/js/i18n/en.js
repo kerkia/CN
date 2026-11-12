@@ -5503,4 +5503,7 @@ export default {
   "ms.sp.s.995": "Boundary to confirm (wall, fence or hedge)",
   // « Cartographier » (Orga, 2026-11-06)
   "ms.sp.s.993": "Passage at the lower level (hidden)",
+  // « Cartographier » (Orga, 2026-11-06)
+  "ms.s.996": "Helper contour (LiDAR)",
+  "ms.sp.s.996": "Helper contour (LiDAR)",
 };

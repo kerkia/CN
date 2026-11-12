@@ -596,14 +596,35 @@ export function build(X) {
               trabajando o cerrar la página, llega como borrador la próxima vez que abras el mapa. Los objetos de OpenStreetMap se guardan en
               símbolos ocultos (990, 991). Un « Mapa nuevo » de sprint lo usa en Francia; en otros lugares, OpenStreetMap.`,
             html`<b>El LiDAR</b>, donde hay un LiDAR nacional abierto (Francia, Suiza, Estados Unidos, Canadá, Nueva Zelanda): el relieve, los
-              cortados y la vegetación que karttapullautin saca de él. Las teselas se calculan a petición, en unos minutos; una barra indica cómo va
-              el cálculo.`,
+              cortados y la vegetación que karttapullautin saca de él, a la equidistancia del mapa, con curvas de ayuda densas si se desea (ver más
+              abajo). Las teselas se calculan a petición, en unos minutos; una barra indica cómo va el cálculo.`,
           ])}
           <p>Todo llega <b>como borrador</b>, en una parte aparte: aceptas lo que está bien y rechazas el resto, objeto por objeto o de una vez. Los
             datos abiertos son un punto de partida; el terreno se levanta sobre el sitio. Donde un país aún no tiene sus datos, Carto lo dice y
             propone pedir que se añadan.</p>
           <p>Los <b>fondos</b> se colocan bajo el mapa: una foto aérea o un mapa en línea según el país, una imagen o un PDF georreferenciado, un
-            track GPS.</p>`)}`,
+            track GPS.</p>`)}
+        ${slide("Carto", "El LiDAR y karttapullautin", html`
+          <p>El relieve, los cortados y la vegetación del LiDAR los calcula <b>karttapullautin</b>, el software libre (licencia GPL-3) de Jarkko
+            Ryyppö, el de MapAnt. Ozimut lo descarga de su propia publicación y lo ejecuta tal cual en servidores de cálculo, tesela de 1 km a
+            tesela; cada tesela se calcula una vez y luego sirve a todos los cartógrafos
+            (<a href="https://github.com/karttapullautin/karttapullautin" target="_blank" rel="noopener">github.com/karttapullautin</a>).</p>
+          ${list([
+            html`<b>La equidistancia</b> sigue la norma del mapa: 2 o 2,5 m para un mapa de sprint (ISSprOM), 2,5 o 5 m para un mapa de bosque
+              (ISOM). A 5 m, karttapullautin añade curvas auxiliares a media equidistancia donde el relieve las pide.`,
+            html`<b>Las curvas de ayuda</b>: las curvas «basemap» de karttapullautin, cada 0,5 m (cada metro bajo curvas de 5 m), llegan en violeta
+              claro a una parte propia, «Curvas de ayuda (LiDAR)», que se oculta a voluntad, y nunca se imprimen (símbolo 996, un auxiliar).
+              Muestran las formas entre dos curvas: sobre ellas se dibujan a mano las curvas auxiliares, los pequeños montículos y las pequeñas
+              depresiones.`,
+            html`<b>Los puntos leídos</b>: karttapullautin conserva una parte de los puntos de la nube (<code>thinfactor</code>), ajustada a su
+              densidad para conservar unos 6 por m², del 15 al 20 % de los puntos del IGN. Medido en dos teselas del IGN (la ciudad y los bosques de
+              Gif-sur-Yvette, el bosque de Fontainebleau): la misma vegetación, las mismas curvas, algunos cortados pequeños menos, y una tesela
+              calculada en 20 a 45 s en lugar de 40 a 70 s (la lectura del archivo LiDAR sigue).`,
+            html`<b>Los demás ajustes</b> son los de karttapullautin 2.15.4; la ventana «LiDAR» los enumera con lo que hacen: suavizado y
+              acentuación de las curvas, selección de los montículos, pendiente de un cortado franqueable (1,15 m por metro) e infranqueable (2 m
+              por metro), alturas del terreno abierto y de la vegetación, umbral de las rayas de sotobosque. No se cambian en Carto, ya que una
+              tesela sirve a todos; karttapullautin también se puede usar en el propio ordenador, con ajustes propios.`,
+          ])}`)}`,
       terrain: () => html`
         ${slide("Carto", "Sobre el terreno, con el móvil", html`
           <p>El modo terreno (pestaña «Terreno») está hecho para el móvil:</p>

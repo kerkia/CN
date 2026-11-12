@@ -5719,4 +5719,7 @@ export default {
   "ms.sp.s.995": "Grenze zu bestätigen (Mauer, Zaun oder Hecke)",
   // « Cartographier » (Orga, 2026-11-06)
   "ms.sp.s.993": "Durchgang auf der unteren Ebene (ausgeblendet)",
+  // « Cartographier » (Orga, 2026-11-06)
+  "ms.s.996": "Hilfshöhenlinie (LiDAR)",
+  "ms.sp.s.996": "Hilfshöhenlinie (LiDAR)",
 };

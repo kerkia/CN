@@ -10,7 +10,7 @@ import { spawnSync } from "node:child_process";
 import { makeFrame, frameOf, gridDef, toL93, fromL93, mmX, mmY, clipRing, ringArea } from "../../site/assets/js/mapper/data/frame.js";
 import { isolines, contourObjects, SYM } from "../../site/assets/js/mapper/data/contours.js";
 import { toObjects, overpassQuery, OVERPASS, UA, band } from "../../site/assets/js/mapper/data/osm.js";
-import { decode, joinLines, cliffLines, vectorObjects, backgrounds } from "../../site/assets/js/mapper/data/lidar.js";
+import { decode, joinLines, cliffLines, vectorObjects, backgrounds, kpRows, variantOf, HELP_SYM } from "../../site/assets/js/mapper/data/lidar.js";
 
 const ROOT = new URL("../../", import.meta.url), TR = new URL("site/data/_trtest/mapper/", ROOT);
 mkdirSync(TR, { recursive: true });
@@ -181,7 +181,16 @@ function splitRings(coords) {
   const k = r.objects.find((o) => o.sym === 109000);
   ok(near(mmX(k.coords[0]), -10, 0.01) && near(mmY(k.coords[0]), -10, 0.01) && k.src === "lidar" && k.draft, "a knoll at its place in map mm, src lidar");
   const bg = backgrounds([{ id: "0391_6819", record: { x0: 391000, y1: 6819000, vec: { forest: 1 } } }], "forest", f);
-  ok(bg[0].url.endsWith("0391_6819.forest.vege.png") && near(bg[0].cornersMm[0][0], -50, 1e-6) && near(bg[0].cornersMm[2][1], -50, 1e-6), "the vegetation background: its address and corners in map mm");
+  ok(bg[0].url.endsWith("0391_6819.forest.vege.png?v=1") && near(bg[0].cornersMm[0][0], -50, 1e-6) && near(bg[0].cornersMm[2][1], -50, 1e-6), "the vegetation background: its address and corners in map mm");
+  // the helper contours (karttapullautin's « basemap » layer « cont », 2026-11-12) and the variants
+  const help = vectorObjects([{ id: "0391_6819", x0: 391000, y0: 6818000, q: 0.1, lines: { cont: [[null, 4000, 4000, 1000, 0, 1000, 500]] }, points: {} }], f);
+  ok(help.objects.length === 1 && help.objects[0].sym === HELP_SYM && help.objects[0].src === "lidar-help", `helper contour → ${HELP_SYM}, src lidar-help`);
+  ok(variantOf("sprint", 2.5) === "sprint" && variantOf("sprint", 2) === "sprint-20" && variantOf("forest", 2.5) === "forest-25" && variantOf("forest", null) === "forest", "variants by contour interval");
+  const kv = Object.fromEntries(kpRows("sprint", 2)); const kf = Object.fromEntries(kpRows("forest", 2.5));
+  ok(kv.contour_interval === "10" && kv.indexcontours === "10" && kv.basemapinterval === "0.5" && kf.contour_interval === "2.5" && kf.basemapinterval === "0.5"
+    && Object.fromEntries(kpRows("forest"))["basemapinterval"] === "1", "karttapullautin's settings as mapgen/run.py kp_settings");
+  const bgv = backgrounds([{ id: "0391_6819", record: { x0: 391000, y1: 6819000, v: { "sprint-20": 1 }, vec: {} } }], "sprint-20", f);
+  ok(bgv[0].url.endsWith("0391_6819.sprint-20.png?v=1"), "a variant's image without vectors: its own file");
 }
 for (const id of ["0391_6819", "0392_6819"]) {
   const file = new URL(`lidar-${id}.forest.vec.json`, TR);
