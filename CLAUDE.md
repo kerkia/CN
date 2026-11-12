@@ -1289,8 +1289,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   dusk a low warm sun; **night** a black haze (density 0.026, a strong lamp 0.018), a faint moon, no shadows, and a `SpotLight` on
   the runner's head (320 cd, ±27°, a strong lamp 650 cd, ±32°; soft at the sides, falling with the square of the distance) aimed
   where the runner looks a little down; the flags' **retroreflective tape**: an additive copy of each flag's prism and a halo sprite
-  a few pixels wide however far, lit when the flag is in the beam (its cone, 1 / (1 + (d / reach)²), reach 60 m or 95 m, to 180 m)
-  and the ground not in the way (8 samples along the line), every third frame; the code plates no longer glow by themselves. The
+  of some forty pixels however far (0.8 m + 3 % of the distance), lit when the flag is in the beam (its cone, 1 / (1 + (d / reach)²), reach 60 m or 95 m, to 180 m)
+  and no rise of the ground in the way (8 samples along the line), every third frame; the code plates no longer glow by themselves. The
   map panel is 2D: readable at night. Measured 2026-11-12 in headless Edge on Granites (`work\vr3d\envtest.mjs`, `nighttest.mjs`):
   1400 × 860 clear 36 fps, overcast 41, rain 41, fog 43, snow 49, dusk 33, night 49, strong lamp 46, rainy night 45; a phone's
   390 × 844 56-60 fps for every condition (60 the headless cap).

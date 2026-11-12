@@ -157,7 +157,7 @@ export function applyEnv(T, env, { scene, renderer, world, sun, camera }) {
     // a soft halo round a lit flag, kept a few pixels wide however far: a spark seen from far off, as tape in a lamp's beam
     const hc = document.createElement("canvas"); hc.width = hc.height = 64;
     const hg = hc.getContext("2d"), grad = hg.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, "rgba(255,250,235,1)"); grad.addColorStop(0.25, "rgba(255,226,170,0.55)"); grad.addColorStop(1, "rgba(255,200,120,0)");
+    grad.addColorStop(0, "rgba(255,250,235,1)"); grad.addColorStop(0.35, "rgba(255,226,170,0.6)"); grad.addColorStop(1, "rgba(255,200,120,0)");
     hg.fillStyle = grad; hg.fillRect(0, 0, 64, 64);
     const haloTex = new T.CanvasTexture(hc); haloTex.colorSpace = T.SRGBColorSpace;
     (world.flags || []).forEach((g, i) => {
@@ -183,7 +183,7 @@ export function applyEnv(T, env, { scene, renderer, world, sun, camera }) {
   const clear = (hx, hy, hz, fx, fy, fz) => {
     for (let k = 1; k < 8; k++) {
       const f = k / 8, x = hx + (fx - hx) * f, z = hz + (fz - hz) * f, y = hy + (fy - hy) * f;
-      if (world.heightAt(x, z) > y - 0.2) return false;
+      if (world.heightAt(x, z) > y + 0.25) return false;          // a rise between: the ground, not its unevenness
     }
     return true;
   };
@@ -214,7 +214,7 @@ export function applyEnv(T, env, { scene, renderer, world, sun, camera }) {
           if (s > 0.02 && !clear(hx, hy, hz, g.position.x, g.position.y + 0.75, g.position.z)) s = 0;
         }
         m.material.opacity = s; m.visible = s > 0.02;
-        h.material.opacity = Math.min(1, s * 1.4); h.visible = m.visible; h.scale.setScalar(0.5 + d * 0.012);
+        h.material.opacity = Math.min(1, s * 1.4); h.visible = m.visible; h.scale.setScalar(0.8 + d * 0.03);
       }
     },
   };
