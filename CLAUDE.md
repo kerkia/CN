@@ -1810,6 +1810,13 @@ Every multiple-choice game was played through to its score page at phone size, w
   place) and the Tracer's « Générer » line (`#tr-gen-bar`). The 3D views' relief (Solo, Multi, the Tracer) show the IGN or tiles
   load's share in their note, and the Tracer's status bar puts a bar before every busy state (`E.status(msg, "busy", frac)`; the
   climb from IGN course by course).
+  **North lines** (owner, 2026-11-12: « add them to the other LiDAR maps too »): `lidarmap.compose` draws them over the tiles put
+  together (`northLines`), so every generated map has them, its tiles made before included, and no tile is made again: blue,
+  every 300 m in the forest style (30 mm at 1:10 000, 0.27 mm wide) and every 80 m in the sprint style (20 mm at 1:4000, 0.18 mm),
+  on the grid's round values and parallel to its north, as Virtually's LiDAR maps (no declination model: the grid's north stands
+  for the magnetic one). The computed routes still take them out (`routechoice.northLines`: runs up to 4 m wide, spacings from
+  75 m, each line fitted through its runs — the vote's angle was 0.4° off on a 6 px line and left half of it read as water).
+  Cartographier's tile backgrounds have none: a map drawn there gets its own from « Mise en page ».
   Not done: passability of OSM's fences, karttapullautin's black marks for walls and embankments in town, tiles made again when OpenStreetMap
   changes, edges between tiles made in different runs (possible seams); **route choices on LiDAR layers: never for runners** (owner: a
   route is chosen on the race's map, not on data the runner did not have) — possibly one day for setters in the Tracer, not now.

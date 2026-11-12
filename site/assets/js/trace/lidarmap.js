@@ -278,6 +278,7 @@ export async function compose(area, ids, style = "forest", onProgress) {
     }
     onProgress?.(++done / ids.length);
   }
+  northLines(g, style, ox + c0 * px, px, W, H);
   const blob = await new Promise((res) => cv.toBlob(res, "image/png"));
   // the world file: the first pixel's centre
   const wf = [px, 0, 0, -px, ox + (c0 + 0.5) * px, oy - (r0 + 0.5) * px];
@@ -287,6 +288,27 @@ export async function compose(area, ids, style = "forest", onProgress) {
     new File([grid.prj], `${base}.prj`, { type: "text/plain" })];
   composed.set(fileWf.join(","), grid);
   return { files, wf: fileWf, gridWf: wf, W, H, px, grid, credit: CREDITS[grid.country] };
+}
+/**
+ * The magnetic north lines (ISOM 601.1 / ISSprOM 601.1, owner 2026-11-11: a map turned to the leg needs them), drawn when the
+ * tiles are put together, so that every map has them, its tiles made before included: blue, 30 mm apart at the forest style's
+ * 1:10 000 (300 m), 20 mm at the sprint style's 1:4000 (80 m), 0.27 mm wide (0.18 mm at 1:15 000 enlarged × 1.5) and 0.18 mm;
+ * on the grid's round values, so that two maps of one area agree; parallel to the grid's north, as Virtually's maps (no
+ * declination model here: the grid's north stands for the magnetic one, a few degrees apart). x0 the image's left edge in the
+ * grid (m), px its pixel (m).
+ */
+function northLines(g, style, x0, px, W, H) {
+  const sprint = style === "sprint", step = sprint ? 80 : 300, mPerMm = sprint ? 4 : 10;
+  g.save();
+  g.strokeStyle = "rgb(0, 152, 220)";
+  g.lineWidth = Math.max(2, ((sprint ? 0.18 : 0.27) * mPerMm) / px);
+  g.beginPath();
+  for (let gx = Math.ceil(x0 / step) * step; gx <= x0 + W * px; gx += step) {
+    const x = Math.round((gx - x0) / px);                           // on a pixel's edge: a sharp line
+    g.moveTo(x, 0); g.lineTo(x, H);
+  }
+  g.stroke();
+  g.restore();
 }
 /** The grids of the maps put together in this visit, by their world file (lidarGrid's way when it is given no name). */
 const composed = new Map();

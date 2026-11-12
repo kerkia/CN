@@ -240,12 +240,12 @@ function components(m, w, h, moments = false) {
 /**
  * The magnetic north lines taken out of the kinds (into I_ERASED; nmask marks them): for the blue ink, then the black, a Hough
  * vote of the thin runs of each row over lines within 16° of the vertical; a family of three lines or more, parallel within
- * 0.4°, evenly spaced (a line may be missing) at 80 m or more, each running over most of the map's height. Long straight
+ * 0.4°, evenly spaced (a line may be missing) at 80 m or more (75 m counted, rounding), each running over most of the map's height. Long straight
  * paths and rides are not evenly spaced, nor that long. Returns the lines found [{ ink, x (at mid-height), angle (°) }].
  */
 function northLines(kind, rgba, w, h, mpp, nmask) {
   const found = [];
-  const maxRun = Math.max(3, Math.round(3 / mpp)), hw = Math.ceil(maxRun / 2) + 1;
+  const maxRun = Math.max(3, Math.round(4 / mpp)), hw = Math.ceil(maxRun / 2) + 1;   // up to 4 m: 0.27 mm at 1:10 000 drawn smooth
   const NA = 161, deg = Math.PI / 180, cs = new Float64Array(NA), sn = new Float64Array(NA);
   for (let a = 0; a < NA; a++) { const th = (-16 + 0.2 * a) * deg; cs[a] = Math.cos(th); sn[a] = Math.sin(th); }
   const R0 = Math.ceil(h * Math.sin(16 * deg)) + 3, NR = w + 2 * R0;
@@ -303,7 +303,7 @@ function northLines(kind, rgba, w, h, mpp, nmask) {
       for (const p of fam) if (!uniq.length || p.x - uniq[uniq.length - 1].x > 8) uniq.push(p);
       for (let i = 1; i < uniq.length; i++) for (let j = 0; j < i; j++) {
         const g = uniq[i].x - uniq[j].x;
-        if (g * mpp < 80) continue;
+        if (g * mpp < 75) continue;                                     // a sprint map's 80 m (20 mm at 1:4000), pixels rounded
         const fits = uniq.filter((p) => { const f = (p.x - uniq[j].x) / g; return Math.abs(f - Math.round(f)) < 0.06; });
         if (fits.length < 3 || fits.length < best.length) continue;
         const ext = [];
@@ -319,10 +319,25 @@ function northLines(kind, rgba, w, h, mpp, nmask) {
         if (ext.length > best.length) best = ext;
       }
     }
-    for (const p of best) {
-      found.push({ ink: ink === I_BLUE ? "blue" : "black", x: Math.round(p.x), angle: Math.round((-16 + 0.2 * p.a) * 10) / 10 });
-      for (let y = 0; y < h; y++) {
+    // each line fitted through its rows' runs (least squares): a wide line leaves the vote's angle loose — a generated map's
+    // 0.27 mm at 1:10 000, 6 px, was voted 0.4° off and its lower half left unerased
+    const fit = (p) => {
+      let n = 0, sy = 0, sx = 0, syy = 0, sxy = 0;
+      for (let y = 0; y < h; y += 2) {
         const xc = Math.round(xAt(p.a, p.r, y));
+        let x0 = -1, x1 = -1;
+        for (let x = Math.max(0, xc - 2 * hw); x <= Math.min(w - 1, xc + 2 * hw); x++) if (on(y * w + x)) { if (x0 < 0) x0 = x; x1 = x; }
+        if (x0 >= 0 && x1 - x0 < maxRun + 2) { const c = (x0 + x1) / 2; n++; sy += y; sx += c; syy += y * y; sxy += y * c; }
+      }
+      if (n < 0.1 * h) return { at: (y) => xAt(p.a, p.r, y), angle: -16 + 0.2 * p.a };
+      const sl = (n * sxy - sy * sx) / (n * syy - sy * sy), b0 = (sx - sl * sy) / n;
+      return { at: (y) => b0 + sl * y, angle: (Math.atan(sl) * 180) / Math.PI };
+    };
+    for (const p of best) {
+      const L = fit(p);
+      found.push({ ink: ink === I_BLUE ? "blue" : "black", x: Math.round(L.at(h / 2)), angle: Math.round(L.angle * 10) / 10 });
+      for (let y = 0; y < h; y++) {
+        const xc = Math.round(L.at(y));
         for (let x = Math.max(0, xc - hw); x <= Math.min(w - 1, xc + hw); x++) { const i = y * w + x; if (kind[i] === ink) { kind[i] = I_ERASED; nmask[i] = 1; } }
       }
     }
