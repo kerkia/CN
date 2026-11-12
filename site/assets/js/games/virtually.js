@@ -7,7 +7,7 @@
 // stand at the controls, lit up when within reach, punched with the space bar in the course's order; the finish gives the
 // time, the splits and the route run drawn on the map. Each race is a package made offline (work's racebuild.py: the OCAD
 // map, the worldwide relief, a national LiDAR where there is one) served by functions/api/virtual to administrators.
-import { html, $, pct } from "../util.js";
+import { html, raw, $, pct } from "../util.js";
 import { t, tn, loadArea, lang } from "../i18n.js";
 import { THREE as THREE_URL } from "../vendor.js";
 import { loadRace, World, runnerFigure } from "./vworld.js";
@@ -24,6 +24,11 @@ const PLAY = 2;
 // ×0.5 walking, ×1 running, ×1.5 running fast, ×2 running very fast, the speed over the ground multiplied, the clock unchanged —
 // going fast saves time by itself, and leaves less time to read the map. The two fast paces empty the runner's energy (a full
 // bar lasts DRAIN race seconds), running at ×1, walking and standing still fill it (in REFILL); empty, the pace drops to ×1.
+const VIEW_ICONS = [
+  ["scene", '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M2 20 9 8l4 6 3-4 6 10Z" fill="currentColor"/><circle cx="17" cy="6" r="2" fill="currentColor"/></svg>'],
+  ["map", '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2Z"/><path d="M9 4v14M15 6v14"/></svg>'],
+  ["desc", '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="5" width="19" height="14" rx="1"/><path d="M2.5 12h19M8 5v14M13 5v14M17.5 5v14"/></svg>'],
+];
 const PACES = [0.5, 1, 1.5, 2], PACE_NAME = { 0.5: "walk", 1: "run", 1.5: "fast", 2: "vfast" };
 const DRAIN = { 1.5: 240, 2: 60 }, REFILL = { 0.5: 60, 1: 300, still: 90 }, REST = 0.1;
 const REACH = 6;                    // m: a control within reach (its cue, the punch)
@@ -47,7 +52,8 @@ export function mount(root, raceId, opts = {}) {
   const say = (k, v) => { const m = $("#vt-msg", root); if (m) m.textContent = t(k, v); };
   (async () => {
     try {
-      const [THREE, data] = await Promise.all([import(THREE_URL), loadRace(opts.base || `${BASE}${raceId}/`)]);
+      const [THREE, data, cd] = await Promise.all([import(THREE_URL), loadRace(opts.base || `${BASE}${raceId}/`), loadDescriptions()]);
+      data.cd = cd;
       if (stopped) return;
       say("vt.drawingMap");
       const mapImg = await drawMap(data);
@@ -65,12 +71,13 @@ export function mount(root, raceId, opts = {}) {
     const race = data.race, cs = coursesOf(race), C0 = cs.find((c) => c.id === opts.course) || cs[0];
     race.course = { ...C0, name: opts.title || C0.name || race.id };
     const course = race.course.controls, nC = course.length - 2;
-    root.innerHTML = html`<div class="vt" tabindex="0">
+    root.innerHTML = html`<div class="vt" tabindex="0" data-view="scene">
       <canvas class="vt-view"></canvas>
       <div class="vt-hud"><b>${race.course.name}</b><span id="vt-time">0:00</span><span id="vt-pen" hidden></span><span id="vt-next"></span></div>
       <div class="vt-cue" id="vt-cue" hidden></div>
       <div class="vt-toast" id="vt-toast" hidden></div>
       <div class="vt-topbar">
+        <span class="vt-views" role="group">${VIEW_ICONS.map(([v, svg]) => html`<button type="button" class="btn${v === "scene" ? " on" : ""}" data-view="${v}" title="${t(`vt.view.${v}`)}" aria-label="${t(`vt.view.${v}`)}">${raw(svg)}</button>`)}</span>
         <button type="button" class="btn" id="vt-pos" title="${t("vt.pos.tip")}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg><span class="vt-lbl" id="vt-poslbl">${t("vt.pos.btn")}</span></button>
         <span class="vt-pace"><button type="button" class="btn" id="vt-slower" title="${t("vt.pace.slower")}" aria-label="${t("vt.pace.slower")}">−</button><button type="button" class="btn" id="vt-speed" title="${t("vt.speed.tip")}"><span id="vt-pacelbl">×1</span><span class="vt-energy" aria-hidden="true"><i></i></span></button><button type="button" class="btn" id="vt-faster" title="${t("vt.pace.faster")}" aria-label="${t("vt.pace.faster")}">+</button></span>
         <button type="button" class="btn" id="vt-pause" title="${t("vt.pause.tip")}" aria-label="${t("vt.pause")}"><span aria-hidden="true">❚❚</span><span class="vt-lbl">${t("vt.pause")}</span></button>
@@ -83,12 +90,13 @@ export function mount(root, raceId, opts = {}) {
           <button type="button" data-z="1.5" title="${t("vt.map.zoomIn")}">+</button><button type="button" data-z="0.67" title="${t("vt.map.zoomOut")}">−</button>
           <button type="button" id="vt-mnext" title="${t("vt.map.next")}">◎</button><button type="button" id="vt-msize" title="${t("vt.map.size")}">⤢</button>
           <button type="button" id="vt-morient" class="vt-morient"></button>
+          <button type="button" id="vt-mrotl" title="${t("vt.map.rotL")}" aria-label="${t("vt.map.rotL")}" hidden>↺</button><button type="button" id="vt-mrotr" title="${t("vt.map.rotR")}" aria-label="${t("vt.map.rotR")}" hidden>↻</button>
         </div>
-        <div class="vt-desc" id="vt-desc"></div>
       </div>
+      <div class="vt-sheet" id="vt-sheet"></div>
       <div class="vt-pad" id="vt-pad">
         <button type="button" data-k="ArrowLeft">◀</button><button type="button" data-k="ArrowUp">▲</button><button type="button" data-k="ArrowRight">▶</button>
-        <button type="button" data-k="Space" class="vt-padpunch">${t("vt.punchBtn")}</button><button type="button" data-k="ArrowDown">▼</button><button type="button" data-k="KeyM">${t("vt.mapBtn")}</button>
+        <button type="button" data-k="Space" class="vt-padpunch">${t("vt.punchBtn")}</button><button type="button" data-k="ArrowDown">▼</button><button type="button" data-k="View">${t("vt.mapBtn")}</button>
       </div>
       <div class="vt-over" id="vt-over"></div>
     </div>`;
@@ -122,15 +130,17 @@ export function mount(root, raceId, opts = {}) {
     const ro = new ResizeObserver(resize); ro.observe(box);
     // ---- the map panel ----
     const ppm = mapImg.ppm, mPer = ppm / race.k;                    // map canvas px per world metre
-    const mv = { cx: course[0].x * mPer, cy: course[0].z * mPer, zoom: 1, drag: null, ang: 0 };
-    // the map's orientation (owner, 2026-11-11): north up, the leg being run up, or the way the runner faces up; kept in this browser
-    const ORIENTS = ["north", "leg", "run"];
+    const mv = { cx: course[0].x * mPer, cy: course[0].z * mPer, zoom: 1, drag: null, ang: 0, free: 0, spin: null };
+    // the map's orientation (owner, 2026-11-11): north up, the leg being run up, or the way the runner faces up; kept in this browser.
+    // And by hand (owner, 2026-11-12: « to test them all »): ↺ ↻ on the map's bar, Shift + wheel or the right button, two fingers, , and .
+    const ORIENTS = ["north", "leg", "run", "free"];
     let orient = "north";
     try { const o = localStorage.getItem("ocn.vt.orient"); if (ORIENTS.includes(o)) orient = o; } catch (e) { /* none kept */ }
     /** The canvas's turn (radians, clockwise on screen) that puts the chosen direction up; north up at the finish. */
     const mapAngle = () => {
       if (orient === "north" || st.phase === "done") return 0;
       if (orient === "run") return -st.yaw;
+      if (orient === "free") return mv.free;
       const a = course[Math.max(0, Math.min(st.next, course.length - 1) - 1)], b = course[Math.min(st.next, course.length - 1)];
       return a === b ? 0 : -Math.atan2(b.x - a.x, -(b.z - a.z));
     };
@@ -157,8 +167,8 @@ export function mount(root, raceId, opts = {}) {
         g.lineTo((st.x + Math.sin(st.yaw) * 40) * mPer, (st.z - Math.cos(st.yaw) * 40) * mPer); g.stroke();
       }
       g.restore();
-      if (mv.ang) {                                                    // a north arrow when the map is turned
-        g.save(); g.translate(20, 22); g.rotate(mv.ang);
+      if (mv.ang) {                                                    // a north arrow when the map is turned (over the compass in the map's view)
+        g.save(); g.translate(20, box.dataset.view === "map" ? h - (comp.clientHeight || 96) - 44 : 22); g.rotate(mv.ang);
         g.fillStyle = "rgba(255, 255, 255, 0.85)"; g.beginPath(); g.arc(0, 0, 14, 0, 7); g.fill();
         g.fillStyle = "#1f3b8a"; g.beginPath(); g.moveTo(0, -11); g.lineTo(5, 3); g.lineTo(0, 0); g.lineTo(-5, 3); g.closePath(); g.fill();
         g.rotate(-mv.ang); g.font = "bold 10px Arial"; g.textAlign = "center"; g.textBaseline = "middle";
@@ -167,19 +177,112 @@ export function mount(root, raceId, opts = {}) {
       }
     }
     function overprint(g) { drawOverprint(g, course, mPer, ppm); }
-    function describe() {
-      $("#vt-desc", root).innerHTML = html`<table><tbody>${course.slice(1, -1).map((c, i) => html`<tr class="${i + 1 < st.next ? "done" : i + 1 === st.next ? "cur" : ""}"><td>${i + 1}</td><td>${c.code}</td><td>${c.feature ? t(`vt.f.${c.feature}`) : ""}</td></tr>`)}</tbody></table>`;
+    // ---- the control descriptions (owner, 2026-11-12): an IOF sheet at the bottom right — the next control's line, every line once
+    // opened (its bar, a click on it, or C) —, and the whole screen's in the descriptions' view
+    const cd = data.cd, sheet = $("#vt-sheet", root);
+    let sheetOpen = false;
+    const touch = matchMedia("(hover: none) and (pointer: coarse)").matches;
+    try { sheetOpen = localStorage.getItem("ocn.vt.sheet") === "1"; } catch (e) { /* closed */ }
+    const cdSym = (id) => cd && id ? cd.symbol(id, "2018") : null;
+    function cdOf(c) {
+      if (c.cd) return c.cd;
+      const f = FEATURE_CD[c.feature] || [];
+      let g = f[3] || null;
+      if (g) { const side = sideOf(world.town, c.x, c.z, c.feature === "corner"); g = side ? g + side : null; }
+      return (c.cd = { d: f[0] || null, e: f[1] || null, f: f[2] || null, g });
     }
+    const cell = (id) => { const s = cdSym(id); return s ? html`<td title="${cd.name(s)}">${cd.svg(s, 40, "vt-cds")}</td>` : html`<td></td>`; };
+    function describe() {
+      const last = course.length - 1, next = Math.min(st.next, last), lenKm = num((race.course.length || 0) / 1000);
+      const open = sheetOpen && !touch;
+      const fin = course[last], before = course[last - 1], toFin = Math.round(Math.hypot(fin.x - before.x, fin.z - before.z) / 10) * 10;
+      const rows = course.slice(1, -1).map((c, i) => {
+        const k = i + 1, s = cdOf(c), cls = k < st.next ? "done" : k === next ? "cur" : "";
+        const words = c.feature ? t(`vt.f.${c.feature}`) : "";
+        const tip = cd ? [s.d, s.e, s.f, s.g].map(cdSym).filter(Boolean).map((x) => cd.name(x)).join(" · ") || words : words;
+        return html`<tr class="${cls}" title="${tip}"><td class="vt-cdn">${k}</td><td class="vt-cdc">${c.code || ""}</td><td></td>${cd && s.d
+          ? html`${cell(s.d)}${cell(s.e)}${cell(s.f)}${cell(s.g)}` : html`<td colspan="4" class="vt-cdw">${words}</td>`}<td></td></tr>`;
+      });
+      const finSym = cdSym("14.3");
+      const climb = race.course.climb ? `${Math.round(race.course.climb)} m` : "";
+      sheet.innerHTML = html`<div class="vt-sheet-h"><span>${next >= last ? t("vt.sheet.finish") : t("vt.sheet.next", { n: next, of: nC })}</span>
+        <button type="button" class="vt-sheet-tog" title="${t(open ? "vt.sheet.close" : touch ? "vt.view.desc" : "vt.sheet.open")}" aria-label="${t(open ? "vt.sheet.close" : touch ? "vt.view.desc" : "vt.sheet.open")}">${open ? "▾" : "▴"}</button></div>
+        <table class="vt-cd"><tbody>
+          <tr class="vt-cdtitle"><td colspan="8">${race.course.name}</td></tr>
+          <tr class="vt-cdtitle"><td colspan="4">${lenKm} km</td><td colspan="4">${climb}</td></tr>
+          <tr class="vt-cdstart"><td>${cdSym("start") ? cd.svg(cdSym("start"), 40, "vt-cds") : "▷"}</td><td colspan="7"></td></tr>
+          ${rows}
+          <tr class="vt-cdfin ${next >= last ? "cur" : ""}"><td colspan="8">${finSym ? html`<span class="vt-cdfinw">${cd.svg(finSym, 40, "vt-cds")}<b>${toFin} m</b></span>` : t("vt.sheet.finish")}</td></tr>
+        </tbody></table>`;
+      sheet.classList.toggle("open", open);
+    }
+    const toggleSheet = () => {
+      sheetOpen = !sheetOpen;
+      try { localStorage.setItem("ocn.vt.sheet", sheetOpen ? "1" : "0"); } catch (e) { /* kept for the visit */ }
+      describe();
+    };
+    // on a touch screen a tap on it opens the descriptions' view: a phone has no room for the whole sheet over the scene
+    sheet.addEventListener("click", () => { if (box.dataset.view !== "desc") (touch ? setView("desc") : toggleSheet()); box.focus(); });
     describe();
+    // ---- what fills the screen (owner, 2026-11-12: « toggle very fast between the scene, the map and the descriptions »): the switch
+    // at the top, Tab, the pad's map button, a tap on the small map ----
+    const VIEWS = ["scene", "map", "desc"];
+    function setView(v) {
+      box.dataset.view = v;
+      $$$(root, ".vt-views button").forEach((b) => b.classList.toggle("on", b.dataset.view === v));
+      requestAnimationFrame(drawMapPanel);
+    }
+    $$$(root, ".vt-views button").forEach((b) => b.addEventListener("click", () => {
+      setView(b.dataset.view !== "scene" && box.dataset.view === b.dataset.view ? "scene" : b.dataset.view); box.focus();
+    }));
     // sizes: small and large in the bottom left corner, the compass beside it (app.css), hidden, and « full » at the finish
     const mapSize = (s) => { mapEl.dataset.size = s; box.dataset.map = s; requestAnimationFrame(drawMapPanel); };
     $$$(root, ".vt-mapbar [data-z]").forEach((b) => b.addEventListener("click", () => { mv.zoom *= +b.dataset.z; drawMapPanel(); }));
     $("#vt-mnext", root).addEventListener("click", () => { const c = course[Math.min(st.next, course.length - 1)]; mv.cx = c.x * mPer; mv.cy = c.z * mPer; drawMapPanel(); });
     $("#vt-msize", root).addEventListener("click", () => { const big = st.phase === "done" ? "full" : "large"; mapSize(mapEl.dataset.size === big ? "small" : big); });
-    mapC.addEventListener("pointerdown", (e) => { mv.drag = [e.clientX, e.clientY, mv.cx, mv.cy]; mapC.setPointerCapture(e.pointerId); });
-    mapC.addEventListener("pointermove", (e) => { if (!mv.drag) return; const [dx, dy] = unturn(e.clientX - mv.drag[0], e.clientY - mv.drag[1]); mv.cx = mv.drag[2] - dx; mv.cy = mv.drag[3] - dy; drawMapPanel(); });
-    mapC.addEventListener("pointerup", () => (mv.drag = null));
-    mapC.addEventListener("wheel", (e) => { e.preventDefault(); const f = e.deltaY < 0 ? 1.2 : 1 / 1.2, rc = mapC.getBoundingClientRect();
+    const turning = () => orient === "free" && st.phase !== "done";
+    const turnBy = (d) => { if (!turning()) return; mv.free += d; drawMapPanel(); };
+    const ptrs = new Map();
+    let tap = null, twist = null;
+    const angOf = (a, b) => Math.atan2(b[1] - a[1], b[0] - a[0]), distOf = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+    mapC.addEventListener("contextmenu", (e) => e.preventDefault());
+    mapC.addEventListener("pointerdown", (e) => {
+      mapC.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (ptrs.size >= 2) {
+        const [a, b] = [...ptrs.values()];
+        twist = { ang: angOf(a, b), dist: distOf(a, b), zoom: mv.zoom, free: mv.free }; mv.drag = mv.spin = tap = null; return;
+      }
+      tap = { x: e.clientX, y: e.clientY, at: performance.now() };
+      if ((e.button === 2 || e.shiftKey) && turning()) {
+        const rc = mapC.getBoundingClientRect(), cx = rc.left + rc.width / 2, cy = rc.top + rc.height / 2;
+        mv.spin = { cx, cy, a: Math.atan2(e.clientY - cy, e.clientX - cx), free: mv.free }; return;
+      }
+      mv.drag = [e.clientX, e.clientY, mv.cx, mv.cy];
+    });
+    mapC.addEventListener("pointermove", (e) => {
+      if (!ptrs.has(e.pointerId)) return;
+      ptrs.set(e.pointerId, [e.clientX, e.clientY]);
+      if (tap && Math.hypot(e.clientX - tap.x, e.clientY - tap.y) > 8) tap = null;
+      if (twist && ptrs.size >= 2) {
+        const [a, b] = [...ptrs.values()];
+        mv.zoom = Math.max(0.05, (twist.zoom * distOf(a, b)) / Math.max(1, twist.dist));
+        if (turning()) mv.free = twist.free + angOf(a, b) - twist.ang;
+        drawMapPanel(); return;
+      }
+      if (mv.spin) { mv.free = mv.spin.free + Math.atan2(e.clientY - mv.spin.cy, e.clientX - mv.spin.cx) - mv.spin.a; drawMapPanel(); return; }
+      if (!mv.drag) return;
+      const [dx, dy] = unturn(e.clientX - mv.drag[0], e.clientY - mv.drag[1]); mv.cx = mv.drag[2] - dx; mv.cy = mv.drag[3] - dy; drawMapPanel();
+    });
+    const ptrUp = (e) => {
+      ptrs.delete(e.pointerId);
+      if (ptrs.size < 2) twist = null;
+      if (tap && e.type === "pointerup" && performance.now() - tap.at < 400 && box.dataset.view === "scene" && st.phase === "run") setView("map");
+      tap = null; mv.drag = null; mv.spin = null;
+    };
+    mapC.addEventListener("pointerup", ptrUp); mapC.addEventListener("pointercancel", ptrUp);
+    mapC.addEventListener("wheel", (e) => { e.preventDefault();
+      if (e.shiftKey && turning()) { turnBy(((e.deltaY || e.deltaX) < 0 ? -1 : 1) * (Math.PI / 12)); return; }
+      const f = e.deltaY < 0 ? 1.2 : 1 / 1.2, rc = mapC.getBoundingClientRect();
       const px = e.clientX - rc.left - rc.width / 2, py = e.clientY - rc.top - rc.height / 2;
       const [ux, uy] = unturn(px, py); mv.cx += ux - ux / f; mv.cy += uy - uy / f; mv.zoom *= f; drawMapPanel(); }, { passive: false });
     // the orientation's button: its icon and tooltip say the current choice; a click (or O) takes the next
@@ -188,13 +291,23 @@ export function mount(root, raceId, opts = {}) {
       north: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3 17 15 12 12 7 15Z" fill="currentColor"/><text x="12" y="22.5" font-size="8" font-weight="700" text-anchor="middle" fill="currentColor">N</text></svg>',
       leg: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="#f06ad8" stroke-width="2.2"><circle cx="12" cy="19" r="3.2"/><circle cx="12" cy="5" r="3.2"/><path d="M12 15.6V8.4"/></svg>',
       run: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3 18 19 12 15 6 19Z" fill="#ff5a4a"/></svg>',
+      free: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 12a7 7 0 1 1-2.1-5"/><path d="M17.5 3.5v4h-4"/></svg>',
     };
+    for (const [id, dir] of [["#vt-mrotl", -1], ["#vt-mrotr", 1]]) {
+      const b = $(id, root); let to = 0, iv = 0;
+      const stop = () => { clearTimeout(to); clearInterval(iv); };
+      b.addEventListener("pointerdown", (e) => { e.preventDefault(); stop(); turnBy((dir * Math.PI) / 12); to = setTimeout(() => (iv = setInterval(() => turnBy(dir * 0.05), 30)), 350); });
+      for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, stop);
+    }
     const showOrient = () => {
+      $("#vt-mrotl", root).hidden = $("#vt-mrotr", root).hidden = orient !== "free";
       orientBtn.innerHTML = ORIENT_ICON[orient];
       orientBtn.title = t(`vt.map.orient.${orient}`); orientBtn.setAttribute("aria-label", orientBtn.title);
     };
     const nextOrient = () => {
+      const was = mv.ang;
       orient = ORIENTS[(ORIENTS.indexOf(orient) + 1) % ORIENTS.length];
+      if (orient === "free") mv.free = was;                           // by hand from where the map stood
       try { localStorage.setItem("ocn.vt.orient", orient); } catch (e) { /* kept for the visit */ }
       showOrient(); drawMapPanel(); toast(t(`vt.map.orient.set.${orient}`)); box.focus();
     };
@@ -223,7 +336,7 @@ export function mount(root, raceId, opts = {}) {
       g.fillText(`${Math.round((((st.yaw * 180) / Math.PI) % 360 + 360) % 360)}°`, c, s - 12);
     }
     // ---- input ----
-    const GAMEKEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight", "Space"]);
+    const GAMEKEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight", "Space", "Tab", "Comma", "Period"]);
     const onKey = (e) => {
       if (!box.isConnected || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName)) return;
       if (e.type === "keydown") {
@@ -233,6 +346,8 @@ export function mount(root, raceId, opts = {}) {
         if (e.code === "Space" && st.phase === "run") punch();
         else if (e.code === "KeyM") mapSize(mapEl.dataset.size === "small" ? "large" : mapEl.dataset.size === "large" ? "hidden" : "small");
         else if (e.code === "KeyO") nextOrient();
+        else if (e.code === "Tab" && st.phase === "run") setView(VIEWS[(VIEWS.indexOf(box.dataset.view) + 1) % VIEWS.length]);
+        else if (e.code === "KeyC") toggleSheet();
         else if (e.code === "KeyV") st.view = st.view === "third" ? "first" : "third";
         else if (e.code === "KeyR") setPace(+1);
         else if (e.code === "KeyF") setPace(-1);
@@ -250,7 +365,7 @@ export function mount(root, raceId, opts = {}) {
     view.addEventListener("pointerup", () => (look = null));
     $$$(root, "#vt-pad button").forEach((b) => {
       const k = b.dataset.k;
-      b.addEventListener("pointerdown", (e) => { e.preventDefault(); if (k === "Space") punch(); else if (k === "KeyM") mapSize(mapEl.dataset.size === "small" ? "large" : "small"); else keys.add(k); });
+      b.addEventListener("pointerdown", (e) => { e.preventDefault(); if (k === "Space") punch(); else if (k === "View") setView(box.dataset.view === "map" ? "scene" : "map"); else keys.add(k); });
       for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, () => keys.delete(k));
     });
     $("#vt-pause", root).addEventListener("click", () => (st.phase === "run" ? pause() : null));
@@ -306,7 +421,7 @@ export function mount(root, raceId, opts = {}) {
         <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
         ${race.photoCredits?.length ? html`<details class="muted vt-photos"><summary>${t("vt.src.photos", { n: race.photoCredits.length })}</summary>
           <p>${race.photoCredits.map((c, i) => html`${i ? ", " : ""}<a href="${c.url}" target="_blank" rel="noopener">${c.id.slice(0, 8)}</a> (${c.author})`)}</p></details>` : ""}
-        <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "orient", "view", "pause", "pos", "speed", "energy"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
+        <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "views", "sheet", "orient", "view", "pause", "pos", "speed", "energy"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-go">${t("vt.go")}</button>
 </div>
         <p class="muted vt-credit">${t("vt.credit", { std: race.std })}</p></div>`);
@@ -324,14 +439,14 @@ export function mount(root, raceId, opts = {}) {
     function reset() {
       Object.assign(st, { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, next: 1, splits: [], track: [], dist: 0, lastTrack: -1,
         posLeft: 0, posN: 0, pen: 0, legPen: [], pace: 1, energy: 1, paceT: {} });
-      showPosBtn(); showSpeed(); showEnergy(); describe(); mapSize("small"); mv.cx = course[0].x * mPer; mv.cy = course[0].z * mPer; fitZoom(700); drawMapPanel();
+      showPosBtn(); showSpeed(); showEnergy(); setView("scene"); sheet.hidden = false; describe(); mapSize("small"); mv.cx = course[0].x * mPer; mv.cy = course[0].z * mPer; fitZoom(700); drawMapPanel();
     }
     function finished() {
       st.phase = "done"; keys.clear(); st.posLeft = 0; showPosBtn();
       const legs = st.splits.map((s, i) => [s - (i ? st.splits[i - 1] : 0), s]);   // the splits hold the race time, penalties included
       const straight = race.course.length, T = total();
       opts.onFinish?.({ course: C0.id, t: T, sp: st.splits.slice(), d: st.dist, route: st.track.concat([[st.t, st.x, st.z]]) });
-      mapSize("full");
+      setView("scene"); sheet.hidden = true; mapSize("full");
       const all = st.track.map(([, x, z]) => [x, z]).concat(course.map((c) => [c.x, c.z])); const xs = all.map((p) => p[0]), zs = all.map((p) => p[1]);
       mv.cx = ((Math.min(...xs) + Math.max(...xs)) / 2) * mPer; mv.cy = ((Math.min(...zs) + Math.max(...zs)) / 2) * mPer;
       fitZoom((Math.max(...xs) - Math.min(...xs)) * 1.25 + 100);
@@ -454,7 +569,8 @@ export function mount(root, raceId, opts = {}) {
         cueEl.hidden = false;
       } else cueEl.hidden = true;
       if (st.msgUntil && now > st.msgUntil) { $("#vt-toast", root).hidden = true; st.msgUntil = 0; }
-      renderer.render(scene, camera);
+      if (run && orient === "free" && (keys.has("Comma") || keys.has("Period"))) turnBy((keys.has("Period") ? 1 : -1) * 1.6 * dt);
+      if (box.dataset.view !== "map") renderer.render(scene, camera);   // the map's view hides the scene: nothing to draw
       drawCompass();
       $("#vt-time", root).textContent = fmt(total());
       showEnergy();
@@ -478,6 +594,37 @@ export function mount(root, raceId, opts = {}) {
 }
 
 const $$$ = (root, sel) => [...root.querySelectorAll(sel)];
+
+/** Purple Pen's description symbols and their drawing (tracer/symbols.js, cdsymbol.js), or null: the sheet then says the words. */
+async function loadDescriptions() {
+  try {
+    const [S, C] = await Promise.all([import("../tracer/symbols.js"), import("../cdsymbol.js")]);
+    await S.loadSymbols();
+    return { symbol: S.symbol, name: S.symbolName, svg: C.cdSymbolSvg };
+  } catch (e) { console.warn("description symbols", e); return null; }
+}
+
+// A control's description from its feature (tools/virtually: course.py, course_sprint.py, filecourses.py): columns D, E, F, G
+// as ISCD 2018 writes them (Purple Pen's ids); a G with a direction takes it from the town's buildings or walls round the flag
+const FEATURE_CD = {
+  boulder: ["2.4"], bigboulder: ["2.4"], cluster: ["2.6"], knoll: ["1.10"], eknoll: ["1.10"], mini: ["1.10"], depression: ["1.13"],
+  pit: ["1.14"], rockpit: ["1.14", "8.6"], rockface: ["2.1"], cairn: ["5.17"], vegspec: ["6.1"], bigtree: ["4.9"], manmade: ["6.2"],
+  tower: ["5.15"], waterhole: ["3.3"], cave: ["2.3"], landform: ["6.1"], junction: ["5.2", null, "10.2"], monument: ["5.20"],
+  fountain: ["3.9"], bush: ["4.9"], stairs: ["5.24"], corner: ["5.11", null, null, "11.5"], wallend: ["5.8", null, null, "11.8"],
+};
+const SECTORS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+/** Which side of what blocks round (x, z) the flag stands on (a building's outside corner, a wall's end), or null. */
+function sideOf(town, x, z, buildingsOnly) {
+  if (!town) return null;
+  let bx = 0, bz = 0, n = 0;
+  for (let k = 0; k < 16; k++) {
+    const a = (k * Math.PI) / 8, sx = Math.sin(a), sz = -Math.cos(a);
+    for (const r of [1.6, 2.6, 3.6]) if (town.hits(x + sx * r, z + sz * r, 0.15, buildingsOnly)) { bx += sx; bz += sz; n++; }
+  }
+  if (!n || Math.hypot(bx, bz) < 0.5) return null;
+  const b = Math.atan2(-bx, bz);                                   // the bearing from what blocks to the flag (north 0, clockwise)
+  return SECTORS[((Math.round(b / (Math.PI / 4)) % 8) + 8) % 8];
+}
 
 /** The course's overprint on a map canvas: `mPer` canvas px per world metre, `mm` canvas px per map mm (start triangle,
  *  numbered circles, the legs, the finish's double circle). Shared with Coach › Virtually's analysis. */

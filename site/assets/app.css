@@ -4234,11 +4234,47 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .vt-mapbar { position: absolute; right: 6px; top: 6px; display: flex; flex-direction: column; gap: 4px; }
 .vt-mapbar button { width: 30px; height: 30px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(28, 34, 42, 0.86); color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; display: grid; place-items: center; padding: 0; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); }   /* dark, as the bar over the race: white buttons vanished on the map's white (owner, 2026-11-11) */
 .vt-mapbar button:hover { background: rgba(48, 58, 70, 0.95); }
-.vt-desc { position: absolute; left: 6px; bottom: 6px; max-height: 45%; overflow: auto; background: rgba(255, 255, 255, 0.92); border: 1px solid #999; border-radius: 4px;
-  font-size: 12px; color: #111; }
-.vt-desc td { padding: 1px 6px; } .vt-desc tr.done { color: #999; text-decoration: line-through; } .vt-desc tr.cur { background: #ffe1c8; font-weight: 700; }
-.vt-map[data-size="small"] .vt-desc { font-size: 11px; }
-.vt-map[data-size="small"] .vt-desc tr:not(.cur) { display: none; }
+.vt-mapbar button[hidden] { display: none; }
+/* over the map when it fills the screen: the race's lines and buttons, the compass, the sheet, the pad, the cards */
+.vt-map { z-index: 1; }
+.vt-hud, .vt-topbar, .vt-cue, .vt-toast, .vt-compass, .vt-sheet, .vt-pad, .vt-over { z-index: 2; }
+/* The control descriptions (owner, 2026-11-12): an IOF sheet at the bottom right, the next control's line or every line, and the
+   whole screen's in the descriptions' view; --cd a cell's side */
+.vt { container-type: inline-size; }
+.vt-sheet { --cd: 30px; position: absolute; right: 12px; bottom: 12px; max-height: calc(100% - 150px); overflow: auto; background: #fff; color: #111;
+  border-radius: 6px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); cursor: pointer; }
+.vt-sheet[hidden] { display: none; }
+.vt-sheet-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 2px 2px 2px 8px; font: 600 12px/1.3 Arial, Helvetica, sans-serif; color: #333; }
+.vt-sheet-tog { border: 0; background: transparent; font-size: 14px; line-height: 1; padding: 2px 6px; cursor: pointer; color: #333; }
+.vt-cd { border-collapse: collapse; table-layout: fixed; width: calc(var(--cd) * 8); margin: 0; }
+.vt-cd td { width: var(--cd); height: var(--cd); border: 1.5px solid #111; padding: 0; text-align: center; vertical-align: middle; color: #111;
+  font: 700 calc(var(--cd) * 0.42)/1 Arial, Helvetica, sans-serif; overflow: hidden; }
+.vt-cd td .vt-cds { width: 100%; height: 100%; display: block; }
+.vt-cd .vt-cdw { font-weight: 400; font-size: calc(var(--cd) * 0.36); text-align: left; padding: 0 4px; white-space: nowrap; text-overflow: ellipsis; }
+.vt-cd .vt-cdtitle td { height: auto; padding: 3px 4px; font-size: calc(var(--cd) * 0.4); }
+.vt-cd .vt-cdfinw { display: block; position: relative; height: var(--cd); }
+.vt-cd .vt-cdfinw .vt-cds { width: 100%; height: 100%; }
+.vt-cd .vt-cdfinw b { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #fff; padding: 0 4px; font-size: calc(var(--cd) * 0.4); }
+.vt-cd tr.done { opacity: 0.35; }
+.vt-cd tr.cur td { background: #ffe1c8; }
+.vt-cd tr.cur td:first-child { box-shadow: inset 4px 0 0 #f26b1d; }
+.vt-sheet:not(.open) tr:not(.cur) { display: none; }
+/* The views' switch (scene, map, descriptions) at the head of the race's buttons */
+.vt-views { display: inline-flex; }
+.vt-views .btn { border-radius: 0; padding-inline: 9px; }
+.vt-views .btn:first-child { border-radius: 6px 0 0 6px; }
+.vt-views .btn:last-child { border-radius: 0 6px 6px 0; }
+.vt-views .btn.on { background: rgba(242, 107, 29, 0.92); }
+/* The map's view: the map fills the screen, its bar under the race's buttons, the compass at the bottom left */
+.vt[data-view="map"] .vt-map, .vt[data-view="map"] .vt-map[data-size] { display: block; left: 0; top: 0; right: 0; bottom: 0; width: auto; height: auto; border-radius: 0; box-shadow: none; }
+.vt[data-view="map"] .vt-mapbar { top: 60px; right: 12px; }
+.vt[data-view="map"] .vt-compass { display: block; left: 12px; }
+/* The descriptions' view: the sheet large in the middle, the map and the compass away */
+.vt[data-view="desc"] .vt-map, .vt[data-view="desc"] .vt-compass { display: none; }
+.vt[data-view="desc"] .vt-sheet { --cd: min(54px, calc((100cqw - 40px) / 8)); left: 50%; right: auto; transform: translateX(-50%); top: 60px; bottom: auto;
+  max-height: calc(100% - 72px); cursor: default; }
+.vt[data-view="desc"] .vt-sheet tr { display: table-row; }
+.vt[data-view="desc"] .vt-sheet-tog { display: none; }
 .vt-over { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10, 14, 18, 0.45); }
 .vt-over[hidden], .vt-over:empty { display: none; }
 .vt-over.side { place-items: center start; padding-left: 2%; background: transparent; pointer-events: none; }
@@ -4273,7 +4309,10 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
   .vt-hud { max-width: calc(100% - 270px); padding: 6px 10px; font-size: 12px; }
   .vt-hud b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .vt-hud #vt-time { font-size: 18px; }
-  .vt-desc { font-size: 10px; }
+  .vt-sheet { --cd: 24px; bottom: 126px; max-height: calc(100% - 270px); }   /* above the pad */
+  .vt[data-view="desc"] .vt-pad { display: none; }
+  .vt[data-view="desc"] .vt-sheet { --cd: 36px; top: 96px; max-height: calc(100% - 108px); }
+  .vt-views .btn { padding-inline: 7px; }
   .vt-mapbar { display: grid; grid-template-columns: repeat(2, 26px); gap: 3px; right: 4px; top: 4px; }   /* six buttons in three rows: a small map holds them */
   .vt-mapbar button { width: 26px; height: 26px; font-size: 14px; padding: 0; }
 }
@@ -4281,7 +4320,9 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
   .vt { --cw: 84px; --mw: 36%; --mh: 26%; }
   .vt[data-map="large"] { --mw: 36%; --mh: 46%; }   /* as narrow: the runner stands from 41 % to 59 % of the width */
-  .vt-desc { max-height: 32%; }
+  .vt-sheet { --cd: 22px; bottom: 220px; max-height: calc(100% - 360px); }   /* above the compass */
+  .vt[data-view="map"] .vt-mapbar { top: 140px; }
+  .vt[data-view="desc"] .vt-sheet { --cd: min(54px, calc((100cqw - 40px) / 8)); top: 140px; max-height: calc(100% - 152px); }
   .vt-compass, .vt[data-map="hidden"] .vt-compass { left: auto; right: 12px; bottom: 126px; }
   .vt-pad { grid-template-columns: repeat(3, 50px); }
   /* the buttons on a line of their own at the top, the race's line under them */
