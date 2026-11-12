@@ -3,6 +3,7 @@
 // colours, symbols (point, line, area, text, line text, rectangle) and objects are read as OCAD stores them; background
 // templates (separate image files the map refers to) are not drawn, nor layout bitmaps kept outside the file.
 
+import { attachInks } from "./inks.js";
 import { VMap, VColor, PointSymbol, LineSymbol, AreaSymbol, TextSymbol, LineTextSymbol, RectSymbol, GraphicsLine, GraphicsArea, LayerLine, LayerArea, LayerBitmap } from "./map.js";
 import { Glyph, PointSymDef, LineSymDef, AreaSymDef, TextSymDef, RectangleSymDef, GraphicsSymDef, ImageSymDef, SPACING, LOC, ROTATE, FILL, HALIGN, VALIGN, faceMetrics } from "./symdefs.js";
 import { SymPath, PathWithHoles, K, FLAG_LEFT, FLAG_RIGHT, FLAG_MAIN } from "./sympath.js";
@@ -299,6 +300,7 @@ function readParams(r, first, ctx) {
       const p = colors[i], num = pint(p, "n", 0);
       ctx.ids.set(num, map.addColor(new VColor(p.first, num, ["c", "m", "y", "k"].map((k) => pnum(p, k, 0) / 100), pint(p, "o", 0) !== 0)));
     }
+    attachInks(map, ctx.params);                               // the spot inks (map.spots) and each colour's share (c.spot)
     const view = single.get(1030);
     if (view) {
       map.hideLayout = pint(view, "l", 0) !== 0;

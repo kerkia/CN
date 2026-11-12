@@ -8,11 +8,13 @@
 //   a colour above that the plate does not print knocking out what is under it unless it overprints, with registration marks
 //   and the plate's name — what OCAD's « séparations » print.
 // The document: `doc.spots` [{ num, name, cmyk (0..1), freq, angle, visible }], each colour's `spot` [{ name, pct (0..1) }].
+// The reading and the printing are the Tracer's too (2026-11-12, owner: one print engine): ../tracer/vmap/inks.js.
 
 import { modal, field, num } from "../tracer/dialogs.js";
 import { svg } from "../tracer/icons.js";
 import { drawRect } from "./view.js";
 import { t, tn } from "./lang.js";
+import { readInks, plates as platesOf, unprinted, spotPainter, platePainter, overprintGs, plateMarks } from "../tracer/vmap/inks.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const pct = (v) => Math.round(v * 1000) / 10;
@@ -22,25 +24,8 @@ const clone = (o) => JSON.parse(JSON.stringify(o));
 // ---- reading OCAD's spot inks ------------------------------------------------------------------------------------------------
 /** The spot inks and each colour's share of them, from OCAD's parameter strings (types 9 and 10). */
 export function spotsFromParams(doc) {
-  const spots = [];
-  for (const p of doc.params || []) {
-    if (p.type !== 10) continue;
-    const parts = String(p.str || "").split("\t"), code = (c) => parts.find((x) => x[0] === c)?.slice(1);
-    spots.push({ num: Number(code("n")) || spots.length, name: parts[0], cmyk: ["c", "m", "y", "k"].map((c) => (Number(code(c)) || 0) / 100),
-      freq: Number(code("f")) || 0, angle: Number(code("a")) || 0, visible: code("v") !== "0" });
-  }
-  const byNum = new Map();
-  for (const p of doc.params || []) {
-    if (p.type !== 9) continue;
-    const parts = String(p.str || "").split("\t"), n = Number(parts.find((x) => x[0] === "n")?.slice(1));
-    const list = [];
-    for (let i = 1; i < parts.length; i++) if (parts[i][0] === "s") {
-      const next = parts[i + 1];
-      list.push({ name: parts[i].slice(1), pct: next?.[0] === "p" ? (Number(next.slice(1)) || 0) / 100 : 1 });
-    }
-    if (Number.isFinite(n)) byNum.set(n, list);
-  }
-  for (const c of doc.colors || []) if (byNum.has(c.num)) c.spot = byNum.get(c.num);
+  const { spots, byColour } = readInks(doc.params);
+  for (const c of doc.colors || []) if (byColour.has(c.num)) c.spot = byColour.get(c.num);
   doc.spots = spots;
   return doc;
 }
@@ -117,15 +102,9 @@ export function colourUsed(E, n) {
   return hit;
 }
 
-// ---- printing: composite with spot inks, or one page per plate -------------------------------------------------------------------
-/** The plates: each spot ink (when the map has them), else C, M, Y, K. Each { name, share(colour) → 0..1, cmyk (preview) }. */
-export function plates(doc, { process = false } = {}) {
-  if (!process && (doc.spots || []).length) return doc.spots.filter((s) => s.visible !== false).map((s) => ({ name: s.name, angle: s.angle, freq: s.freq,
-    share: (c) => (c.spot || []).find((x) => x.name === s.name)?.pct || 0 }));
-  return ["C", "M", "Y", "K"].map((name, k) => ({ name, share: (c) => c.cmyk?.[k] || 0 }));
-}
-/** A colour printed with exactly one ink (its share as the tint), or null. */
-const singleInk = (c) => (c.spot?.length === 1 ? c.spot[0] : null);
+// ---- printing: composite with spot inks, or one page per plate (inks.js) -----------------------------------------------------
+/** The plates of the map: each spot ink it uses (then C, M, Y, K for the colours without inks), or C, M, Y, K. */
+export function plates(doc, { process = false } = {}) { return platesOf(doc.spots, doc.colors || [], { process }); }
 
 /** The separation dialog and PDF: composite with Separation colour spaces, or plates. */
 export async function separationsPdf(E, area, base) {
@@ -144,91 +123,30 @@ export async function separationsPdf(E, area, base) {
   const fonts = await makeFonts(doc, L);
   const r = area, pt = 72 / 25.4, M = v.marks ? 15 : 0;              // 15 mm around the map for the marks
   const W = (r[2] - r[0] + 2 * M) * pt, H = (r[3] - r[1] + 2 * M) * pt;
-  const map = E.live.map, cols = E.doc.colors;
-  const vcol = (c) => map.colorById(c.num);
-
+  const map = E.live.map, cols = E.doc.colors, spots = E.doc.spots || [];
+  // the map's colours carry their inks and overprint for the painters
+  for (const c of cols) { const vc = map.colorById(c.num); if (vc) { vc.spot = c.spot || []; vc.overprint = !!c.overprint; } }
+  const lost = v.m === "process" ? [] : unprinted(spots, cols);
+  const base0 = new Matrix(pt, 0, 0, pt, (M - r[0]) * pt, (M - r[1]) * pt);
   if (v.m === "composite") {
-    const page = doc.addPage([W, H]);
-    // a Separation colour space per ink, its CMYK for the screen
-    const res = page.node.Resources(), csDict = doc.context.obj({});
-    res.set(L.PDFName.of("ColorSpace"), csDict);
-    const csName = new Map();
-    (E.doc.spots || []).forEach((s, i) => {
-      const fn = doc.context.obj({ FunctionType: 2, Domain: [0, 1], C0: [0, 0, 0, 0], C1: s.cmyk, N: 1 });
-      const cs = doc.context.obj([L.PDFName.of("Separation"), L.PDFName.of(s.name.replace(/[^\w.-]/g, "_")), L.PDFName.of("DeviceCMYK"), fn]);
-      const key = `CS${i}`; csDict.set(L.PDFName.of(key), doc.context.register(cs)); csName.set(s.name, key);
-    });
-    // a colour printed with several inks (a green screened over yellow…): a DeviceN colour space of those inks, its CMYK for the
-    // screen the sum of the inks' CMYK by their tints (a PostScript calculator function, PDF's FunctionType 4)
-    const spotByName = new Map((E.doc.spots || []).map((s) => [s.name, s]));
-    const deviceN = new Map();
-    const deviceNOf = (inks) => {
-      const key = inks.map((x) => x.name).join("|");
-      if (deviceN.has(key)) return deviceN.get(key);
-      const N = inks.length, f = (v) => (Math.round(v * 10000) / 10000).toString();
-      let ps = "{";
-      for (let j = 0; j < 4; j++) {
-        ps += " 0";
-        inks.forEach((x, i) => { ps += ` ${j + 1 + (N - 1 - i)} index ${f(spotByName.get(x.name).cmyk[j])} mul add`; });
-      }
-      ps += ` ${N + 4} 4 roll${" pop".repeat(N)} }`;
-      const fn = doc.context.stream(ps, { FunctionType: 4, Domain: Array(N).fill([0, 1]).flat(), Range: [0, 1, 0, 1, 0, 1, 0, 1] });
-      const cs = doc.context.obj([L.PDFName.of("DeviceN"), inks.map((x) => L.PDFName.of(x.name.replace(/[^\w.-]/g, "_"))), L.PDFName.of("DeviceCMYK"), doc.context.register(fn)]);
-      const name = `DN${deviceN.size}`;
-      csDict.set(L.PDFName.of(name), doc.context.register(cs));
-      deviceN.set(key, name);
-      return name;
-    };
-    class SpotTarget extends PdfTarget {
-      color(c, fill) {
-        const rec = cols.find((x) => x.num === c.id), ink = rec && singleInk(rec);
-        const op = (name, tints) => this.ops.push(this.L.PDFOperator.of(fill ? "cs" : "CS", [this.L.PDFName.of(name)]), this.L.PDFOperator.of(fill ? "scn" : "SCN", tints.map((v) => this.L.PDFNumber.of(v))));
-        if (ink && csName.has(ink.name)) { op(csName.get(ink.name), [ink.pct]); return; }
-        const inks = (rec?.spot || []).filter((x) => x.pct > 0 && spotByName.has(x.name));
-        if (inks.length > 1) { op(deviceNOf(inks), inks.map((x) => x.pct)); return; }
-        if (inks.length === 1) { op(csName.get(inks[0].name), [inks[0].pct]); return; }
-        super.color(c, fill);
-      }
-    }
-    let darken = null;
-    if (cols.some((c) => c.overprint)) darken = page.node.newExtGState("GSdark", doc.context.register(doc.context.obj({ Type: "ExtGState", OP: true, op: true, OPM: 1 })));
-    const tg = new SpotTarget(L, page, new Matrix(pt, 0, 0, pt, (M - r[0]) * pt, (M - r[1]) * pt), { fonts, darken, minRes: 0.01 });
+    const page = doc.addPage([W, H]), painter = spotPainter(L, doc, spots);
+    const op = cols.some((c) => c.overprint) ? overprintGs(L, doc, page) : null;
+    const tg = new PdfTarget(L, page, base0, { fonts, darken: op, minRes: 0.01, painter });
     drawRect(E.live, tg, r, { minRes: 0.01, overprint: true });
     await tg.finish();
-    if (M) marks(L, page, W, H, M * pt, E.doc.title || "", t("map.sep.composite"));
+    if (M) plateMarks(L, page, painter, { m: M * pt, label: `${E.doc.title || ""} — ${t("map.sep.composite")}`, font: fonts.reg });
   } else {
-    // one page per plate, in black at the colour's share; colours the plate does not print knock out what is under them (white)
-    // unless they overprint
-    for (const plate of plates(E.doc, { process: v.m === "process" })) {
-      const page = doc.addPage([W, H]);
-      const saved = new Map(), hide = new Set();
-      for (const c of cols) {
-        const vc = vcol(c); if (!vc) continue;
-        saved.set(vc, { cmyk: vc.cmyk, css: vc.css });
-        const s = plate.share(c);
-        if (s > 0) { vc.cmyk = [0, 0, 0, s]; }
-        else if (c.overprint) hide.add(c.num);
-        else vc.cmyk = [0, 0, 0, 0];
-      }
-      try {
-        const tg = new PdfTarget(L, page, new Matrix(pt, 0, 0, pt, (M - r[0]) * pt, (M - r[1]) * pt), { fonts, minRes: 0.01 });
-        drawRect(E.live, tg, r, { minRes: 0.01, hide });
-        await tg.finish();
-      } finally { for (const [vc, s] of saved) { vc.cmyk = s.cmyk; vc.css = s.css; } }
-      if (M) marks(L, page, W, H, M * pt, E.doc.title || "", `${t("map.sep.plate")} ${plate.name}${plate.angle != null ? ` · ${plate.angle}°` : ""}${plate.freq ? ` · ${plate.freq} lpi` : ""}`);
+    const list = platesOf(spots, cols, { process: v.m === "process" });
+    for (const plate of list) {
+      const page = doc.addPage([W, H]), painter = platePainter(L, plate, spots, list);
+      const tg = new PdfTarget(L, page, base0, { fonts, minRes: 0.01, painter });
+      drawRect(E.live, tg, r, { minRes: 0.01 });
+      await tg.finish();
+      if (M) plateMarks(L, page, painter, { m: M * pt, font: fonts.reg,
+        label: `${E.doc.title || ""} — ${t("map.sep.plate")} ${plate.name}${plate.angle != null ? ` · ${plate.angle}°` : ""}${plate.freq ? ` · ${plate.freq} lpi` : ""}` });
     }
   }
-  return { bytes: await doc.save(), name: `${base}-${v.m === "composite" ? "spot" : v.m === "spot" ? "plates" : "cmyk-plates"}.pdf` };
-}
-/** Registration marks at the four corners and the plate's name in the margin (in registration black on every plate). */
-function marks(L, page, W, H, m, title, label) {
-  const ops = [L.pushGraphicsState(), L.setStrokingCmykColor(1, 1, 1, 1), L.setFillingCmykColor(1, 1, 1, 1), L.setLineWidth(0.3)];
-  const cross = (x, y) => { const r = m * 0.28; ops.push(L.moveTo(x - r, y), L.lineTo(x + r, y), L.moveTo(x, y - r), L.lineTo(x, y + r), L.stroke());
-    const k = 0.5523 * r * 0.6, c = r * 0.6; ops.push(L.moveTo(x + c, y), L.appendBezierCurve(x + c, y + k, x + k, y + c, x, y + c), L.appendBezierCurve(x - k, y + c, x - c, y + k, x - c, y),
-      L.appendBezierCurve(x - c, y - k, x - k, y - c, x, y - c), L.appendBezierCurve(x + k, y - c, x + c, y - k, x + c, y), L.stroke()); };
-  cross(m / 2, m / 2); cross(W - m / 2, m / 2); cross(m / 2, H - m / 2); cross(W - m / 2, H - m / 2);
-  ops.push(L.popGraphicsState());
-  page.pushOperators(...ops);
-  page.drawText(`${title} — ${label}`.normalize("NFD").replace(/[^\x20-\x7e]/g, ""), { x: m * 1.2, y: m * 0.35, size: 7 });
+  return { bytes: await doc.save(), name: `${base}-${v.m === "composite" ? "spot" : v.m === "spot" ? "plates" : "cmyk-plates"}.pdf`,
+    warn: lost.length ? t("map.sep.unprinted", { list: lost.map((c) => c.name).join(", ") }) : "" };
 }
 export { tn };

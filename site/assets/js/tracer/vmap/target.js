@@ -144,20 +144,24 @@ function makeTile(p, color, W, H, psx, psy) {
   return c;
 }
 
-/** A PDF page as a target: operators collected, then pushed (pdf-lib). fonts: makeFonts' runs(). */
+/** A PDF page as a target: operators collected, then pushed (pdf-lib). fonts: makeFonts' runs(). painter (inks.js): spot inks
+ *  for a composite, or one plate (colours it leaves out not drawn at all, images separated). */
 export class PdfTarget {
-  constructor(L, page, base, { rgb = false, fonts = null, darken = null, minRes = 0.01 } = {}) {
-    this.L = L; this.page = page; this.ops = []; this.rgb = rgb; this.fonts = fonts; this.darken = darken; this.minRes = minRes;
+  constructor(L, page, base, { rgb = false, fonts = null, darken = null, minRes = 0.01, painter = null } = {}) {
+    this.L = L; this.page = page; this.ops = []; this.rgb = rgb; this.fonts = fonts; this.darken = darken; this.minRes = minRes; this.painter = painter;
     this.texts = [];                                          // text runs wait for their fonts (async): placed in order
     this.ops.push(L.pushGraphicsState(), L.concatTransformationMatrix(base.a, base.b, base.c, base.d, base.e, base.f));
     this.depth = 1;
   }
   push(m) { this.ops.push(this.L.pushGraphicsState(), this.L.concatTransformationMatrix(m.a, m.b, m.c, m.d, m.e, m.f)); this.depth++; }
   pop() { this.ops.push(this.L.popGraphicsState()); this.depth--; }
-  color(c, fill) {
+  color(c, fill) { this.colorInto(this.ops, c, fill); }
+  /** Whether a colour is left out of this output (a plate it does not print, and it overprints). */
+  skip(c) { return !!(c && this.painter?.skip(c)); }
+  colorFallback(ops, c, fill) {
     const L = this.L, k = c.cmyk || [0, 0, 0, 1];
-    if (this.rgb) { const [r, g, b] = [(1 - k[0]) * (1 - k[3]), (1 - k[1]) * (1 - k[3]), (1 - k[2]) * (1 - k[3])]; this.ops.push(fill ? L.setFillingRgbColor(r, g, b) : L.setStrokingRgbColor(r, g, b)); }
-    else this.ops.push(fill ? L.setFillingCmykColor(...k) : L.setStrokingCmykColor(...k));
+    if (this.rgb) { const [r, g, b] = [(1 - k[0]) * (1 - k[3]), (1 - k[1]) * (1 - k[3]), (1 - k[2]) * (1 - k[3])]; ops.push(fill ? L.setFillingRgbColor(r, g, b) : L.setStrokingRgbColor(r, g, b)); }
+    else ops.push(fill ? L.setFillingCmykColor(...k) : L.setStrokingCmykColor(...k));
   }
   pathOps(cmds) {
     const L = this.L;
@@ -169,8 +173,8 @@ export class PdfTarget {
     }
   }
   setPen(p) { const L = this.L; this.color(p.color, false); this.ops.push(L.setLineWidth(p.width), L.setLineCap(CAP_PDF[p.cap] ?? 0), L.setLineJoin(JOIN_PDF[p.join] ?? 0)); }
-  stroke(cmds, pen) { if (!(pen.width > 0)) return; this.setPen(pen); this.pathOps(cmds); this.ops.push(this.L.stroke()); }
-  fill(cmds, color, evenOdd = true) { this.color(color, true); this.pathOps(cmds); this.ops.push(evenOdd ? this.L.PDFOperator.of("f*") : this.L.fill()); }
+  stroke(cmds, pen) { if (!(pen.width > 0) || this.skip(pen.color)) return; this.setPen(pen); this.pathOps(cmds); this.ops.push(this.L.stroke()); }
+  fill(cmds, color, evenOdd = true) { if (this.skip(color)) return; this.color(color, true); this.pathOps(cmds); this.ops.push(evenOdd ? this.L.PDFOperator.of("f*") : this.L.fill()); }
   polyline(pts, closed, pen) {
     if (!(pen.width > 0) || pts.length < 4) return;
     const cmds = [["M", pts[0], pts[1]]];
@@ -206,8 +210,8 @@ export class PdfTarget {
     else { this.ops.push(this.L.popGraphicsState()); this.depth--; }
   }
   /** Text: a slot in the operators, filled once the fonts are ready (finish()). */
-  text(str, m, color, x, y) { this.textSlot(str, m, x, y, { color }); }
-  textOutline(str, m, pen, x, y) { this.textSlot(str, m, x, y, { pen }); }
+  text(str, m, color, x, y) { if (!this.skip(color)) this.textSlot(str, m, x, y, { color }); }
+  textOutline(str, m, pen, x, y) { if (!this.skip(pen.color)) this.textSlot(str, m, x, y, { pen }); }
   textSlot(str, m, x, y, how) {
     const slot = [];
     this.ops.push(slot);
@@ -223,6 +227,12 @@ export class PdfTarget {
   async embedImage(it) {
     const doc = this.page.doc;
     if (!doc) return null;
+    if (this.painter?.kind === "plate") {
+      // a plate: the image's own share of this ink, in grey (inks.js), or nothing
+      const { plateImage } = await import("./inks.js");
+      const png = await plateImage(this.painter, { bytes: it.bytes, img: it.img, type: it.type });
+      return png ? doc.embedPng(png) : null;
+    }
     const b = it.bytes;
     if (b && b[0] === 0x89 && b[1] === 0x50) return doc.embedPng(b);
     if (b && b[0] === 0xff && b[1] === 0xd8) return doc.embedJpg(b);
@@ -262,9 +272,8 @@ export class PdfTarget {
     for (let i = 0; i < flat.length; i += 2000) this.page.pushOperators(...flat.slice(i, i + 2000));
   }
   colorInto(ops, c, fill) {
-    const L = this.L, k = c.cmyk || [0, 0, 0, 1];
-    if (this.rgb) { const [r, g, b] = [(1 - k[0]) * (1 - k[3]), (1 - k[1]) * (1 - k[3]), (1 - k[2]) * (1 - k[3])]; ops.push(fill ? L.setFillingRgbColor(r, g, b) : L.setStrokingRgbColor(r, g, b)); }
-    else ops.push(fill ? L.setFillingCmykColor(...k) : L.setStrokingCmykColor(...k));
+    const own = this.painter && !this.rgb ? this.painter.ops(this.page, c, fill) : null;
+    if (own) ops.push(...own); else this.colorFallback(ops, c, fill);
   }
 }
 void textRuns;

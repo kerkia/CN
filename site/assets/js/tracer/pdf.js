@@ -3,6 +3,8 @@
 // CMYK (Multiply blend so black features show through, as Purple Pen's « Blend »), each course at its print scale on its
 // page —, the description sheets (one of each, a page of each, or N copies of each), the punch cards, and the print
 // areas (Purple Pen's File › Set Print Area).
+// For a print shop (owner, 2026-11-12: Cartographier's printing engine shared, vmap/inks.js): the course maps in spot inks —
+// an OCAD map's own inks, the purple an ink of its own, real overprint — or one page per plate (each ink, or C, M, Y, K).
 
 import * as M from "./model.js";
 import { layoutCourse } from "./layout.js";
@@ -15,6 +17,8 @@ import { loadFonts, textRuns, chunkFile, ensureText } from "./fonts.js";
 import { coursePurple, layerOf, splitItems, syncMap } from "./appear.js";
 import { where } from "./ribbon-data.js";
 import { hasGeo as hasGeoEv } from "./geo.js";
+import { isBlack } from "./vmap/map.js";
+import { plates as platesOf, unprinted, spotPainter, platePainter, overprintGs, plateImage, plateLabel } from "./vmap/inks.js";
 import { t } from "./lang.js";
 
 import { PDFLIB, FFLATE } from "../vendor.js";
@@ -91,7 +95,12 @@ function cmykOf(P, role, rgb) {
   const c = Array.isArray(role) ? role : role === "upper" || role === "lower" ? P : role === "purple50" ? P.map((x) => x / 2) : role === "white" ? [0, 0, 0, 0] : [0, 0, 0, 1];
   return rgb ? { rgb: [(1 - c[0]) * (1 - c[3]), (1 - c[1]) * (1 - c[3]), (1 - c[2]) * (1 - c[3])] } : { cmyk: c };
 }
-function setColor(L, ops, col, fill) {
+function setColor(L, ops, col, fill, page = null, painter = null) {
+  if (col.paint) {
+    const own = painter.ops(page, col.paint, fill), k = col.paint.cmyk || [0, 0, 0, 1];
+    ops.push(...(own || [fill ? L.setFillingCmykColor(...k) : L.setStrokingCmykColor(...k)]));
+    return;
+  }
   if (col.rgb) ops.push(fill ? L.setFillingRgbColor(...col.rgb) : L.setStrokingRgbColor(...col.rgb));
   else ops.push(fill ? L.setFillingCmykColor(...col.cmyk) : L.setStrokingCmykColor(...col.cmyk));
 }
@@ -108,20 +117,28 @@ function pathOps(L, ops, d, T) {
  * Draw items (map mm, y up) on a PDF page: T(x, y) gives points, s the points per map mm. multiply: the ExtGState name
  * for the Multiply blend (purple), or null. fonts: { reg, bold }. images: a cache of embedded images.
  */
-async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fonts, rgb = false, images = new Map(), purple: P = ev.appearance.purple || M.PURPLE, onInset = null }) {
+async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fonts, rgb = false, images = new Map(), purple: P = ev.appearance.purple || M.PURPLE, onInset = null, painter = null, paints = null }) {
   const ops = [];
   const flush = () => { if (ops.length) { page.pushOperators(...ops); ops.length = 0; } };
+  // spot inks or a plate (vmap/inks.js): each role's paint, or nothing when the plate leaves it out
+  const colFor = (role) => {
+    if (!painter) return cmykOf(P, role, rgb);
+    const paint = paints(role);
+    return painter.skip(paint) ? null : { paint };
+  };
+  const setCol = (o, col, fill) => setColor(L, o, col, fill, page, painter);
   for (const it of items) {
     const purple = it.color === "upper" || it.color === "lower" || it.color === "purple50";
+    if ((it.t === "path" || it.t === "hatch" || it.t === "text") && !colFor(it.color)) continue;
     if (it.t === "path") {
       ops.push(L.pushGraphicsState());
       if (purple && multiply) ops.push(L.setGraphicsState(multiply));
       pathOps(L, ops, it.d, T);
-      const col = cmykOf(P, it.color, rgb);
-      if (it.fill && it.stroke) { setColor(L, ops, col, true); setColor(L, ops, col, false); ops.push(L.setLineWidth(it.stroke * s), L.fillAndStroke()); }
-      else if (it.fill) { setColor(L, ops, col, true); ops.push(L.PDFOperator.of("f*")); }        // even-odd fill (pdf-lib has no helper for it)
+      const col = colFor(it.color);
+      if (it.fill && it.stroke) { setCol(ops, col, true); setCol(ops, col, false); ops.push(L.setLineWidth(it.stroke * s), L.fillAndStroke()); }
+      else if (it.fill) { setCol(ops, col, true); ops.push(L.PDFOperator.of("f*")); }        // even-odd fill (pdf-lib has no helper for it)
       else if (it.stroke) {
-        setColor(L, ops, col, false);
+        setCol(ops, col, false);
         ops.push(L.setLineWidth(it.stroke * s), L.setLineCap(CAP[it.cap] ?? 0), L.setLineJoin(JOIN[it.join] ?? 0), L.stroke());
       } else ops.push(L.endPath());
       ops.push(L.popGraphicsState());
@@ -129,7 +146,7 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
       ops.push(L.pushGraphicsState());
       if (purple && multiply) ops.push(L.setGraphicsState(multiply));
       pathOps(L, ops, it.d, T); ops.push(L.clip(), L.endPath());
-      setColor(L, ops, cmykOf(P, it.color, rgb), false);
+      setCol(ops, colFor(it.color), false);
       ops.push(L.setLineWidth(it.width * s));
       const xs = [], ys = [];
       for (const c of it.d) for (let i = 1; i < c.length; i += 2) { xs.push(c[i]); ys.push(c[i + 1]); }
@@ -147,8 +164,8 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
       const ws = runs.map((r) => r.font.widthOfTextAtSize(r.text, size)), w = ws.reduce((a, b) => a + b, 0);
       const [x, y] = T(it.x, it.y);
       const x0 = it.align === "center" ? x - w / 2 : x;
-      const col = cmykOf(P, it.color, rgb);
-      const colorObj = col.rgb ? L.rgb(...col.rgb) : L.cmyk(...col.cmyk);
+      const col = colFor(it.color);
+      const colorObj = col.paint ? null : col.rgb ? L.rgb(...col.rgb) : L.cmyk(...col.cmyk);
       if (it.outline > 0) {
         let xo = x0;
         runs.forEach((r, i) => {
@@ -160,19 +177,27 @@ async function drawItemsPdf(L, doc, page, ev, items, T, s, { multiply = null, fo
       }
       let xr = x0;
       runs.forEach((r, i) => {
-        page.drawText(r.text, { x: xr, y, size, font: r.font, color: colorObj, ...(purple && multiply && !it.outline ? { blendMode: L.BlendMode.Multiply } : {}) });
+        if (col.paint) {
+          // in an ink of its own (pdf-lib's drawText knows only RGB, CMYK and grey): the operators by hand
+          const set = []; setCol(set, col, true);
+          page.pushOperators(L.pushGraphicsState(), ...(purple && multiply && !it.outline ? [L.setGraphicsState(multiply)] : []), ...set, L.beginText(),
+            L.setFontAndSize(page.node.newFontDictionary(r.font.name, r.font.ref), size), L.moveText(xr, y), L.showText(r.font.encodeText(r.text)), L.endText(), L.popGraphicsState());
+        } else page.drawText(r.text, { x: xr, y, size, font: r.font, color: colorObj, ...(purple && multiply && !it.outline ? { blendMode: L.BlendMode.Multiply } : {}) });
         xr += ws[i];
       });
     } else if (it.t === "inset") {
       if (onInset) { flush(); await onInset(it); }
     } else if (it.t === "image" && it.image?.data) {
       flush();
-      const key = it.image.data.slice(0, 64) + it.image.data.length;
+      const plate = painter?.kind === "plate" ? painter.plate.name : "";
+      const key = it.image.data.slice(0, 64) + it.image.data.length + (plate ? `|${plate}` : "");
       if (!images.has(key)) {
         const bytes = Uint8Array.from(atob(it.image.data), (c) => c.charCodeAt(0));
-        images.set(key, /png/i.test(it.image.format) ? await doc.embedPng(bytes) : await doc.embedJpg(bytes));
+        if (plate) { const png = await plateImage(painter, { bytes, type: /png/i.test(it.image.format) ? "image/png" : "image/jpeg" }); images.set(key, png ? await doc.embedPng(png) : null); }
+        else images.set(key, /png/i.test(it.image.format) ? await doc.embedPng(bytes) : await doc.embedJpg(bytes));
       }
       const img = images.get(key);
+      if (!img) continue;
       const [x1, y1] = T(it.box[0], it.box[1]), [x2, y2] = T(it.box[2], it.box[3]);
       page.drawImage(img, { x: Math.min(x1, x2), y: Math.min(y1, y2), width: Math.abs(x2 - x1), height: Math.abs(y2 - y1) });
     }
@@ -241,18 +266,21 @@ async function mapEmbed(E, doc, L) {
 }
 
 /** An OCAD or Mapper map drawn as vectors on a page (vmap/target.js): the box (map mm) at s points per mm, all or a part. */
-async function vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, part, hide = null) {
+async function vectorMap(E, doc, L, page, box, T, s, { fonts, rgb, painter = null }, part, hide = null) {
   const [{ PdfTarget }, { Matrix }] = await Promise.all([import("./vmap/target.js"), import("./vmap/geom.js")]);
+  // the map's « overprint » colours: blended darker for a printer or the screen (the event's choice); for a print shop the PDF's
+  // own overprint (spot inks), or left out of the plates they are not on (inks.js)
   let darken = null;
-  if (E.map.overprint) darken = page.node.newExtGState("GSdark", doc.context.register(doc.context.obj({ Type: "ExtGState", BM: "Darken" })));
+  if (painter?.kind === "spot") darken = overprintGs(L, doc, page);
+  else if (!painter && E.map.overprint) darken = page.node.newExtGState("GSdark", doc.context.register(doc.context.obj({ Type: "ExtGState", BM: "Darken" })));
   const [x0, y0] = T(0, 0);
-  const t = new PdfTarget(L, page, new Matrix(s, 0, 0, s, x0, y0), { rgb, fonts, darken, minRes: 0.01 });
-  E.map.drawPdf(t, box, part, hide);
+  const t = new PdfTarget(L, page, new Matrix(s, 0, 0, s, x0, y0), { rgb, fonts, darken, minRes: 0.01, painter });
+  E.map.drawPdf(t, box, part, hide, painter?.kind === "spot" ? true : undefined);
   await t.finish();
 }
 
 /** Another map of the event (maps.js) on a page: its sheet's mm placed by the inverse of its affine, then T (points). */
-async function extraMapPdf(E, doc, L, page, mo, T, s, { fonts, rgb }) {
+async function extraMapPdf(E, doc, L, page, mo, T, s, { fonts, rgb, painter = null }) {
   const { invert } = await import("./maps.js");
   const inv = invert(mo.tf), [x0, y0] = T(0, 0);
   // sheet mm → page points: x' = p0 x + p1 y + p2, y' = p3 x + p4 y + p5
@@ -260,11 +288,12 @@ async function extraMapPdf(E, doc, L, page, mo, T, s, { fonts, rgb }) {
   const src = mo.src || (E.extraMaps?.[mo.id]);
   if (src?.kind === "vector" && src.drawPdf) {
     const [{ PdfTarget }, { Matrix }] = await Promise.all([import("./vmap/target.js"), import("./vmap/geom.js")]);
-    const tg = new PdfTarget(L, page, new Matrix(p[0], p[3], p[1], p[4], p[2], p[5]), { rgb, fonts, darken: null, minRes: 0.01 });
+    const tg = new PdfTarget(L, page, new Matrix(p[0], p[3], p[1], p[4], p[2], p[5]), { rgb, fonts, darken: null, minRes: 0.01, painter });
     src.drawPdf(tg, [0, 0, src.w, src.h], "all");
     await tg.finish();
     return;
   }
+  if (painter?.kind === "plate") { E._plateSkipped = true; return; }       // an image or PDF map cannot be separated
   E._extraEmbed = E._extraEmbed?.doc === doc ? E._extraEmbed : { doc, maps: {} };
   let em = E._extraEmbed.maps[mo.id];
   if (!em) {
@@ -285,7 +314,7 @@ async function extraMapPdf(E, doc, L, page, mo, T, s, { fonts, rgb }) {
 }
 /** One course designator on a page of the document. adv: the advanced level's options (printx.js: registration marks, the
  *  printer's offset, georeferenced pages). combined: other designators drawn on the same map (« all on one map »). */
-async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, images, variationName = "", team = null, leg = null, adv = null, combined = null }) {
+async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, images, variationName = "", team = null, leg = null, adv = null, combined = null, pr = null }) {
   const ev = E.ev;
   const layout = layoutCourse(ev, cd, { variationName, team, leg });
   let items = itemsFor(ev, layout);
@@ -294,10 +323,14 @@ async function coursePage(E, doc, L, cd, { withMap = true, rgb = false, fonts, i
     for (const d of combined) { const l2 = layoutCourse(ev, d.cd, { descriptions: false }); layout.objs.push(...l2.objs); items = items.concat(itemsFor(ev, l2)); }
   }
   let last = null;
-  for (const tile of printTiles(E, cd, layout)) last = await onePage(E, doc, L, ev, items, tile, { withMap, rgb, fonts, images, adv, cd });
+  for (const tile of printTiles(E, cd, layout)) {
+    // a print shop's plates: one page per plate (inks.js), each named in its margin
+    if (pr?.plates) for (const plate of pr.plates) last = await onePage(E, doc, L, ev, items, tile, { withMap, rgb: false, fonts, images, adv, cd, pr, painter: platePainter(L, plate, pr.spots, pr.plates) });
+    else last = await onePage(E, doc, L, ev, items, tile, { withMap, rgb: pr?.painter ? false : rgb, fonts, images, adv, cd, pr, painter: pr?.painter || null });
+  }
   return last;
 }
-async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withMap, rgb, fonts, images, adv = null, cd = null }) {
+async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withMap, rgb, fonts, images, adv = null, cd = null, pr = null, painter = null }) {
   const page = doc.addPage([pg.w * PT, pg.h * PT]);
   const s = k * PT;                                          // points per map mm
   const m = pg.margin * PT;
@@ -311,8 +344,12 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
   if (vector) await syncMap(ev, E.map);
   const layer = vector ? layerOf(ev, E.map) : null, purple = coursePurple(ev, E.map);
   const hide = M.mapHideFor(ev, cd?.course || 0);                // the course's training map (contours only, no paths…)
-  if (other) await extraMapPdf(E, doc, L, page, other, T, s, { fonts, rgb });
-  else if (vector) await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, layer == null ? "all" : "below", hide);
+  // the course's colours as inks (spot inks or plates): the purple overprints unless « layer » mode draws it opaque
+  const paints = painter ? coursePaints(pr.setup, purple, ev.appearance.blend !== "none" && layer == null) : null;
+  const plate = painter?.kind === "plate";
+  if (other) await extraMapPdf(E, doc, L, page, other, T, s, { fonts, rgb, painter });
+  else if (vector) await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb, painter }, layer == null ? "all" : "below", hide);
+  else if (withMap && plate) E._plateSkipped = true;                // an image or PDF map cannot be separated
   else if (withMap) {
     const me = await mapEmbed(E, doc, L);
     if (me?.kind === "pdf") page.drawPage(me.emb, { x: T(0, 0)[0], y: T(0, 0)[1], xScale: k, yScale: k });
@@ -320,9 +357,12 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
   }
   let multiply = null;
   if (ev.appearance.blend !== "none" && layer == null) {
-    const gs = doc.context.obj({ Type: "ExtGState", BM: "Multiply" });
-    multiply = page.node.newExtGState("GSmul", doc.context.register(gs));
+    // over the map, the purple lets its black show: Multiply on a printer, the PDF's overprint in spot inks, nothing on a plate
+    // (the other plates leave it out: inks.js)
+    if (painter?.kind === "spot") multiply = overprintGs(L, doc, page);
+    else if (!painter) multiply = page.node.newExtGState("GSmul", doc.context.register(doc.context.obj({ Type: "ExtGState", BM: "Multiply" })));
   }
+  const ink = { painter, paints };
   // an enlarged section (the advanced level): the map and the course again, magnified, in its frame
   const onInset = async (it) => {
     const { insetSrc } = await import("./layoutx.js");
@@ -330,31 +370,69 @@ async function onePage(E, doc, L, ev, items, { box, page: pg, k, tile }, { withM
     const T2 = (x, y) => T(l + (x - src[0]) * f, b + (y - src[1]) * f);
     const [px0, py0] = T(l, b), [px1, py1] = T(r, tt);
     page.pushOperators(L.pushGraphicsState(), L.moveTo(px0, py0), L.lineTo(px1, py0), L.lineTo(px1, py1), L.lineTo(px0, py1), L.closePath(), L.clip(), L.endPath());
-    if (vector) await vectorMap(E, doc, L, page, src, T2, s * f, { fonts, rgb }, "all", hide);
-    else if (withMap) {
+    if (vector) await vectorMap(E, doc, L, page, src, T2, s * f, { fonts, rgb, painter }, "all", hide);
+    else if (withMap && !plate) {
       const me = await mapEmbed(E, doc, L);
       if (me?.kind === "pdf") page.drawPage(me.emb, { x: T2(0, 0)[0], y: T2(0, 0)[1], xScale: k * f, yScale: k * f });
       else if (me?.kind === "bitmap") { const [x0, y0] = T2(0, 0); page.drawImage(me.img, { x: x0, y: y0, width: ev.map.w * s * f, height: ev.map.h * s * f }); }
     }
-    await drawItemsPdf(L, doc, page, ev, items.filter((x) => !x.desc && x.t !== "inset" && !x.insetFrame), T2, s * f, { multiply, fonts, rgb, images, purple });
+    await drawItemsPdf(L, doc, page, ev, items.filter((x) => !x.desc && x.t !== "inset" && !x.insetFrame), T2, s * f, { multiply, fonts, rgb, images, purple, ...ink });
     page.pushOperators(L.popGraphicsState());
   };
   if (layer != null) {
     // « layer » mode (Purple Pen): the lower purple between the map's colours, opaque; the rest over the whole map
     const [lower, rest] = splitItems(items);
-    await drawItemsPdf(L, doc, page, ev, lower, T, s, { fonts, rgb, images, purple });
-    await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb }, "above", hide);
-    await drawItemsPdf(L, doc, page, ev, rest, T, s, { fonts, rgb, images, purple, onInset });
-  } else await drawItemsPdf(L, doc, page, ev, items, T, s, { multiply, fonts, rgb, images, purple, onInset });
+    await drawItemsPdf(L, doc, page, ev, lower, T, s, { fonts, rgb, images, purple, ...ink });
+    await vectorMap(E, doc, L, page, box, T, s, { fonts, rgb, painter }, "above", hide);
+    await drawItemsPdf(L, doc, page, ev, rest, T, s, { fonts, rgb, images, purple, onInset, ...ink });
+  } else await drawItemsPdf(L, doc, page, ev, items, T, s, { multiply, fonts, rgb, images, purple, onInset, ...ink });
   page.pushOperators(L.popGraphicsState());
-  if (adv) {
+  if (adv || plate) {
     const X = await import("./printx.js");
-    if (adv.regmarks) X.registrationMarks(L, page, { margin: pg.margin, dx: adv.dx || 0, dy: adv.dy || 0 });
-    if (adv.geo) X.georeferencePage(L, doc, page, ev, { box, k, margin: pg.margin });
+    if (adv?.regmarks || plate) X.registrationMarks(L, page, { margin: pg.margin, dx: adv?.dx || 0, dy: adv?.dy || 0, painter });
+    if (adv?.geo) X.georeferencePage(L, doc, page, ev, { box, k, margin: pg.margin });
   }
+  // a plate says which, in its top margin (in every plate's colour)
+  if (plate) plateLabel(L, page, painter, `${ev.title || ""} — ${t("trc.pdf.plate", { name: painter.plate.name })}${painter.plate.angle != null ? ` · ${painter.plate.angle}°` : ""}`,
+    fonts.reg, { x: Math.max(6, m), y: pg.h * PT - Math.max(9, m / 2 + 3) });
   // a tiled page says which: « 2/3 – 1/2 » (across, down) in the margin
   if (tile && fonts?.reg) page.drawText(`${tile[0]}/${tile[2]} – ${tile[1]}/${tile[3]}`, { x: m, y: Math.max(2, m / 2 - 3), size: 7, font: fonts.reg, color: L.rgb(0.4, 0.4, 0.4) });
   return page;
+}
+
+// ---- spot inks and plates (vmap/inks.js) -------------------------------------------------------------------------------------
+/** The inks of a print: the map's own (an OCAD map's spot inks), the course's purple an ink of its own (one of the map's when
+ *  named so: its own CMYK then), the course's black the ink of the map's black. */
+export function inkSetup(E, { ink = "", withMap = true } = {}) {
+  const vm = E.map?.kind === "vector" ? E.map.vmap : null;
+  const spots = (vm?.spots || []).map((x) => ({ ...x }));
+  const name = String(ink || "").trim() || defaultInk(E);
+  if (!spots.some((x) => x.name === name)) spots.push({ num: -1, name, cmyk: coursePurple(E.ev, E.map).slice(), freq: 0, angle: 45, visible: true, course: true });
+  const black = vm ? vm.colors.slice().reverse().find((c) => isBlack(...c.cmyk)) : null;
+  return { spots, ink: name, black: black?.spot?.length ? black.spot : null, mapColors: withMap && vm ? vm.colors : [] };
+}
+/** The purple's ink, as the map names it (its purple printed in one ink), else « Purple » in the site's language. */
+export function defaultInk(E) {
+  const vm = E.map?.kind === "vector" ? E.map.vmap : null, p = vm?.purple();
+  const inks = (p?.spot || []).filter((x) => x.pct > 0);
+  return inks.length === 1 ? inks[0].name : t("trc.pdf.inkDefault");
+}
+/** What the ink's field says: the map's inks when it has some, else that the purple will be one. */
+function inkHint(E) {
+  const spots = E.map?.kind === "vector" ? E.map.vmap.spots || [] : [];
+  return spots.length ? t("trc.pdf.inkHintMap", { list: spots.map((x) => x.name).join(", ") }) : t("trc.pdf.inkHint");
+}
+/** The course's colours as paints (inks.js): the purple and its half tint in the purple's ink, the black in the map's black ink. */
+function coursePaints(setup, P, over) {
+  const purple = { cmyk: P, spot: [{ name: setup.ink, pct: 1 }], overprint: over };
+  const half = { cmyk: P.map((x) => x / 2), spot: [{ name: setup.ink, pct: 0.5 }], overprint: over };
+  const black = { cmyk: [0, 0, 0, 1], spot: setup.black || [], overprint: false };
+  const white = { cmyk: [0, 0, 0, 0], spot: [], overprint: false };
+  const cache = new Map();
+  return (role) => {
+    if (Array.isArray(role)) { const k = role.join(","); if (!cache.has(k)) cache.set(k, { cmyk: role, spot: [], overprint: false }); return cache.get(k); }
+    return role === "upper" || role === "lower" ? purple : role === "purple50" ? half : role === "white" ? white : black;
+  };
 }
 
 // ---- dialogs: course maps -------------------------------------------------------------------------------------------------------
@@ -367,15 +445,28 @@ export async function coursesDialog(E, { only = null } = {}) {
     <div class="tr-grid2">${field(t("trc.pdf.files"), sel("files", [["one", t("trc.pdf.filesOne")], ["course", t("trc.pdf.filesCourse")], ...(anyParts ? [["part", t("trc.pdf.filesPart")]] : [])], "one"))}
     ${anyVars ? field(t("trc.pdf.variations"), sel("vars", [["all", t("trc.pdf.varsAll")], ["combined", t("trc.pdf.varsCombined")], ["teams", t("trc.pdf.varsTeams")]], "all")) : ""}
     ${field(t("trc.pdf.content"), sel("content", [["map", t("trc.pdf.contentMap")], ["course", t("trc.pdf.contentCourse")]], "map"))}
-    ${field(t("trc.pdf.colours"), sel("color", [["cmyk", t("trc.pdf.cmyk")], ["rgb", t("trc.pdf.rgb")]], "cmyk"))}</div>
+    ${field(t("trc.pdf.colours"), sel("color", [["cmyk", t("trc.pdf.cmyk")], ["rgb", t("trc.pdf.rgb")], ["spot", t("trc.pdf.spot")]], "cmyk"))}
+    <div class="tr-field-wrap" data-ink>${field(t("trc.pdf.ink"), `<input name="ink" value="${esc(defaultInk(E))}" maxlength="60" data-fresh>`, inkHint(E))}</div></div>
     ${E.pro ? `<h4 class="tr-pro-h">${esc(t("trc.dlg.advanced"))}</h4><div class="tr-grid2">
       ${field(t("trc.pdf.layout"), sel("layout", [["page", t("trc.pdf.layoutPage")], ["each", t("trc.pdf.layoutEach")], ["fill", t("trc.pdf.layoutFill")], ["combined", t("trc.pdf.layoutCombined")]], "page"))}
       ${field(t("trc.pdf.sheet"), sel("sheet", Object.keys(PAGES).map((p) => [p, p]), "A3"), t("trc.pdf.sheetHint"))}
       ${field(t("trc.pdf.back"), sel("back", [["", t("trc.pdf.backNone")], ["name", t("trc.pdf.backName")], ["classes", t("trc.pdf.backClasses")], ["team", t("trc.pdf.backTeam")]], ""), t("trc.pdf.backHint"))}
       <label class="tr-check"><input type="checkbox" name="regmarks"> ${esc(t("trc.pdf.regmarks"))}</label>
       ${field(t("trc.pdf.offset"), '<input name="dx" value="0" size="4" inputmode="decimal"> × <input name="dy" value="0" size="4" inputmode="decimal">', t("trc.pdf.offsetHint"))}
+      ${field(t("trc.pdf.sep"), sel("sep", [["", t("trc.pdf.sepNone")], ["spot", t("trc.pdf.sepSpot")], ["process", t("trc.pdf.sepProcess")]], ""), t("trc.pdf.sepHint"))}
       <label class="tr-check"><input type="checkbox" name="geo" ${hasGeoEv(ev) ? "" : "disabled"}> ${esc(t("trc.pdf.geo"))}</label></div>` : ""}
-    <p class="tr-hint">${t("trc.pdf.coursesHint", { where: where("print-area") })}</p>` });
+    <p class="tr-hint">${t("trc.pdf.coursesHint", { where: where("print-area") })}</p>`,
+    onOpen: (form) => {
+      // the ink's name only for spot inks or plates
+      const sync = () => { const box = form.querySelector("[data-ink]"); if (box) box.hidden = form.elements.color?.value !== "spot" && !form.elements.sep?.value; };
+      form.addEventListener("change", sync); sync();
+    },
+    validate: (o) => {
+      if (!o.sep) return null;
+      if (o.layout === "each" || o.layout === "fill") return t("trc.pdf.sepLayout");
+      if (o.content === "map" && E.map?.kind !== "vector") return t("trc.pdf.sepVector");
+      return null;
+    } });
   if (!v) return;
   E.status(t("trc.pdf.busy"), "busy");
   try {
@@ -402,16 +493,29 @@ export async function coursesDialog(E, { only = null } = {}) {
     // the advanced level's options (printx.js)
     const adv = E.pro ? { regmarks: !!v.regmarks, dx: num(v.dx) || 0, dy: num(v.dy) || 0, geo: !!v.geo } : null;
     const layoutMode = E.pro ? v.layout || "page" : "page";
+    // for a print shop: spot inks, or one page per plate (vmap/inks.js)
+    const sep = E.pro ? v.sep || "" : "", inks = sep || v.color === "spot";
+    const withMap = v.content === "map";
+    const setup = inks ? inkSetup(E, { ink: v.ink, withMap }) : null;
+    let plateList = null, lost = [];
+    if (setup) {
+      const purple = coursePurple(ev, E.map), course = coursePaints(setup, purple, true);
+      const paints = [...setup.mapColors, ...["upper", "purple50", "black", "white"].map(course)];
+      lost = unprinted(setup.spots, paints);
+      if (sep) plateList = platesOf(setup.spots, paints, { process: sep === "process" });
+    }
+    E._plateSkipped = false;
     const build = async (list) => {
       const doc = await L.PDFDocument.create();
       doc.setTitle(t("trc.pdf.docCourses", { title: ev.title })); doc.setCreator("Ozimut"); doc.setProducer("Ozimut (pdf-lib)");
       const fonts = await makeFonts(doc, L);
       const images = new Map();
+      const pr = !setup ? null : plateList ? { setup, spots: setup.spots, plates: plateList } : { setup, painter: spotPainter(L, doc, setup.spots) };
       if (layoutMode === "combined") {
-        await coursePage(E, doc, L, list[0].cd, { withMap: v.content === "map", rgb: v.color === "rgb", fonts, images, variationName: list[0].variation || "", adv, combined: list.slice(1) });
+        await coursePage(E, doc, L, list[0].cd, { withMap, rgb: v.color === "rgb", fonts, images, variationName: list[0].variation || "", adv, combined: list.slice(1), pr });
       } else for (const d of list) {
-        const page = await coursePage(E, doc, L, d.cd, { withMap: v.content === "map", rgb: v.color === "rgb", fonts, images, variationName: d.variation || "", team: d.team, leg: d.leg, adv });
-        if (E.pro && v.back && page && layoutMode === "page") { const X = await import("./printx.js"); await X.backPage(L, doc, [page.getWidth(), page.getHeight()], X.backText(ev, d, v.back), fonts.bold); }
+        const page = await coursePage(E, doc, L, d.cd, { withMap, rgb: v.color === "rgb", fonts, images, variationName: d.variation || "", team: d.team, leg: d.leg, adv, pr });
+        if (E.pro && v.back && page && layoutMode === "page" && !plateList) { const X = await import("./printx.js"); await X.backPage(L, doc, [page.getWidth(), page.getHeight()], X.backText(ev, d, v.back), fonts.bold); }
       }
       E._mapEmbed = null;
       const bytes = await doc.save();
@@ -430,6 +534,9 @@ export async function coursesDialog(E, { only = null } = {}) {
       else await saveFiles(E, files, `${t("trc.pdf.fileCourses", { name: base })}.zip`);
     }
     E.status(t("trc.pdf.done"), "ok");
+    // what the print shop's file could not hold
+    if (lost.length) E.toast(t("trc.pdf.unprinted", { list: [...new Set(lost.map((c) => c.name || ""))].filter(Boolean).join(", ") }));
+    if (E._plateSkipped) E.toast(t("trc.pdf.sepSkipped"));
   } catch (err) { console.error(err); E.status(t("trc.pdf.failed"), "bad"); E.toast(t("trc.pdf.failedToast", { err: err.message })); }
 }
 

@@ -25,7 +25,7 @@ const nf = (v) => new Intl.NumberFormat(locale()).format(v);
 const PREFS = "ocn.tr.prefs";
 const recall = (k) => { try { return JSON.parse(localStorage.getItem(PREFS) || "{}").dialogs?.[k] || null; } catch (e) { return null; } };
 const keepChoices = (k, v) => { try { const o = JSON.parse(localStorage.getItem(PREFS) || "{}"); o.dialogs = { ...(o.dialogs || {}), [k]: v }; localStorage.setItem(PREFS, JSON.stringify(o)); } catch (e) { /* this visit */ } };
-const kept = (el) => el.name && !/^c\d+$/.test(el.name) && !["file", "password", "hidden", "submit", "button"].includes(el.type);
+const kept = (el) => el.name && !/^c\d+$/.test(el.name) && !el.hasAttribute?.("data-fresh") && !["file", "password", "hidden", "submit", "button"].includes(el.type);
 /** A modal form: returns a promise of the form's values (an object by input name) or null when cancelled. */
 export function modal(E, { title, body, ok = "OK", cancel = t("trc.dlg.cancel"), wide = false, onOpen = null, validate = null, extra = "", remember = null }) {
   return new Promise((resolve) => {

@@ -59,7 +59,7 @@ export async function act(E, act) {
       const C = await import("./colors.js");
       E.say(t("map.io.writing"), "busy");
       const r = await C.separationsPdf(E, areaOf(E), base);
-      if (r) { download(r.name, r.bytes, "application/pdf"); E.say(t("map.io.written")); } else E.say("");
+      if (r) { download(r.name, r.bytes, "application/pdf"); E.say(r.warn || t("map.io.written"), r.warn ? "bad" : undefined); } else E.say("");
       return;
     }
     case "export-png": return png(E, base);

@@ -1413,6 +1413,10 @@ export function build(X) {
             the <b>mask</b> (white, with holes). The courses' PDF adds: several courses or copies per sheet, all courses on one map, the
             back of each map (name, classes, team and leg), registration marks with the printer's offset, and georeferenced pages (Avenza
             Maps). Descriptions are placed to the hundredth of a millimetre, and control cards can be backup cards.</p>
+          <p>For an <b>offset print shop</b>, the PDF's colours can be <b>spot inks</b>: those an OCAD map defines, and the purple in an ink
+            of its own (or one of the map's inks, if given its name), with PDF's real overprint. <b>Separations</b> give one page per
+            plate — each spot ink, or C, M, Y and K —, in black, with its registration marks and its name; they need an OCAD or Mapper map,
+            or the course alone. It is the same engine as Cartographier's separations.</p>
           <h3>Other formats</h3>
           <p>${W("export-geotiff")}, SVG (each object named), KMZ with the map, MapRun, OCAD's text of the courses, IOF XML 2.0.3 with each
             variation as a course, and a package for Livelox's import page (a direct upload to Livelox needs an agreement with Livelox).</p>

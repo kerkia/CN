@@ -639,7 +639,8 @@ for key, v in {
 for key, v in {
   "title": ("Séparations des couleurs", "Colour separations", "Farbauszüge", "Separaciones de color"), "what": ("Pour l'imprimeur", "For the printer", "Für die Druckerei", "Para la imprenta"),
   "composite": ("Un PDF en encres d'accompagnement (couleurs de séparation)", "One PDF in spot inks (separation colours)", "Ein PDF in Schmuckfarben (Separationsfarben)", "Un PDF en tintas planas (colores de separación)"),
-  "spotPlates": ("Une page par encre d'accompagnement", "One page per spot ink", "Eine Seite je Schmuckfarbe", "Una página por tinta plana"),
+  "spotPlates": ("Une page par encre d'accompagnement (et par encre CMJN pour les couleurs sans encre)", "One page per spot ink (and per CMYK ink for the colours without one)", "Eine Seite je Schmuckfarbe (und je CMYK-Farbe für die Farben ohne Schmuckfarbe)", "Una página por tinta plana (y por tinta CMYK para los colores sin tinta)"),
+  "unprinted": ("Couleurs sur aucune plaque (leurs encres sont masquées) : {list}", "Colours on no plate (their inks are hidden): {list}", "Farben auf keiner Druckplatte (ihre Schmuckfarben sind ausgeblendet): {list}", "Colores en ninguna plancha (sus tintas están ocultas): {list}"),
   "processPlates": ("Une page par encre CMJN (quadrichromie)", "One page per CMYK ink (process)", "Eine Seite je CMYK-Farbe (Vierfarbdruck)", "Una página por tinta CMYK (cuatricromía)"),
   "noSpots": ("La carte n'a pas d'encres d'accompagnement : définissez-les dans Mise en page › Couleurs.", "The map has no spot inks: define them in Layout › Colours.", "Die Karte hat keine Schmuckfarben: Lege sie unter Layout › Farben an.", "El mapa no tiene tintas planas: defínelas en Maquetación › Colores."),
   "marks": ("Repères de repérage et nom de chaque plaque", "Registration marks and each plate's name", "Passermarken und Name jeder Druckplatte", "Marcas de registro y nombre de cada plancha"), "plate": ("Plaque", "Plate", "Platte", "Plancha"),

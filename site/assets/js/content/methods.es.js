@@ -1419,6 +1419,10 @@ export function build(X) {
             todos los recorridos en un mismo mapa, el reverso de cada mapa (nombre, categorías, equipo y posta), marcas de registro con
             el desplazamiento de la impresora, y páginas georreferenciadas (Avenza Maps). Las descripciones se colocan con precisión de centésima de milímetro,
             y las tarjetas de control pueden ser tarjetas de reserva.</p>
+          <p>Para una <b>imprenta offset</b>, los colores del PDF pueden ser <b>tintas planas</b>: las que define un mapa de OCAD, y el
+            violeta en una tinta aparte (o en una de las tintas del mapa, si se le da su nombre), con la sobreimpresión real de PDF. Las
+            <b>separaciones</b> dan una página por plancha —cada tinta plana, o C, M, Y y K—, en negro, con sus marcas de registro y su
+            nombre; requieren un mapa de OCAD o Mapper, o solo el recorrido. Es el mismo motor que las separaciones de Cartographier.</p>
           <h3>Otros formatos</h3>
           <p>${W("export-geotiff")}, SVG (cada objeto con nombre), KMZ con el mapa, MapRun, el texto OCAD de los recorridos, IOF XML 2.0.3 con
             cada variante como un recorrido, y un paquete para la página de importación de Livelox (el envío directo a Livelox requiere un acuerdo con

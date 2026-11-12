@@ -1420,6 +1420,11 @@ export function build(X) {
             alle Bahnen auf einer Karte, die Rückseite jeder Karte (Name, Kategorien, Team und Strecke), Passermarken mit
             dem Versatz des Druckers und georeferenzierte Seiten (Avenza Maps). Die Postenbeschreibungen werden auf den Hundertstelmillimeter platziert,
             und die Kontrollkarten können Ersatzkarten sein.</p>
+          <p>Für eine <b>Offsetdruckerei</b> können die Farben des PDF <b>Schmuckfarben</b> sein: die, die eine OCAD-Karte festlegt, und das
+            Violett in einer eigenen Druckfarbe (oder einer der Druckfarben der Karte, wenn man ihm deren Namen gibt), mit dem echten
+            Überdrucken von PDF. <b>Farbauszüge</b> ergeben eine Seite je Druckplatte — jede Schmuckfarbe oder C, M, Y und K —, in Schwarz,
+            mit ihren Passermarken und ihrem Namen; sie brauchen eine OCAD- oder Mapper-Karte oder nur die Bahn. Es ist dieselbe Technik
+            wie bei den Farbauszügen von Cartographier.</p>
           <h3>Weitere Formate</h3>
           <p>${W("export-geotiff")}, SVG (jedes Objekt benannt), KMZ mit der Karte, MapRun, der OCAD-Text der Bahnen, IOF XML 2.0.3 mit
             jeder Variante als eigener Bahn, und ein Paket für die Importseite von Livelox (das direkte Senden an Livelox erfordert eine Vereinbarung mit

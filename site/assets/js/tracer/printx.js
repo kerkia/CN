@@ -10,10 +10,11 @@ import { t } from "./lang.js";
 const PT = 72 / 25.4;
 
 /** Registration marks: a cross in a circle at each corner of the page's printed area, 6 mm in from it, shifted by the printer's
- *  offset (mm, dx right, dy up). Drawn in black on every colour separation (they are what the overprint is aligned on). */
-export function registrationMarks(L, page, { margin = 0, dx = 0, dy = 0 } = {}) {
+ *  offset (mm, dx right, dy up). Drawn in black on every colour separation (they are what the overprint is aligned on): CMYK
+ *  100 %, the « All » ink in spot inks, black on a plate (painter: vmap/inks.js). */
+export function registrationMarks(L, page, { margin = 0, dx = 0, dy = 0, painter = null } = {}) {
   const w = page.getWidth(), h = page.getHeight(), m = margin * PT + 6 * PT, r = 2.5 * PT;
-  const ops = [L.pushGraphicsState(), L.setStrokingCmykColor(1, 1, 1, 1), L.setLineWidth(0.25)];
+  const ops = [L.pushGraphicsState(), ...(painter ? painter.registration(page, false) : [L.setStrokingCmykColor(1, 1, 1, 1)]), L.setLineWidth(0.25)];
   for (const [x, y] of [[m, m], [w - m, m], [m, h - m], [w - m, h - m]]) {
     const cx = x + dx * PT, cy = y + dy * PT, k = 0.5522847498 * r;
     ops.push(L.moveTo(cx - 2 * r, cy), L.lineTo(cx + 2 * r, cy), L.moveTo(cx, cy - 2 * r), L.lineTo(cx, cy + 2 * r), L.stroke());

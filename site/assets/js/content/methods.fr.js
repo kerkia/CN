@@ -1419,6 +1419,11 @@ export function build(X) {
             tous les circuits sur une même carte, le dos de chaque carte (nom, catégories, équipe et relais), des repères de calage avec
             le décalage de l'imprimante, et des pages géoréférencées (Avenza Maps). Les définitions se placent au centième de millimètre,
             et les cartons de contrôle peuvent être des cartons de secours.</p>
+          <p>Pour une <b>imprimerie offset</b>, les couleurs du PDF peuvent être des <b>encres d'accompagnement</b> : celles qu'une carte
+            OCAD définit, et le violet dans une encre à part (ou l'une des encres de la carte, si on lui donne son nom), avec la vraie
+            surimpression de PDF. Les <b>séparations</b> donnent une page par plaque — chaque encre d'accompagnement, ou C, M, J et N —, en
+            noir, avec ses repères de calage et son nom ; elles demandent une carte OCAD ou Mapper, ou le circuit seul. C'est le même
+            moteur que les séparations de Cartographier.</p>
           <h3>Autres formats</h3>
           <p>${W("export-geotiff")}, SVG (chaque objet nommé), KMZ avec la carte, MapRun, le texte OCAD des circuits, IOF XML 2.0.3 avec
             chaque variante comme un circuit, et un paquet pour la page d'import de Livelox (l'envoi direct à Livelox demande un accord avec

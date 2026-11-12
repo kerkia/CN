@@ -2388,7 +2388,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`spotsFromParams`, also for documents saved before), written back by `ocadout.js` when `dirty.colors` / `dirty.spots`);
   **separations** (Imprimer › Séparations: a composite PDF painting single-ink colours in PDF « Separation » colour spaces, or one
   page per spot ink or per CMYK ink — black at the colour's share, a colour the plate does not print knocking out unless it overprints
-  —, registration marks and plate names); **IGN BD TOPO** (`data/bdtopo.js`: the WFS `data.geopf.fr/wfs/ows`, CORS open, ten layers in
+  —, registration marks and plate names; the Tracer's engine too since 2026-11-12, see « Printing for a print shop »); **IGN BD TOPO** (`data/bdtopo.js`: the WFS `data.geopf.fr/wfs/ows`, CORS open, ten layers in
   Lambert 93, roads by their width — sprint: paved bands at « largeur de chaussée » + sidewalks in town —, buildings, water, walls,
   banks, hedges, parkings; Données › BD TOPO and the new-map dialog, France only, OpenStreetMap elsewhere); **several mappers at once**
   (`collab.js`: no exclusive lock any more — presence every 30 s at `/api/mapper/<id>/presence` with each one's pointer and **sector**,
@@ -2720,6 +2720,23 @@ Every multiple-choice game was played through to its score page at phone size, w
   punch card (`punchDialog({ only })`, new option: a hidden course included); a course undone or deleted brings « Créer le circuit » back.
   Its legs are drawn straight like any course's (the tour's routes stay the overlay's). Guide: « Le tracé › En équipe et sur le terrain »'s
   box and paragraph. Not done: several collectors sharing the controls, the tour in the field mode, the tour saved with the event.
+- **Printing for a print shop: one engine for both tools** (owner, 2026-11-12: « Cartographier has separations, yet maps are printed
+  with their courses from the Tracer »): `tracer/vmap/inks.js` — OCAD's spot inks read (`readInks`, `attachInks`: `map.spots` and each
+  colour's `spot` on every OCAD 9+ map the Tracer opens; Cartographier's `spotsFromParams` calls it; Mapper files' spot colours are read
+  by neither), the plates (`plates`: each shown ink some colour uses, then C, M, Y, K for the colours without inks — OCAD's mix —, or
+  process C, M, Y, K), and two painters `PdfTarget` takes (`painter`): `spotPainter` (« Separation » / « DeviceN » spaces made once a
+  document, « All » for registration, real overprint `OP`/`op`/`OPM 1` by `overprintGs`) and `platePainter` (grey at the plate's share,
+  white where a colour the plate does not print lies over what it already holds, nothing where it overprints — the plates are right
+  whatever the viewer does with overprint; a logo separated by its pixels onto the process plates, else the darkest ink's). The Tracer's
+  « PDF des circuits »: « Couleurs » › « Encres d'accompagnement (imprimerie) » — the map's inks, the course's purple an ink of its own
+  named in « Encre du violet » (the map's purple's ink by default; a map ink's name prints the purple with it), the course's black in the
+  map's black ink, the purple overprinting in « blend » mode, opaque in « layer » mode — and, under the advanced level, « Séparations »
+  (one page per ink or per CMYK ink, each with registration marks — `printx.registrationMarks`' `painter` — and « Plaque <ink> » in its
+  top margin; one course per page only; an image or PDF map cannot be separated: the course alone then). Before, the Tracer wrote CMYK
+  with the map's overprint imitated by a Darken blend (kept for printers: CMYK and RGB unchanged). Tested 2026-11-12 on the Desquinemarre
+  map (`deski 8 nov 26 F.ocd`, 7 inks: 52 of 83 colours, one DeviceN) — `tools/mapper/t_inks.mjs` — and in the browser (the Tracer's
+  « long 21p » in spot inks and as 11 plates, the purple plate the course alone; Cartographier's plates unchanged). **Not yet seen by a
+  print shop**, nor through a RIP or Ghostscript's `tiffsep` (not on the PC).
 - **OCAD course files in the Tracer** (owner, 2026-11-04: « why can't an OCAD file be imported alone? »; every account, the essential
   level): an `.ocd` holding courses (OCAD's course-setting project) is an event file of its own on « Importer un événement », and on the
   start screen or « Nouvel événement » it goes to the import (`pages/tracer.js` `ocadCourses`); its map is the file itself when it holds

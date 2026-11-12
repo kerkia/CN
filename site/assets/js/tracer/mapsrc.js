@@ -136,7 +136,7 @@ function makeLevels(image, pxW, pxH) {
 // ---- OCAD and OpenOrienteering Mapper maps (vmap/) -------------------------------------------------------------------------------
 /**
  * Open a vector map: { kind: "vector", format ("ocad"|"oom"), version, vmap, w, h, ox, oy, scale, pxW, pxH, image, levels,
- * renderRegion(box, pxPerMm, signal, part, hide), setLayer(colourId | null), drawPdf(target, box, part, hide) }. part: "all",
+ * renderRegion(box, pxPerMm, signal, part, hide), setLayer(colourId | null), drawPdf(target, box, part, hide, overprint) }. part: "all",
  * "below" (the colours up to the course's lower purple layer) or "above" (the rest, on a transparent ground); hide: what of the
  * map a course leaves out ({ colors, symbols }, model.mapHideFor), else what the screen shows (setHidden).
  */
@@ -169,9 +169,9 @@ async function openVector(u8, name, origin = null) {
     return out;
   };
   /** Draw the map on a PDF target (vmap/target.js) whose frame is Tracer mm. */
-  src.drawPdf = (target, [l, bb, r, t], part = "all", hide = null) => {
+  src.drawPdf = (target, [l, bb, r, t], part = "all", hide = null, overprint = src.overprint) => {
     target.push(new Matrix(1, 0, 0, 1, -ox, -oy));
-    map.draw(target, [ox + l, oy + bb, ox + r, oy + t], { minRes: 0.01, overprint: src.overprint, ...range(part, hide) });
+    map.draw(target, [ox + l, oy + bb, ox + r, oy + t], { minRes: 0.01, overprint, ...range(part, hide) });
     target.pop();
   };
   const baseImage = (part) => src.renderRegion([0, 0, w, h], k, null, part);
