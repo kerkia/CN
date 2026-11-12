@@ -1,6 +1,10 @@
 """A sprint map (ISSprOM 2019-2, 1:4000) of a town from open data, for « Virtually » (town_fetch.py first):
 
-  py town_map.py <race>      DATA/<race>/map_objects.json, then  node --import ../mapper/shim.mjs mkocd.mjs … map.ocd
+  py town_map.py <race> [--clip]    DATA/<race>/map_objects.json, then  node --import ../mapper/shim.mjs mkocd.mjs … map.ocd
+
+--clip: the objects cut to the area asked for (area.json `box`) instead of the area fetched with its margin (`ext`, the 3D
+scene's horizon) — Cartographier's « Plan de ville » (townmap_ci.py), whose map is exactly that area; the margin still serves the
+computation (a street's paving, a parcel, a contour crossing the area's edge).
 
 What each symbol comes from:
 - 521 buildings, 522 canopies: IGN BD TOPO's buildings, those that touch drawn as one (OpenStreetMap's building=roof for
@@ -47,6 +51,7 @@ DATA = Path(os.environ.get("VIRTUAL_DATA") or Path(__file__).resolve().parents[4
 if not DATA.exists():
     sys.path.insert(0, str(Path(__file__).resolve().parents[2])); DATA = Path(__import__("paths").DATA_DIR) / "virtual"
 RACE = sys.argv[1]
+CLIP_TO_BOX = "--clip" in sys.argv
 RD = DATA / RACE; SRC = RD / "src"
 A = json.load(open(RD / "area.json"))
 X0, Y0, X1, Y1 = A["ext"]
@@ -179,6 +184,8 @@ def osm_geom(e, area=False):
 
 tags = lambda e: e.get("tags", {})
 frame = sbox(X0, Y0, X1, Y1)
+# what the objects are cut to: the area fetched, or with --clip the area asked for (the computation keeps the margin)
+CLIP = sbox(*A["box"]) if CLIP_TO_BOX else frame
 buildings = []
 for f in bdtopo("batiment"):
     g = geom2d(f["geometry"])
@@ -198,7 +205,8 @@ paved, path_lines, small_lines, steps, rail = [], [], [], [], []
 # wherever OSM has none of the same kind within 4 m (they doubled), never dropped because some other way passes near
 bd_paths, bd_steps, osm_hw = [], [], []
 paved_paths = []                                           # OSM's paved footways and cycle paths: (line, width) — a path, not a surface
-carr = []                                                  # the carriageways: (area, BD TOPO's importance, in town)                    # BD TOPO's paths and stairs are kept where OSM has none (they doubled)
+carr = []                                                  # the carriageways: (area, BD TOPO's importance, in town)
+carr_lines = {}                                            # (half width, importance, in town) → the sections' centre lines
 
 
 def width_of(t, default):
@@ -217,7 +225,7 @@ for f in bdtopo("troncon_de_route"):
         bd_paths.append(g); continue
     w = float(p.get("largeur_de_chaussee") or 0) or {"route à 1 chaussée": 5.5, "rond-point": 7, "bretelle": 6, "piste cyclable": 2.5}.get(nat, 5)
     side = 1.8 if p.get("urbain") not in (False, "false", 0) else 0.3        # sidewalks in town
-    carr.append((g.buffer(w / 2, cap_style="flat", join_style="round"), int(p.get("importance") or 6), side > 1))
+    carr_lines.setdefault((round(w / 2, 2), int(p.get("importance") or 6), side > 1), []).append(g)
     paved.append(g.buffer(w / 2 + side, cap_style="flat", join_style="round"))
 for e in osm:
     t = tags(e); hw = t.get("highway")
@@ -263,6 +271,12 @@ for f in bdtopo("troncon_de_voie_ferree"):
     p = f["properties"]; g = geom2d(f["geometry"])
     if g is not None and not (p.get("position_par_rapport_au_sol") or "0").startswith("-"):
         rail.append(g)
+# the sections of one kind merged through their joins, then widened: no wedge left open where two sections meet at an angle
+from shapely.ops import linemerge as _linemerge
+for (half, imp, urb), gs in carr_lines.items():
+    u = unary_union(gs)
+    m = _linemerge(u) if u.geom_type in ("MultiLineString", "GeometryCollection") else u
+    carr.append((m.buffer(half, cap_style="flat", join_style="round"), imp, urb))
 OSM_HW = unary_union([g.buffer(4) for g in osm_hw]) if osm_hw else Polygon()
 for g in bd_paths:
     rest = g.difference(OSM_HW)
@@ -467,7 +481,7 @@ objects = []
 def add_area(g, sym, min_area=2.0):
     if g is None or g.is_empty:
         return
-    g = g.intersection(frame)
+    g = g.intersection(CLIP)
     for p in getattr(g, "geoms", [g]):
         if p.geom_type != "Polygon" or p.area < min_area:
             continue
@@ -480,13 +494,13 @@ def add_line(g, sym, min_len=1.0, curve=False):
     streams, paths (the owner's mapper, 2026-11-12: « for many line features a curve suits better than a polyline »)."""
     if g is None or g.is_empty:
         return
-    g = g.intersection(frame)
+    g = g.intersection(CLIP)
     if g.geom_type == "GeometryCollection":
         g = shapely.MultiLineString([x for x in g.geoms if x.geom_type == "LineString"]) if any(x.geom_type == "LineString" for x in g.geoms) else None
         if g is None:
             return
     for l in getattr(g, "geoms", [g]):
-        if l.geom_type in ("LineString", "LinearRing") and l.length >= min_len:
+        if l.geom_type in ("LineString", "LinearRing") and not l.is_empty and len(l.coords) >= 2 and l.length >= min_len:
             if curve:
                 l = l.simplify(0.6)
             o = {"sym": sym, "otp": 2, "rings": [[mm(x, y) for x, y in l.coords]]}
@@ -498,6 +512,8 @@ def add_line(g, sym, min_len=1.0, curve=False):
 
 
 def add_point(x, y, sym, ang=0):
+    if CLIP_TO_BOX and not CLIP.covers(Point(x, y)):
+        return
     objects.append({"sym": sym, "otp": 1, "ang": ang, "rings": [[mm(x, y)]]})
 
 
@@ -576,8 +592,10 @@ if not canopy.is_empty:
     add_area(cg, S(522)); add_line(cg.boundary if not cg.is_empty else None, S(522, 9))
 # the paved area's edge (501.1) where it meets anything but a building, a wall, a fence or a hedge already drawn, and the
 # carriageways' kerbs in town — the 13 cm kerbs the 3D draws (the owner's mapper, 2026-11-12: « the paved area lacks its edge »)
-NOLINE = unary_union([B.buffer(0.4), frame.boundary.buffer(0.6)] + [g.buffer(0.6) for g, _, _ in walls] + [h.buffer(0.8) for h in hedges])
-kerbs = unary_union([c.boundary for c, _, urb in carr if urb] or [LineString()]).intersection(PAVED_ALL.buffer(-0.5))
+NOLINE = unary_union([B.buffer(0.4), frame.boundary.buffer(0.6), CLIP.boundary.buffer(0.6)] + [g.buffer(0.6) for g, _, _ in walls] + [h.buffer(0.8) for h in hedges])
+# the kerbs: the outline of the town carriageways put together, so that no line crosses a street where two sections meet
+URB = unary_union([c for c, _, urb in carr if urb] or [Polygon()]).buffer(0.01)
+kerbs = (URB.boundary if not URB.is_empty else LineString()).intersection(PAVED_ALL.buffer(-0.5))
 n_edge = 0
 for line in (PAVED_ALL.boundary, kerbs):
     rest = line.difference(NOLINE)
@@ -733,7 +751,7 @@ for g, sw in steps:
 # schools, the railway, courts) where no wall, fence, hedge or building is known within 1.5 m — 995, purple 50 %, a helper
 # the edge of a grass or turf pitch (football, rugby…): 415, a distinct cultivation boundary (the owner's mapper, 2026-11-12),
 # not where a building, wall, fence or hedge already stands
-EDGE_NO = unary_union([B.buffer(0.4), frame.boundary.buffer(0.6)] + [g.buffer(0.6) for g, _, _ in walls] + [h.buffer(0.8) for h in hedges])
+EDGE_NO = unary_union([B.buffer(0.4), frame.boundary.buffer(0.6), CLIP.boundary.buffer(0.6)] + [g.buffer(0.6) for g, _, _ in walls] + [h.buffer(0.8) for h in hedges])
 for s in sports:
     if s["sport"] not in NO_ENTRY and s["surface"] in ("grass", "turf"):
         rest = s["g"].boundary.difference(EDGE_NO)
@@ -744,7 +762,7 @@ OLIVE = PRIVATE
 for s in sports:                                                       # the track and the multi-sport courts: 709 over the paving
     if s["sport"] in HATCHED:
         add_area(s["g"], S(709))
-KNOWN = unary_union([g.buffer(1.5) for g, _, _ in walls] + [h.buffer(1.5) for h in hedges] + [B.buffer(1.0), frame.boundary.buffer(1.0)])
+KNOWN = unary_union([g.buffer(1.5) for g, _, _ in walls] + [h.buffer(1.5) for h in hedges] + [B.buffer(1.0), frame.boundary.buffer(1.0), CLIP.boundary.buffer(1.0)])
 n_conf = 0
 if not OLIVE.is_empty:
     edge = OLIVE.boundary.difference(KNOWN)
@@ -756,7 +774,7 @@ for g in streams:
     if g is not None:
         add_line(g.difference(water.buffer(0.5)).difference(B), S(305), 3, curve=True)
 if not RAIL.is_empty:
-    add_line(RAIL.intersection(frame), S(509, 1), 3)
+    add_line(RAIL.intersection(CLIP), S(509, 1), 3)
 
 # contours: every 2.5 m from the LiDAR's ground, smoothed, out of the buildings
 from skimage.measure import find_contours

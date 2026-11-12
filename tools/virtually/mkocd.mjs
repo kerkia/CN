@@ -19,7 +19,7 @@ const doc = D.blank({ title: J.title, scale: J.scale, standard: set.standard || 
 doc.realWorld = { x: J.realWorld.x, y: J.realWorld.y, angle: 0, grid: 0, paperGrid: 0, on: true, zone: 0, epsg: J.realWorld.epsg || 2154, gridScale: 1 };
 // the symbols the town's map uses beyond the specification's — 501.6-501.9 (paved footprints), 532.1-532.6 (stairways at their
 // width), 995 (boundary to confirm), 990 / 991 (OpenStreetMap, hidden) — are the set's own since 2026-11-12 (docs/mapper/sets.mjs),
-// as Cartographier's « Plan de ville » uses them (site/assets/js/mapper/data/town.js); the curves are frame.js's `bezier`
+// as Cartographier draws them when it imports this generator's town map (« Plan de ville », townmap_ci.py); the curves are frame.js's `bezier`
 const have = new Set(doc.symbols.map((s) => s.sym));
 const L = new D.Live(doc);
 let n = 0, missing = {};

@@ -564,12 +564,14 @@ export function build(X) {
             html`<b>OpenStreetMap</b>: roads, paths, buildings, water, walls and fences, sorted into the map's symbols.`,
             html`<b>National data</b>: IGN's BD TOPO in France, swissTLM3D in Switzerland, The National Map's roads, water and buildings in the
               United States.`,
-            html`<b>The town plan (sprint)</b>, for a sprint map: BD TOPO, the cadastre and OpenStreetMap merged by a mapper's rules — the public
-              road space paved up to the property lines, the edge of paved areas and the carriageways' kerbs, footways and cycle paths as lines at
-              their width, stairways at their width, the path network joined, adjoining buildings drawn as one, private gardens in olive with a
-              « boundary to confirm » (995, purple, never printed) where no wall, fence or hedge is known, the sports grounds, and contours cut at
-              the buildings only. OpenStreetMap's objects are kept on hidden symbols (990, 991). A sprint « New map » uses it in France;
-              elsewhere, OpenStreetMap alone.`,
+            html`<b>The town plan (sprint)</b>, for a sprint map in France: the map the generator Pixel's races use makes from IGN's LiDAR, its BD
+              TOPO, the aerial photograph and its infrared, the cadastre and OpenStreetMap, by a mapper's rules — the public road space paved up to
+              the property lines, the edge of paved areas and the kerbs, footways and cycle paths as lines at their width, stairways at their width,
+              the path network joined, adjoining buildings drawn as one, vegetation and lone trees read from the LiDAR, walls and fences passable or
+              not by their height, private gardens in olive with a « boundary to confirm » (995, purple, never printed) where no wall, fence or hedge
+              is known, the sports grounds, and contours cut at the buildings only. It is made on Ozimut's servers, in several minutes: you may keep
+              working or close the page, it comes in as a draft the next time you open the map. OpenStreetMap's objects are kept on hidden symbols
+              (990, 991). A sprint « New map » uses it in France; elsewhere, OpenStreetMap.`,
             html`<b>LiDAR</b>, where a national LiDAR is open (France, Switzerland, the United States, Canada, New Zealand): the relief, cliffs and
               vegetation karttapullautin draws from it. The tiles are computed on request, in a few minutes; a bar shows how far along it is.`,
           ])}

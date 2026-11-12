@@ -118,14 +118,44 @@ def main():
         print("BD ORTHO", tag, "done", flush=True)
 
     # ---- the cadastre's parcels (Etalab, Licence Ouverte 2.0): which ground is a private garden -------------------------------
-    codes = set()
+    # the communes at the area's corners and centre, a city's municipal arrondissement first (Paris, Lyon and Marseille are filed
+    # by them); a commune Etalab cannot serve, or no answer from geo.api.gouv.fr: IGN's PCI parcels over the area instead (the
+    # same DGFiP parcels, « Parcellaire Express », on the WFS, in longitude/latitude as Etalab's)
+    codes, missed = set(), False
     for la, lo in corners + [(lat, lon)]:
-        r = requests.get("https://geo.api.gouv.fr/communes", params={"lat": la, "lon": lo, "fields": "code"}, headers=UA, timeout=60)
-        if r.ok:
-            codes.update(c["code"] for c in r.json())
+        for kind in ("arrondissement-municipal", None):
+            try:
+                r = requests.get("https://geo.api.gouv.fr/communes", params={"lat": la, "lon": lo, "fields": "code", **({"type": kind} if kind else {})},
+                                 headers=UA, timeout=60)
+                found = [c["code"] for c in r.json()] if r.ok else []
+            except (requests.RequestException, ValueError):
+                found, missed = [], True
+            if found:
+                codes.update(found); break
     for code in sorted(codes):
-        get(f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code}/geojson/parcelles", src / f"parcelles_{code}.json")
-    print("cadastre", sorted(codes), flush=True)
+        try:
+            get(f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code}/geojson/parcelles", src / f"parcelles_{code}.json")
+        except RuntimeError:
+            missed = True
+    if missed or not codes:
+        for f in src.glob("parcelles_*.json"):
+            f.unlink()
+        feats = []
+        for page in range(20):
+            r = requests.get(WFS, headers=UA, timeout=120, params={"SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
+                             "TYPENAMES": "CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle", "SRSNAME": "urn:ogc:def:crs:OGC:1.3:CRS84",
+                             "OUTPUTFORMAT": "application/json", "BBOX": f"{ext[0]},{ext[1]},{ext[2]},{ext[3]},urn:ogc:def:crs:EPSG::2154",
+                             "COUNT": "5000", "STARTINDEX": str(page * 5000)})
+            r.raise_for_status()
+            got = r.json().get("features", [])
+            feats += got
+            if len(got) < 5000:
+                break
+            time.sleep(1)
+        json.dump({"type": "FeatureCollection", "features": feats}, open(src / "parcelles_pci.json", "w"))
+        print("cadastre: IGN's PCI parcels", len(feats), flush=True)
+    else:
+        print("cadastre", sorted(codes), flush=True)
 
     # ---- OpenStreetMap ------------------------------------------------------------------------------------------------------
     dest = src / "osm.json"

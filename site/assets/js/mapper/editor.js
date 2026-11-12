@@ -612,6 +612,7 @@ export async function openEditor(opts) {
   // several mappers at once: presence, sectors, merged saves (collab.js); no lock on the whole map
   const takeLock = async () => C.start(E);
   E.close = async () => {
+    E.closed = true;                                          // a wait for data (dataui.waitTown) stops
     await save(true);
     C.stop(E);
     E.field?.stop?.();

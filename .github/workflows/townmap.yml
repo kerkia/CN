@@ -1,0 +1,47 @@
+# Cartographier's « Plan de ville (sprint) » (owner, 2026-11-12): a town's sprint map made from open data by the generator Pixel's
+# town races use (tools/virtually/town_fetch.py + town_map.py: IGN's LiDAR HD, BD TOPO, BD ORTHO and its infrared, the cadastre,
+# OpenStreetMap) — Carto posts a request to R2 (functions/api/townmap/[[path]].js, townmap/req/<id>.json) and starts this workflow
+# (workflow_dispatch, GH_DISPATCH_TOKEN); tools/virtually/townmap_ci.py makes each map into R2 townmap/out/<id>.json.gz, its
+# progress written into the request as it goes. Runs never overlap; each run takes the requests waiting, again until none is left.
+# Only the area's extent goes to the data services; the point clouds stay on the runner and go with it.
+
+name: townmap
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  maps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    concurrency:
+      group: townmap
+      cancel-in-progress: false
+    env:
+      BUCKET: s3://cn-state
+      R2: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - run: pip install "numpy>=2.0" "pillow>=11" "scipy>=1.14" "pyproj>=3.7" "requests>=2.31" "laspy[lazrs]>=2.5" "rasterio>=1.4" "shapely>=2.0" "scikit-image>=0.24"
+
+      - name: Town maps
+        run: |
+          for round in 1 2 3 4; do
+            rm -rf "$RUNNER_TEMP/req" && mkdir -p "$RUNNER_TEMP/req"
+            aws s3 sync "$BUCKET/townmap/req/" "$RUNNER_TEMP/req/" --endpoint-url "$R2" --only-show-errors || true
+            grep -l '"status": *"queued"' "$RUNNER_TEMP"/req/*.json >/dev/null 2>&1 || break
+            python tools/virtually/townmap_ci.py --reqs "$RUNNER_TEMP/req" --work "$RUNNER_TEMP/work"
+          done

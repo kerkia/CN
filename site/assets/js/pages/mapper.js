@@ -218,10 +218,10 @@ async function newMap() {
     const D = await import("../mapper/dataui.js");
     const nat = E.frame?.geo ? await D.nationalSource(E, E.frame) : null;
     if (v.bdtopo && !nat) v.osm = true;
-    if (sprint && (nat === "bdtopo" || !nat) && (v.bdtopo || v.osm)) {
-      // a sprint map in France (or where only OpenStreetMap is read): one town map from every source, merged by the rules a
-      // mapper's review gave (data/town.js) — the contours with it, cut at the buildings
-      await D.town(E, { bdtopo: nat === "bdtopo" && !!v.bdtopo, cadastre: nat === "bdtopo" && !!v.bdtopo, osm: !!v.osm || !!v.bdtopo, contours: !!v.dem });
+    if (sprint && nat === "bdtopo" && (v.bdtopo || v.osm)) {
+      // a sprint map in France: the town map of the generator Pixel's races use (LiDAR, BD TOPO, BD ORTHO, cadastre,
+      // OpenStreetMap; the townmap workflow, several minutes), its contours with it — one engine, not the separate imports
+      await D.town(E, { contours: !!v.dem });
       if (v.lidar) await E.act("data-lidar");
     } else for (const [k, act] of [["dem", "data-contours"], ["bdtopo", "data-national"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) if (v[k] && (k !== "bdtopo" || nat)) await E.act(act);
   }
@@ -290,5 +290,8 @@ async function openEditor(id, { doc, version, source = null, card = null, role =
   if (leaving) return null;
   pageMain.innerHTML = "";
   const c = card || (await S.card(id).catch(() => null));
-  return open({ container: pageMain, id, card: c?.map || null, role: role || c?.role || "owner", doc, version, source, files, isNew, onClose, onStart });
+  const E = await open({ container: pageMain, id, card: c?.map || null, role: role || c?.role || "owner", doc, version, source, files, isNew, onClose, onStart });
+  // a town map asked for before the page was left (« Plan de ville »): taken up again
+  if (E && id && !isNew) import("../mapper/dataui.js").then((D) => D.resumeTown(E)).catch(() => {});
+  return E;
 }

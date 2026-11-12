@@ -586,13 +586,15 @@ export function build(X) {
             html`<b>OpenStreetMap</b>: carreteras, caminos, edificios, agua, muros y vallas, clasificados en los símbolos del mapa.`,
             html`<b>Los datos nacionales</b>: la BD TOPO del IGN en Francia, swissTLM3D en Suiza, las carreteras, el agua y los edificios de The
               National Map en Estados Unidos.`,
-            html`<b>El plano urbano (sprint)</b>, para un mapa de sprint: la BD TOPO, el catastro y OpenStreetMap unidos según las reglas de un
-              cartógrafo — el espacio viario público pavimentado hasta los límites de las parcelas, el borde de las zonas pavimentadas y los
-              bordillos de las calzadas, aceras y carriles bici como líneas a su anchura, escaleras a su anchura, la red de caminos conectada, los
-              edificios adosados unidos, los jardines privados en oliva con un « límite por confirmar » (995, violeta, nunca impreso) donde no se
-              conoce ningún muro, valla ni seto, las instalaciones deportivas y curvas de nivel cortadas solo en los edificios. Los objetos de
-              OpenStreetMap se guardan en símbolos ocultos (990, 991). Un « Mapa nuevo » de sprint lo usa en Francia; en otros lugares, solo
-              OpenStreetMap.`,
+            html`<b>El plano urbano (sprint)</b>, para un mapa de sprint en Francia: el mapa que el generador de las carreras de Pixel hace a partir
+              del LiDAR del IGN, su BD TOPO, la foto aérea y su infrarrojo, el catastro y OpenStreetMap, según las reglas de un cartógrafo — el
+              espacio viario público pavimentado hasta los límites de las parcelas, el borde de las zonas pavimentadas y los bordillos, aceras y
+              carriles bici como líneas a su anchura, escaleras a su anchura, la red de caminos conectada, los edificios adosados unidos, la
+              vegetación y los árboles aislados leídos del LiDAR, muros y vallas franqueables o no según su altura, los jardines privados en oliva
+              con un « límite por confirmar » (995, violeta, nunca impreso) donde no se conoce ningún muro, valla ni seto, las instalaciones
+              deportivas y curvas de nivel cortadas solo en los edificios. Se calcula en los servidores de Ozimut en varios minutos: puedes seguir
+              trabajando o cerrar la página, llega como borrador la próxima vez que abras el mapa. Los objetos de OpenStreetMap se guardan en
+              símbolos ocultos (990, 991). Un « Mapa nuevo » de sprint lo usa en Francia; en otros lugares, OpenStreetMap.`,
             html`<b>El LiDAR</b>, donde hay un LiDAR nacional abierto (Francia, Suiza, Estados Unidos, Canadá, Nueva Zelanda): el relieve, los
               cortados y la vegetación que karttapullautin saca de él. Las teselas se calculan a petición, en unos minutos; una barra indica cómo va
               el cálculo.`,

@@ -4,14 +4,15 @@
 // vegetation as a background. Everything comes in a part of its own, « Brouillon », each object marked with its source
 // (`src`) and `draft`, never mixed silently with what was surveyed: « Accepter » moves it into the map, « Rejeter » drops it.
 // The area: the print area, else what is on the screen. Owner, 2026-11-06: the Tracer's « Générer une carte » moved here.
-// « Plan de ville (sprint) » (2026-11-12): a sprint map's town from BD TOPO, the cadastre and OpenStreetMap merged by the rules
-// a mapper's review gave tools/virtually/town_map.py (data/town.js); « Nouvelle carte » sprint uses it in place of the separate
-// national and OpenStreetMap imports.
+// « Plan de ville (sprint) » (2026-11-12): a sprint map's town made by tools/virtually/town_map.py on GitHub (the townmap
+// workflow: LiDAR, BD TOPO, BD ORTHO, cadastre, OpenStreetMap), one engine with Pixel's town races; « Nouvelle carte » sprint in
+// France uses it in place of the separate national, OpenStreetMap and contour imports.
 
 import * as G from "./geom.js";
 import { modal, field, sel } from "../tracer/dialogs.js";
 import { setBar } from "../waitbar.js";
 import { t, tn } from "./lang.js";
+import { areaCoords as areaCoordsOf, bezier as bezierOf, lineCoords as lineCoordsOf } from "./data/frame.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const DRAFT = "draft";
@@ -136,36 +137,103 @@ async function ensureTownSymbols(E) {
   const add = L.scaled(set, E.doc.scale).filter((s) => miss.includes(s.sym));
   E.live.transact(t("map.undo.data"), () => { for (const s of add) E.live.addSymbol({ ...s, set: "issprom2019-2" }); });
 }
+const TOWN_API = "/api/townmap", TOWN_MAX = 2000;           // metres a side (the workflow's limit)
+const townKey = (E) => `ocn.map.town.${E.id || "local"}`;
+const readTown = (E) => { try { return JSON.parse(localStorage.getItem(townKey(E)) || "null"); } catch (e) { return null; } };
+const keepTown = (E, v) => { try { if (v) localStorage.setItem(townKey(E), JSON.stringify(v)); else localStorage.removeItem(townKey(E)); } catch (e) { /* private window */ } };
 async function townDialog(E) {
   const f = await frameOrSay(E); if (!f) return;
   if (styleOf(E) !== "sprint") { E.say(t("map.data.town.notSprint"), "bad"); return; }
-  const fr = (await nationalSource(E, f)) === "bdtopo";
-  const box = (name, key) => `<label><input type="checkbox" name="${name}" checked> ${esc(t(key))}</label>`;
+  if ((await nationalSource(E, f)) !== "bdtopo") { E.say(t("map.data.town.notFrance"), "bad"); return; }
+  const pending = readTown(E);
+  if (pending) return waitTown(E, pending);
   const v = await modal(E, { title: t("map.rib.data-town"), body: `<p class="mp-hint">${esc(t("map.data.town.hint"))}</p>
-    <fieldset class="mp-choice"><legend>${esc(t("map.data.town.sources"))}</legend>
-    ${fr ? box("bdtopo", "map.data.town.src.bdtopo") + box("cadastre", "map.data.town.src.cadastre") : ""}${box("osm", "map.data.town.src.osm")}${box("contours", "map.data.town.src.contours")}</fieldset>
-    ${fr ? "" : `<p class="mp-hint">${esc(t("map.data.town.notFrance"))}</p>`}`,
-    validate: (x) => (x.bdtopo || x.osm || x.cadastre ? null : t("map.data.town.none")) });
+    <p class="mp-hint">${esc(t("map.data.town.time"))}</p>
+    <label class="mp-row"><input type="checkbox" name="contours" checked> ${esc(t("map.data.town.src.contours"))}</label>` });
   if (!v) return;
-  return town(E, { bdtopo: fr && !!v.bdtopo, cadastre: fr && !!v.cadastre, osm: !!v.osm, contours: !!v.contours });
+  return town(E, { contours: !!v.contours });
 }
-/** A town's sprint map into the draft part (data/town.js). o: { bdtopo, cadastre, osm, contours } — the sources to read. */
-export async function town(E, o) {
+/**
+ * A town's sprint map (owner, 2026-11-12: one engine, the generator Pixel's town races use — tools/virtually/town_map.py on
+ * IGN's LiDAR HD, BD TOPO, BD ORTHO's infrared, the cadastre and OpenStreetMap —, quality before speed): the area's centre and
+ * size asked of /api/townmap, the GitHub workflow townmap.yml making it (several minutes), then its objects brought into the draft
+ * part. o: { contours } — the contours kept. The request is kept in this browser (`ocn.map.town.<map>`): a page closed meanwhile
+ * takes the map when the editor opens again (resumeTown).
+ */
+export async function town(E, o = {}) {
   const f = await frameOrSay(E); if (!f) return;
-  const b = areaOf(E), k = (E.doc.scale || 4000) / 1000;
-  if ((b[2] - b[0]) * (b[3] - b[1]) * k * k > 9e6) { E.say(t("map.data.tooLarge"), "bad"); return; }
-  const say = progress(E);
-  say(t("map.data.town.starting"));
-  await ensureTownSymbols(E);
-  const T = await import("./data/town.js");
+  if ((await nationalSource(E, f)) !== "bdtopo") { E.say(t("map.data.town.notFrance"), "bad"); return; }
+  const b = areaOf(E), k = (E.doc.scale || 4000) / 1000, w = (b[2] - b[0]) * k, h = (b[3] - b[1]) * k;
+  if (w > TOWN_MAX || h > TOWN_MAX) { E.say(t("map.data.town.tooLarge"), "bad"); return; }
+  const [lat, lon] = f.toLatLon((b[0] + b[2]) / 2, (b[1] + b[3]) / 2);
+  progress(E)(t("map.data.town.asking"));
   let r;
-  try { r = await T.loadTown(f, b, { ...o, contours: o.contours ? { interval: 2.5 } : null, onStage: (key, vars, frac) => say(t(key, vars), frac) }); }
-  catch (e) { E.say(e.message === "nogeo" ? t("map.data.nogeo") : e.message === "jsts" ? t("map.data.town.noLib") : e.message, "bad"); return; }
-  if (!r.objects.length) { E.say(t("map.data.town.empty"), "bad"); return; }
-  const n = bring(E, r.objects, t("map.undo.data"));
-  const credits = [r.used.bdtopo && T.BD_CREDIT, r.used.cadastre && T.CAD_CREDIT, r.used.osm && t("map.data.osm.credit"), r.used.dem].filter(Boolean);
-  const failed = [...new Set(r.failed.map((x) => x.split(":")[0]))].map((x) => t(`map.data.town.src.short.${x}`));
-  E.say(tn("map.data.brought", n) + (credits.length ? ` · ${credits.join(" · ")}` : "") + (failed.length ? ` · ${t("map.data.town.failed", { list: failed.join(", ") })}` : ""), failed.length ? "bad" : undefined);
+  try {
+    const res = await fetch(TOWN_API, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat, lon, w: Math.round(w), h: Math.round(h) }) });
+    r = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(res.status === 429 ? t("map.data.town.limit") : r.error === "not france" ? t("map.data.town.notFrance") : r.error || `HTTP ${res.status}`);
+  } catch (e) { E.say(e.message, "bad"); return; }
+  const pending = { req: r.req, contours: !!o.contours, at: Date.now() };
+  keepTown(E, pending);
+  return waitTown(E, pending);
+}
+/** A request made before this page was opened (kept in this browser), taken up again when the editor opens. */
+export async function resumeTown(E) {
+  const p = readTown(E);
+  if (p && !E.blank) await waitTown(E, p);
+}
+/** Waits for the workflow (its stage, share and queue shown), then brings the map's objects in. */
+async function waitTown(E, p) {
+  if (E._townWait === p.req) return;
+  E._townWait = p.req;
+  const say = progress(E), t0 = p.at || Date.now();
+  try {
+    for (;;) {
+      if (E.closed) return;
+      const r = await fetch(`${TOWN_API}?req=${encodeURIComponent(p.req)}`, { credentials: "same-origin" }).then((x) => (x.ok ? x.json() : x.status === 404 ? { status: "gone" } : null)).catch(() => null);
+      const waited = t("map.data.town.waited", { t: elapsedOf(t0) });
+      if (r?.status === "done") break;
+      if (r?.status === "failed" || r?.status === "gone") { keepTown(E, null); E.say(r.status === "gone" ? t("map.data.town.gone") : t("map.data.town.failed", { error: r.error || "" }), "bad"); return; }
+      const pr = r?.progress;
+      if (pr) say(`${t(`map.data.town.stage.${pr.stage}`)} · ${waited}`, pr.frac);
+      else say(`${r?.ahead ? tn("map.data.town.ahead", r.ahead) : t("map.data.town.queued")} · ${waited}`);
+      await new Promise((ok) => setTimeout(ok, 10000));
+    }
+    say(t("map.data.town.reading"));
+    const res = await fetch(`${TOWN_API}/out/${encodeURIComponent(p.req)}`, { credentials: "same-origin" });
+    if (!res.ok) { keepTown(E, null); E.say(t("map.data.town.gone"), "bad"); return; }
+    const j = await res.json();
+    const f = await frameOrSay(E); if (!f) return;
+    await ensureTownSymbols(E);
+    const objects = townObjects(j, f, { contours: p.contours });
+    const n = bring(E, objects, t("map.undo.data"));
+    keepTown(E, null);
+    E.say(tn("map.data.brought", n) + ` · ${t("map.data.town.credit", { date: lidarYear(j) })}`);
+  } finally { if (E._townWait === p.req) E._townWait = null; }
+}
+/** The LiDAR's year (its latest tile's acquisition), with its space, or nothing. */
+const lidarYear = (j) => { const y = Object.values(j.lidar || {}).sort().pop()?.slice(0, 4); return y ? ` ${y}` : ""; };
+const elapsedOf = (t0) => { const s = Math.max(0, Math.round((Date.now() - t0) / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+/**
+ * The generator's objects (town_map.py's map_objects.json: rings in map mm about `realWorld` in Lambert 93 at its scale) as the
+ * document's: each point through Lambert 93 into the map's frame, lines marked `curve` as Bézier curves, the north lines left
+ * out (« Mise en page » draws them), the contours too when not asked for.
+ */
+export function townObjects(j, f, { contours = true } = {}) {
+  const k = (j.scale || 4000) / 1000, X0 = j.realWorld.x, Y0 = j.realWorld.y;
+  const P = ([x, y]) => f.fromL93mm(X0 + x * k, Y0 + y * k);
+  const out = [];
+  for (const o of j.objects || []) {
+    const n = Math.floor(o.sym / 1000);
+    if (n === 601 || (!contours && n >= 101 && n <= 103)) continue;
+    const rings = (o.rings || []).map((r) => r.map(P));
+    if (!rings.length || !rings[0].length) continue;
+    const coords = o.otp === 3 ? areaCoordsOf(rings) : o.otp === 2 ? (o.curve && rings[0].length >= 3 ? bezierOf(rings[0]) : lineCoordsOf(rings[0])) : lineCoordsOf([rings[0][0]]);
+    if ((o.otp === 3 && coords.length < 4) || (o.otp === 2 && coords.length < 2)) continue;
+    out.push({ sym: o.sym, otp: o.otp, ang: o.ang || 0, coords, ...(o.text ? { text: o.text } : {}), src: "town", draft: true });
+  }
+  return out;
 }
 async function lidar(E) {
   const f = await frameOrSay(E); if (!f) return;

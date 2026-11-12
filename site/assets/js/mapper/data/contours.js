@@ -7,11 +7,8 @@
 // where the ground is gentle). A closed contour too small to be drawn as a loop becomes a point: 109.0 small knoll or
 // 111.0 small depression. Every object is { sym, otp, ang, coords, src: "dem", draft: true } (the document gives ids).
 // The lines are Bézier curves through their points (a mapper's review, 2026-11-12: a contour bends on the ground; `curve`).
-// A town's sprint map (data/town.js) asks for more: the ground smoothed over a few metres first (a town's model holds kerbs,
-// walls and embankments: `smoothM`), each contour dropped or kept whole (`minLoopArea`, `minOpenLength`, no knoll points), then
-// cut at the buildings only (`cut`), so that no contour ends in the open.
 
-import { ocad, simplify, bezier, ringArea } from "./frame.js";
+import { ocad, simplify, bezier } from "./frame.js";
 import { loadGrid, CREDIT } from "../../trace/terrain.js";
 
 export const SYM = { contour: 101000, index: 102000, form: 103000, knoll: 109000, depression: 111000 };
@@ -29,37 +26,7 @@ const DEFAULTS = {
   tolerance: 0.05,      // mm: Douglas-Peucker
   smooth: 1,            // passes of a [1/4, 1/2, 1/4] smoothing
   curve: true,          // the lines as Bézier curves through their points
-  smoothM: 0,           // m: the grid smoothed by a Gaussian of this spread first (0: not)
-  minLoopArea: null,    // m²: a closed contour enclosing less is left out whole, no knoll or depression point (null: the points)
-  minOpenLength: null,  // m: an open contour shorter than this is left out whole
-  cut: null,            // (pts in map mm) → [pieces]: where a contour may not run (a town's buildings); pieces under minPiece go
-  minPiece: 3,          // m
 };
-
-/** A grid smoothed by a Gaussian of spread sigma nodes (separable; NaN nodes keep NaN and do not count). */
-export function gaussianGrid(z, nx, ny, sigma) {
-  if (!(sigma > 0)) return z;
-  const r = Math.ceil(3 * sigma), w = [];
-  for (let k = -r; k <= r; k++) w.push(Math.exp(-(k * k) / (2 * sigma * sigma)));
-  const pass = (src, horiz) => {
-    const out = new Float64Array(src.length);
-    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
-      const v0 = src[j * nx + i];
-      if (Number.isNaN(v0)) { out[j * nx + i] = NaN; continue; }
-      let s = 0, sw = 0;
-      for (let k = -r; k <= r; k++) {
-        const ii = horiz ? i + k : i, jj = horiz ? j : j + k;
-        if (ii < 0 || jj < 0 || ii >= nx || jj >= ny) continue;
-        const v = src[jj * nx + ii];
-        if (Number.isNaN(v)) continue;
-        s += v * w[k + r]; sw += w[k + r];
-      }
-      out[j * nx + i] = s / sw;
-    }
-    return out;
-  };
-  return pass(pass(z, true), false);
-}
 
 /**
  * The contour lines of a grid at levels base + k × interval: [{ level, k, closed, pts: [[x, y]…] }] in the grid's
@@ -157,9 +124,8 @@ const lengthOf = (pts) => { let s = 0; for (let i = 1; i < pts.length; i++) s +=
  */
 export function contourObjects(grid, opts = {}) {
   const o = { ...DEFAULTS, ...opts };
-  const { nx, ny, x0, y0, step } = grid;
-  const scale = o.scale || 10000, stepM = (step * scale) / 1000, m = scale / 1000;       // m: metres a map mm
-  const z = o.smoothM > 0 ? gaussianGrid(grid.z, nx, ny, o.smoothM / stepM) : grid.z;
+  const { z, nx, ny, x0, y0, step } = grid;
+  const scale = o.scale || 10000, stepM = (step * scale) / 1000;
   const toMm = ([i, j]) => [x0 + i * step, y0 - j * step];
   const objects = [], counts = { contour: 0, index: 0, form: 0, knoll: 0, depression: 0, dropped: 0 };
   const hAt = (i, j) => z[Math.max(0, Math.min(ny - 1, j)) * nx + Math.max(0, Math.min(nx - 1, i))];
@@ -169,19 +135,12 @@ export function contourObjects(grid, opts = {}) {
   };
   const finish = (pts, closed) => simplify(smoothN(pts, closed).map(toMm), o.tolerance);
   const smoothN = (pts, closed) => { let p = pts; for (let s = 0; s < o.smooth; s++) p = smooth1(p, closed); return p; };
-  const put = (sym, pts) => objects.push({ sym, otp: 2, ang: 0, coords: o.curve ? bezier(pts) : pts.map(([x, y]) => ocad(x, y)), src: "dem", draft: true });
-  const line = (sym, pts) => {
-    if (!o.cut) { put(sym, pts); return; }
-    for (const piece of o.cut(pts)) if (piece.length >= 2 && lengthOf(piece) * m >= o.minPiece) put(sym, piece);
-  };
+  const line = (sym, pts) => objects.push({ sym, otp: 2, ang: 0, coords: o.curve ? bezier(pts) : pts.map(([x, y]) => ocad(x, y)), src: "dem", draft: true });
   const point = (sym, [x, y]) => objects.push({ sym, otp: 1, ang: 0, coords: [ocad(x, y)], src: "dem", draft: true });
 
   for (const c of isolines(z, nx, ny, o.interval)) {
     const mm = finish(c.pts, c.closed);
-    if (c.closed && o.minLoopArea != null) {
-      // dropped or kept whole: no loop smaller than this, and no knoll point for it
-      if (Math.abs(ringArea(mm)) * m * m < o.minLoopArea) { counts.dropped++; continue; }
-    } else if (c.closed) {
+    if (c.closed) {
       // a loop's size across (map mm) and what it holds: a knoll's top or a depression's bottom
       let i0 = Infinity, i1 = -Infinity, j0 = Infinity, j1 = -Infinity;
       for (const [i, j] of c.pts) { i0 = Math.min(i0, i); i1 = Math.max(i1, i); j0 = Math.min(j0, j); j1 = Math.max(j1, j); }
@@ -210,7 +169,7 @@ export function contourObjects(grid, opts = {}) {
         } else counts.dropped++;
         continue;
       }
-    } else if (lengthOf(mm) < o.minLine || (o.minOpenLength != null && lengthOf(mm) * m < o.minOpenLength)) { counts.dropped++; continue; }
+    } else if (lengthOf(mm) < o.minLine) { counts.dropped++; continue; }
     const index = o.indexEvery > 0 && c.k % o.indexEvery === 0;
     line(index ? SYM.index : SYM.contour, mm);
     counts[index ? "index" : "contour"]++;
