@@ -15,6 +15,7 @@ import * as country from "../country.js";
 import { getProv } from "./provisional.js";
 import { confirmBox, alertBox } from "../askbox.js";
 import { dateWords } from "../datewords.js";
+import { betaTag, betaNote } from "../beta.js";
 
 export const BASE = "#/orga";
 const TYPES = ["individual", "score", "relay", "training"];
@@ -37,6 +38,8 @@ async function api(path = "", { method = "GET", body } = {}) {
 const errText = (e) => { const k = `mg.err.${String(e?.code || "").replace(/\s+/g, "_")}`; return t(k) !== k ? t(k) : t("mg.err.other"); };
 const typeLabel = (x) => t(`mg.type.${x}`);
 const tabLabel = (k) => t(`mg.tab.${k}`);
+// the course setting is still in beta (owner, 2026-11-12): « bêta » after its tab's name
+const tabBeta = (k) => (k === "trace" ? html`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>` : "");
 // the data's discipline and format, in the reader's language
 const terrainLabel = (x) => (x ? t(`mg.terrain.${x === TERRAINS[0] ? "For" : x}`) : "");
 const formatLabel = (x) => (FORMATS.includes(x) ? t(`mg.format.${x}`) : x || "");
@@ -103,7 +106,7 @@ function stateOf(ev, k, S) {
 }
 function chipOf(ev, k, S) {
   const { note, cls } = stateOf(ev, k, S);
-  return html`<a class="mg-chip ${cls}" href="${href({ ev: ev.id, onglet: k })}">${tabLabel(k)}${note ? html` <span>${note}</span>` : ""}</a>`;
+  return html`<a class="mg-chip ${cls}" href="${href({ ev: ev.id, onglet: k })}">${tabLabel(k)}${tabBeta(k)}${note ? html` <span>${note}</span>` : ""}</a>`;
 }
 const isLinked = (ev) => !!ev.race && !/^d/.test(ev.race);
 const linkTag = (ev) => (ev.linkState === "pending" ? html`<span class="tag mg-wait">${t("mg.link.pendingShort")}</span>`
@@ -387,7 +390,7 @@ async function eventPage(main, id, q) {
       <span class="mg-meta muted">${[typeLabel(ev.type), ev.terrain ? terrainLabel(ev.terrain) : "", ev.epreuve && ev.epreuve !== ev.terrain ? formatLabel(ev.epreuve) : "", ev.club, ev.place].filter(Boolean).join(" · ")}</span>
       <span class="mg-acts">${linkTag(ev)}${!D.member ? html`<span class="tag">${t("mg.notMember")}</span>` : ""}<button type="button" class="btn btn-sm" id="mg-edit">✎ ${t("mg.edit")}</button></span></div>
     ${pending ? html`<div class="notice">${t("mg.link.pending", { name: D.competition?.name || "" })}</div>` : ""}
-    <div data-bar-tabs><nav class="page-tabs mg-tabs" role="tablist">${tabs.map((k) => html`<a role="tab" aria-selected="${k === tab}" href="${href({ ev: ev.id, onglet: k })}">${tabLabel(k)}${k === "equipe" && D.requests.length ? html` <span class="mg-badge">${D.requests.length}</span>` : ""}</a>`)}</nav></div>
+    <div data-bar-tabs><nav class="page-tabs mg-tabs" role="tablist">${tabs.map((k) => html`<a role="tab" aria-selected="${k === tab}" href="${href({ ev: ev.id, onglet: k })}">${tabLabel(k)}${tabBeta(k)}${k === "equipe" && D.requests.length ? html` <span class="mg-badge">${D.requests.length}</span>` : ""}</a>`)}</nav></div>
     <div id="mg-panel" class="mg-panel"></div>`;
   $("#mg-switch")?.addEventListener("change", (e) => { const o = others.find((x) => x.id === e.target.value); location.hash = href({ ev: o.id, onglet: (TABS[o.type] || ALL_TABS).includes(tab) ? tab : defaultTab(o) }); });
   $("#mg-edit").addEventListener("click", () => editDialog(D));
@@ -461,8 +464,9 @@ async function traceTab(panel, D) {
   const importHref = `#/orga-tracer?${new URLSearchParams({ ev: ev.id, importer: "1" })}`;
   const fromHref = `#/orga-tracer?${new URLSearchParams({ ev: ev.id, depuis: "analyse" })}`;
   const pending = ev.linkState === "pending";
-  panel.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("mg.tr.title")}</h2><div class="hint">${t("mg.tr.hint")}</div></div></div>
+  panel.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("mg.tr.title")} ${raw(betaTag())}</h2><div class="hint">${t("mg.tr.hint")}</div></div></div>
     <div class="card-body">
+      ${raw(betaNote("tracer"))}
       ${list.length ? html`<div class="mg-trlist">${list.map((x) => html`<div class="mg-tr">
           <div><b>${x.title}</b>${x.encrypted ? html` <span class="tag">${t("mg.tr.encrypted")}</span>` : ""}<div class="muted">${t("mg.tr.by", { by: x.by, n: x.team })}</div></div>
           ${x.member ? html`<a class="btn btn-primary btn-sm" href="${open(x)}">${t("mg.tr.open")}</a>`

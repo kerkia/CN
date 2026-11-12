@@ -5620,6 +5620,8 @@ export default {
   "beta.mapper.subject": "Cartografiar: ",
   "beta.mapper.body": "<p>Cartografiar acaba de crearse y aún se ha probado poco. Es una <b>versión beta</b>: {try}</p><p>Guarda una copia de tus archivos de OCAD: un archivo guardado de nuevo como OCAD conserva todo lo que no hayas modificado, pero todavía no se ha comprobado en el propio OCAD.</p>",
   "beta.mapper.note": "Versión beta, aún poco probada: guarda una copia de tus archivos de OCAD.",
+  "beta.pixel.subject": "Pixel: ",
+  "beta.pixel.note": "Versión beta, aún poco probada: los mapas, los recorridos y el índice virtual aún pueden cambiar.",
   // « Apprendre » and its test (2026-11-10)
   "nav.learn": "Aprender",
   "mt.learn": "Descripciones de control, símbolos del mapa y un entrenamiento para reconocerlos",

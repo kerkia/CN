@@ -5404,6 +5404,8 @@ export default {
   "beta.mapper.subject": "Mapping: ",
   "beta.mapper.body": "<p>Mapping has just been built and has had little testing yet. It is a <b>beta version</b>: {try}</p><p>Keep a copy of your OCAD files: a file saved back as OCAD keeps everything you did not change, but has not yet been checked in OCAD itself.</p>",
   "beta.mapper.note": "Beta version, little tested yet: keep a copy of your OCAD files.",
+  "beta.pixel.subject": "Pixel: ",
+  "beta.pixel.note": "Beta version, little tested yet: the maps, the courses and the virtual index may still change.",
   // « Apprendre » and its test (2026-11-10)
   "nav.learn": "Learning",
   "mt.learn": "Control descriptions, map symbols, and a training to recognise them",

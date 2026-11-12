@@ -5620,6 +5620,8 @@ export default {
   "beta.mapper.subject": "Kartieren: ",
   "beta.mapper.body": "<p>Kartieren wurde gerade entwickelt und ist noch wenig getestet. Es ist eine <b>Beta-Version</b>: {try}</p><p>Behalte eine Kopie deiner OCAD-Dateien: Eine als OCAD gespeicherte Datei behält alles Unveränderte, wurde aber noch nicht in OCAD selbst geprüft.</p>",
   "beta.mapper.note": "Beta-Version, noch wenig getestet: Behalte eine Kopie deiner OCAD-Dateien.",
+  "beta.pixel.subject": "Pixel: ",
+  "beta.pixel.note": "Beta-Version, noch wenig getestet: Karten, Bahnen und der virtuelle Index können sich noch ändern.",
   // « Apprendre » and its test (2026-11-10)
   "nav.learn": "Lernen",
   "mt.learn": "Postenbeschreibungen, Kartensymbole und ein Training, um sie zu erkennen",

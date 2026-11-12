@@ -15,6 +15,8 @@ const NOTICES = {
   // Orga › « Résultats » and « Horaires »: a label and a note, no notice to acknowledge (owner, 2026-11-07)
   results: { id: "results" },
   starts: { id: "starts" },
+  // Pixel, the virtual races (owner, 2026-11-12): a note, no notice to acknowledge
+  pixel: { id: "pixel" },
 };
 const acked = (n) => { try { return localStorage.getItem(n.key) === n.v; } catch (e) { return false; } };
 const ack = (n) => { try { localStorage.setItem(n.key, n.v); } catch (e) { /* this visit only */ } };

@@ -8,7 +8,7 @@ import { html, raw, $, $$, nameParts } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
-import { visibleModules, moduleShown, CREATOR_MODULES, moduleMenus, moduleHome, isPhone, leaveGuest } from "../app.js";
+import { visibleModules, moduleShown, CREATOR_MODULES, moduleMenus, moduleHome, isPhone, leaveGuest, modBeta, betaSup } from "../app.js";
 
 // one drawing a module, in the module's colour (currentColor)
 const ICONS = {
@@ -68,12 +68,12 @@ function card(m) {
   // an open module's whole card leads into it (owner, 2026-10-31: as the documentation's cards); its own links and buttons
   // stay on top (app.css « .hub-card.go »)
   return html`<section class="hub-card${locked ? "" : " go"}" data-mod="${m}">
-    <div class="hub-card-head">${icon(m)}<div><h2>${locked ? t(`mod.${m}`) : html`<a href="${moduleHome(m)}">${t(`mod.${m}`)}</a>`}</h2><p>${t(m === "coach" ? "mod.coach.tag" : `mod.${m}.tag`)}</p></div></div>
+    <div class="hub-card-head">${icon(m)}<div><h2>${locked ? t(`mod.${m}`) : html`<a href="${moduleHome(m)}">${t(`mod.${m}`)}</a>`}${modBeta(m)}</h2><p>${t(m === "coach" ? "mod.coach.tag" : `mod.${m}.tag`)}</p></div></div>
     <p class="hub-text">${t(m === "coach" ? "hub.coach.text" : `hub.${m}.text`)}</p>
     ${guest && m === "stats" ? html`<p class="muted hub-note">${t("hub.stats.guest")}</p>` : ""}
     ${guest && m === "coach" ? html`<p class="muted hub-note">${t("hub.coach.guest")}</p>` : ""}
     ${locked ? html`<p class="muted hub-note">${locked.note}</p>${locked.action ? html`<div class="hub-actions">${locked.action}</div>` : ""}`
-      : html`<ul class="hub-pages">${STEPS[m] ? STEPS[m].map((k) => html`<li><span>${t(`hub.${m}.step.${k}`)}</span></li>`)
+      : html`<ul class="hub-pages">${STEPS[m] ? STEPS[m].map((k) => html`<li><span>${t(`hub.${m}.step.${k}`)}${m === "orga" && k === "trace" ? betaSup() : ""}</span></li>`)
         : items.map(([, href, text]) => html`<li><a href="${href}">${text}</a></li>`)}</ul>
         <div class="hub-actions"><a class="btn btn-primary" href="${moduleHome(m)}">${t("hub.open", { mod: t(`mod.${m}`) })}</a></div>`}
   </section>`;
@@ -106,7 +106,7 @@ export async function render(main, r) {
     <div class="hub-head"><h1>${me ? t("hub.hello", { name: nameParts(me.nom).first || me.nom }) : t("hub.welcome")}</h1>
       <p class="lede">${t("hub.lede")}</p></div>
     <div class="hub-tabs" role="tablist" aria-label="${t("mod.pick")}">${mods.map((m) => html`<button type="button" role="tab"
-      data-hub-tab="${m}" data-mod="${m}" aria-selected="${String(m === cur)}">${icon(m)}<span>${t(`mod.${m}`)}</span></button>`)}</div>
+      data-hub-tab="${m}" data-mod="${m}" aria-selected="${String(m === cur)}">${icon(m)}<span>${t(`mod.${m}`)}${modBeta(m)}</span></button>`)}</div>
     <div class="hub-grid tabbed">${mods.map(card)}</div>
     ${quietLine()}
     ${session()}

@@ -4578,6 +4578,8 @@ export default {
   "beta.mapper.subject": "Cartographier : ",
   "beta.mapper.body": "<p>Cartographier vient d'être réalisé et n'a encore été que peu testé. C'est une <b>version bêta</b> : {try}</p><p>Gardez une copie de vos fichiers OCAD : un fichier réenregistré en OCAD garde tout ce que vous n'avez pas modifié, mais il n'a pas encore été vérifié dans OCAD lui-même.</p>",
   "beta.mapper.note": "Version bêta, encore peu testée : gardez une copie de vos fichiers OCAD.",
+  "beta.pixel.subject": "Pixel : ",
+  "beta.pixel.note": "Version bêta, encore peu testée : les cartes, les circuits et l'indice virtuel peuvent encore changer.",
   // « Apprendre » and its test (2026-11-10)
   "nav.learn": "Apprendre",
   "mt.learn": "Définitions de postes, symboles de carte, et un entrainement pour les reconnaître",

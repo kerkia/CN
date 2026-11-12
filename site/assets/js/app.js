@@ -113,6 +113,10 @@ const NUTRITION_ROUTES = { nutrition: auth.nutritionReads, nutritionWrite: auth.
 // the map analyses out of beta on 2026-11-05; « Résultats » and « Horaires » marked beta on 2026-11-07 (owner)
 const BETA_ROUTES = new Set(["orgDirect", "orgTracer", "orgMapper", "orgResults", "orgStarts", "orgManage"]);
 const betaMark = (k) => (BETA_ROUTES.has(k) ? raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`) : "");
+// the modules still in beta (owner, 2026-11-12): « bêta » after their name in the bar, on the modules page and its tabs
+const BETA_MODULES = new Set(["carto", "pixel"]);
+export const betaSup = () => raw(`<sup class="nav-beta" title="${t("beta.mark.tip")}">${t("beta.mark")}</sup>`);
+export const modBeta = (m) => (BETA_MODULES.has(m) ? betaSup() : "");
 const isLean = (r) => ["ranking", "categories", "relayHistory", "courses", "compare", "clubs", "club", "clubcompare", "relays", "network", "agenda", "analysis", "analysisPerso", "analysisOrga", "games", "virtually", "vma", "learn"].includes(r.route)
   || (r.route === "provisional" && !r.query.course) || (r.route === "splits" && !r.query.course) || (r.route === "live" && !r.arg) || ((r.route === "analysisClub" || r.route === "analysisRace") && !r.query.id)
   || (r.route === "orgAnalyses" && !r.query.id) || r.route === "orgResults" || (r.route === "orgStarts" && !r.query.course);
@@ -560,8 +564,8 @@ function renderHeader(r) {
         <path d="M16 8 L24 16 L16 16 Z" fill="#e8641c"/><path d="M8 16 L16 24 L16 16 Z" fill="currentColor"/><circle cx="16" cy="16" r="13.7" fill="none" stroke="currentColor" stroke-width="1.9"/><path d="M16 3.4 V5.6 M28.6 16 H26.4 M16 28.6 V26.4 M3.4 16 H5.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       </a><span class="brand-text"><a class="brand-name" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}"><span class="brand-o">O</span>zimut</a>${
-        mod ? off ? html`<span class="brand-mod nav-off" title="${t("doc.orgaOff")}">${t(`mod.${mod}`)}</span>`
-          : html`<a class="brand-mod" href="${moduleHome(mod)}" title="${t("mod.home", { mod: t(`mod.${mod}`) })}">${t(`mod.${mod}`)}</a>` : ""}</span></div>
+        mod ? off ? html`<span class="brand-mod nav-off" title="${t("doc.orgaOff")}">${t(`mod.${mod}`)}${modBeta(mod)}</span>`
+          : html`<a class="brand-mod" href="${moduleHome(mod)}" title="${t("mod.home", { mod: t(`mod.${mod}`) })}">${t(`mod.${mod}`)}${modBeta(mod)}</a>` : ""}</span></div>
     ${visitor ? html`<span class="hist-nav"><button type="button" class="icon-btn" data-hist="back" aria-label="${t("nav.histBack")}" title="${t("nav.histBack")}">‹</button><button type="button" class="icon-btn" data-hist="forward" aria-label="${t("nav.histFwd")}" title="${t("nav.histFwd")}">›</button></span>` : ""}
     ${items.length || mod === "arena" || mod === "orga" ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
     <div class="topbar-tools">

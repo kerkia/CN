@@ -42,7 +42,7 @@ export async function openEditor(opts) {
     <div class="tr-top">
       <button type="button" class="tr-icon" data-top="maps" title="${esc(t("map.top.maps"))}">${svg("folder", 18)}</button>
       <button type="button" class="tr-icon mp-drawer" data-top="left" title="${esc(t("map.left.title"))}">${svg("palette", 18)}</button>
-      <span class="tr-title" id="mp-title"></span>
+      <span class="tr-title" id="mp-title"></span><span class="beta-tag" title="${esc(t("beta.mapper.note"))}">${esc(t("beta.tag"))}</span>
       <span class="mp-save" id="mp-save" aria-live="polite"></span>
       <span class="mp-sp"></span>
       <button type="button" class="tr-icon" data-act="undo" title="${esc(t("map.rib.undo"))} (Ctrl+Z)">${svg("undo", 18)}</button>

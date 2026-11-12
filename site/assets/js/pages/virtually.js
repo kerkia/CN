@@ -20,6 +20,7 @@ import { html, raw, $, $$, fmt, fmtDate, displayName } from "../util.js";
 import { t, tn, loadArea } from "../i18n.js";
 import { pageTabs, tabFrom, bindPageTabs, dataTable, scoreCell, subHead } from "../ui.js";
 import * as auth from "../auth.js";
+import { betaNote } from "../beta.js";
 import * as data from "../data.js";
 import { envText } from "../games/vweather.js";
 import { LAYERS, mapOptOf, mapOptText, imageMap, savedOpt, saveOpt, moOf } from "../games/vmapopt.js";
@@ -108,6 +109,7 @@ export async function render(main, { query }) {
   const sel = { race: query.carte || null, course: query.circuit || null, run: query.run || null };
   main.innerHTML = html`
     <div class="page-head"><div><h1>${t("nav.virtually")}</h1><p class="lede">${t("vtp.lede")}</p></div></div>
+    ${raw(betaNote("pixel"))}
     ${pageTabs(tabs, tab)}
     ${tabs.map(([k]) => html`<div data-panel="${k}" class="vtp-panel" hidden></div>`)}`;
   let game = null, drawn = new Set(), stopAn = null, stopOrga = null, stopAvatar = null, trainingPlay = null;
