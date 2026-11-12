@@ -2309,7 +2309,7 @@ export default {
   "chart.regression": "{name} — régression",
   "fw.back": "Revenir au menu (Échap)",
   "fw.backShort": "Revenir au menu",
-  "fw.full": "Plein écran : la carte occupe toute la fenêtre",
+  "fw.full": "Plein écran : la carte occupe tout l'écran",
   "fw.tab": "Ouvrir dans un nouvel onglet",
   "table.more": "{shown} / {all} — faites défiler pour afficher la suite",
   "table.rows": "{n} lignes",

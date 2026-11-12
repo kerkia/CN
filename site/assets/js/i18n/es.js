@@ -3305,7 +3305,7 @@ export default {
   "chart.regression": "{name} — regresión",
   "fw.back": "Volver al menú (Esc)",
   "fw.backShort": "Volver al menú",
-  "fw.full": "Pantalla completa: el mapa ocupa toda la ventana",
+  "fw.full": "Pantalla completa: el mapa ocupa toda la pantalla",
   "fw.tab": "Abrir en una pestaña nueva",
   "table.more": "{shown} / {all} — desplázate para mostrar más",
   "table.rows": "{n} filas",

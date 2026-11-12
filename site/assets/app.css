@@ -2437,7 +2437,7 @@ body[data-group="orga"] { --grp: var(--flag); --grp-wash: var(--flag-wash); }
 .btn.mo-btn { display: inline-flex; align-items: center; justify-content: center; }
 /* full window (« ⤢ », fullwin.js) pressed the same way while the site's menus are hidden (owner, 2026-11-10); the fixed « ⤡ Revenir
    au menu » (#fw-guard) carries no aria-pressed and keeps its look */
-.btn.mo-btn.on, .btn.fw-btn[data-fw="toggle"][aria-pressed="true"] { background: var(--flag); border-color: var(--flag); color: #fff; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35); }
+.btn.mo-btn.on, .btn.fw-btn[data-fw="toggle"][aria-pressed="true"], .vt-topbar #vt-full[aria-pressed="true"] { background: var(--flag); border-color: var(--flag); color: #fff; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35); }
 @media (min-width: 901px) {
   body.mo-anim .sh-layout, body.mo-anim.an-theatre .an-layout { transition: grid-template-columns .3s ease; overflow: clip; }
   body.map-only .sh-layout, body.map-only.an-theatre .an-layout { overflow: clip; grid-template-columns: 0px 0px minmax(0, 1fr) 0px 0px; }

@@ -3305,7 +3305,7 @@ export default {
   "chart.regression": "{name} — Regression",
   "fw.back": "Zurück zum Menü (Esc)",
   "fw.backShort": "Zurück zum Menü",
-  "fw.full": "Vollbild: Die Karte füllt das ganze Fenster",
+  "fw.full": "Vollbild: Die Karte füllt den ganzen Bildschirm",
   "fw.tab": "In neuem Tab öffnen",
   "table.more": "{shown} / {all} — scrolle, um mehr anzuzeigen",
   "table.rows": "{n} Zeilen",

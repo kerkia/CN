@@ -19,7 +19,25 @@ function label() {
   const l = look();
   for (const b of document.querySelectorAll('[data-fw="toggle"]:not(#fw-guard)')) { b.setAttribute("aria-pressed", String(l.on)); b.textContent = l.text; b.title = l.title; }
 }
+/* The browser's own full screen with it (owner, 2026-11-12: as Virtually's, the browser's bars and tabs gone too): asked on « ⤢ »
+   (a click: browsers grant it only on a gesture; a « ↗ » tab, opened in full window without one, keeps them), left with « ⤡ ».
+   Échap stays the page's where the browser lets it (Chromium's keyboard lock: the Tracer cancels a tool first, a long press leaves
+   the full screen); elsewhere Échap leaves the browser's full screen, and full window with it (`fullscreenchange`). */
+let ours = false;
+function screenFull(on) {
+  const d = document;
+  if (on && !d.fullscreenElement && d.documentElement.requestFullscreen) {
+    d.documentElement.requestFullscreen({ navigationUI: "hide" }).then(() => { ours = true; navigator.keyboard?.lock?.(["Escape"])?.catch?.(() => {}); }).catch(() => {});
+  } else if (!on && ours && d.fullscreenElement) { ours = false; navigator.keyboard?.unlock?.(); d.exitFullscreen().catch(() => {}); }
+  else if (!on) ours = false;
+}
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement || !ours) return;
+  ours = false; navigator.keyboard?.unlock?.();
+  if (isFull()) setFull(false);
+});
 export function setFull(on) {
+  screenFull(!!on);
   document.body.classList.toggle(CLS, !!on);
   label();
   guard(!!on);

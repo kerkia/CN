@@ -3140,7 +3140,7 @@ export default {
   "chart.regression": "{name} — regression",
   "fw.back": "Back to the menu (Esc)",
   "fw.backShort": "Back to the menu",
-  "fw.full": "Full screen: the map fills the window",
+  "fw.full": "Full screen: the map fills the screen",
   "fw.tab": "Open in a new tab",
   "table.more": "{shown} / {all} — scroll to show more",
   "table.rows": "{n} rows",

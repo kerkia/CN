@@ -81,7 +81,7 @@ export function mount(root, raceId, opts = {}) {
         <button type="button" class="btn" id="vt-pos" title="${t("vt.pos.tip")}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg><span class="vt-lbl" id="vt-poslbl">${t("vt.pos.btn")}</span></button>
         <span class="vt-pace"><button type="button" class="btn" id="vt-slower" title="${t("vt.pace.slower")}" aria-label="${t("vt.pace.slower")}">−</button><button type="button" class="btn" id="vt-speed" title="${t("vt.speed.tip")}"><span id="vt-pacelbl">×1</span><span class="vt-energy" aria-hidden="true"><i></i></span></button><button type="button" class="btn" id="vt-faster" title="${t("vt.pace.faster")}" aria-label="${t("vt.pace.faster")}">+</button></span>
         <button type="button" class="btn" id="vt-pause" title="${t("vt.pause.tip")}" aria-label="${t("vt.pause")}"><span aria-hidden="true">❚❚</span><span class="vt-lbl">${t("vt.pause")}</span></button>
-        <button type="button" class="btn" id="vt-full" title="${t("vt.full")}" aria-label="${t("vt.full")}">⤢</button>
+        <button type="button" class="btn" id="vt-full" aria-pressed="false" title="${t("vt.full")}" aria-label="${t("vt.full")}">⤢</button>
       </div>
       <canvas class="vt-compass" width="180" height="180" title="${t("vt.compass")}"></canvas>
       <div class="vt-map" data-size="small">
@@ -126,6 +126,14 @@ export function mount(root, raceId, opts = {}) {
       posLeft: 0, posN: 0, pen: 0, legPen: [] };       // « Ma position »: seconds still shown (real time), presses, penalty seconds, per leg
     const total = () => st.t + st.pen;                // the race time: the clock and the penalties
     const keys = new Set();
+    /* Turning, the runner and the map alike (owner, 2026-11-12: « much more granularity », « similar for the runner and the map »):
+       a press (a key, a button, a wheel notch) turns TURN_STEP; held past HOLD_S it goes on, from 45° a second up to 110° after
+       a second more (`turnRate`). Before: the runner 109° a second from the first instant, the map 15° a press. */
+    const TURN_STEP = Math.PI / 60, HOLD_S = 0.3;
+    const pressAt = new Map();
+    const turnRate = (since) => { const h = (performance.now() - since) / 1000 - HOLD_S; return h < 0 ? 0 : (Math.min(110, 45 + 65 * h) * Math.PI) / 180; };
+    const heldSince = (codes) => Math.min(...codes.filter((c) => keys.has(c)).map((c) => pressAt.get(c) ?? 0));
+    const LEFT = ["ArrowLeft", "KeyA"], RIGHT = ["ArrowRight", "KeyD"], MAPL = ["Comma"], MAPR = ["Period"];
     const resize = () => { const w = box.clientWidth, h = box.clientHeight; renderer.setSize(w, h, false); camera.aspect = w / Math.max(1, h); camera.updateProjectionMatrix(); drawMapPanel(); };
     const ro = new ResizeObserver(resize); ro.observe(box);
     // ---- the map panel ----
@@ -242,6 +250,7 @@ export function mount(root, raceId, opts = {}) {
     $("#vt-msize", root).addEventListener("click", () => { const big = st.phase === "done" ? "full" : "large"; mapSize(mapEl.dataset.size === big ? "small" : big); });
     const turning = () => orient === "free" && st.phase !== "done";
     const turnBy = (d) => { if (!turning()) return; mv.free += d; drawMapPanel(); };
+
     const ptrs = new Map();
     let tap = null, twist = null;
     const angOf = (a, b) => Math.atan2(b[1] - a[1], b[0] - a[0]), distOf = (a, b) => Math.hypot(b[0] - a[0], b[1] - a[1]);
@@ -281,7 +290,7 @@ export function mount(root, raceId, opts = {}) {
     };
     mapC.addEventListener("pointerup", ptrUp); mapC.addEventListener("pointercancel", ptrUp);
     mapC.addEventListener("wheel", (e) => { e.preventDefault();
-      if (e.shiftKey && turning()) { turnBy(((e.deltaY || e.deltaX) < 0 ? -1 : 1) * (Math.PI / 12)); return; }
+      if (e.shiftKey && turning()) { turnBy(((e.deltaY || e.deltaX) < 0 ? -1 : 1) * TURN_STEP); return; }
       const f = e.deltaY < 0 ? 1.2 : 1 / 1.2, rc = mapC.getBoundingClientRect();
       const px = e.clientX - rc.left - rc.width / 2, py = e.clientY - rc.top - rc.height / 2;
       const [ux, uy] = unturn(px, py); mv.cx += ux - ux / f; mv.cy += uy - uy / f; mv.zoom *= f; drawMapPanel(); }, { passive: false });
@@ -294,9 +303,10 @@ export function mount(root, raceId, opts = {}) {
       free: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M19 12a7 7 0 1 1-2.1-5"/><path d="M17.5 3.5v4h-4"/></svg>',
     };
     for (const [id, dir] of [["#vt-mrotl", -1], ["#vt-mrotr", 1]]) {
-      const b = $(id, root); let to = 0, iv = 0;
-      const stop = () => { clearTimeout(to); clearInterval(iv); };
-      b.addEventListener("pointerdown", (e) => { e.preventDefault(); stop(); turnBy((dir * Math.PI) / 12); to = setTimeout(() => (iv = setInterval(() => turnBy(dir * 0.05), 30)), 350); });
+      const b = $(id, root); let iv = 0;
+      const stop = () => clearInterval(iv);
+      b.addEventListener("pointerdown", (e) => { e.preventDefault(); stop(); turnBy(dir * TURN_STEP); const t0 = performance.now(); let last = t0;
+        iv = setInterval(() => { const n = performance.now(); turnBy((dir * turnRate(t0) * (n - last)) / 1000); last = n; }, 30); });
       for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, stop);
     }
     const showOrient = () => {
@@ -337,12 +347,21 @@ export function mount(root, raceId, opts = {}) {
     }
     // ---- input ----
     const GAMEKEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight", "Space", "Tab", "Comma", "Period"]);
+    /** A key or a pad button just pressed: its first step of turning, and when it was pressed. */
+    const pressStep = (code) => {
+      pressAt.set(code, performance.now());
+      if (LEFT.includes(code)) st.yaw -= TURN_STEP;
+      else if (RIGHT.includes(code)) st.yaw += TURN_STEP;
+      else if (MAPL.includes(code)) turnBy(-TURN_STEP);
+      else if (MAPR.includes(code)) turnBy(TURN_STEP);
+    };
     const onKey = (e) => {
       if (!box.isConnected || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target?.tagName)) return;
       if (e.type === "keydown") {
         if (e.code === "Escape" && st.phase === "run") { pause(); return; }
         if (st.phase === "run" && GAMEKEYS.has(e.code)) e.preventDefault();
         if (e.repeat) return;
+        if (st.phase === "run") pressStep(e.code);
         if (e.code === "Space" && st.phase === "run") punch();
         else if (e.code === "KeyM") mapSize(mapEl.dataset.size === "small" ? "large" : mapEl.dataset.size === "large" ? "hidden" : "small");
         else if (e.code === "KeyO") nextOrient();
@@ -365,11 +384,15 @@ export function mount(root, raceId, opts = {}) {
     view.addEventListener("pointerup", () => (look = null));
     $$$(root, "#vt-pad button").forEach((b) => {
       const k = b.dataset.k;
-      b.addEventListener("pointerdown", (e) => { e.preventDefault(); if (k === "Space") punch(); else if (k === "View") setView(box.dataset.view === "map" ? "scene" : "map"); else keys.add(k); });
+      b.addEventListener("pointerdown", (e) => { e.preventDefault(); if (k === "Space") punch(); else if (k === "View") setView(box.dataset.view === "map" ? "scene" : "map"); else { if (!keys.has(k)) pressStep(k); keys.add(k); } });
       for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, () => keys.delete(k));
     });
     $("#vt-pause", root).addEventListener("click", () => (st.phase === "run" ? pause() : null));
-    $("#vt-full", root).addEventListener("click", () => { (document.fullscreenElement ? document.exitFullscreen() : box.requestFullscreen?.())?.catch?.(() => {}); box.focus(); });
+    const fullBtn = $("#vt-full", root);
+    fullBtn.addEventListener("click", () => { (document.fullscreenElement ? document.exitFullscreen() : box.requestFullscreen?.())?.catch?.(() => {}); box.focus(); });
+    // pressed while the game fills the screen, as the site's other « ⤢ » (owner, 2026-11-12); Échap or the button leaves it
+    const onFs = () => { const on = document.fullscreenElement === box; fullBtn.setAttribute("aria-pressed", String(on)); fullBtn.textContent = on ? "⤡" : "⤢"; };
+    document.addEventListener("fullscreenchange", onFs);
     // the runner's pace, changed during the race: − and + (F and R, 1 to 4); the pace button itself goes up, then round to ×0.5
     const speedBtn = $("#vt-speed", root), paceLbl = $("#vt-pacelbl", root), bar = $(".vt-energy i", root);
     const paceText = (p) => `×${p.toLocaleString(lang())}`;
@@ -501,8 +524,8 @@ export function mount(root, raceId, opts = {}) {
     /** One sub-step of the race: `dt` seconds of real time (turning), `sdt` of race time (the clock and the running). */
     function move(dt, sdt) {
       st.t += sdt;
-      const turn = (keys.has("ArrowLeft") || keys.has("KeyA") ? -1 : 0) + (keys.has("ArrowRight") || keys.has("KeyD") ? 1 : 0);
-      st.yaw += turn * 1.9 * dt;
+      const tl = LEFT.some((c) => keys.has(c)), tr = RIGHT.some((c) => keys.has(c));
+      if (tl !== tr) st.yaw += (tr ? 1 : -1) * turnRate(heldSince(tr ? RIGHT : LEFT)) * dt;
       const fwd = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0);
       const side = (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
       let v = 0;
@@ -569,7 +592,8 @@ export function mount(root, raceId, opts = {}) {
         cueEl.hidden = false;
       } else cueEl.hidden = true;
       if (st.msgUntil && now > st.msgUntil) { $("#vt-toast", root).hidden = true; st.msgUntil = 0; }
-      if (run && orient === "free" && (keys.has("Comma") || keys.has("Period"))) turnBy((keys.has("Period") ? 1 : -1) * 1.6 * dt);
+      const ml = keys.has("Comma"), mr = keys.has("Period");
+      if (run && orient === "free" && ml !== mr) turnBy((mr ? 1 : -1) * turnRate(heldSince(mr ? MAPR : MAPL)) * dt);
       if (box.dataset.view !== "map") renderer.render(scene, camera);   // the map's view hides the scene: nothing to draw
       drawCompass();
       $("#vt-time", root).textContent = fmt(total());
@@ -583,12 +607,12 @@ export function mount(root, raceId, opts = {}) {
       }
     };
     reset(); startScreen(); resize();
-    window.vtDebug = { st, course, world };            // for support and scripted tests (the console)
+    window.vtDebug = { st, mv, course, world };          // for support and scripted tests (the console)
     // build the chunks around the start before the first frame
     while (world.update(st.x, st.z, 6) > 0) { /* all near chunks */ }
     raf = requestAnimationFrame(step);
     return [() => { ro.disconnect(); removeEventListener("keydown", onKey); removeEventListener("keyup", onKey); removeEventListener("blur", onBlur);
-      document.removeEventListener("visibilitychange", onVis); if (document.fullscreenElement === box) document.exitFullscreen().catch(() => {});
+      document.removeEventListener("visibilitychange", onVis); document.removeEventListener("fullscreenchange", onFs); if (document.fullscreenElement === box) document.exitFullscreen().catch(() => {});
       renderer.dispose(); renderer.forceContextLoss?.(); actx?.close?.(); }];
   }
 }
