@@ -2,12 +2,12 @@
 // now): a virtual race in a 3D forest built from a real
 // orienteering map — after Catching Features and Virtual-O. The runner is seen from behind (or through their own eyes), the
 // orienteering map with the course is in the bottom left corner with the compass beside it (owner, 2026-11-11), the runner's
-// position hidden unless « Ma position » is pressed (10 s shown, 20 s added to the time), the game's speed and the pause at
+// position hidden unless « Ma position » is pressed (10 s shown, 20 s added to the time), the runner's pace and the pause at
 // the top right; the flags
 // stand at the controls, lit up when within reach, punched with the space bar in the course's order; the finish gives the
 // time, the splits and the route run drawn on the map. Each race is a package made offline (work's racebuild.py: the OCAD
 // map, the worldwide relief, a national LiDAR where there is one) served by functions/api/virtual to administrators.
-import { html, $ } from "../util.js";
+import { html, $, pct } from "../util.js";
 import { t, tn, loadArea, lang } from "../i18n.js";
 import { THREE as THREE_URL } from "../vendor.js";
 import { loadRace, World, runnerFigure } from "./vworld.js";
@@ -17,9 +17,15 @@ await loadArea("virtually");
 
 const BASE = "/api/virtual/";
 const RUN = 3.7;                    // m/s on flat open ground (about 4:30 a km)
-// the race's clock runs twice as fast as the wall clock at « ×1 » (owner, 2026-11-11: the real pace, seen on a screen, looked like
-// walking; « ×2 » then four times): the times stay a runner's real times, only the play is shorter
+// the race's clock runs twice as fast as the wall clock (owner, 2026-11-11: the real pace, seen on a screen, looked like walking):
+// the times stay a runner's real times, only the play is shorter
 const PLAY = 2;
+// The runner's pace (owner, 2026-11-12; a fast-forward of the game until then, which made thinking at « ×2 » cost twice as much):
+// ×0.5 walking, ×1 running, ×1.5 running fast, ×2 running very fast, the speed over the ground multiplied, the clock unchanged —
+// going fast saves time by itself, and leaves less time to read the map. The two fast paces empty the runner's energy (a full
+// bar lasts DRAIN race seconds), running at ×1, walking and standing still fill it (in REFILL); empty, the pace drops to ×1.
+const PACES = [0.5, 1, 1.5, 2], PACE_NAME = { 0.5: "walk", 1: "run", 1.5: "fast", 2: "vfast" };
+const DRAIN = { 1.5: 240, 2: 60 }, REFILL = { 0.5: 60, 1: 300, still: 90 }, REST = 0.1;
 const REACH = 6;                    // m: a control within reach (its cue, the punch)
 const PURPLE = "rgba(181, 23, 158, 0.9)";
 const fmt = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? `${h}:${String(m).padStart(2, "0")}` : `${m}`) + `:${String(x).padStart(2, "0")}`; };
@@ -66,7 +72,7 @@ export function mount(root, raceId, opts = {}) {
       <div class="vt-toast" id="vt-toast" hidden></div>
       <div class="vt-topbar">
         <button type="button" class="btn" id="vt-pos" title="${t("vt.pos.tip")}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg><span class="vt-lbl" id="vt-poslbl">${t("vt.pos.btn")}</span></button>
-        <button type="button" class="btn" id="vt-speed" title="${t("vt.speed.tip")}">×1</button>
+        <span class="vt-pace"><button type="button" class="btn" id="vt-slower" title="${t("vt.pace.slower")}" aria-label="${t("vt.pace.slower")}">−</button><button type="button" class="btn" id="vt-speed" title="${t("vt.speed.tip")}"><span id="vt-pacelbl">×1</span><span class="vt-energy" aria-hidden="true"><i></i></span></button><button type="button" class="btn" id="vt-faster" title="${t("vt.pace.faster")}" aria-label="${t("vt.pace.faster")}">+</button></span>
         <button type="button" class="btn" id="vt-pause" title="${t("vt.pause.tip")}" aria-label="${t("vt.pause")}"><span aria-hidden="true">❚❚</span><span class="vt-lbl">${t("vt.pause")}</span></button>
         <button type="button" class="btn" id="vt-full" title="${t("vt.full")}" aria-label="${t("vt.full")}">⤢</button>
       </div>
@@ -108,7 +114,7 @@ export function mount(root, raceId, opts = {}) {
     const me = runnerFigure(T, opts.avatar || loadAvatar(sprint ? "sprint" : "forest")); scene.add(me);
     // ---- the runner's state ----
     const st = { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, pitch: -0.08, next: 1, splits: [], track: [], dist: 0,
-      view: "third", speedX: 1, maxSpeedX: 1, speed: 0, lastTrack: -1, msgUntil: 0,
+      view: "third", pace: 1, energy: 1, paceT: {}, speed: 0, lastTrack: -1, msgUntil: 0,
       posLeft: 0, posN: 0, pen: 0, legPen: [] };       // « Ma position »: seconds still shown (real time), presses, penalty seconds, per leg
     const total = () => st.t + st.pen;                // the race time: the clock and the penalties
     const keys = new Set();
@@ -228,6 +234,9 @@ export function mount(root, raceId, opts = {}) {
         else if (e.code === "KeyM") mapSize(mapEl.dataset.size === "small" ? "large" : mapEl.dataset.size === "large" ? "hidden" : "small");
         else if (e.code === "KeyO") nextOrient();
         else if (e.code === "KeyV") st.view = st.view === "third" ? "first" : "third";
+        else if (e.code === "KeyR") setPace(+1);
+        else if (e.code === "KeyF") setPace(-1);
+        else if (/^Digit[1-4]$/.test(e.code)) setPace(0, PACES[+e.code[5] - 1]);
         keys.add(e.code);
       } else keys.delete(e.code);
     };
@@ -246,15 +255,27 @@ export function mount(root, raceId, opts = {}) {
     });
     $("#vt-pause", root).addEventListener("click", () => (st.phase === "run" ? pause() : null));
     $("#vt-full", root).addEventListener("click", () => { (document.fullscreenElement ? document.exitFullscreen() : box.requestFullscreen?.())?.catch?.(() => {}); box.focus(); });
-    // the game's speed, changed during the race (the start screen's choice until 2026-11-11): ×1, ×2
-    const SPEEDS = [1, 2];
-    const speedBtn = $("#vt-speed", root);
-    const showSpeed = () => { speedBtn.textContent = `×${st.speedX}`; speedBtn.classList.toggle("on", st.speedX > 1); };
-    speedBtn.addEventListener("click", () => {
-      st.speedX = SPEEDS[(SPEEDS.indexOf(st.speedX) + 1) % SPEEDS.length];
-      if (st.phase === "run") st.maxSpeedX = Math.max(st.maxSpeedX, st.speedX);
-      showSpeed(); toast(t("vt.speed.set", { x: st.speedX })); box.focus();
-    });
+    // the runner's pace, changed during the race: − and + (F and R, 1 to 4); the pace button itself goes up, then round to ×0.5
+    const speedBtn = $("#vt-speed", root), paceLbl = $("#vt-pacelbl", root), bar = $(".vt-energy i", root);
+    const paceText = (p) => `×${p.toLocaleString(lang())}`;
+    const showSpeed = () => { paceLbl.textContent = paceText(st.pace); speedBtn.classList.toggle("on", st.pace > 1); speedBtn.classList.toggle("slow", st.pace < 1); };
+    let barShown = -1;
+    const showEnergy = () => {
+      const e = Math.round(st.energy * 100);
+      if (e === barShown) return;
+      barShown = e; bar.style.width = `${e}%`; bar.dataset.level = e < 20 ? "low" : e < 50 ? "mid" : "high";
+    };
+    function setPace(d, to) {
+      const i = PACES.indexOf(st.pace);
+      const p = to ?? (d === "cycle" ? PACES[(i + 1) % PACES.length] : PACES[Math.max(0, Math.min(PACES.length - 1, i + d))]);
+      if (p === st.pace) return;
+      if (p > 1 && st.energy < REST) { toast(t("vt.pace.rest"), false); return; }
+      st.pace = p; showSpeed();
+      toast(t("vt.speed.set", { name: t(`vt.pace.${PACE_NAME[p]}`), x: paceText(p) }));
+    }
+    speedBtn.addEventListener("click", () => { setPace("cycle"); box.focus(); });
+    $("#vt-slower", root).addEventListener("click", () => { setPace(-1); box.focus(); });
+    $("#vt-faster", root).addEventListener("click", () => { setPace(+1); box.focus(); });
     // « Ma position »: the runner shown on the map for POS_S seconds of play, POS_PEN seconds added to the race time
     const POS_S = 10, POS_PEN = 20;
     const posBtn = $("#vt-pos", root), posLbl = $("#vt-poslbl", root);
@@ -285,12 +306,11 @@ export function mount(root, raceId, opts = {}) {
         <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
         ${race.photoCredits?.length ? html`<details class="muted vt-photos"><summary>${t("vt.src.photos", { n: race.photoCredits.length })}</summary>
           <p>${race.photoCredits.map((c, i) => html`${i ? ", " : ""}<a href="${c.url}" target="_blank" rel="noopener">${c.id.slice(0, 8)}</a> (${c.author})`)}</p></details>` : ""}
-        <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "orient", "view", "pause", "pos", "speed"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
+        <ul class="vt-keys">${["move", "turn", "strafe", "walk", "look", "punch", "map", "orient", "view", "pause", "pos", "speed", "energy"].map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-go">${t("vt.go")}</button>
 </div>
         <p class="muted vt-credit">${t("vt.credit", { std: race.std })}</p></div>`);
       $("#vt-go", root).addEventListener("click", () => {
-        st.maxSpeedX = st.speedX;
         st.phase = "run"; over(""); box.focus(); toast(t("vt.started"));
       });
     }
@@ -303,8 +323,8 @@ export function mount(root, raceId, opts = {}) {
     }
     function reset() {
       Object.assign(st, { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, next: 1, splits: [], track: [], dist: 0, lastTrack: -1,
-        posLeft: 0, posN: 0, pen: 0, legPen: [] });
-      showPosBtn(); showSpeed(); describe(); mapSize("small"); mv.cx = course[0].x * mPer; mv.cy = course[0].z * mPer; fitZoom(700); drawMapPanel();
+        posLeft: 0, posN: 0, pen: 0, legPen: [], pace: 1, energy: 1, paceT: {} });
+      showPosBtn(); showSpeed(); showEnergy(); describe(); mapSize("small"); mv.cx = course[0].x * mPer; mv.cy = course[0].z * mPer; fitZoom(700); drawMapPanel();
     }
     function finished() {
       st.phase = "done"; keys.clear(); st.posLeft = 0; showPosBtn();
@@ -320,6 +340,7 @@ export function mount(root, raceId, opts = {}) {
         <p class="vt-big">${fmt(T)}</p>
         ${st.posN ? html`<p class="vt-penline">${tn("vt.pen.done", st.posN, { s: st.pen })}</p>` : ""}
         <p>${t("vt.dist", { run: num(st.dist / 1000, 2), course: num(straight / 1000, 2) })}</p>
+        ${paceLine()}
         <table class="data"><thead><tr><th>${t("vt.col.leg")}</th><th>${t("vt.col.code")}</th><th>${t("vt.col.split")}</th><th>${t("vt.col.total")}</th>${st.posN ? html`<th>${t("vt.col.pen")}</th>` : ""}</tr></thead>
         <tbody>${legs.map(([leg, tot], i) => html`<tr><td>${i + 1 <= nC ? i + 1 : t("vt.finish")}</td><td>${course[i + 1].code || ""}</td><td>${fmt(leg)}</td><td>${fmt(tot)}</td>${st.posN ? html`<td>${st.legPen[i] ? `+${st.legPen[i]} s` : ""}</td>` : ""}</tr>`)}</tbody></table>
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-again">${t("vt.again")}</button>
@@ -328,6 +349,13 @@ export function mount(root, raceId, opts = {}) {
       $("#vt-again", root).addEventListener("click", () => { $("#vt-over", root).classList.remove("side"); reset(); startScreen(); });
       $("#vt-to-res", root)?.addEventListener("click", () => opts.onNav("results"));
       $("#vt-to-an", root)?.addEventListener("click", () => opts.onNav("analysis"));
+    }
+    /** The share of the time spent moving at each pace, for the finish card. */
+    function paceLine() {
+      const all = Object.values(st.paceT).reduce((a, b) => a + b, 0);
+      if (!all) return "";
+      const parts = PACES.slice().reverse().filter((p) => st.paceT[p] / all >= 0.005).map((p) => `${paceText(p)} ${pct(st.paceT[p] / all)}`);
+      return html`<p class="muted">${t("vt.pace.done", { list: parts.join(" · ") })}</p>`;
     }
     function nearest() {
       let best = null;
@@ -363,13 +391,13 @@ export function mount(root, raceId, opts = {}) {
       const fwd = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0);
       const side = (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
       let v = 0;
+      const pace = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 0.5 : st.pace;   // Shift held: walking
       if (fwd || side) {
-        const walk = keys.has("ShiftLeft") || keys.has("ShiftRight");
         const f = world.terrainSpeed(st.x, st.z) || 0.3;
         const dx0 = Math.sin(st.yaw) * fwd + Math.cos(st.yaw) * side, dz0 = -Math.cos(st.yaw) * fwd + Math.sin(st.yaw) * side, l = Math.hypot(dx0, dz0);
         const ahead = world.heightAt(st.x + (dx0 / l) * 2, st.z + (dz0 / l) * 2) - world.heightAt(st.x, st.z), grade = ahead / 2;
         const slope = grade > 0 ? 1 / (1 + 7 * grade) : 1 / (1 + 2.5 * Math.max(0, -grade - 0.12));
-        v = RUN * f * slope * (walk ? 0.4 : 1) * (fwd < 0 ? 0.45 : 1) * (fwd === 0 ? 0.6 : 1);
+        v = RUN * f * slope * pace * (fwd < 0 ? 0.45 : 1) * (fwd === 0 ? 0.6 : 1);
         const d = v * sdt, nx = st.x + (dx0 / l) * d, nz = st.z + (dz0 / l) * d;
         const free = (x, z) => world.terrainSpeed(x, z) > 0 && !world.hits(x, z, 0.3);
         if (free(nx, nz)) { st.x = nx; st.z = nz; }
@@ -379,6 +407,12 @@ export function mount(root, raceId, opts = {}) {
         st.dist += v * sdt;
       }
       st.speed = v;
+      // the runner's energy: the fast paces empty it while moving, the others and the stops fill it
+      if (v > 0 && pace > 1) {
+        st.energy = Math.max(0, st.energy - sdt / DRAIN[pace]);
+        if (!st.energy) { st.pace = 1; showSpeed(); toast(t("vt.pace.tired"), false); }
+      } else st.energy = Math.min(1, st.energy + sdt / (v > 0 ? REFILL[pace] : REFILL.still));
+      if (v > 0) st.paceT[pace] = (st.paceT[pace] || 0) + sdt;
       if (st.t - st.lastTrack >= 1) { st.track.push([st.t, st.x, st.z]); st.lastTrack = st.t; }
     }
     let last = performance.now(), camPos = null, mapTick = 0;
@@ -389,7 +423,7 @@ export function mount(root, raceId, opts = {}) {
       // MAX_FRAME s (a longer gap is a hiccup or a hidden tab), and the movement is done in sub-steps of SUB s of real time,
       // so that a fast frame at ×2 never jumps through a trunk.
       const dt = Math.min(MAX_FRAME, (now - last) / 1000); last = now;
-      const run = st.phase === "run", sdt = dt * (run ? st.speedX * PLAY : 1);
+      const run = st.phase === "run", sdt = dt * (run ? PLAY : 1);
       if (run) {
         if (st.posLeft > 0) { st.posLeft = Math.max(0, st.posLeft - dt); showPosBtn(); if (!st.posLeft) drawMapPanel(); }
         const n = Math.max(1, Math.ceil(dt / SUB));
@@ -423,6 +457,7 @@ export function mount(root, raceId, opts = {}) {
       renderer.render(scene, camera);
       drawCompass();
       $("#vt-time", root).textContent = fmt(total());
+      showEnergy();
       const penEl = $("#vt-pen", root); penEl.hidden = !st.pen; if (st.pen) penEl.textContent = t("vt.pen.hud", { s: st.pen });
       $("#vt-next", root).textContent = st.next >= course.length - 1 ? `→ ${t("vt.finish")}` : `→ ${st.next} (${course[st.next].code})`;
       if (st.posLeft > 0 && run && (mapTick++ % 6 === 0)) drawMapPanel();

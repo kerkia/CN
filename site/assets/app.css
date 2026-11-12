@@ -4201,6 +4201,17 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .vt-topbar .btn.on { background: rgba(242, 107, 29, 0.92); }
 .vt-topbar .btn:disabled { opacity: 1; cursor: default; }
 #vt-pos .vt-lbl { min-width: 2.6em; }
+/* The runner's pace (− ×1 +) with the energy bar along the pace's bottom edge (owner, 2026-11-12) */
+.vt-pace { display: inline-flex; }
+.vt-pace .btn { border-radius: 0; }
+.vt-pace .btn:first-child { border-radius: 6px 0 0 6px; padding-inline: 10px; }
+.vt-pace .btn:last-child { border-radius: 0 6px 6px 0; padding-inline: 10px; }
+#vt-speed { position: relative; min-width: 3.6em; justify-content: center; font-variant-numeric: tabular-nums; }
+#vt-speed.slow { background: rgba(37, 99, 235, 0.85); }
+.vt-energy { position: absolute; left: 4px; right: 4px; bottom: 3px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.25); overflow: hidden; }
+.vt-energy i { display: block; height: 100%; width: 100%; background: #4ade80; }
+.vt-energy i[data-level="mid"] { background: #facc15; }
+.vt-energy i[data-level="low"] { background: #ef4444; }
 .vt-cue { position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%); padding: 10px 18px; border-radius: 10px; font-weight: 700;
   background: rgba(242, 107, 29, 0.92); color: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6), 0 6px 20px rgba(0, 0, 0, 0.35);
   animation: vt-pulse 1s ease-in-out infinite; pointer-events: none; white-space: nowrap; }
@@ -4259,7 +4270,7 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
   .vt-topbar .vt-lbl { display: none; }
   .vt-topbar .btn { padding: 4px 9px; }
   #vt-pos.on .vt-lbl { display: inline; }
-  .vt-hud { max-width: calc(100% - 230px); padding: 6px 10px; font-size: 12px; }
+  .vt-hud { max-width: calc(100% - 270px); padding: 6px 10px; font-size: 12px; }
   .vt-hud b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .vt-hud #vt-time { font-size: 18px; }
   .vt-desc { font-size: 10px; }
@@ -4273,7 +4284,11 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
   .vt-desc { max-height: 32%; }
   .vt-compass, .vt[data-map="hidden"] .vt-compass { left: auto; right: 12px; bottom: 126px; }
   .vt-pad { grid-template-columns: repeat(3, 50px); }
-  .vt-hud { max-width: calc(100% - 200px); }
+  /* the buttons on a line of their own at the top, the race's line under them */
+  .vt-topbar { left: 12px; justify-content: flex-end; }
+  .vt-hud { top: 58px; max-width: calc(100% - 24px); }
+  .vt-cue { top: 140px; }
+  .vt-toast { top: 186px; }
 }
 
 /* ---- Coach › Virtually (pages/virtually.js, virtuallyan.js; 2026-11-11): maps as thumbnails, courses, results, analysis ---- */
