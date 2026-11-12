@@ -41,10 +41,15 @@ const tabLabel = (k) => t(`mg.tab.${k}`);
 const terrainLabel = (x) => (x ? t(`mg.terrain.${x === TERRAINS[0] ? "For" : x}`) : "");
 const formatLabel = (x) => (FORMATS.includes(x) ? t(`mg.format.${x}`) : x || "");
 /** The tab an event opens on: the one that fits its day. */
-const defaultTab = (ev) => {
+/** The tab an event opens on: the one its day calls for; but when that tab holds nothing yet and another does (with S, the chips'
+ *  states), the first that does (owner, 2026-11-12: a coming training with its analysis open and no course setting opened on Tracé). */
+const defaultTab = (ev, S = null) => {
   const tabs = TABS[ev.type] || ALL_TABS, d = ev.date, now = today();
   const want = ev.type === "training" ? (d > now ? "trace" : "analyse") : d > now ? "departs" : d === now ? "direct" : "resultats";
-  return tabs.includes(want) ? want : tabs[0];
+  const pick = tabs.includes(want) ? want : tabs[0];
+  if (!S) return pick;
+  const busy = (k) => k !== "equipe" && !!stateOf(ev, k, S).cls;
+  return busy(pick) ? pick : tabs.find(busy) || pick;
 };
 
 export async function render(main, r) {
@@ -73,7 +78,8 @@ async function states() {
   return { prov: new Map((idx?.races || []).map((x) => [x.key, x])), booking: new Map((bk?.events || []).map((x) => [x.key, x])),
     live: (bc?.broadcasts || []).filter((b) => b.race), tracer: tr?.events || [] };
 }
-function chipOf(ev, k, S) {
+/** What a tab of an event holds, for its chip: { note, cls } (cls empty: nothing yet). */
+function stateOf(ev, k, S) {
   const p = ev.race ? S.prov.get(ev.race) : null;
   let note = "", cls = "";
   if (k === "trace") {
@@ -93,6 +99,10 @@ function chipOf(ev, k, S) {
     note = String(ev.members || 1);
     if (ev.asks) { note += ` · ${tn("mg.chip.asks", ev.asks, { n: ev.asks })}`; cls = "ask"; }
   }
+  return { note, cls };
+}
+function chipOf(ev, k, S) {
+  const { note, cls } = stateOf(ev, k, S);
   return html`<a class="mg-chip ${cls}" href="${href({ ev: ev.id, onglet: k })}">${tabLabel(k)}${note ? html` <span>${note}</span>` : ""}</a>`;
 }
 const isLinked = (ev) => !!ev.race && !/^d/.test(ev.race);
@@ -143,7 +153,7 @@ async function listPage(main, q) {
       const d = new Date(`${e.date}T12:00:00`);
       rows.push(html`<div class="mg-ev mg-${period(e)}" data-ev="${e.id}" tabindex="0">
         <div class="mg-day"><b>${d.getDate()}</b><span>${d.toLocaleDateString(locale(), { weekday: "short" })}</span></div>
-        <div class="mg-name"><a href="${href({ ev: e.id, onglet: defaultTab(e) })}"><b>${e.name}</b></a>
+        <div class="mg-name"><a href="${href({ ev: e.id, onglet: defaultTab(e, S) })}"><b>${e.name}</b></a>
           <div class="muted">${[typeLabel(e.type), terrainLabel(e.terrain), e.epreuve !== e.terrain ? formatLabel(e.epreuve) : "", e.club, e.place].filter(Boolean).join(" · ")} ${linkTag(e)}
             ${D.admin && !e.me ? html`<span class="tag">${t("mg.notMember")}</span>` : ""}</div></div>
         <div class="mg-chips">${(TABS[e.type] || ALL_TABS).map((k) => chipOf(e, k, S))}</div></div>`);
@@ -151,7 +161,7 @@ async function listPage(main, q) {
     if (!line && f.when.includes("past")) rows.push(html`<div class="mg-now">${t("mg.today", { d: fmtDate(now) })}</div>`);
     $("#mg-list").innerHTML = html`${rows}`;
     $$(".mg-ev").forEach((el) => {
-      const go = () => { const e = D.events.find((x) => x.id === el.dataset.ev); location.hash = href({ ev: e.id, onglet: defaultTab(e) }); };
+      const go = () => { const e = D.events.find((x) => x.id === el.dataset.ev); location.hash = href({ ev: e.id, onglet: defaultTab(e, S) }); };
       el.addEventListener("click", (ev) => { if (!ev.target.closest("a")) go(); });
       el.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.target.closest("a")) go(); });
     });
