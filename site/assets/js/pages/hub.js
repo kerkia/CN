@@ -7,7 +7,7 @@ import { html, raw, $, $$, nameParts } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
-import { MODULES, moduleMenus, moduleHome, isPhone, orgaOpen, leaveGuest } from "../app.js";
+import { visibleModules, moduleMenus, moduleHome, isPhone, orgaOpen, leaveGuest } from "../app.js";
 
 // one drawing a module, in the module's colour (currentColor)
 const ICONS = {
@@ -15,6 +15,9 @@ const ICONS = {
   stats: `<path d="M4 20h16" /><path d="M7 20v-7" /><path d="M12 20V6" /><path d="M17 20v-10" />`,
   coach: `<circle cx="12" cy="13" r="7" /><path d="M12 13l3-3" /><path d="M10 3h4" /><path d="M12 3v3" />`,
   orga: `<rect x="5" y="4" width="14" height="17" rx="2" /><path d="M9 4V3h6v1" /><path d="M9 10h6M9 14h6M9 18h3" />`,
+  // Carto: contour lines and a pen; Pixel: a cube of three faces
+  carto: `<path d="M3 17c3-4 6-1 9-4s4-6 9-6" /><path d="M3 12c3-3 5-1 8-3s4-4 7-4" /><path d="M14 21l6-6 1.5 1.5-6 6H14z" />`,
+  pixel: `<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" /><path d="M12 12l8-4.5M12 12v9M12 12L4 7.5" />`,
 };
 export const icon = (m) => raw(`<svg class="hub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[m]}</svg>`);
 
@@ -38,6 +41,9 @@ function orgaState() {
 
 // Arena is one page, the competitions: its card says what a competition chosen there offers (owner, 2026-10-30), not links
 const ARENA_STEPS = ["agenda", "results", "live", "splits"];      // (the GPS analyses are Coach's, owner 2026-10-30)
+// the modules of one page (owner, 2026-11-12): their cards say what they offer (hub.<module>.step.<key>)
+const STEPS = { arena: ARENA_STEPS, orga: ["events", "trace", "race", "team"], carto: ["draw", "data", "field", "export"],
+  pixel: ["maps", "race", "results", "analysis"] };
 const TAB_KEY = "ocn.hub.tab";                                    // the module tab shown on a phone, for the visit
 
 function card(m) {
@@ -52,7 +58,7 @@ function card(m) {
     ${guest && m === "stats" ? html`<p class="muted hub-note">${t("hub.stats.guest")}</p>` : ""}
     ${guest && m === "coach" ? html`<p class="muted hub-note">${t("hub.coach.guest")}</p>` : ""}
     ${locked ? html`<p class="muted hub-note">${locked.note}</p>${locked.action ? html`<div class="hub-actions">${locked.action}</div>` : ""}`
-      : html`<ul class="hub-pages">${m === "arena" ? ARENA_STEPS.map((k) => html`<li><span>${t(`hub.arena.step.${k}`)}</span></li>`)
+      : html`<ul class="hub-pages">${STEPS[m] ? STEPS[m].map((k) => html`<li><span>${t(`hub.${m}.step.${k}`)}</span></li>`)
         : items.map(([, href, text]) => html`<li><a href="${href}">${text}</a></li>`)}</ul>
         <div class="hub-actions"><a class="btn btn-primary" href="${moduleHome(m)}">${t("hub.open", { mod: t(`mod.${m}`) })}</a></div>`}
   </section>`;
@@ -75,7 +81,7 @@ export async function render(main, r) {
   if (r.route === "orgaOff") return orgaOff(main);
   const me = auth.session();
   // no Orga tile on a phone (owner, 2026-10-30): the module is never open there
-  const mods = MODULES.filter((m) => m !== "orga" || !isPhone());
+  const mods = visibleModules().filter((m) => m !== "orga" || !isPhone());
   // on a phone the modules are tabs over one card (owner, 2026-10-31: as a notebook's, every module in sight without
   // scrolling); app.css shows the tabs under 640 px only, the cards side by side above. The tab chosen is kept for the visit.
   let cur = null;

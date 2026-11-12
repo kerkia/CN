@@ -163,7 +163,7 @@ export async function render(main, r) {
         <td class="r num">${e.courses ?? "—"}<div class="ma-l2 muted">${e.runners ?? "—"}</div></td></tr>`)}</tbody></table>`
       : html`<div class="empty">${t(items.length ? "ra.emptyFilter" : "ma.events.none")}</div>`;
     // where an event comes from (named, not linked: no page leads into another module)
-    $("#ma-table").insertAdjacentHTML("beforeend", html`<p class="hint ma-how">${t("ma.events.how", { path: `${t("mod.orga")} › ${t("nav.orgManage")}` })}</p>`);
+    $("#ma-table").insertAdjacentHTML("beforeend", html`<p class="hint ma-how">${t("ma.events.how", { path: t("mod.orga") })}</p>`);
     map?.show(shown, selected);
     detail();
     address();

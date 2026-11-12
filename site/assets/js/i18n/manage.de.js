@@ -1,6 +1,6 @@
 // « Orga › Gérer »'s catalogue in German; the keys of manage.fr.js.
 export default {
-  "mg.title": "Verwalten",
+  "mg.title": "Meine Veranstaltungen",
   "mg.lede": "Deine Veranstaltungen: je ein Lauf oder ein Training, mit Starts, Live-Ergebnissen, Ergebnissen, Analyse und Team.",
   "mg.notReady": "Die Veranstaltungsverwaltung ist auf dem Server noch nicht eingeschaltet. Versuche es etwas später noch einmal.",
   "mg.back": "Meine Veranstaltungen",
@@ -154,4 +154,14 @@ export default {
   "mg.ad.migrate.hint": "Legt eine Veranstaltung für jeden Wettkampf an, für den schon jemand als Ausrichter gehandelt hat (Uploads, Buchung, Live, Analyse, angelegte Wettkämpfe), und für jedes Training mit Analyse; das Team sind die Konten, die es getan haben. Kann gefahrlos erneut laufen.",
   "mg.ad.migrate.go": "Veranstaltungen anlegen",
   "mg.ad.migrate.done": "{c} Wettkämpfe, {d} angelegte Wettkämpfe, {t} Trainings; {s} beiseitegelassen.",
+  "mg.tab.trace": "Bahnlegung",
+  "mg.tr.title": "Die Bahnlegung",
+  "mg.tr.hint": "In der Bahnlegung, mit ihrem eigenen Team: Die Bahnen bleiben bis zum Lauf bei den Bahnlegern und dem Kontrolleur.",
+  "mg.tr.none": "Noch keine Bahnlegung für diese Veranstaltung. Beginne sie hier: Sie wird mit ihr verbunden.",
+  "mg.tr.start": "Bahnlegung beginnen",
+  "mg.tr.another": "Weitere Bahnlegung beginnen",
+  "mg.tr.open": "Bahnlegung öffnen",
+  "mg.tr.encrypted": "verschlüsselt",
+  "mg.tr.by": "Begonnen von {by} · {n} im Bahnlegungsteam",
+  "mg.tr.secret": "Die Bahnen bleiben bis zum Lauf vertraulich. Um daran mitzuarbeiten, bitte {by}, dich ins Bahnlegungsteam einzuladen.",
 };

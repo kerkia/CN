@@ -161,7 +161,9 @@ function parseHash(hash = location.hash) {
     : head === "envoi" ? "phoneSend"
     : head === "analyses" || head === "analyse-carte" ? "mapAnalysis" : head === "analyse-orga" ? "analysisOrga"     // #/analyse-carte: the address until 2026-11-07
     : head === "orga-analyses" || head === "orga-competitions" || head === "orga-entrainements" ? "orgAnalyses"     // one list since 2026-11-04 (old addresses)
-    : head === "gerer" || head === "orga-gerer" ? "orgManage"     // « Gérer » (2026-11-11)
+    : head === "orga" || head === "gerer" || head === "orga-gerer" ? "orgManage"     // Orga is its events (2026-11-12; « Gérer » the day before)
+    : head === "carto" ? "orgMapper"     // Ozimut Carto (2026-11-12): « Cartographier », a module of its own
+    : head === "pixel" ? "virtually"     // Ozimut Pixel (2026-11-12): « Virtually », a module of its own
     : head === "orga-resultats" ? "orgResults" : head === "orga-horaires" ? "orgStarts" : head === "orga-direct" ? "orgDirect" : head === "orga-tracer" ? "orgTracer" : head === "orga-carto" || head === "cartographier" ? "orgMapper"
     : head === "analyse-club" ? "analysisClub"
     : head === "analyse-competition" ? "analysisRace"
@@ -173,7 +175,7 @@ function parseHash(hash = location.hash) {
     : head === "vma" ? "vma"
     : head === "ia" ? "ask"
     : head === "modules" ? "hub"
-    : head === "coach" || head === "stats" || head === "orga" ? "modtiles"     // a module's pages as tiles, its landing (2026-10-31)
+    : head === "coach" || head === "stats" ? "modtiles"     // a module's pages as tiles, its landing (2026-10-31; Orga's until 2026-11-12)
     : head === "apprendre" || head === "definitions" || head === "symboles" ? "learn"     // the two pages of before: its views
     : head === "sante" || head === "nutrition" ? "nutrition"     // « Santé » (« Nutrition » until 2026-11-01: old links)
     : head === "redaction" ? "nutritionWrite"
@@ -404,7 +406,12 @@ async function pickCountry(cc) {
 // its own menu in the bar. The modules page (#/modules, pages/hub.js) is where one lands, signed in or not, and the logo
 // leads back to it: a module's pages never lead into another module's (an e-mail's or a notification's link goes straight
 // to its page).
-export const MODULES = ["arena", "stats", "coach", "orga"];
+// Since 2026-11-12 (owner) six: Orga is one page, the organiser's events (each with its course setting, starts, live, results,
+// analysis and team); Carto (« Cartographier », the map editor: a map outlives its events, mappers are not organisers, and it
+// works on a phone) and Pixel (« Virtually », the virtual races; administrators only for now) are modules of their own.
+export const MODULES = ["arena", "stats", "coach", "orga", "carto", "pixel"];
+/** The modules this visitor is offered (Pixel to the administrators only, as its page). */
+export const visibleModules = () => MODULES.filter((m) => m !== "pixel" || !!auth.session()?.admin);
 /** A phone (the same test as index.html's default theme): the Orga module is for computers. */
 export const isPhone = () => matchMedia("(pointer: coarse) and (max-width: 900px)").matches;
 /** May this visitor open the Orga module here? A signed-in account that turned it on (Réglages, the modules page), not on a phone. */
@@ -432,28 +439,28 @@ export function moduleMenus() {
     coach: [["mapAnalysis", "#/analyses", t("nav.mapAnalysis")],
       // « Mes cartes » (owner, 2026-11-01): an account's own archive (a link shared opens it to anyone: GUEST_ROUTES)
       ...(me ? [["myMaps", "#/mes-cartes", t("nav.myMaps")]] : []),
-      ["learn", "#/apprendre", t("nav.learn")], ["games", "#/jeux", t("nav.games")], ["virtually", "#/virtually", t("nav.virtually")], ["vma", "#/vma", t("nav.vma")],
+      ["learn", "#/apprendre", t("nav.learn")], ["games", "#/jeux", t("nav.games")], ["vma", "#/vma", t("nav.vma")],
       // « Santé » to the accounts given it; its authors reach « Rédaction » from its page, not from the menu (owner, 2026-11-01)
       ["nutrition", "#/sante", t("nav.nutrition")]]
       .filter(([k]) => (!OWNER_ROUTES.has(k) || ownerOnly()) && (!NUTRITION_ROUTES[k] || NUTRITION_ROUTES[k]())),
-    // « Gérer », « Tracer », « Cartographier » (owner, 2026-11-11: three verbs; Analyses, Résultats, Horaires and Direct are an
-    // event's tabs in « Gérer », their addresses lead there)
-    orga: [["orgManage", "#/gerer", t("nav.orgManage")], ["orgTracer", "#/orga-tracer", t("nav.orgTracer")],
-      // « Cartographier » (owner, 2026-11-06; every account's since 2026-11-07)
-      ["orgMapper", "#/orga-carto", t("nav.orgMapper")]],
+    // one page each, no menu (owner, 2026-11-12): Orga the organiser's events (the Tracer, Analyses, Résultats, Horaires and Direct
+    // are an event's tabs, their addresses lead there), Carto the map editor, Pixel the virtual races
+    orga: [], carto: [], pixel: [],
   };
 }
 // the routes outside the menus, by module (a view of a page in the menu, an address of before)
 const ROUTE_MODULE = { club: "stats", clubcompare: "stats", relays: "stats", ask: "stats", deposit: "orga",
+  orgManage: "orga", orgTracer: "orga", orgAnalyses: "orga", orgResults: "orga", orgStarts: "orga", orgDirect: "orga",
+  orgMapper: "carto", virtually: "pixel",
   agenda: "arena", provisional: "arena", splits: "arena", live: "arena", booking: "arena", myMaps: "coach" };
 /** Where a module opens: its first page (Arena: the competitions). */
 // Stats opens on the ranking (owner, 2026-10-30: the page every visitor has), the others on their menu's first page
 // Coach and Orga open on their pages as tiles, Stats too on a phone (owner, 2026-10-31: every choice in sight at once; a
 // computer's Stats stays on the ranking)
-export const moduleHome = (m) => (m === "coach" || m === "orga" || (isPhone() && m === "stats") ? `#/${m}`
+export const moduleHome = (m) => (["coach", "orga", "carto", "pixel"].includes(m) || (isPhone() && m === "stats") ? `#/${m}`
   : m === "arena" ? "#/agenda" : m === "stats" ? "#/classement" : moduleMenus()[m]?.[0]?.[1] || "#/modules");
 /** The module of a tiles page (#/coach, #/stats, #/orga). */
-export const tilesModule = (r) => ({ stats: "stats", orga: "orga" })[r.path.split("/").filter(Boolean)[0]] || "coach";
+export const tilesModule = (r) => ({ stats: "stats" })[r.path.split("/").filter(Boolean)[0]] || "coach";
 /** The module a page belongs to, or null (the modules page, the documentation's home, the settings…). A module's
  *  documentation (#/documentation?module=…) is the module's, its menu in the bar (Orga's greyed out to those who have not
  *  the module: renderHeader). */
@@ -515,7 +522,7 @@ function renderHeader(r) {
   const off = mod === "orga" && !orgaOpen();
   // the home page (no visitor yet): its sections — the four modules, who sees what — in the bar (owner, 2026-10-30)
   const items = mod ? moduleMenus()[mod] : !visitor && route === "overview"
-    ? [["home-overview", "#/?s=overview", t("tour.ov.menu")], ...MODULES.map((m) => [`home-${m}`, `#/?s=${m}`, t(`mod.${m}`)]),
+    ? [["home-overview", "#/?s=overview", t("tour.ov.menu")], ...MODULES.filter((m) => m !== "pixel").map((m) => [`home-${m}`, `#/?s=${m}`, t(`mod.${m}`)]),
       ["home-features", "#/?s=features", t("tour.feat.eyebrow")]] : [];
   const current = menuKey(r);
   document.body.dataset.group = mod || "";
@@ -961,13 +968,13 @@ async function route_() {
     const tab = { deposit: "resultats", orgResults: "resultats", orgStarts: "departs", orgDirect: "direct", orgAnalyses: "analyse" }[r.route];
     if (tab && !(r.route === "orgAnalyses" && r.query.id)) {
       const c = r.query.course;
-      history.replaceState(null, "", c ? `#/gerer?${new URLSearchParams({ course: c, onglet: tab, ...(r.query.resa ? { resa: "1" } : {}) })}` : "#/gerer");
+      history.replaceState(null, "", c ? `#/orga?${new URLSearchParams({ course: c, onglet: tab, ...(r.query.resa ? { resa: "1" } : {}) })}` : "#/orga");
       r = parseHash();
     }
   }
-  // the Orga module: an account that turned it on, on a computer (owner, 2026-10-30); else a page that says how
-  // « Cartographier » on a phone too (its field mode: owner, 2026-11-06); every account's since 2026-11-07 (owner)
-  if (r.route !== "methods" && moduleOf(r) === "orga" && !orgaOpen() && !(r.route === "orgMapper" && auth.session()?.orga)) r = { ...r, route: "orgaOff", from: r.route };
+  // the Orga module: an account that turned it on, on a computer (owner, 2026-10-30); else a page that says how (Carto, its
+  // own module since 2026-11-12, opens on a phone too and needs no Orga)
+  if (r.route !== "methods" && moduleOf(r) === "orga" && !orgaOpen()) r = { ...r, route: "orgaOff", from: r.route };
   // every page for every account (owner, 2026-10-15): « En direct », « Entrainement », the analyses and « Organisation »
   // were for the administrators (or the « live » right) until then
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch

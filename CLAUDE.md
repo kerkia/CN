@@ -245,6 +245,26 @@ Key design decisions (each was measured — see "Evaluating" below — and agree
 
 ## The four modules and the three profiles (owner, 2026-10-30)
 
+**Six modules since 2026-11-12** (owner): Arena, Stats, Coach, **Orga**, **Carto**, **Pixel** (`app.js` `MODULES`; `visibleModules()`
+leaves Pixel to the administrators). **Orga is one page, the organiser's events** (`#/orga`, route `orgManage`, `pages/manage.js`;
+« Gérer » of 2026-11-11 gone as a word, `#/gerer` still opens it; no menu, as Arena; title « Mes événements »): an event's tabs are
+**Tracé** (first; owner, 2026-11-12: course setting is the event's too), Départs, Direct, Résultats, Analyse, Équipe — a relay Tracé,
+Direct, Analyse, Équipe; a training Tracé, Analyse, Équipe. **The Tracé tab** lists the Tracer's events tied to the event
+(`GET /api/tracer?event=<id>`, to the event's team: those whose meta `event` is its id or whose `race` is its competition — title,
+who started it, the setting team's size, whether one is in it), « Ouvrir le tracé » (`#/orga-tracer?id=&ev=`) for its setters,
+« Commencer le tracé » (`#/orga-tracer?ev=&nouveau=1`: the Tracer's new-event dialog preset to the event — `pages/tracer.js`
+`forEvent`, its competition alone or the training's name and day — the event's id sent as `event`, the API checking the account is on
+the event's team; `PUT { event }` ties or unties one). **The courses stay the setting team's** (owner's condition): the Tracer keeps
+its own team, roles and encryption; the event's other members see only that a course setting exists, who started it, and are told to
+ask for an invitation. The Tracer's page stays (`#/orga-tracer`, module Orga, out of any menu). **Ozimut Carto** (`#/carto`, route
+`orgMapper`; `#/orga-carto` still opens it): « Cartographier » as a module of its own — a map outlives its events, mappers are not
+organisers, and it works on a phone — every signed-in account, no Orga needed, in the map's contour brown (`--carto`); a home-page
+section (`tour.js` `carto`, no screenshot yet) and a column in the pricing table. **Ozimut Pixel** (`#/pixel`, route `virtually`;
+`#/virtually` still opens it): « Virtually » renamed and out of Coach, administrators only, in teal (`--pixel`); no documentation
+(its page explains itself: the documentation lists `DOC_MODS`, Pixel apart) and no home-page section yet. The modules page's cards of
+one-page modules list what they offer (`hub.js` `STEPS`, `hub.<module>.step.<key>`); Orga's card is still hidden on a phone, Carto's
+and Pixel's are not.
+
 Ozimut is four **modules**, the same names in both languages: **Arena** (the competitions: coming, live, run — the map's
 water blue), **Stats** (the rankings and their analyses — forest green), **Coach** (training: Analyse solo, Analyse multi,
 « Définitions de postes », Jeux, VMA — the course's purple), **Orga** (the organisers' tools — the control flag's orange).

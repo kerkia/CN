@@ -1,6 +1,6 @@
 // « Orga › Gérer »'s catalogue in English; the keys of manage.fr.js.
 export default {
-  "mg.title": "Manage",
+  "mg.title": "My events",
   "mg.lede": "Your events: one race or one training each, with its starts, live results, results, analysis and team.",
   "mg.notReady": "Event management is not switched on on the server yet. Try again a little later.",
   "mg.back": "My events",
@@ -154,4 +154,14 @@ export default {
   "mg.ad.migrate.hint": "Creates an event for every competition someone already acted on as organiser (uploads, booking, live, analysis, declared competitions) and for every training with an analysis, its team the accounts that did it. Safe to run again.",
   "mg.ad.migrate.go": "Create the events",
   "mg.ad.migrate.done": "{c} competitions, {d} declared competitions, {t} trainings; {s} left aside.",
+  "mg.tab.trace": "Course setting",
+  "mg.tr.title": "Setting the courses",
+  "mg.tr.hint": "In the Tracer, with its own team: the courses stay between their setters and their controller until the race.",
+  "mg.tr.none": "No course setting for this event yet. Start it here: it will be tied to the event.",
+  "mg.tr.start": "Start setting the courses",
+  "mg.tr.another": "Start another course setting",
+  "mg.tr.open": "Open the course setting",
+  "mg.tr.encrypted": "encrypted",
+  "mg.tr.by": "Started by {by} · {n} in the setting team",
+  "mg.tr.secret": "The courses stay confidential until the race. To work on them, ask {by} to invite you to the setting team.",
 };

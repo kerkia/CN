@@ -41,6 +41,7 @@
 import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
 import { newToken, randomBytes, sha256hex } from "../../_lib/crypto.js";
 import { clubOf, findRace, orgCode, organises } from "../../_lib/club.js";
+import { isMember, ready as eventsReady, shortName } from "../../_lib/events.js";
 
 const META = "tracer-meta/", DATA = "tracer/";
 const MAX_MAP = 80 * 1024 * 1024, MAX_EVENT = 12 * 1024 * 1024, MAX_SMALL = 4 * 1024 * 1024, MAX_PHOTO = 4 * 1024 * 1024, MAX_VERSIONS = 120;
@@ -50,7 +51,7 @@ const clean = (s, max) => String(s ?? "").replace(/[\u0000-\u001f<>]/g, " ").rep
 const newId = () => Array.from(randomBytes(12), (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
 const LOCK_MS = 150e3;
 
-const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", orgClub: m.orgClub || "", owner: String(m.owner),
+const summary = (m) => ({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race || "", event: m.event || "", orgClub: m.orgClub || "", owner: String(m.owner),
   ownerName: m.ownerName || "", team: m.team.filter((x) => x.lic).map((x) => x.lic).join(","),
   uids: m.team.filter((x) => x.uid).map((x) => x.uid).join(","), enc: m.encrypted ? "1" : "", priv: m.mapPrivate ? "1" : "", updated: m.updated || "", version: String(m.version || 0) });
 async function loadMeta(env, id) {
@@ -107,7 +108,35 @@ export const onRequest = withUser(async (ctx, user) => {
   let clubMemo;
   const lazyClub = async () => (clubMemo === undefined ? (clubMemo = await clubOf(env, request, user.licence)) : clubMemo);
 
+  /** An event of Orga (functions/api/events) the account is on the team of (an administrator: any), or null. */
+  const orgaEvent = async (eid) => {
+    if (!/^[a-z0-9]{6,20}$/.test(String(eid || "")) || !(await eventsReady(env))) return null;
+    const ev = await env.DB.prepare("SELECT * FROM events WHERE id = ? AND status = 'active'").bind(eid).first();
+    return ev && (isAdmin(env, user) || (await isMember(env, ev.id, user.id))) ? ev : null;
+  };
+
   if (!parts.length) {
+    // the course setting of an event of Orga (« Orga », its « Tracé » tab; owner, 2026-11-12): to the event's team, which
+    // course-setting events belong to it (by the event's id, or its competition), who set them and whether one may open them —
+    // the courses stay the setting team's (a controller from another club, the setters; not the timekeeper or the booking desk)
+    const forEvent = new URL(request.url).searchParams.get("event");
+    if (method === "GET" && forEvent) {
+      const ev = await orgaEvent(forEvent);
+      if (!ev) return json({ error: "forbidden" }, 403);
+      const out = [];
+      for (const o of await listAll(env, META)) {
+        const m = o.customMetadata || {};
+        if (m.event !== ev.id && !(ev.race_key && m.race === ev.race_key)) continue;
+        const member = Number(m.owner) === user.id || (!!user.licence && (m.team || "").split(",").includes(String(user.licence)))
+          || (m.uids || "").split(",").includes(String(user.id));
+        // the name as FFCO writes it, « SURNAME First »: the first name is its last word
+        const words = String(m.ownerName || "").trim().split(/\s+/), first = words.pop() || "", rest = words;
+        out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, member, encrypted: !!m.enc, updated: m.updated,
+          by: shortName({ display_name: m.ownerName, first_name: first, last_name: rest.join(" ") }),
+          team: (m.uids ? m.uids.split(",").length : 0) + 1 });
+      }
+      return json({ events: out });
+    }
     if (method === "GET") {
       const out = [];
       for (const o of await listAll(env, META)) {
@@ -116,7 +145,7 @@ export const onRequest = withUser(async (ctx, user) => {
         const mine = Number(m.owner) === user.id, member = (!!user.licence && (m.team || "").split(",").includes(String(user.licence)))
           || (m.uids || "").split(",").includes(String(user.id));
         if (!mine && !member) continue;
-        out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, ownerName: m.ownerName, mine, encrypted: !!m.enc, updated: m.updated });
+        out.push({ id: m.id, kind: m.kind, title: m.title, date: m.date, race: m.race, event: m.event || "", ownerName: m.ownerName, mine, encrypted: !!m.enc, updated: m.updated });
       }
       out.sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.updated || "").localeCompare(a.updated || ""));
       const url = new URL(request.url);
@@ -129,6 +158,9 @@ export const onRequest = withUser(async (ctx, user) => {
       if (!b) return json({ error: "bad request" }, 400);
       if (!(await allow(env, `trcreate:${user.id}`, 30, 86400))) return json({ error: "too many" }, 429);
       const kind = b.kind === "race" ? "race" : b.kind === "training" ? "training" : null;
+      // made from an event of Orga (its « Tracé » tab): tied to it, by a member of its team
+      const orga = b.event ? await orgaEvent(b.event) : null;
+      if (b.event && !orga) return json({ error: "event" }, 403);
       const title = clean(b.title, 140), date = String(b.date || "");
       if (!kind || title.length < 3 || !DAY.test(date)) return json({ error: "fields" }, 400);
       let race = "", orgClub = "";
@@ -140,7 +172,7 @@ export const onRequest = withUser(async (ctx, user) => {
         // a competition: by a member of its organising club, the account that declared it (or an administrator)
         if (!(await organises(env, request, user, r, await lazyClub()))) return json({ error: "not organiser" }, 403);
       }
-      const meta = { id: newId(), kind, title, date, race, orgClub, owner: user.id, ownerName: user.display_name || "", ownerLic: String(user.licence || ""),
+      const meta = { id: newId(), kind, title, date, race, orgClub, ...(orga ? { event: orga.id } : {}), owner: user.id, ownerName: user.display_name || "", ownerLic: String(user.licence || ""),
         team: [], encrypted: null, mapPrivate: !!b.mapPrivate, created: nowIso(), updated: nowIso(), version: 0, map: null };
       await saveMeta(env, meta);
       return json({ id: meta.id });
@@ -200,6 +232,11 @@ export const onRequest = withUser(async (ctx, user) => {
           ? { salt: e.salt, check: e.check, iter: Number(e.iter) || 250000 } : null;
       }
       if (b.mapPrivate !== undefined) meta.mapPrivate = !!b.mapPrivate;
+      // tied to an event of Orga, or no longer (its owner or a setter, a member of that event's team)
+      if (b.event !== undefined) {
+        if (b.event) { const orga = await orgaEvent(b.event); if (!orga) return json({ error: "event" }, 403); meta.event = orga.id; }
+        else delete meta.event;
+      }
       if (b.map !== undefined) meta.map = b.map ? { name: clean(b.map.name, 200), type: clean(b.map.type, 60), size: Number(b.map.size) || 0 } : null;
       if (b.published !== undefined) meta.published = b.published ? { analysis: clean(b.published.analysis, 20),
         analyses: (Array.isArray(b.published.analyses) ? b.published.analyses : []).slice(-20).map((x) => clean(x, 20)).filter(Boolean), at: nowIso() } : null;

@@ -1,6 +1,6 @@
 // « Orga › Gérer »'s catalogue in Spanish; the keys of manage.fr.js.
 export default {
-  "mg.title": "Gestionar",
+  "mg.title": "Mis eventos",
   "mg.lede": "Tus eventos: una carrera o un entrenamiento cada uno, con sus salidas, su directo, sus resultados, su análisis y su equipo.",
   "mg.notReady": "La gestión de eventos aún no está activada en el servidor. Vuelve a intentarlo un poco más tarde.",
   "mg.back": "Mis eventos",
@@ -154,4 +154,14 @@ export default {
   "mg.ad.migrate.hint": "Crea un evento para cada competición en la que alguien ya actuó como organizador (subidas, reserva, directo, análisis, competiciones declaradas) y para cada entrenamiento con análisis; el equipo son las cuentas que lo hicieron. Se puede volver a ejecutar sin riesgo.",
   "mg.ad.migrate.go": "Crear los eventos",
   "mg.ad.migrate.done": "{c} competiciones, {d} competiciones declaradas, {t} entrenamientos; {s} dejadas de lado.",
+  "mg.tab.trace": "Trazado",
+  "mg.tr.title": "El trazado de los recorridos",
+  "mg.tr.hint": "En el trazado, con su propio equipo: los recorridos quedan entre sus trazadores y su controlador hasta la carrera.",
+  "mg.tr.none": "Aún no hay trazado para este evento. Empiézalo aquí: quedará vinculado a él.",
+  "mg.tr.start": "Empezar el trazado",
+  "mg.tr.another": "Empezar otro trazado",
+  "mg.tr.open": "Abrir el trazado",
+  "mg.tr.encrypted": "cifrado",
+  "mg.tr.by": "Empezado por {by} · {n} en el equipo de trazado",
+  "mg.tr.secret": "Los recorridos son confidenciales hasta la carrera. Para trabajar en ellos, pide a {by} que te invite al equipo de trazado.",
 };

@@ -1,6 +1,6 @@
 // The Documentation's guide to the site, in English (guide.fr.js is the reference: the same structure, the same chapters).
 // build(X) receives the page's helpers and returns « The site » (the documentation's home) and the guides of Arena, Coach and
-// Orga. A page is named as the English menu names it, with a link.
+// Orga and Carto. A page is named as the English menu names it, with a link.
 export function build(X) {
   const { html, raw, subTabs, fr = true, admin = false, owner = false } = X;
   // a page of the site, as the menus name it
@@ -20,7 +20,8 @@ export function build(X) {
     arena: html`The competitions: the calendar, the organisers' results, live results and the split-time analysis.`,
     coach: owner ? html`Training: GPS track analyses, control descriptions, map symbols, games and the MAS.`
       : html`Training: GPS track analyses, games and the MAS.`,
-    orga: html`The organisers' tools: their events (starts, live results, results, analysis, team), course setting and mapping.`,
+    orga: html`The organiser's events, one race or one training session each: course setting, starts, live results, results, analysis and team.`,
+    carto: html`Drawing and updating orienteering maps in the browser: OCAD and Mapper files, open data and LiDAR, field work with your phone, printing, teamwork.`,
   };
 
   // ======================================================================================================
@@ -29,9 +30,9 @@ export function build(X) {
   function site() {
     return html`
       ${slide("The site", "Modules and account", html`
-        <p>Ozimut has four modules: the modules page, where you land, offers to pick one, and the top bar then shows its pages only. The Ozimut
-          logo brings you back there at any time. Orga is turned on when registering, in Settings or on the modules page, and is used on a
-          computer.</p>
+        <p>Ozimut has several modules, Arena, Stats, Coach, Orga and Carto: the modules page, where you land, offers to pick one, and the top bar
+          then shows its pages only. The Ozimut logo brings you back there at any time. Orga is turned on when registering, in Settings or on the
+          modules page, and is used on a computer; Carto is open to every account, on a computer and on a phone alike.</p>
         ${list([
           html`<b>Without an account</b>, Ozimut shows what is public: Arena, Coach except comparing with the other runners, and in Stats the runner, the ranking and the
             races over the period the federation publishes openly.`,
@@ -324,7 +325,7 @@ export function build(X) {
           <p>In Solo analysis, an OCAD or Mapper file dropped alone <b>is</b> the map: drawn here, the track placed by its georeferencing. Dropped
             with an image of the map — or chosen in the "Computed routes" box, in both analyses — it serves the routes, placed on the image by its
             georeferencing: it must have one, and cover the map shown.</p>
-          <p>An analysis published from the course setting, or whose courses come from an OCAD project (Orga › Manage, the “Analysis” tab), keeps what
+          <p>An analysis published from the course setting, or whose courses come from an OCAD project (an event's “Analysis” tab, in Orga), keeps what
             the organiser's OCAD map says of the terrain: its routes read its symbols with no file to drop, and the out-of-bounds areas and the
             boundaries not to be crossed that the setter drew on the course are part of it. Only that drawing of the terrain is sent with the
             course, never the OCAD file.</p>`)}
@@ -399,33 +400,30 @@ export function build(X) {
   // ======================================================================================================
   // Orga (« Course setting », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
-  const ORGA = [["qui", "Manage"], ["evenement", "Creating an event"], ["equipe", "The team"], ["horaires", "Starts"], ["direct", "Live"],
-    ["resultats", "Results"], ["analyses", "Analysis"]];
+  const ORGA = [["qui", "My events"], ["evenement", "Creating an event"], ["trace", "Course setting"], ["horaires", "Starts"], ["direct", "Live"],
+    ["resultats", "Results"], ["analyses", "Analysis"], ["equipe", "The team"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
-        ${slide("Orga", "Managing your events", html`
+        ${slide("Orga", "Your events", html`
           <p>Orga serves the clubs that organise; it is turned on when registering, in Settings or on the modules page, and is used on a computer.
-            Its menu has three entries:</p>
+            It is one page, ${P("#/orga", "My events")}: your events, past, today's and coming — one race or one training session each —, each with
+            the organiser's tools, in tabs by its type:</p>
           ${list([
-            html`${P("#/gerer", "Manage")}: your events — one race or one training session each — with, for each, the organiser's tools.`,
-            html`${P("#/orga-tracer", "Course setting")}: setting the courses; its guide is the ${D("tracer", "Course setting")} tab.`,
-            html`${P("#/orga-carto", "Mapping")}: drawing an orienteering map, or updating yours.`,
-          ])}
-          <p>“Manage” opens on the list of your events, past, today's and coming. Each has its tabs, by its type:</p>
-          ${list([
-            html`<b>Individual competition</b> and <b>Score</b>: Starts, Live, Results, Analysis, Team.`,
-            html`<b>Relay</b>: Live, Analysis, Team (a relay's results and start list cannot be uploaded yet).`,
-            html`<b>Training</b>: Analysis, Team.`,
+            html`<b>Individual competition</b> and <b>Score</b>: Course setting, Starts, Live, Results, Analysis, Team.`,
+            html`<b>Relay</b>: Course setting, Live, Analysis, Team (a relay's results and start list cannot be uploaded yet).`,
+            html`<b>Training</b>: Course setting, Analysis, Team.`,
           ])}
           <p>An event opens on the tab that fits its day: Starts before the race, Live on the day, Results afterwards; a training session on its
-            analysis.</p>
+            course setting before its date, on its analysis afterwards.</p>
+          <p>The map itself is drawn in ${M("carto", "Carto")}, a module of its own, open to every account: a map serves many events, and you also
+            work on it in the field, with your phone.</p>
           <p>Only an event's team — and Ozimut's administrators — act as the organiser of the competition it holds: start list, start-time
             booking, live results, GPS tracking link, results, courses sent from course setting, map analysis. A competition no event holds has no
             organiser on Ozimut: to become one, create its event, or ask to join the team of the event that holds it.</p>`)}`,
       evenement: () => html`
         ${slide("Orga", "Creating an event", html`
-          <p>“Create an event”, at the top of “Manage”, takes three steps:</p>
+          <p>“Create an event”, at the top of the page, takes three steps:</p>
           <div class="mx-steps">
             <div class="mx-step"><b>Type, country and date</b>Individual competition, Score (the controls in any order, ranked by points), Relay or
               Training; a country you have joined; a date within the last 60 days or the next 400.</div>
@@ -447,16 +445,29 @@ export function build(X) {
       equipe: () => html`
         ${slide("Orga", "The team", html`
           <p>Each event has its team, and all its members have the same rights: they manage the whole event, accept or remove members, link it to the
-            calendar or unlink it, and can delete it. Whoever creates the event is its first member.</p>
+            calendar or unlink it, and can delete it. Whoever creates the event is its first member. Course setting has a team of its own (see “Course setting”).</p>
           ${list([
-            html`<b>Nobody is added by others</b>, neither by name, nor by licence, nor by e-mail address: a person asks to join, in “Join a team” (at
-              the top of “Manage”) or by opening the event's address, which the “Team” tab gives you to pass on. They can add a word for the team.`,
+            html`<b>Nobody is added by others</b>, neither by name, nor by licence, nor by e-mail address: a person asks to join, in “Join a team” (at the top of the page) or by opening the event's address, which the “Team” tab gives you to pass on. They can add a word for the team.`,
             html`<b>A member answers</b>: any member accepts or declines the request, in the “Team” tab. The members are told of a request by
               notification, and the person of the answer.`,
             html`<b>Who sees what</b>: the members see each other's names and clubs, and those of the people asking to join; outside the team, only
               the first name and initial of up to two members show.`,
             html`<b>Leaving</b>: a member leaves the team whenever they wish; the last member deletes the event instead. For a calendar competition,
               what was published stays; a competition created on Ozimut disappears from Arena with what it published there.`,
+          ])}`)}`,
+      trace: () => html`
+        ${slide("Orga", "Course setting: the event's courses", html`
+          <p>The “Course setting” tab ties the event to its course setting. Everything done there is explained in the ${D("tracer", "Course setting")}
+            tab of this documentation.</p>
+          ${list([
+            html`<b>Start setting the courses</b> opens the “Course setting” page on a new course setting prepared for the event — its competition,
+              or the training session's name and date — and tied to it: all that is left is to give the map. <b>Open the course setting</b> takes it
+              up again afterwards.`,
+            html`<b>A team of its own</b>: the course setting keeps its own team and roles — setters, controller, viewers, invited by a link — and,
+              if you wish, its encryption. The courses thus stay confidential until the race.`,
+            html`<b>The event's other members</b> see only that a course setting exists, who started it and how many people are in its setting
+              team; to work on it, they ask to be invited.`,
+            html`After the race, the course setting publishes its courses, map included, to the event's analysis (the “Analysis” tab).`,
           ])}`)}`,
       horaires: () => html`
         ${slide("Orga", "Starts: the start times", html`
@@ -518,6 +529,77 @@ export function build(X) {
     });
   }
 
-  const LABELS = { site: "The site", arena: "The competitions", coach: "Coach", orga: "The tools" };
-  return { LABELS, LEDE, ARENA, COACH, ORGA, site, arena, coach, orga };
+  // ======================================================================================================
+  // Carto (« Cartographier », the map editor: a module of its own since 2026-11-12)
+  // ======================================================================================================
+  const CARTO = [["carte", "The map"], ["donnees", "The data"], ["terrain", "In the field"], ["imprimer", "Printing and sharing"],
+    ["equipe", "As a team"]];
+  function carto() {
+    return chapters(CARTO, {
+      carte: () => html`
+        ${slide("Carto", "A map in the browser", html`
+          <p>${P("#/carto", "Carto")} draws and updates orienteering maps in the browser, as OCAD or OpenOrienteering Mapper do: nothing to install.
+            An account is all it takes, without turning Orga on, on a computer and on a phone alike. It is still a beta version: keep a copy of your
+            files.</p>
+          <p>The map screen opens straight away, empty, and over it three choices:</p>
+          ${list([
+            html`<b>New map</b>: sprint or forest, with the right IOF symbol set (ISSprOM 2019-2 or ISOM 2017-2), placed where you choose —
+              coordinates or your position — in the country's grid.`,
+            html`<b>Import a map</b>: an OCAD file (versions 6 to 2018), OpenOrienteering Mapper (.omap, .xmap) or Ozimut (.ozmap). Saved back to
+              OCAD, the file keeps unchanged everything you did not modify; what a format cannot keep is said at import and export.`,
+            html`<b>Open a map</b>: yours, and those whose team counts you in.`,
+          ])}
+          <p>The ribbon follows the work: Draw, Edit, Backgrounds, Data, Field, Check, Layout, Print, Team. The symbols are on the left, drawn as on
+            the map. You draw in straight lines, curves or freehand, snapping to nearby points and lines; you fill an area with one click between the
+            lines around it, cut, unite, smooth. Symbols and colours, spot inks included, are edited under “Layout”. “Check” flags what is below the
+            IOF's minimum sizes, and “Generalise” guides you, step by step, to another scale.</p>`)}`,
+      donnees: () => html`
+        ${slide("Carto", "Starting from open data", html`
+          <p>A new map need not start from nothing. Under “Data”, Carto fetches for the map's area:</p>
+          ${list([
+            html`<b>Contours</b>, from the country's terrain model (IGN in France, swisstopo in Switzerland, USGS in the United States, NRCan in
+              Canada, LINZ in New Zealand), elsewhere from a worldwide model.`,
+            html`<b>OpenStreetMap</b>: roads, paths, buildings, water, walls and fences, sorted into the map's symbols.`,
+            html`<b>National data</b>: IGN's BD TOPO in France, swissTLM3D in Switzerland, The National Map's roads, water and buildings in the
+              United States.`,
+            html`<b>LiDAR</b>, where a national LiDAR is open (France, Switzerland, the United States, Canada, New Zealand): the relief, cliffs and
+              vegetation karttapullautin draws from it. The tiles are computed on request, in a few minutes; a bar shows how far along it is.`,
+          ])}
+          <p>Everything arrives <b>as a draft</b>, in a part of its own: you accept what is right and reject the rest, object by object or all at
+            once. Open data is a starting point; the terrain itself is surveyed on the spot. Where a country does not have its data yet, Carto says
+            so and offers to ask for it.</p>
+          <p><b>Backgrounds</b> go under the map: an aerial photo or an online map depending on the country, a placed image or PDF, a GPS
+            track.</p>`)}`,
+      terrain: () => html`
+        ${slide("Carto", "In the field, with your phone", html`
+          <p>The field mode (the “Field” tab) is made for the phone:</p>
+          ${list([
+            html`your GPS position on the map, with its accuracy, which the map can follow; the compass turns the map to the north;`,
+            html`the track of where you went, kept as a GPX background;`,
+            html`photos and notes pinned on the map, where you stand;`,
+            html`an offline copy of the map: without a network you keep drawing, and the saves go as soon as the network is back.`,
+          ])}`)}`,
+      imprimer: () => html`
+        ${slide("Carto", "Printing and sharing", html`
+          ${list([
+            html`<b>Layout</b>: the print area, the magnetic north lines, the scale bar, the legend, the logos, the credits, a QR code.`,
+            html`<b>Printing</b>: a vector PDF in CMYK; for an offset printer, the map's spot inks and the separations, one page per plate with its
+              registration marks — the same engine as for course setting.`,
+            html`<b>Exporting</b>: OCAD, OpenOrienteering Mapper, .ozmap (Ozimut's format, which keeps everything needed to go back to OCAD), a PNG
+              image with its world file, a KMZ.`,
+            html`<b>To the other tools</b>: the map goes in one click to course setting, or to ${P("#/mes-cartes", "My maps")}.`,
+          ])}`)}`,
+      equipe: () => html`
+        ${slide("Carto", "Mapping as a team", html`
+          <p>A map has its team: people are invited by a link, as a mapper (who draws) or as a viewer; nobody is looked up by name or e-mail
+            address. Several mappers work at the same time: each sees where the others are and reserves a <b>sector</b>, a rectangle the others do
+            not change; changes made at the same time are merged object by object.</p>
+          <p>A version is kept every 30 minutes of work, or when you name one, and can be restored; comments are pinned on the map. A deleted
+            account hands its maps to the first mapper of their team. ${P("#/compte/confidentialite", "Site rules and privacy")} says what is
+            kept.</p>`)}`,
+    });
+  }
+
+  const LABELS = { site: "The site", arena: "The competitions", coach: "Coach", orga: "The tools", carto: "Carto" };
+  return { LABELS, LEDE, ARENA, COACH, ORGA, CARTO, site, arena, coach, orga, carto };
 }

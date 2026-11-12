@@ -71,14 +71,14 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Beim Hochladen einer Ergebnisdatei werden das Konto des Hochladenden, der Lauf, Name und Größe der
         Datei sowie das Datum des Hochladens gespeichert. Die Datei wird 60 Tage im Speicher der Website (Cloudflare) aufbewahrt und dann
         gelöscht; die darin enthaltenen Ergebnisse bleiben angezeigt. Der Administrator sieht, wer jede Datei hochgeladen hat, und kann
-        eine Datei entfernen. Die Startzeiten, die ein Veranstalter vor dem Lauf hochlädt (Reiter „Starts“ einer Veranstaltung, in „Orga › Verwalten“), folgen denselben
+        eine Datei entfernen. Die Startzeiten, die ein Veranstalter vor dem Lauf hochlädt (Reiter „Starts“ einer Veranstaltung, in Orga), folgen denselben
         Regeln; veröffentlicht werden nur Namen, Vereine, Kategorien und Startzeiten, und die Veranstalter des Laufs können sie
         entfernen. Ein Wettkampf, den ein Veranstalter außerhalb des Kalenders des Verbands anlegt (siehe „Veranstaltungen der Veranstalter“), wird
         mit Name, Datum, Ort, Verein, Disziplin und Website im Kalender veröffentlicht, ohne dass veröffentlicht wird, wer ihn angelegt hat. Ein Veranstalter kann auch den Link zum GPS-Tracking seines Wettkampfs bei einem anderen
         Dienst angeben (Reiter „Live“ seiner Veranstaltung): Nur dieser Link wird veröffentlicht; das Konto, das ihn angegeben hat, wird gespeichert und nicht veröffentlicht; Ozimut
         erhält keine Positionen.</p>
-      <h2 style="font-size:16px">Veranstaltungen der Veranstalter („Orga › Verwalten“)</h2>
-      <p>Ein Konto, das in „Orga › Verwalten“ eine Veranstaltung anlegt – einen Lauf oder ein Training –, bildet ihr Team. Die Website
+      <h2 style="font-size:16px">Veranstaltungen der Veranstalter (Orga)</h2>
+      <p>Ein Konto, das in Orga eine Veranstaltung anlegt – einen Lauf oder ein Training –, bildet ihr Team. Die Website
         speichert: die Beschreibung der Veranstaltung (Name, Datum, Ort, Verein, Disziplin, Format, Website) und das Konto, das sie angelegt
         hat; ihre etwaige Verknüpfung mit einem Wettkampf aus dem Kalender des Verbands; ihr Team (die Konten der Mitglieder, das Datum, an
         dem jedes beigetreten ist, und das Mitglied, das es aufgenommen hat); die Beitrittsanfragen (das anfragende Konto, eine freiwillige
@@ -89,7 +89,9 @@ export const body = (SITE, { world = false } = {}) => `
         Initiale des Nachnamens von höchstens zwei Mitgliedern. Die Administratoren der Website sehen die Veranstaltungen und bestätigen die
         Verknüpfungen, die Konten anfragen, die nicht Mitglied des veranstaltenden Vereins sind. Rechtsgrundlage: die Erbringung des
         angeforderten Dienstes. Wird ein Konto gelöscht, verlässt es seine Teams und seine Anfragen werden gelöscht; eine Veranstaltung,
-        deren letztes Mitglied es war, bleibt in den Händen der Administratoren, und was die Veranstaltung veröffentlicht hat, bleibt.</p>
+        deren letztes Mitglied es war, bleibt in den Händen der Administratoren, und was die Veranstaltung veröffentlicht hat, bleibt. Eine Bahnlegung, die mit einer Veranstaltung verbunden ist, behält ihr eigenes
+        Team (siehe „Bahnlegung“): Das Team der Veranstaltung sieht nur, dass es sie gibt, wer sie begonnen hat und wie viele Personen ihr
+        Bahnlegungsteam hat.</p>
       <h2 style="font-size:16px">Analysen von GPS-Tracks</h2>
       <p>Die Seite „Einzelanalyse“ liest Karte und GPS-Track in deinem Browser: Es werden keine Daten an die Website übertragen, und diese
         Dateien werden nur für die Dauer des Besuchs aufbewahrt.</p>
@@ -156,8 +158,8 @@ export const body = (SITE, { world = false } = {}) => `
         vorherige Zustimmung seines Autors, vorbehaltlich der gesetzlichen Ausnahmen, insbesondere kurzer Zitate mit Angabe des Autors
         und der Quelle (Artikel L. 122-5 des französischen Gesetzbuchs über geistiges Eigentum). Die automatischen Übersetzungen sind
         Bearbeitungen des Artikels und folgen denselben Regeln.</p>
-      <h2 style="font-size:16px">Kartieren</h2>
-      <p>Eine Karte der Seite „Kartieren“ (das Kartendokument, die OCAD-Datei, aus der sie stammt, ihre Hintergründe, ihre Versionen, die Kommentare und Fotos des Teams) wird im Speicher der Website (Cloudflare) aufbewahrt und ist nur ihrem Team zugänglich: ihrem Ersteller und den Personen, die über einen Einladungslink beitreten (niemand wird über Name oder E-Mail-Adresse gesucht); ihr Name und ihr Konto werden mit ihrer Rolle gespeichert. Online-Hintergründe (Luftbilder und Karten des IGN, OpenStreetMap) werden bei jedem Öffnen gelesen und nicht gespeichert; für offene Daten (Höhen des IGN, OpenStreetMap, LiDAR) wird nur die Ausdehnung des Gebiets an diese Dienste gesendet. Die GPS-Position des Geländemodus bleibt in deinem Browser, außer einer Spur, die du als Hintergrund speicherst. Wird das Konto gelöscht, geht jede von ihm angelegte Karte an den ersten Kartografen ihres Teams, sonst wird sie mit allem, was sie enthält, gelöscht.</p>
+      <h2 style="font-size:16px">Carto</h2>
+      <p>Eine Karte in Carto (das Kartendokument, die OCAD-Datei, aus der sie stammt, ihre Hintergründe, ihre Versionen, die Kommentare und Fotos des Teams) wird im Speicher der Website (Cloudflare) aufbewahrt und ist nur ihrem Team zugänglich: ihrem Ersteller und den Personen, die über einen Einladungslink beitreten (niemand wird über Name oder E-Mail-Adresse gesucht); ihr Name und ihr Konto werden mit ihrer Rolle gespeichert. Online-Hintergründe (Luftbilder und Karten des IGN, OpenStreetMap) werden bei jedem Öffnen gelesen und nicht gespeichert; für offene Daten (Höhen des IGN, OpenStreetMap, LiDAR) wird nur die Ausdehnung des Gebiets an diese Dienste gesendet. Die GPS-Position des Geländemodus bleibt in deinem Browser, außer einer Spur, die du als Hintergrund speicherst. Wird das Konto gelöscht, geht jede von ihm angelegte Karte an den ersten Kartografen ihres Teams, sonst wird sie mit allem, was sie enthält, gelöscht.</p>
       <h2 style="font-size:16px">Bahnlegung</h2>
       <p>Ein Ereignis der Seite „Bahnlegung“ (seine Bahnen, seine Karte, seine Versionen, die Kommentare des Teams und die im Geländemodus
         notierten Postenzustände) wird im Speicher der Website (Cloudflare) aufbewahrt und ist nur seinem Team zugänglich:
@@ -178,7 +180,7 @@ export const body = (SITE, { world = false } = {}) => `
         zu den 20 besten aller gehört. Nur das Ergebnis, seine Einstellungen und das Datum; von den Spielen eines Besuchers ohne Konto
         wird nichts gespeichert. Diese Ergebnisse werden mit deinem Konto gelöscht.</p>
       <h2 style="font-size:16px">Pixel</h2>
-      <p>Jedes Rennen, das du in „Pixel“ beendest, wird unter dem Namen deines Kontos gespeichert: seine Zeit, seine
+      <p>Jedes Rennen, das du in Pixel beendest, wird unter dem Namen deines Kontos gespeichert: seine Zeit, seine
         Zwischenzeiten, die gelaufene Strecke und sein Weg durch den virtuellen Wald, den anderen Konten in den Ergebnissen, der
         Rangliste und der Analyse dieser Bahn gezeigt; von einem Rennen zum nächsten wirst du an einem Fingerabdruck deines Kontos
         erkannt, nie an seiner Nummer. Von den Rennen eines Besuchers ohne Konto wird nichts gespeichert. Ein Organisator, der eine
@@ -285,5 +287,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Danksagung:</b> Die Symbole und Texte der Postenbeschreibungen (Coach › Postenbeschreibungen, die Bahnlegung)
         stammen aus Purple Pen von Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         unter der <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD-Lizenz</a>.</p>
-      <p class="muted">Letzte Aktualisierung: 11. November 2026.</p>
+      <p class="muted">Letzte Aktualisierung: 12. November 2026.</p>
 `;

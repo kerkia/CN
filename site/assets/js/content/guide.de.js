@@ -1,6 +1,6 @@
 // The Documentation's guide to the site, in German (guide.fr.js is the reference: the same structure, the same chapters).
 // build(X) receives the page's helpers and returns « Die Website » (the documentation's home) and the guides of Arena, Coach and
-// Orga. A page is named as the German menu names it, with a link.
+// Orga and Carto. A page is named as the German menu names it, with a link.
 export function build(X) {
   const { html, raw, subTabs, fr = true, admin = false, owner = false } = X;
   // a page of the site, as the menus name it
@@ -20,7 +20,8 @@ export function build(X) {
     arena: html`Die Wettkämpfe: der Kalender, die Ergebnisse der Veranstalter, die Live-Ergebnisse und die Analyse der Zwischenzeiten.`,
     coach: owner ? html`Trainieren: die Analysen von GPS-Tracks, die Postenbeschreibungen, die Kartensymbole, die Spiele und die MAG.`
       : html`Trainieren: die Analysen von GPS-Tracks, die Spiele und die MAG.`,
-    orga: html`Die Werkzeuge der Veranstalter: ihre Veranstaltungen (Starts, Live, Ergebnisse, Analyse, Team), die Bahnlegung und das Kartieren.`,
+    orga: html`Die Veranstaltungen des Ausrichters, jede ein Lauf oder ein Training: die Bahnlegung, die Starts, Live, die Ergebnisse, die Analyse und das Team.`,
+    carto: html`OL-Karten im Browser zeichnen und aktualisieren: OCAD- und Mapper-Dateien, offene Daten und LiDAR, Aufnahme im Gelände mit dem Handy, Druck, Teamarbeit.`,
   };
 
   // ======================================================================================================
@@ -29,9 +30,9 @@ export function build(X) {
   function site() {
     return html`
       ${slide("Die Website", "Die Module und das Konto", html`
-        <p>Ozimut hat vier Module: Die Modulseite, auf der du landest, lässt dich eines davon wählen, und die obere Leiste zeigt dann nur dessen
-          Seiten. Das Ozimut-Logo bringt dich jederzeit dorthin zurück. Orga wird bei der Registrierung, in den Einstellungen oder auf der Modulseite
-          aktiviert und am Computer genutzt.</p>
+        <p>Ozimut hat mehrere Module, Arena, Stats, Coach, Orga und Carto: Die Modulseite, auf der du landest, lässt dich eines davon wählen, und
+          die obere Leiste zeigt dann nur dessen Seiten. Das Ozimut-Logo bringt dich jederzeit dorthin zurück. Orga wird bei der Registrierung, in den
+          Einstellungen oder auf der Modulseite aktiviert und am Computer genutzt; Carto steht jedem Konto offen, am Computer wie am Handy.</p>
         ${list([
           html`<b>Ohne Konto</b> zeigt Ozimut, was öffentlich ist: Arena, Coach außer dem Vergleich mit den anderen Läufern, und in Stats den Läufer, die Rangliste und die
             Läufe aus dem Zeitraum, den der Verband frei veröffentlicht.`,
@@ -339,8 +340,7 @@ export function build(X) {
           <p>In der Einzelanalyse <b>ist</b> eine allein abgelegte OCAD- oder Mapper-Datei die Karte: hier gezeichnet, der Track über ihre
             Georeferenzierung kalibriert. Zusammen mit einem Bild der Karte abgelegt – oder im Feld „Berechnete Routen“ gewählt, in beiden Analysen –
             dient sie den Routen und wird über ihre Georeferenzierung auf das Bild gelegt: Sie muss eine haben und die angezeigte Karte abdecken.</p>
-          <p>Eine Analyse, die aus der Bahnlegung veröffentlicht wurde oder deren Bahnen aus einem OCAD-Projekt stammen (Orga ›
-            Verwalten, Reiter „Analyse“), behält, was die OCAD-Karte des Veranstalters über das Gelände sagt: Ihre Routen lesen deren Symbole, ohne dass du
+          <p>Eine Analyse, die aus der Bahnlegung veröffentlicht wurde oder deren Bahnen aus einem OCAD-Projekt stammen (Reiter „Analyse“ einer Veranstaltung in Orga), behält, was die OCAD-Karte des Veranstalters über das Gelände sagt: Ihre Routen lesen deren Symbole, ohne dass du
             eine Datei ablegen musst, und die Sperrgebiete und nicht zu überquerenden Grenzen, die der Bahnleger auf der Bahn gezeichnet hat,
             gehören dazu. Nur diese Zeichnung des Geländes wird mit der Bahn gesendet, nie die OCAD-Datei.</p>`)}
         ${slide("Coach · Test", "2. Die Zeit eines Schritts", html`
@@ -418,34 +418,31 @@ export function build(X) {
   // ======================================================================================================
   // Orga (« Die Bahnlegung », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
-  const ORGA = [["qui", "Verwalten"], ["evenement", "Eine Veranstaltung anlegen"], ["equipe", "Das Team"], ["horaires", "Starts"], ["direct", "Live"],
-    ["resultats", "Ergebnisse"], ["analyses", "Analyse"]];
+  const ORGA = [["qui", "Meine Veranstaltungen"], ["evenement", "Eine Veranstaltung anlegen"], ["trace", "Bahnlegung"], ["horaires", "Starts"],
+    ["direct", "Live"], ["resultats", "Ergebnisse"], ["analyses", "Analyse"], ["equipe", "Das Team"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
-        ${slide("Orga", "Deine Veranstaltungen verwalten", html`
+        ${slide("Orga", "Deine Veranstaltungen", html`
           <p>Orga ist für Vereine, die veranstalten; es wird bei der Registrierung, in den Einstellungen oder auf der Modulseite aktiviert und am Computer
-            genutzt. Sein Menü hat drei Einträge:</p>
+            genutzt. Es ist eine einzige Seite, ${P("#/orga", "Meine Veranstaltungen")}: deine vergangenen, heutigen und kommenden Veranstaltungen –
+            jede ein Lauf oder ein Training –, jede mit den Werkzeugen des Veranstalters, in Reitern je nach ihrer Art:</p>
           ${list([
-            html`${P("#/gerer", "Verwalten")}: deine Veranstaltungen – jede ein Lauf oder ein Training – mit den Werkzeugen des Veranstalters für jede.`,
-            html`${P("#/orga-tracer", "Bahnlegung")}: die Bahnen legen; die Anleitung dazu ist der Reiter ${D("tracer", "Die Bahnlegung")}.`,
-            html`${P("#/orga-carto", "Kartieren")}: eine OL-Karte zeichnen oder deine eigene aktualisieren.`,
-          ])}
-          <p>„Verwalten“ öffnet sich auf der Liste deiner Veranstaltungen, vergangene, heutige und kommende. Jede hat ihre Reiter, je nach ihrer Art:</p>
-          ${list([
-            html`<b>Einzelwettkampf</b> und <b>Score</b>: Starts, Live, Ergebnisse, Analyse, Team.`,
-            html`<b>Staffel</b>: Live, Analyse, Team (Ergebnisse und Startliste einer Staffel lassen sich noch nicht hochladen).`,
-            html`<b>Training</b>: Analyse, Team.`,
+            html`<b>Einzelwettkampf</b> und <b>Score</b>: Bahnlegung, Starts, Live, Ergebnisse, Analyse, Team.`,
+            html`<b>Staffel</b>: Bahnlegung, Live, Analyse, Team (Ergebnisse und Startliste einer Staffel lassen sich noch nicht hochladen).`,
+            html`<b>Training</b>: Bahnlegung, Analyse, Team.`,
           ])}
           <p>Eine Veranstaltung öffnet sich auf dem Reiter, der zu ihrem Tag passt: Starts vor dem Lauf, Live am Tag selbst, danach Ergebnisse; ein
-            Training auf seiner Analyse.</p>
+            Training vor seinem Datum auf seiner Bahnlegung, danach auf seiner Analyse.</p>
+          <p>Die Karte selbst wird in ${M("carto", "Carto")} gezeichnet, einem eigenen Modul, das jedem Konto offensteht: Eine Karte dient vielen
+            Veranstaltungen, und man arbeitet auch im Gelände daran, mit dem Handy.</p>
           <p>Nur das Team einer Veranstaltung – und die Administratoren von Ozimut – handelt als Veranstalter des Wettkampfs, den sie trägt:
             Startliste, Reservierung der Startzeiten, Live-Ergebnisse, Link zum GPS-Tracking, Ergebnisse, aus der Bahnlegung gesendete Bahnen,
             Kartenanalyse. Ein Wettkampf, den keine Veranstaltung trägt, hat auf Ozimut keinen Veranstalter: Um es zu werden, lege seine
             Veranstaltung an oder bitte darum, dem Team der Veranstaltung beizutreten, die ihn trägt.</p>`)}`,
       evenement: () => html`
         ${slide("Orga", "Eine Veranstaltung anlegen", html`
-          <p>„Veranstaltung anlegen“, oben in „Verwalten“, geht in drei Schritten:</p>
+          <p>„Veranstaltung anlegen“, oben auf der Seite, geht in drei Schritten:</p>
           <div class="mx-steps">
             <div class="mx-step"><b>Art, Land und Datum</b>Einzelwettkampf, Score (die Posten in beliebiger Reihenfolge, nach Punkten gewertet),
               Staffel oder Training; ein Land, dem du beigetreten bist; ein Datum in den letzten 60 oder den nächsten 400 Tagen.</div>
@@ -470,10 +467,10 @@ export function build(X) {
         ${slide("Orga", "Das Team", html`
           <p>Jede Veranstaltung hat ihr Team, und alle Mitglieder haben dieselben Rechte: Sie verwalten die ganze Veranstaltung, nehmen Mitglieder auf
             oder entfernen sie, verknüpfen sie mit dem Kalender oder trennen sie davon und können sie löschen. Wer die Veranstaltung anlegt, ist ihr
-            erstes Mitglied.</p>
+            erstes Mitglied. Die Bahnlegung hat ein eigenes Team (siehe „Bahnlegung“).</p>
           ${list([
             html`<b>Niemand wird von anderen hinzugefügt</b>, weder über den Namen noch über die Lizenz noch über die E-Mail-Adresse: Eine Person bittet
-              um Beitritt, in „Einem Team beitreten“ (oben in „Verwalten“) oder indem sie die Adresse der Veranstaltung öffnet, die der Reiter „Team“
+              um Beitritt, in „Einem Team beitreten“ (oben auf der Seite) oder indem sie die Adresse der Veranstaltung öffnet, die der Reiter „Team“
               zum Weitergeben angibt. Sie kann ein Wort an das Team dazuschreiben.`,
             html`<b>Ein Mitglied antwortet</b>: Jedes Mitglied kann die Anfrage im Reiter „Team“ annehmen oder ablehnen. Die Mitglieder werden über
               eine Anfrage per Push-Mitteilung informiert, die Person über die Antwort.`,
@@ -482,6 +479,20 @@ export function build(X) {
             html`<b>Verlassen</b>: Ein Mitglied verlässt das Team, wann es will; das letzte Mitglied löscht stattdessen die Veranstaltung. Bei einem
               Wettkampf aus dem Kalender bleibt, was veröffentlicht wurde; ein auf Ozimut angelegter Wettkampf verschwindet aus Arena, mit allem,
               was er dort veröffentlicht hat.`,
+          ])}`)}`,
+      trace: () => html`
+        ${slide("Orga", "Bahnlegung: die Bahnen der Veranstaltung", html`
+          <p>Der Reiter „Bahnlegung“ verbindet die Veranstaltung mit ihrer Bahnlegung. Alles, was dort geschieht, erklärt der Reiter
+            ${D("tracer", "Die Bahnlegung")} dieser Dokumentation.</p>
+          ${list([
+            html`<b>Bahnlegung beginnen</b> öffnet die Seite „Bahnlegung“ mit einer neuen Bahnlegung, für die Veranstaltung vorbereitet – ihr
+              Wettkampf oder Name und Datum des Trainings – und mit ihr verbunden: Es fehlt nur noch die Karte. <b>Bahnlegung öffnen</b> nimmt sie
+              danach wieder auf.`,
+            html`<b>Ein eigenes Team</b>: Die Bahnlegung behält ihr eigenes Team und ihre Rollen – Bahnleger, Kontrolleur, Leser, per Link
+              eingeladen – und, wenn du willst, ihre Verschlüsselung. So bleiben die Bahnen bis zum Lauf vertraulich.`,
+            html`<b>Die anderen Mitglieder der Veranstaltung</b> sehen nur, dass es eine Bahnlegung gibt, wer sie begonnen hat und wie viele Personen
+              in ihrem Bahnlegungsteam sind; um daran mitzuarbeiten, bitten sie um eine Einladung.`,
+            html`Nach dem Lauf veröffentlicht die Bahnlegung ihre Bahnen samt Karte in der Analyse der Veranstaltung (Reiter „Analyse“).`,
           ])}`)}`,
       horaires: () => html`
         ${slide("Orga", "Starts: die Startzeiten", html`
@@ -547,6 +558,80 @@ export function build(X) {
     });
   }
 
-  const LABELS = { site: "Die Website", arena: "Die Wettkämpfe", coach: "Coach", orga: "Die Werkzeuge" };
-  return { LABELS, LEDE, ARENA, COACH, ORGA, site, arena, coach, orga };
+  // ======================================================================================================
+  // Carto (« Cartographier », the map editor: a module of its own since 2026-11-12)
+  // ======================================================================================================
+  const CARTO = [["carte", "Die Karte"], ["donnees", "Die Daten"], ["terrain", "Im Gelände"], ["imprimer", "Drucken und teilen"],
+    ["equipe", "Im Team"]];
+  function carto() {
+    return chapters(CARTO, {
+      carte: () => html`
+        ${slide("Carto", "Eine Karte im Browser", html`
+          <p>${P("#/carto", "Carto")} zeichnet und aktualisiert OL-Karten im Browser, wie OCAD oder OpenOrienteering Mapper: nichts zu installieren.
+            Ein Konto genügt, ohne Orga zu aktivieren, am Computer wie am Handy. Es ist noch eine Beta-Version: Behalte eine Kopie deiner Dateien.</p>
+          <p>Der Kartenbildschirm öffnet sich sofort, leer, und darüber drei Möglichkeiten:</p>
+          ${list([
+            html`<b>Neue Karte</b>: Sprint oder Wald, mit dem passenden Symbolsatz der IOF (ISSprOM 2019-2 oder ISOM 2017-2), an der gewählten Stelle
+              – Koordinaten oder deine Position – im Gitter des Landes platziert.`,
+            html`<b>Karte importieren</b>: eine OCAD-Datei (Versionen 6 bis 2018), OpenOrienteering Mapper (.omap, .xmap) oder Ozimut (.ozmap). Wieder
+              als OCAD gespeichert, behält die Datei unverändert alles, was du nicht geändert hast; was ein Format nicht behalten kann, wird beim
+              Import und Export gesagt.`,
+            html`<b>Karte öffnen</b>: deine eigenen und die, zu deren Team du gehörst.`,
+          ])}
+          <p>Das Menüband folgt der Arbeit: Zeichnen, Bearbeiten, Hintergründe, Daten, Gelände, Prüfen, Layout, Drucken, Team. Die Symbole sind links,
+            so gezeichnet wie auf der Karte. Du zeichnest gerade Linien, Kurven oder freihändig, eingerastet an Punkten und Linien in der Nähe; du
+            füllst eine Fläche mit einem Klick zwischen den Linien, die sie umgeben, schneidest, vereinigst, glättest. Symbole und Farben,
+            Schmuckfarben eingeschlossen, werden unter „Layout“ bearbeitet. „Prüfen“ meldet, was unter den Mindestgrößen der IOF liegt, und
+            „Generalisieren“ führt dich Schritt für Schritt zu einem anderen Maßstab.</p>`)}`,
+      donnees: () => html`
+        ${slide("Carto", "Von offenen Daten ausgehen", html`
+          <p>Eine neue Karte muss nicht bei null beginnen. Unter „Daten“ holt Carto für das Gebiet der Karte:</p>
+          ${list([
+            html`<b>Die Höhenlinien</b>, aus dem Geländemodell des Landes (IGN in Frankreich, swisstopo in der Schweiz, USGS in den Vereinigten
+              Staaten, NRCan in Kanada, LINZ in Neuseeland), anderswo aus einem weltweiten Modell.`,
+            html`<b>OpenStreetMap</b>: Straßen, Wege, Gebäude, Gewässer, Mauern und Zäune, den Symbolen der Karte zugeordnet.`,
+            html`<b>Die nationalen Daten</b>: die BD TOPO des IGN in Frankreich, swissTLM3D in der Schweiz, Straßen, Gewässer und Gebäude von The
+              National Map in den Vereinigten Staaten.`,
+            html`<b>Das LiDAR</b>, wo ein nationales LiDAR offen ist (Frankreich, Schweiz, Vereinigte Staaten, Kanada, Neuseeland): das Relief, die
+              Felsen und die Vegetation, die karttapullautin daraus gewinnt. Die Kacheln werden auf Anfrage berechnet, in wenigen Minuten; ein
+              Balken zeigt, wie weit die Berechnung ist.`,
+          ])}
+          <p>Alles kommt <b>als Entwurf</b>, in einem eigenen Teil: Du nimmst an, was stimmt, und verwirfst den Rest, Objekt für Objekt oder auf
+            einmal. Offene Daten sind ein Ausgangspunkt; das Gelände selbst wird vor Ort aufgenommen. Wo ein Land seine Daten noch nicht hat, sagt
+            Carto es und bietet an, ihre Unterstützung anzufragen.</p>
+          <p><b>Hintergründe</b> liegen unter der Karte: ein Luftbild oder eine Online-Karte je nach Land, ein eingepasstes Bild oder PDF, ein
+            GPS-Track.</p>`)}`,
+      terrain: () => html`
+        ${slide("Carto", "Im Gelände, mit dem Handy", html`
+          <p>Der Geländemodus (Reiter „Gelände“) ist für das Handy gemacht:</p>
+          ${list([
+            html`deine GPS-Position auf der Karte, mit ihrer Genauigkeit, der die Karte folgen kann; der Kompass dreht die Karte nach Norden;`,
+            html`der Track deines Weges, als GPX-Hintergrund gespeichert;`,
+            html`Fotos und Notizen, auf der Karte dort angeheftet, wo du stehst;`,
+            html`eine Offline-Kopie der Karte: Ohne Netz zeichnest du weiter, und die Speicherungen gehen los, sobald das Netz zurück ist.`,
+          ])}`)}`,
+      imprimer: () => html`
+        ${slide("Carto", "Drucken und teilen", html`
+          ${list([
+            html`<b>Das Layout</b>: der Druckbereich, die magnetischen Nordlinien, die Maßstabsleiste, die Legende, die Logos, die Vermerke, ein
+              QR-Code.`,
+            html`<b>Drucken</b>: ein Vektor-PDF in CMYK; für eine Offsetdruckerei die Schmuckfarben der Karte und die Farbauszüge, eine Seite pro
+              Platte mit ihren Passermarken – dieselbe Technik wie bei der Bahnlegung.`,
+            html`<b>Exportieren</b>: OCAD, OpenOrienteering Mapper, .ozmap (das Format von Ozimut, das alles behält, was für den Weg zurück zu OCAD
+              nötig ist), ein PNG-Bild mit seiner Georeferenzierungsdatei, ein KMZ.`,
+            html`<b>Zu den anderen Werkzeugen</b>: Die Karte geht mit einem Klick in die Bahnlegung oder nach ${P("#/mes-cartes", "Meine Karten")}.`,
+          ])}`)}`,
+      equipe: () => html`
+        ${slide("Carto", "Im Team kartieren", html`
+          <p>Eine Karte hat ihr Team: Man lädt per Link ein, als Kartograf (der zeichnet) oder als Leser; niemand wird über Namen oder E-Mail-Adresse
+            gesucht. Mehrere Kartografen arbeiten gleichzeitig: Jeder sieht, wo die anderen sind, und reserviert sich einen <b>Sektor</b>, ein
+            Rechteck, das die anderen nicht ändern; gleichzeitige Änderungen werden Objekt für Objekt zusammengeführt.</p>
+          <p>Alle 30 Minuten Arbeit, oder wenn du ihr einen Namen gibst, wird eine Version gespeichert, die sich wiederherstellen lässt; Kommentare
+            werden auf der Karte angeheftet. Ein gelöschtes Konto übergibt seine Karten dem ersten Kartografen ihres Teams.
+            ${P("#/compte/confidentialite", "Website-Regeln und Datenschutz")} sagt, was gespeichert wird.</p>`)}`,
+    });
+  }
+
+  const LABELS = { site: "Die Website", arena: "Die Wettkämpfe", coach: "Coach", orga: "Die Werkzeuge", carto: "Carto" };
+  return { LABELS, LEDE, ARENA, COACH, ORGA, CARTO, site, arena, coach, orga, carto };
 }

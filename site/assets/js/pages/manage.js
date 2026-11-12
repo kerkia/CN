@@ -1,4 +1,4 @@
-// « Orga › Gérer » (#/gerer, owner 2026-11-11; functions/api/events/[[path]].js, migration 0026): an organiser's events, one
+// « Orga » (#/orga, owner 2026-11-12: Orga is the organiser's events, « Gérer » of 2026-11-11 gone as a word; #/gerer still opens it; functions/api/events/[[path]].js, migration 0026): an organiser's events, one
 // race or one training each, held by a team whose members all have the same rights. The page opens on the account's events,
 // laid out as Arena's competitions (periods, months, today's line); each row carries its tabs as chips, each opening the
 // event on that tab. An event: its head (« ✎ Modifier »: the description, the calendar link, deletion), then its tabs —
@@ -16,11 +16,12 @@ import { getProv } from "./provisional.js";
 import { confirmBox, alertBox } from "../askbox.js";
 import { dateWords } from "../datewords.js";
 
-export const BASE = "#/gerer";
+export const BASE = "#/orga";
 const TYPES = ["individual", "score", "relay", "training"];
-const ALL_TABS = ["departs", "direct", "resultats", "analyse", "equipe"];
+// « Tracé » first (owner, 2026-11-12: course setting is the event's too — its own team and secrecy kept, the Tracer's)
+const ALL_TABS = ["trace", "departs", "direct", "resultats", "analyse", "equipe"];
 // the tabs of each type (a relay's results and start list wait for « Résultats » to take relays; a training has no race page)
-const TABS = { individual: ALL_TABS, score: ALL_TABS, relay: ["direct", "analyse", "equipe"], training: ["analyse", "equipe"] };
+const TABS = { individual: ALL_TABS, score: ALL_TABS, relay: ["trace", "direct", "analyse", "equipe"], training: ["trace", "analyse", "equipe"] };
 const TERRAINS = ["Forêt", "Sprint", "VTT", "Ski"];                    // the data's values (i18n-ignore)
 const FORMATS = ["MD", "LD", "Sprint", "Nuit", "Autre"];                // (i18n-ignore)
 const today = () => new Date().toLocaleDateString("sv-SE");
@@ -42,7 +43,7 @@ const formatLabel = (x) => (FORMATS.includes(x) ? t(`mg.format.${x}`) : x || "")
 /** The tab an event opens on: the one that fits its day. */
 const defaultTab = (ev) => {
   const tabs = TABS[ev.type] || ALL_TABS, d = ev.date, now = today();
-  const want = ev.type === "training" ? "analyse" : d > now ? "departs" : d === now ? "direct" : "resultats";
+  const want = ev.type === "training" ? (d > now ? "trace" : "analyse") : d > now ? "departs" : d === now ? "direct" : "resultats";
   return tabs.includes(want) ? want : tabs[0];
 };
 
@@ -64,17 +65,20 @@ export async function render(main, r) {
 
 // ---- the states shown on the chips: Résultats' index, the bookings, the live broadcasts ---------------------------------
 async function states() {
-  const [idx, bk, bc] = await Promise.all([
+  const [idx, bk, bc, tr] = await Promise.all([
     getProv("index.json").catch(() => null),
     fetch("api/booking", { credentials: "same-origin", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    fetch("api/live/broadcasts", { credentials: "same-origin", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
+    fetch("api/live/broadcasts", { credentials: "same-origin", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    fetch("api/tracer", { credentials: "same-origin", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null)]);
   return { prov: new Map((idx?.races || []).map((x) => [x.key, x])), booking: new Map((bk?.events || []).map((x) => [x.key, x])),
-    live: (bc?.broadcasts || []).filter((b) => b.race) };
+    live: (bc?.broadcasts || []).filter((b) => b.race), tracer: tr?.events || [] };
 }
 function chipOf(ev, k, S) {
   const p = ev.race ? S.prov.get(ev.race) : null;
   let note = "", cls = "";
-  if (k === "departs") {
+  if (k === "trace") {
+    if (S.tracer.some((x) => x.event === ev.id || (ev.race && x.race === ev.race))) { note = "✓"; cls = "ok"; }
+  } else if (k === "departs") {
     const b = S.booking.get(ev.race);
     if (b?.status === "open") { note = t("mg.chip.bookOpen"); cls = "on"; }
     else if (p?.startlist) { note = t("mg.chip.startlist"); cls = "ok"; }
@@ -370,6 +374,7 @@ async function eventPage(main, id, q) {
   $("#mg-edit").addEventListener("click", () => editDialog(D));
   const panel = $("#mg-panel");
   if (tab === "equipe") return teamTab(panel, D);
+  if (tab === "trace") return traceTab(panel, D);
   if (pending && tab !== "analyse") { panel.innerHTML = html`<div class="card"><div class="empty">${t("mg.link.waitTools")}</div></div>`; return; }
   if (tab === "analyse") return analysisTab(panel, D, q);
   const race = await raceOf(ev);
@@ -418,6 +423,29 @@ async function analysisTab(panel, D, q) {
       location.reload();
     } catch (e) { $("#mg-an-msg").textContent = errText(e); }
   });
+}
+
+// ---- Tracé: the event's course setting, in the Tracer (its own team: the courses are theirs until the race) ----------------
+async function traceTab(panel, D) {
+  const ev = D.event;
+  panel.innerHTML = html`<div class="spinner"></div>`;
+  let list = [];
+  try {
+    const r = await fetch(`api/tracer?event=${encodeURIComponent(ev.id)}`, { credentials: "same-origin", cache: "no-store" });
+    list = r.ok ? (await r.json()).events || [] : [];
+  } catch (e) { /* none */ }
+  const open = (x) => `#/orga-tracer?${new URLSearchParams({ id: x.id, ev: ev.id })}`;
+  const startHref = `#/orga-tracer?${new URLSearchParams({ ev: ev.id, nouveau: "1" })}`;
+  const pending = ev.linkState === "pending";
+  panel.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("mg.tr.title")}</h2><div class="hint">${t("mg.tr.hint")}</div></div></div>
+    <div class="card-body">
+      ${list.length ? html`<div class="mg-trlist">${list.map((x) => html`<div class="mg-tr">
+          <div><b>${x.title}</b>${x.encrypted ? html` <span class="tag">${t("mg.tr.encrypted")}</span>` : ""}<div class="muted">${t("mg.tr.by", { by: x.by, n: x.team })}</div></div>
+          ${x.member ? html`<a class="btn btn-primary btn-sm" href="${open(x)}">${t("mg.tr.open")}</a>`
+            : html`<span class="muted mg-tr-closed">${t("mg.tr.secret", { by: x.by })}</span>`}</div>`)}</div>`
+        : html`<p>${t(pending ? "mg.link.waitTools" : "mg.tr.none")}</p>`}
+      ${pending ? "" : html`<div class="row" style="gap:10px;margin-top:12px"><a class="btn ${list.length ? "" : "btn-primary"}" href="${startHref}">${t(list.length ? "mg.tr.another" : "mg.tr.start")}</a></div>`}
+    </div></section>`;
 }
 
 // ---- Équipe ------------------------------------------------------------------------------------------------------------------

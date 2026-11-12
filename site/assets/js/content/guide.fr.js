@@ -1,7 +1,7 @@
 // The Documentation's guide to the site, in French (owner, 2026-10-24: the page told the methods but not the site; 2026-10-31:
 // one documentation per module). guide.en.js in step: the same structure, the English words. build(X) receives the page's
 // helpers and returns « Le site » (the documentation's home: short, every section on one page) and the guides of Arena,
-// Coach and Orga, each a set of chapters (Stats' documentation is the methods', content/methods.*.js; Orga's « Le tracé »
+// Coach, Orga and Carto, each a set of chapters (Stats' documentation is the methods', content/methods.*.js; Orga's « Le tracé »
 // too). Plain sentences for orienteers; a page is named as the menu names it, with a link.
 export function build(X) {
   const { html, raw, subTabs, fr = true, admin = false, owner = false } = X;
@@ -22,7 +22,8 @@ export function build(X) {
     arena: html`Les compétitions : l'agenda, les résultats des organisateurs, le direct et l'analyse des temps intermédiaires.`,
     coach: owner ? html`S'entraîner : les analyses de traces GPS, les définitions de postes, les symboles de carte, les jeux et la VMA.`
       : html`S'entraîner : les analyses de traces GPS, les jeux et la VMA.`,
-    orga: html`Les outils des organisateurs : leurs événements (départs, direct, résultats, analyse, équipe), le tracé des circuits et la cartographie.`,
+    orga: html`Les événements de l'organisateur, une course ou un entraînement chacun : le tracé des circuits, les départs, le direct, les résultats, l'analyse et l'équipe.`,
+    carto: html`Dessiner et mettre à jour des cartes de course d'orientation dans le navigateur : fichiers OCAD et Mapper, données ouvertes et LiDAR, relevés sur le terrain avec le téléphone, impression, travail en équipe.`,
   };
 
   // ======================================================================================================
@@ -31,9 +32,9 @@ export function build(X) {
   function site() {
     return html`
       ${slide("Le site", "Les modules et le compte", html`
-        <p>Ozimut a quatre modules : la page des modules, où l'on arrive, propose de choisir l'un d'eux, et la barre du haut montre alors ses pages
-          seulement. Le logo Ozimut y ramène à tout moment. Orga s'active à l'inscription, dans les Réglages ou sur la page des modules, et s'utilise
-          sur ordinateur.</p>
+        <p>Ozimut a plusieurs modules, Arena, Stats, Coach, Orga et Carto : la page des modules, où l'on arrive, propose de choisir l'un d'eux, et
+          la barre du haut montre alors ses pages seulement. Le logo Ozimut y ramène à tout moment. Orga s'active à l'inscription, dans les Réglages ou
+          sur la page des modules, et s'utilise sur ordinateur ; Carto est ouvert à tout compte, sur ordinateur comme sur téléphone.</p>
         ${list([
           html`<b>Sans compte</b>, Ozimut montre ce qui est public : Arena, Coach sauf la comparaison avec les autres coureurs, et dans Stats le coureur, le classement et les
             courses sur la période que la fédération publie librement.`,
@@ -336,7 +337,7 @@ export function build(X) {
           <p>Dans l'Analyse solo, un fichier OCAD ou Mapper déposé seul <b>est</b> la carte : dessinée ici, la trace calée par son
             géoréférencement. Déposé avec une image de la carte — ou choisi dans la boîte « Itinéraires calculés », dans les deux analyses —, il
             sert aux itinéraires, placé sur l'image par son géoréférencement : il doit en avoir un, et recouvrir la carte affichée.</p>
-          <p>Une analyse publiée depuis le tracé de circuits, ou dont les circuits viennent d'un projet OCAD (Orga › Gérer, onglet « Analyse »),
+          <p>Une analyse publiée depuis le tracé de circuits, ou dont les circuits viennent d'un projet OCAD (l'onglet « Analyse » d'un événement, dans Orga),
             garde ce que la carte OCAD de l'organisateur dit du terrain : ses itinéraires lisent ses symboles sans fichier à déposer, et les
             zones interdites et les limites à ne pas franchir que le traceur a dessinées sur le circuit en font partie. Seul ce dessin du terrain est
             envoyé avec le circuit, jamais le fichier OCAD.</p>`)}
@@ -415,34 +416,31 @@ export function build(X) {
   // ======================================================================================================
   // Orga (« Le tracé », its other tab, is content/methods.*.js' tracerDoc)
   // ======================================================================================================
-  const ORGA = [["qui", "Gérer"], ["evenement", "Créer un événement"], ["equipe", "L'équipe"], ["horaires", "Départs"], ["direct", "Direct"],
-    ["resultats", "Résultats"], ["analyses", "Analyse"]];
+  const ORGA = [["qui", "Mes événements"], ["evenement", "Créer un événement"], ["trace", "Tracé"], ["horaires", "Départs"], ["direct", "Direct"],
+    ["resultats", "Résultats"], ["analyses", "Analyse"], ["equipe", "L'équipe"]];
   function orga() {
     return chapters(ORGA, {
       qui: () => html`
-        ${slide("Orga", "Gérer ses événements", html`
+        ${slide("Orga", "Vos événements", html`
           <p>Orga sert aux clubs qui organisent ; il s'active à l'inscription, dans les Réglages ou sur la page des modules, et s'utilise sur ordinateur.
-            Son menu a trois entrées :</p>
+            C'est une seule page, ${P("#/orga", "Mes événements")} : vos événements passés, du jour et à venir — une course ou un entraînement
+            chacun —, chacun avec les outils de l'organisateur, en onglets selon son type :</p>
           ${list([
-            html`${P("#/gerer", "Gérer")} : vos événements — une course ou un entraînement chacun — avec, pour chacun, les outils de l'organisateur.`,
-            html`${P("#/orga-tracer", "Tracer")} : tracer les circuits ; son guide est l'onglet ${D("tracer", "Le tracé")}.`,
-            html`${P("#/orga-carto", "Cartographier")} : dessiner une carte de course d'orientation, ou mettre à jour la vôtre.`,
-          ])}
-          <p>« Gérer » s'ouvre sur la liste de vos événements, passés, du jour et à venir. Chacun a ses onglets, selon son type :</p>
-          ${list([
-            html`<b>Compétition individuelle</b> et <b>Score</b> : Départs, Direct, Résultats, Analyse, Équipe.`,
-            html`<b>Relais</b> : Direct, Analyse, Équipe (les résultats et la liste de départ d'un relais ne se déposent pas encore).`,
-            html`<b>Entraînement</b> : Analyse, Équipe.`,
+            html`<b>Compétition individuelle</b> et <b>Score</b> : Tracé, Départs, Direct, Résultats, Analyse, Équipe.`,
+            html`<b>Relais</b> : Tracé, Direct, Analyse, Équipe (les résultats et la liste de départ d'un relais ne se déposent pas encore).`,
+            html`<b>Entraînement</b> : Tracé, Analyse, Équipe.`,
           ])}
           <p>Un événement s'ouvre sur l'onglet de son moment : Départs avant la course, Direct le jour même, Résultats ensuite ; un entraînement sur
-            son analyse.</p>
+            son tracé avant sa date, sur son analyse ensuite.</p>
+          <p>La carte elle-même se dessine dans ${M("carto", "Carto")}, un module à part, ouvert à tout compte : une carte sert à bien des
+            événements, et on y travaille aussi sur le terrain, avec le téléphone.</p>
           <p>Seule l'équipe d'un événement — et les administrateurs d'Ozimut — agit en organisateur de la compétition qu'il porte : liste de départ,
             réservation des horaires, direct, lien du suivi GPS, résultats, circuits envoyés depuis le tracé, analyse de carte. Une compétition
             qu'aucun événement ne porte n'a pas d'organisateur sur Ozimut : pour en être un, créez son événement, ou demandez à rejoindre l'équipe
             de celui qui la porte.</p>`)}`,
       evenement: () => html`
         ${slide("Orga", "Créer un événement", html`
-          <p>« Créer un événement », en haut de « Gérer », se fait en trois étapes :</p>
+          <p>« Créer un événement », en haut de la page, se fait en trois étapes :</p>
           <div class="mx-steps">
             <div class="mx-step"><b>Le type, le pays et la date</b>Compétition individuelle, Score (les postes dans l'ordre que l'on veut, classés aux
               points), Relais ou Entraînement ; un pays que vous avez rejoint ; une date dans les 60 derniers jours ou les 400 prochains.</div>
@@ -466,10 +464,10 @@ export function build(X) {
       equipe: () => html`
         ${slide("Orga", "L'équipe", html`
           <p>Chaque événement a son équipe, et tous ses membres ont les mêmes droits : ils gèrent tout l'événement, acceptent ou retirent des membres,
-            le rattachent au calendrier ou l'en détachent, et peuvent le supprimer. Qui crée l'événement en est le premier membre.</p>
+            le rattachent au calendrier ou l'en détachent, et peuvent le supprimer. Qui crée l'événement en est le premier membre. Le tracé des circuits a son équipe à lui (voir « Tracé »).</p>
           ${list([
             html`<b>Personne n'est ajouté d'office</b>, ni par son nom, ni par sa licence, ni par son adresse e-mail : une personne demande à entrer,
-              dans « Rejoindre une équipe » (en haut de « Gérer ») ou en ouvrant l'adresse de l'événement, que l'onglet « Équipe » donne à
+              dans « Rejoindre une équipe » (en haut de la page) ou en ouvrant l'adresse de l'événement, que l'onglet « Équipe » donne à
               transmettre. Elle peut y joindre un mot pour l'équipe.`,
             html`<b>Un membre répond</b> : n'importe lequel accepte ou refuse la demande, dans l'onglet « Équipe ». Les membres sont prévenus d'une
               demande par notification, et la personne de la réponse.`,
@@ -477,6 +475,19 @@ export function build(X) {
               l'équipe, on ne voit que le prénom et l'initiale du nom de deux membres au plus.`,
             html`<b>Quitter</b> : un membre quitte l'équipe quand il veut ; le dernier membre supprime l'événement plutôt. Pour une compétition du
               calendrier, ce qui a été publié reste en place ; une compétition créée sur Ozimut disparaît d'Arena avec ce qu'elle y a publié.`,
+          ])}`)}`,
+      trace: () => html`
+        ${slide("Orga", "Tracé : les circuits de l'événement", html`
+          <p>L'onglet « Tracé » relie l'événement à son tracé des circuits. Tout ce qui se fait dans le tracé est expliqué dans l'onglet
+            ${D("tracer", "Le tracé")} de cette documentation.</p>
+          ${list([
+            html`<b>Commencer le tracé</b> ouvre la page « Tracer » sur un nouveau tracé préparé pour l'événement — sa compétition, ou le nom et la
+              date de l'entraînement — et rattaché à lui : il ne reste qu'à donner la carte. <b>Ouvrir le tracé</b> le reprend ensuite.`,
+            html`<b>Son équipe à lui</b> : le tracé garde son équipe et ses rôles — traceurs, contrôleur, lecteurs, invités par un lien — et,
+              si l'on veut, son chiffrement. Les circuits restent ainsi confidentiels jusqu'à la course.`,
+            html`<b>Les autres membres de l'événement</b> voient seulement qu'un tracé existe, qui l'a commencé et combien de personnes sont dans
+              son équipe de traçage ; pour y travailler, ils demandent à y être invités.`,
+            html`Après la course, le tracé publie ses circuits, carte comprise, vers l'analyse de l'événement (onglet « Analyse »).`,
           ])}`)}`,
       horaires: () => html`
         ${slide("Orga", "Départs : les horaires", html`
@@ -541,6 +552,80 @@ export function build(X) {
     });
   }
 
-  const LABELS = { site: "Le site", arena: "Les compétitions", coach: "Coach", orga: "Les outils" };
-  return { LABELS, LEDE, ARENA, COACH, ORGA, site, arena, coach, orga };
+  // ======================================================================================================
+  // Carto (« Cartographier », the map editor: a module of its own since 2026-11-12)
+  // ======================================================================================================
+  const CARTO = [["carte", "La carte"], ["donnees", "Les données"], ["terrain", "Sur le terrain"], ["imprimer", "Imprimer et partager"],
+    ["equipe", "En équipe"]];
+  function carto() {
+    return chapters(CARTO, {
+      carte: () => html`
+        ${slide("Carto", "Une carte dans le navigateur", html`
+          <p>${P("#/carto", "Carto")} dessine et met à jour les cartes de course d'orientation dans le navigateur, comme OCAD ou OpenOrienteering
+            Mapper : rien à installer. Il suffit d'un compte, sans activer Orga, sur ordinateur comme sur téléphone. C'est encore une version bêta :
+            gardez une copie de vos fichiers.</p>
+          <p>L'écran de la carte s'ouvre tout de suite, vide, et par-dessus trois choix :</p>
+          ${list([
+            html`<b>Nouvelle carte</b> : sprint ou forêt, avec le jeu de symboles de l'IOF qui convient (ISSprOM 2019-2 ou ISOM 2017-2), placée à
+              l'endroit choisi — des coordonnées ou votre position — dans le quadrillage du pays.`,
+            html`<b>Importer une carte</b> : un fichier OCAD (versions 6 à 2018), OpenOrienteering Mapper (.omap, .xmap) ou Ozimut (.ozmap).
+              Réenregistré en OCAD, le fichier garde à l'identique tout ce que vous n'avez pas modifié ; ce qu'un format ne sait pas garder est dit à
+              l'import et à l'export.`,
+            html`<b>Ouvrir une carte</b> : les vôtres, et celles dont l'équipe vous compte.`,
+          ])}
+          <p>Le ruban suit le travail : Dessiner, Modifier, Fonds, Données, Terrain, Vérifier, Mise en page, Imprimer, Équipe. Les symboles sont à
+            gauche, dessinés comme sur la carte. On dessine en lignes droites, en courbes ou à main levée, accroché aux points et aux lignes voisins ;
+            on remplit une surface d'un clic entre les lignes qui l'entourent, on coupe, on unit, on lisse. Les symboles et les couleurs, encres
+            d'accompagnement comprises, se modifient dans « Mise en page ». « Vérifier » signale ce qui est sous les tailles minimales de l'IOF, et
+            « Généraliser » guide, étape par étape, le passage à une autre échelle.</p>`)}`,
+      donnees: () => html`
+        ${slide("Carto", "Partir des données ouvertes", html`
+          <p>Une carte neuve n'a pas à partir de rien. Sous « Données », Carto va chercher pour la zone de la carte :</p>
+          ${list([
+            html`<b>Les courbes de niveau</b>, d'après le modèle de terrain du pays (l'IGN en France, swisstopo en Suisse, l'USGS aux États-Unis,
+              NRCan au Canada, LINZ en Nouvelle-Zélande), ailleurs d'après un modèle mondial.`,
+            html`<b>OpenStreetMap</b> : routes, chemins, bâtiments, eau, murs et clôtures, rangés dans les symboles de la carte.`,
+            html`<b>Les données nationales</b> : la BD TOPO de l'IGN en France, swissTLM3D en Suisse, les routes, l'eau et les bâtiments de The
+              National Map aux États-Unis.`,
+            html`<b>Le LiDAR</b>, là où un LiDAR national est ouvert (France, Suisse, États-Unis, Canada, Nouvelle-Zélande) : le relief, les falaises
+              et la végétation qu'en tire karttapullautin. Les dalles se calculent à la demande, en quelques minutes ; une barre dit où en est le calcul.`,
+          ])}
+          <p>Tout arrive <b>en brouillon</b>, dans une partie à part : on accepte ce qui est juste et on rejette le reste, objet par objet ou d'un
+            coup. Les données ouvertes sont un point de départ ; le terrain, lui, se relève sur place. Là où un pays n'a pas encore ses données,
+            Carto le dit et propose d'en demander la prise en charge.</p>
+          <p>Les <b>fonds</b> se posent sous la carte : une photo aérienne ou une carte en ligne selon le pays, une image ou un PDF calé, une trace
+            GPS.</p>`)}`,
+      terrain: () => html`
+        ${slide("Carto", "Sur le terrain, avec le téléphone", html`
+          <p>Le mode terrain (onglet « Terrain ») est fait pour le téléphone :</p>
+          ${list([
+            html`votre position GPS sur la carte, avec sa précision, que la carte peut suivre ; la boussole tourne la carte vers le nord ;`,
+            html`la trace de votre passage, gardée comme fond GPX ;`,
+            html`des photos et des notes épinglées sur la carte, là où vous êtes ;`,
+            html`une copie hors ligne de la carte : sans réseau, on continue de dessiner, et les enregistrements partent dès que le réseau revient.`,
+          ])}`)}`,
+      imprimer: () => html`
+        ${slide("Carto", "Imprimer et partager", html`
+          ${list([
+            html`<b>La mise en page</b> : la zone imprimée, les lignes du nord magnétique, l'échelle graphique, la légende, les logos, les mentions,
+              un code QR.`,
+            html`<b>Imprimer</b> : un PDF vectoriel en CMJN ; pour une imprimerie offset, les encres d'accompagnement de la carte et les séparations,
+              une page par plaque avec ses repères de calage — le même moteur que pour le tracé des circuits.`,
+            html`<b>Exporter</b> : OCAD, OpenOrienteering Mapper, .ozmap (le format d'Ozimut, qui garde tout ce qu'il faut pour revenir vers OCAD),
+              une image PNG avec son fichier de calage, un KMZ.`,
+            html`<b>Vers les autres outils</b> : la carte part d'un clic vers le tracé des circuits, ou vers ${P("#/mes-cartes", "Mes cartes")}.`,
+          ])}`)}`,
+      equipe: () => html`
+        ${slide("Carto", "Cartographier en équipe", html`
+          <p>Une carte a son équipe : on y invite par un lien, en cartographe (qui dessine) ou en lecteur ; personne n'y est cherché par son nom ou
+            son adresse e-mail. Plusieurs cartographes travaillent en même temps : chacun voit où sont les autres et se réserve un <b>secteur</b>, un
+            rectangle que les autres ne modifient pas ; des changements faits en même temps se fusionnent objet par objet.</p>
+          <p>Une version est gardée toutes les 30 minutes de travail, ou quand on la nomme, et peut être restaurée ; les commentaires s'épinglent
+            sur la carte. Un compte supprimé confie ses cartes au premier cartographe de leur équipe.
+            ${P("#/compte/confidentialite", "Règles du site et confidentialité")} dit ce qui est gardé.</p>`)}`,
+    });
+  }
+
+  const LABELS = { site: "Le site", arena: "Les compétitions", coach: "Coach", orga: "Les outils", carto: "Carto" };
+  return { LABELS, LEDE, ARENA, COACH, ORGA, CARTO, site, arena, coach, orga, carto };
 }

@@ -951,7 +951,7 @@ export function build(X) {
         <section class="mx-slide" id="tr-principe">
           <p class="mx-kicker">${K}</p>
           <h2>Bahnen im Browser legen</h2>
-          <p class="mx-lead">„Organisation › Bahnlegung“ dient dazu, die Bahnen eines Laufs oder eines Trainings vorzubereiten, von der leeren Karte bis zu den gedruckten Karten:
+          <p class="mx-lead">Die Bahnlegung, die du im Reiter „Bahnlegung“ einer Veranstaltung in Orga öffnest, dient dazu, die Bahnen eines Laufs oder eines Trainings vorzubereiten, von der leeren Karte bis zu den gedruckten Karten:
             Posten setzen, Bahnen zusammenstellen, Postenbeschreibungen ausfüllen, prüfen, drucken, die Dateien für die Zeitmessung vorbereiten. Nichts zu installieren:
             Alles läuft im Browser, und die Veranstaltung wird auf der Website gespeichert.</p>
           <p>Sie übernimmt die Regeln der Bahnlegung und das Dateiformat von <a href="https://purple-pen.org/" target="_blank" rel="noopener">Purple Pen</a>,
@@ -963,7 +963,7 @@ export function build(X) {
             eignet sie sich sehr gut.</div>
           <h3>Die Schritte</h3>
           <div class="mx-steps" style="--c:#a7179b">
-            <div class="mx-step"><b>Die Veranstaltung anlegen</b>Die Seite „Bahnlegung“ öffnet sich mit drei Möglichkeiten; „Neue Veranstaltung“: ein Wettkampf deines Vereins oder ein Training, und seine Karte.</div>
+            <div class="mx-step"><b>Die Bahnlegung beginnen</b>In Orga, im Reiter „Bahnlegung“ der Veranstaltung: „Bahnlegung beginnen“ öffnet eine Bahnlegung, für den Wettkampf oder das Training vorbereitet und damit verbunden; es fehlt nur noch die Karte.</div>
             <div class="mx-step"><b>Die Posten setzen</b>Mit dem Werkzeug Posten, auf der Registerkarte „Alle Posten“ oder direkt in einer Bahn.</div>
             <div class="mx-step"><b>Die Bahnen zusammenstellen</b>Eine Registerkarte pro Bahn: Start, Posten der Reihe nach, Ziel.</div>
             <div class="mx-step"><b>Die Postenbeschreibungen ausfüllen</b>Im linken Bereich, Feld für Feld, als Symbole oder Text.</div>
@@ -971,7 +971,7 @@ export function build(X) {
             <div class="mx-step"><b>Drucken und exportieren</b>Die PDFs der Karten und Postenbeschreibungen, die Dateien für die Zeitmessung.</div>
           </div>
           <h3>Die drei Möglichkeiten</h3>
-          <p>Die Seite „Bahnlegung“ öffnet sofort den Bildschirm der Bahnlegung, leer, und darüber drei Möglichkeiten:</p>
+          <p>Aus dem Reiter „Bahnlegung“ einer Veranstaltung öffnet sich die Seite „Bahnlegung“ direkt mit ihrer Bahnlegung. Anders geöffnet (über einen Link, eine Einladung), zeigt sie sofort den Bildschirm der Bahnlegung, leer, und darüber drei Möglichkeiten:</p>
           <ul class="mx-list">
             <li><b>Neue Veranstaltung</b>: die Bahnen eines Wettkampfs deines Vereins oder eines Trainings legen. Dafür brauchst du die Karte.</li>
             <li><b>Veranstaltung importieren</b>: eine anderswo vorbereitete Veranstaltung übernehmen, aus einem anderen Konto, einem anderen Verein aus Purple Pen oder aus OCAD. Dafür brauchst du eine
@@ -1329,7 +1329,7 @@ export function build(X) {
               ihren GPS-Track hochladen. Dasselbe Fenster stellt die ganze Analyse ein: ihren Namen (der vom Namen der Veranstaltung abweichen kann), ihr Datum, wer sie
               öffnet (alle Konten, mit oder ohne Besucher, der Verein, ein Passwort), die für die Läufer aktivierten Aktionen; dann „Veröffentlichen“ oder „Als Entwurf
               speichern“ (nur ihre Veranstalter sehen sie). Ein Fenster zeigt den Fortschritt — jede Bahn wird auf ihre Karte gedruckt und gesendet — und öffnet danach
-              die Analyse mit einem Klick, ebenso ihre Verwaltungsseite (Orga › Verwalten, Reiter „Analyse“, wo alles änderbar bleibt). Eine neue Veröffentlichung legt eine weitere
+              die Analyse mit einem Klick, ebenso ihre Verwaltungsseite (Reiter „Analyse“ der Veranstaltung, in Orga, wo alles änderbar bleibt). Eine neue Veröffentlichung legt eine weitere
               Analyse an oder aktualisiert, nach Wahl, eine der aus der Veranstaltung schon veröffentlichten (ihre Bahnen und Einstellungen ersetzt, die geteilten Tracks
               bleiben); ein Wettkampf hat nur eine Analyse;</li>
             <li><b>die Bahnen an „Ergebnisse“ senden</b> (${W("send-results")}): eine Ergänzung der Ergebnisse, keine Ergebnisse. Die Ergebnisdatei, die die
@@ -1424,7 +1424,7 @@ export function build(X) {
             Violett in einer eigenen Druckfarbe (oder einer der Druckfarben der Karte, wenn man ihm deren Namen gibt), mit dem echten
             Überdrucken von PDF. <b>Farbauszüge</b> ergeben eine Seite je Druckplatte — jede Schmuckfarbe oder C, M, Y und K —, in Schwarz,
             mit ihren Passermarken und ihrem Namen; sie brauchen eine OCAD- oder Mapper-Karte oder nur die Bahn. Es ist dieselbe Technik
-            wie bei den Farbauszügen von Cartographier.</p>
+            wie bei den Farbauszügen von Carto.</p>
           <h3>Weitere Formate</h3>
           <p>${W("export-geotiff")}, SVG (jedes Objekt benannt), KMZ mit der Karte, MapRun, der OCAD-Text der Bahnen, IOF XML 2.0.3 mit
             jeder Variante als eigener Bahn, und ein Paket für die Importseite von Livelox (das direkte Senden an Livelox erfordert eine Vereinbarung mit

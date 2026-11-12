@@ -1,6 +1,6 @@
 // « Orga › Gérer »'s catalogue in French (pages/manage.js), loaded by loadArea("manage"); manage.en.js, .de.js, .es.js in step.
 export default {
-  "mg.title": "Gérer",
+  "mg.title": "Mes événements",
   "mg.lede": "Vos événements : une course ou un entraînement chacun, avec ses départs, son direct, ses résultats, son analyse et son équipe.",
   "mg.notReady": "La gestion des événements n'est pas encore activée sur le serveur. Réessayez un peu plus tard.",
   "mg.back": "Mes événements",
@@ -154,4 +154,14 @@ export default {
   "mg.ad.migrate.hint": "Crée un événement pour chaque compétition sur laquelle quelqu'un a déjà agi comme organisateur (dépôts, réservation, direct, analyse, compétitions déclarées) et pour chaque entraînement avec une analyse, l'équipe étant les comptes qui l'ont fait. Sans risque à relancer.",
   "mg.ad.migrate.go": "Créer les événements",
   "mg.ad.migrate.done": "{c} compétitions, {d} compétitions déclarées, {t} entraînements\u00a0; {s} laissées de côté.",
+  "mg.tab.trace": "Tracé",
+  "mg.tr.title": "Le tracé des circuits",
+  "mg.tr.hint": "Dans le Tracer, avec son équipe à lui\u00a0: les circuits restent entre ses traceurs et son contrôleur jusqu'à la course.",
+  "mg.tr.none": "Aucun tracé pour cet événement. Commencez-le ici\u00a0: il lui sera rattaché.",
+  "mg.tr.start": "Commencer le tracé",
+  "mg.tr.another": "Commencer un autre tracé",
+  "mg.tr.open": "Ouvrir le tracé",
+  "mg.tr.encrypted": "chiffré",
+  "mg.tr.by": "Commencé par {by} · {n} dans l'équipe de traçage",
+  "mg.tr.secret": "Les circuits restent confidentiels jusqu'à la course. Pour y travailler, demandez à {by} de vous inviter dans l'équipe de traçage.",
 };

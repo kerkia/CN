@@ -63,13 +63,13 @@ export const body = (SITE, { world = false } = {}) => `
       <p>When a results file is uploaded, the uploader's account, the race, the file's name and size and the date of the upload are
         recorded. The file is kept for 60 days in the site's storage (Cloudflare), then erased; the results it contains remain on
         display. The administrator sees who made each upload and can remove an upload. The start lists an organiser uploads before
-        the race (an event's “Starts” tab, in “Orga › Manage”) follow the same rules; only the names, clubs, classes and start times are published,
+        the race (an event's “Starts” tab, in Orga) follow the same rules; only the names, clubs, classes and start times are published,
         and the race's organisers can remove them. A competition an organiser creates off the federation's calendar (see “Organisers' events”) is
         published in the Calendar with its name, date, place, club, discipline and website, without who created it being published. An organiser can also give the link to their
         competition's GPS tracking on another service (their event's “Live” tab): only that link is published, the account that gave it
         is kept and not published; Ozimut receives no position.</p>
-      <h2 style="font-size:16px">Organisers' events (“Orga › Manage”)</h2>
-      <p>An account that creates an event — a race or a training session — in “Orga › Manage” forms its team. The site keeps: the event's
+      <h2 style="font-size:16px">Organisers' events (Orga)</h2>
+      <p>An account that creates an event — a race or a training session — in Orga forms its team. The site keeps: the event's
         description (name, date, place, club, discipline, format, website) and the account that created it; its link, if any, to a
         competition of the federation's calendar; its team (the member accounts, the date each joined and the member who accepted them);
         the requests to join it (the account asking, an optional message of up to 300 characters, the date, the answer and the member who
@@ -78,7 +78,8 @@ export const body = (SITE, { world = false } = {}) => `
         clubs, and those of the people asking to join; other accounts see of a team only the first name and initial of up to two of its
         members. The site's administrators see the events and confirm the links asked for by accounts that are not members of the
         organising club. Legal basis: the performance of the service requested. When an account is deleted, it leaves its teams and its
-        requests are erased; an event whose last member it was stays in the administrators' hands, and what the event published stays.</p>
+        requests are erased; an event whose last member it was stays in the administrators' hands, and what the event published stays. A course setting tied to an event keeps its own team (see “Course setting”): the
+        event's team sees only that it exists, the name of whoever started it and how many people are in its setting team.</p>
       <h2 style="font-size:16px">GPS track analyses</h2>
       <p>The “Solo analysis” page reads the map and the GPS track in your browser: no data is sent to the site, and these files are
         kept only for the duration of the visit.</p>
@@ -138,8 +139,8 @@ export const body = (SITE, { world = false } = {}) => `
         permission, subject to the exceptions the law provides, in particular short quotations naming the author and the source
         (article L. 122-5 of the French Intellectual Property Code). The automatic translations are adaptations of the article and
         follow the same rules.</p>
-      <h2 style="font-size:16px">Mapping</h2>
-      <p>A map of the “Mapping” page (the map's document, the OCAD file it came from, its backgrounds, its versions, the team's comments and photos) is kept in the site's storage (Cloudflare) and only its team can open it: its creator and the people who join through an invitation link (nobody is looked up by name or e-mail address); their name and account are recorded with their role. Online backgrounds (IGN's aerial photos and maps, OpenStreetMap) are read at each opening and not kept; for open data (IGN's heights, OpenStreetMap, LiDAR), only the extent of the area is sent to those services. The field mode's GPS position stays in your browser, except a track you choose to save as a background. When the account is deleted, each map it created goes to the first mapper of its team, otherwise it is deleted with everything it holds.</p>
+      <h2 style="font-size:16px">Carto</h2>
+      <p>A map in Carto (the map's document, the OCAD file it came from, its backgrounds, its versions, the team's comments and photos) is kept in the site's storage (Cloudflare) and only its team can open it: its creator and the people who join through an invitation link (nobody is looked up by name or e-mail address); their name and account are recorded with their role. Online backgrounds (IGN's aerial photos and maps, OpenStreetMap) are read at each opening and not kept; for open data (IGN's heights, OpenStreetMap, LiDAR), only the extent of the area is sent to those services. The field mode's GPS position stays in your browser, except a track you choose to save as a background. When the account is deleted, each map it created goes to the first mapper of its team, otherwise it is deleted with everything it holds.</p>
       <h2 style="font-size:16px">Course setting</h2>
       <p>An event of the “Course setting” page (its courses, its map, its versions, the team's comments and the states of the
         controls noted in field mode) is kept in the site's storage (Cloudflare) and is only accessible to its team: its creator and
@@ -159,7 +160,7 @@ export const body = (SITE, { world = false } = {}) => `
         The result, its settings and the date only; nothing is kept of a visitor's games without an account. These results are
         deleted with your account.</p>
       <h2 style="font-size:16px">Pixel</h2>
-      <p>Each race you finish in “Pixel” is kept under your account's name: its time, its split times, the distance run and its
+      <p>Each race you finish in Pixel is kept under your account's name: its time, its split times, the distance run and its
         route in the virtual forest, shown to the other accounts in that course's results, ranking and analysis; you are told apart
         from one race to the next by a fingerprint of your account, never by its number. Nothing is kept of a visitor's races. An
         organiser who makes an event sends their OCAD map (and, if they wish, their courses): it is kept in the site's storage, shown
@@ -254,5 +255,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Credits:</b> the control description symbols and texts (Coach › Control descriptions, the course setting) come from Purple
         Pen, by Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         under the <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">BSD licence</a>.</p>
-      <p class="muted">Last updated: 11 November 2026.</p>
+      <p class="muted">Last updated: 12 November 2026.</p>
 `;

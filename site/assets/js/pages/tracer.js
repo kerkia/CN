@@ -31,8 +31,20 @@ const listHash = () => (inOwnTab() ? "#/orga-tracer?fen=1" : "#/orga-tracer");
 const orgCode = (org) => { const m = /^\s*(\d{3,4})\b/.exec(String(org || "")); return m ? m[1].padStart(4, "0") : null; };
 let current = null, pageMain = null, leaving = false;
 
+// the event of Orga the page was opened from (its « Tracé » tab, ?ev=<id>; owner, 2026-11-12): a new course setting is that
+// event's — its competition, or its name and day for a training — and tied to it (functions/api/tracer `event`)
+let forEvent = null;
+async function loadOrgaEvent(id) {
+  try {
+    const r = await fetch(`api/events/${encodeURIComponent(id)}`, { credentials: "same-origin", cache: "no-store" });
+    const d = r.ok ? await r.json() : null;
+    return d?.event && (d.member || d.admin) ? d.event : null;
+  } catch (e) { return null; }
+}
+
 export async function render(main, r) {
   pageMain = main; leaving = false;
+  forEvent = r.query.ev ? await loadOrgaEvent(r.query.ev) : null;
   bindFull();
   if (inOwnTab()) setFull(true);                         // a tab opened alone by « ↗ »: the Tracer without the site's bar
   // the editor at once, empty; the beta notice over it (beta.js; owner, 2026-10-16); then the event a link names, else the start screen
@@ -42,6 +54,7 @@ export async function render(main, r) {
     if (leaving) return;
     if (r.query.id && r.query.invite) await joinByInvite(r.query.id, r.query.invite);
     if (r.query.id) openEvent(r.query.id);
+    else if (forEvent && r.query.nouveau) choose("new");
     // a map handed over by Cartographier (« Créer un événement du tracé sur cette carte »): a new event on it (pwa.js inbox)
     else if (r.query.recu) import("../pwa.js").then((m) => m.takeInbox()).then((f) => (f.length ? choose("new", f) : startScreen())).catch(() => startScreen());
     else startScreen();
@@ -200,6 +213,9 @@ const escA = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "
 /** The competitions the account runs on Ozimut (« Orga › Gérer », 2026-11-11: its events' competitions, the agenda's place
  *  beside them); before migration 0026 (the API answers 503), as before: the club's, and those the account declared. */
 async function clubRaces() {
+  // opened from an event of Orga: that event's competition alone (a training: none, the training's fields filled from it)
+  if (forEvent) return forEvent.type !== "training" && forEvent.race && forEvent.linkState !== "pending"
+    ? [{ key: forEvent.race, date: forEvent.date, name: forEvent.name, place: forEvent.place || "", org: forEvent.club || "", epr: forEvent.epreuve || "" }] : [];
   const r = await fetch("api/events", { credentials: "same-origin", cache: "no-store" }).catch(() => null);
   if (r?.ok) {
     const evs = ((await r.json()).events || []).filter((e) => e.type !== "training" && e.race && e.linkState !== "pending");
@@ -228,12 +244,12 @@ async function clubRaces() {
 }
 
 // ---- what the event is: a competition of one's club, or a training ------------------------------------------------------------
-function kindFields(races, title = "") {
+function kindFields(races, title = forEvent?.name || "") {
   return `<div class="tr-checks"><label class="tr-check"><input type="radio" name="kind" value="race" ${races.length ? "checked" : "disabled"}> ${escA(t("trc.page.kindRaceOpt"))}</label>
     <label class="tr-check"><input type="radio" name="kind" value="training" ${races.length ? "" : "checked"}> ${escA(t("trc.page.kindTrainingOpt"))}</label></div>
     <div data-k="race">${field(escA(t("trc.page.kindRace")), `<select name="race">${races.map((x) => `<option value="${x.key}">${escA(fmtDate(x.date, "short"))} — ${escA(x.name)}${x.place ? ` (${escA(x.place)})` : ""}</option>`).join("")}</select>`,
       escA(races.length ? t("trc.page.racesHint") : t("trc.page.noRaces")))}</div>
-    <div data-k="training" hidden>${field(escA(t("trc.page.titleLabel")), `<input name="title" placeholder="${escA(t("trc.page.titlePh"))}" value="${escA(title)}">`)}${field(escA(t("trc.page.dateLabel")), `<input name="date" type="date" value="${today()}">`)}</div>`;
+    <div data-k="training" hidden>${field(escA(t("trc.page.titleLabel")), `<input name="title" placeholder="${escA(t("trc.page.titlePh"))}" value="${escA(title)}">`)}${field(escA(t("trc.page.dateLabel")), `<input name="date" type="date" value="${forEvent?.date || today()}">`)}</div>`;
 }
 function bindKind(f, races) {
   const sync = () => { const k = f.elements.kind.value; f.querySelectorAll("[data-k]").forEach((d) => { d.hidden = d.dataset.k !== k; }); };
@@ -245,7 +261,8 @@ const kindProblem = (o) => (o.kind === "race" && !o.race ? t("trc.page.needRace"
 const privField = (on = false) => `<label class="tr-check" title="${escA(t("trc.priv.tip"))}"><input type="checkbox" name="priv"${on ? " checked" : ""}> ${escA(t("trc.priv.label"))}</label>`;
 async function createEvent(v, races) {
   const race = v.kind === "race" ? races.find((x) => x.key === v.race) : null;
-  const body = { ...(race ? { kind: "race", race: race.key, title: race.name, date: race.date } : { kind: "training", title: v.title.trim(), date: v.date || today() }), mapPrivate: !!v.priv };
+  const body = { ...(race ? { kind: "race", race: race.key, title: race.name, date: race.date } : { kind: "training", title: v.title.trim(), date: v.date || today() }), mapPrivate: !!v.priv,
+    ...(forEvent ? { event: forEvent.id } : {}) };
   try { return { id: (await S.api("", { method: "POST", body })).id, title: body.title }; }
   catch (e) { alertBox(e.code === "not organiser" ? t("trc.page.notOrganiser") : t("trc.page.createErr", { err: e.code || e.message })); return null; }
 }

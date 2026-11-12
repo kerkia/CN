@@ -69,14 +69,14 @@ export const body = (SITE, { world = false } = {}) => `
       <p>Al subir un archivo de resultados, se registran la cuenta de quien lo sube, la carrera, el nombre y el tamaño del
         archivo y la fecha de subida. El archivo se conserva 60 días en el espacio de almacenamiento del sitio (Cloudflare) y después se
         borra; los resultados que contiene siguen mostrándose. El administrador ve quién ha subido cada archivo y puede retirar un
-        archivo. Los horarios de salida que un organizador sube antes de la carrera (pestaña «Salidas» de un evento, en «Orga › Gestionar») siguen las mismas
+        archivo. Los horarios de salida que un organizador sube antes de la carrera (pestaña «Salidas» de un evento, en Orga) siguen las mismas
         reglas; solo se publican los nombres, clubes, categorías y horas de salida, y los organizadores de la carrera pueden
         retirarlos. Una competición que un organizador crea fuera del calendario de la federación (ver «Eventos de los organizadores») se publica en
         el Calendario con su nombre, fecha, lugar, club, disciplina y web, sin que se publique quién la creó. Un organizador también puede indicar el enlace del seguimiento GPS de su competición en otro
         servicio (pestaña «Directo» de su evento): solo se publica ese enlace, y la cuenta que lo indicó se guarda sin publicarse; Ozimut no
         recibe ninguna posición.</p>
-      <h2 style="font-size:16px">Eventos de los organizadores («Orga › Gestionar»)</h2>
-      <p>Una cuenta que crea un evento —una carrera o un entrenamiento— en «Orga › Gestionar» forma su equipo. El sitio guarda: la
+      <h2 style="font-size:16px">Eventos de los organizadores (Orga)</h2>
+      <p>Una cuenta que crea un evento —una carrera o un entrenamiento— en Orga forma su equipo. El sitio guarda: la
         descripción del evento (nombre, fecha, lugar, club, disciplina, formato, sitio web) y la cuenta que lo creó; su posible vinculación
         a una competición del calendario de la federación; su equipo (las cuentas miembros, la fecha en que entró cada una y el miembro que
         la aceptó); las solicitudes para unirse a él (la cuenta que lo pide, un mensaje opcional de 300 caracteres como máximo, la fecha, la
@@ -86,7 +86,8 @@ export const body = (SITE, { world = false } = {}) => `
         nombre de pila y la inicial del apellido de dos de sus miembros como máximo. Los administradores del sitio ven los eventos y
         confirman las vinculaciones que piden cuentas que no son miembros del club organizador. Base jurídica: la ejecución del servicio
         solicitado. Al eliminar una cuenta, esta sale de sus equipos y sus solicitudes se borran; un evento del que era el último miembro
-        queda en manos de los administradores, y lo que el evento publicó se mantiene.</p>
+        queda en manos de los administradores, y lo que el evento publicó se mantiene. Un trazado de recorridos vinculado a un evento conserva su propio equipo (ver «Trazado de
+        recorridos»): el equipo del evento solo ve que existe, el nombre de quien lo empezó y cuántas personas tiene su equipo de trazado.</p>
       <h2 style="font-size:16px">Análisis de tracks GPS</h2>
       <p>La página «Análisis individual» lee el mapa y el track GPS en tu navegador: no se transmite ningún dato al sitio, y esos
         archivos solo se conservan durante la visita.</p>
@@ -150,8 +151,8 @@ export const body = (SITE, { world = false } = {}) => `
         su autor, salvo las excepciones que prevé la ley, en particular las citas breves que mencionan al autor y la fuente (artículo
         L. 122-5 del Código de la propiedad intelectual francés). Las traducciones automáticas son adaptaciones del artículo y siguen las
         mismas reglas.</p>
-      <h2 style="font-size:16px">Cartografiar</h2>
-      <p>Un mapa de la página «Cartografiar» (el documento del mapa, el archivo de OCAD del que procede, sus fondos, sus versiones, los comentarios y las fotos del equipo) se guarda en el almacenamiento del sitio (Cloudflare) y solo su equipo puede abrirlo: su creador y las personas que se unen con un enlace de invitación (no se busca a nadie por nombre ni dirección de e-mail); su nombre y su cuenta se registran con su rol. Los fondos en línea (fotos aéreas y mapas del IGN, OpenStreetMap) se leen en cada apertura y no se guardan; para los datos abiertos (altitudes del IGN, OpenStreetMap, LiDAR), solo se envía la extensión de la zona a esos servicios. La posición GPS del modo de campo se queda en tu navegador, salvo el track que decidas guardar como fondo. Cuando se elimina la cuenta, cada mapa que creó pasa al primer cartógrafo de su equipo; si no, se elimina con todo lo que contiene.</p>
+      <h2 style="font-size:16px">Carto</h2>
+      <p>Un mapa de Carto (el documento del mapa, el archivo de OCAD del que procede, sus fondos, sus versiones, los comentarios y las fotos del equipo) se guarda en el almacenamiento del sitio (Cloudflare) y solo su equipo puede abrirlo: su creador y las personas que se unen con un enlace de invitación (no se busca a nadie por nombre ni dirección de e-mail); su nombre y su cuenta se registran con su rol. Los fondos en línea (fotos aéreas y mapas del IGN, OpenStreetMap) se leen en cada apertura y no se guardan; para los datos abiertos (altitudes del IGN, OpenStreetMap, LiDAR), solo se envía la extensión de la zona a esos servicios. La posición GPS del modo de campo se queda en tu navegador, salvo el track que decidas guardar como fondo. Cuando se elimina la cuenta, cada mapa que creó pasa al primer cartógrafo de su equipo; si no, se elimina con todo lo que contiene.</p>
       <h2 style="font-size:16px">Trazado de recorridos</h2>
       <p>Un evento de la página «Trazado» (sus recorridos, su mapa, sus versiones, los comentarios del equipo y los estados de los
         controles anotados en modo terreno) se conserva en el espacio de almacenamiento del sitio (Cloudflare) y solo es accesible para su equipo:
@@ -172,7 +173,7 @@ export const body = (SITE, { world = false } = {}) => `
         20 mejores de todos. Solo el resultado, sus ajustes y la fecha; no se guarda nada de las partidas de un visitante sin cuenta.
         Estos resultados se borran con tu cuenta.</p>
       <h2 style="font-size:16px">Pixel</h2>
-      <p>Cada carrera que terminas en «Pixel» se guarda con el nombre de tu cuenta: su tiempo, sus tiempos parciales, la
+      <p>Cada carrera que terminas en Pixel se guarda con el nombre de tu cuenta: su tiempo, sus tiempos parciales, la
         distancia recorrida y su recorrido por el bosque virtual, mostrados a las demás cuentas en los resultados, la clasificación y el
         análisis de ese recorrido; se te reconoce de una carrera a otra por una huella de tu cuenta, nunca por su número. No se guarda
         nada de las carreras de un visitante sin cuenta. Un organizador que crea un evento envía su mapa OCAD (y, si quiere, sus
@@ -278,5 +279,5 @@ export const body = (SITE, { world = false } = {}) => `
       <p><b>Créditos:</b> los símbolos y los textos de las descripciones de control (Coach › Descripciones de control, el trazado de recorridos)
         proceden de Purple Pen, de Peter Golde (<a href="https://github.com/petergolde/PurplePen" target="_blank" rel="noopener">github.com/petergolde/PurplePen</a>),
         bajo <a href="assets/tracer/LICENSE-PurplePen.txt" target="_blank" rel="noopener">licencia BSD</a>.</p>
-      <p class="muted">Última actualización: 11 de noviembre de 2026.</p>
+      <p class="muted">Última actualización: 12 de noviembre de 2026.</p>
 `;

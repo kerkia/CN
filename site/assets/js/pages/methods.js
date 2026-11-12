@@ -14,6 +14,8 @@ import { timeChart, scatterChart, methodColor, terrainColor, METHOD_SLOT, css } 
 import { TERRAINS, available } from "../store.js";
 import { chartCard, bindChartCard, legend, methodKey, methodLabel, methodShort, seg, cnLabel } from "../ui.js";
 import { replaceQuery, MODULES } from "../app.js";
+// the modules with a documentation (Pixel, the administrators' prototype, has none yet: its page explains itself)
+const DOC_MODS = MODULES.filter((m) => m !== "pixel");
 import { icon } from "./hub.js";
 import { sees, session } from "../auth.js";
 import * as TR from "../tracer/icons.js";
@@ -173,14 +175,14 @@ async function methodsContent(main, replaceQuery, fr) {
 /** The way about the documentation (owner, 2026-10-31): its home, and each module's documentation. */
 const docNav = (mod) => html`<nav class="doc-nav" aria-label="${t("doc.nav")}">
   <a class="doc-home" href="#/documentation">‹ ${t("page.methods")}</a>
-  <span class="doc-mods">${MODULES.map((m) => html`<a href="#/documentation?module=${m}" data-mod="${m}" ${raw(m === mod ? 'aria-current="page"' : "")}>${t(`mod.${m}`)}</a>`)}</span>
+  <span class="doc-mods">${DOC_MODS.map((m) => html`<a href="#/documentation?module=${m}" data-mod="${m}" ${raw(m === mod ? 'aria-current="page"' : "")}>${t(`mod.${m}`)}</a>`)}</span>
 </nav>`;
 
 /** The documentation's home: the site in a few words, and the choice of a module's documentation. */
 function home(main, G, query) {
   main.innerHTML = html`<div class="doc">
     <div class="page-head"><div><h1>${t("page.methods")}</h1><p class="lede">${G.LEDE.home}</p></div></div>
-    <div class="doc-cards">${MODULES.map((m) => html`<a class="doc-card" data-mod="${m}" href="#/documentation?module=${m}">
+    <div class="doc-cards">${DOC_MODS.map((m) => html`<a class="doc-card" data-mod="${m}" href="#/documentation?module=${m}">
       ${icon(m)}<span class="doc-card-text"><b>${t(`mod.${m}`)}</b><span>${t(m === "coach" ? "mod.coach.tag" : `mod.${m}.tag`)}</span></span>
       <span class="doc-card-go">${t("doc.read")} ›</span></a>`)}</div>
     <h2 class="doc-sec">${G.LABELS.site}</h2>
@@ -195,7 +197,7 @@ function home(main, G, query) {
 export async function render(main, { query = {} } = {}) {
   const fr = sees("FR");                      // France's ranking: its official CN and the ranking's calculations
   // one documentation per module (owner, 2026-10-31): `?module=` names it; without, the documentation's home
-  const mod = MODULES.includes(query.module) ? query.module : null;
+  const mod = DOC_MODS.includes(query.module) ? query.module : null;
   const G = (await import(`../content/guide.${lang()}.js`).catch(() => import("../content/guide.en.js"))).build({ html, raw, subTabs, fr, admin: !!session()?.admin, owner: true });
   if (!mod) return home(main, G, query);
   // the address keeps the module: every change of tab or chapter writes it again
@@ -203,7 +205,7 @@ export async function render(main, { query = {} } = {}) {
   // Stats' documentation is the methods' (and their study), Orga's « Le tracé » too
   const { C, from, drawNorm } = mod === "stats" || mod === "orga" ? await methodsContent(main, rq, fr) : {};
   const at = (k) => C.TABS.filter(([x]) => x === k);
-  const TABS = mod === "arena" ? [["arena", G.LABELS.arena]] : mod === "coach" ? [["coach", G.LABELS.coach]]
+  const TABS = mod === "arena" ? [["arena", G.LABELS.arena]] : mod === "coach" ? [["coach", G.LABELS.coach]] : mod === "carto" ? [["carto", G.LABELS.carto]]
     : mod === "orga" ? [["orga", G.LABELS.orga], ...at("tracer")] : [...at("officiel"), ...at("top"), ...at("calculs")];
   // « L'étude » has a panel but no button: the Ozimut method's tab leads to it
   const PANELS = mod === "stats" ? [...TABS, C.STUDY_TAB] : TABS;
@@ -222,7 +224,7 @@ export async function render(main, { query = {} } = {}) {
   // ---- charts, drawn when their tab is first shown -------------------------------------------------------
   const DRAW = { top: drawNorm };
   const DRAW_CHAPTER = { resultats: () => { C.drawAgreement(); C.drawEval(); } };
-  const BUILD = { arena: G.arena, coach: G.coach, orga: G.orga,
+  const BUILD = { arena: G.arena, coach: G.coach, orga: G.orga, carto: G.carto,
     ...(C ? { officiel: C.officiel, top: C.top, etude: C.etude, calculs: C.calculs, tracer: C.tracerDoc } : {}) };
 
   // ---- tabs and chapters ------------------------------------------------------------------------------------

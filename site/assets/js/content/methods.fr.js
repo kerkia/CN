@@ -951,7 +951,7 @@ export function build(X) {
         <section class="mx-slide" id="tr-principe">
           <p class="mx-kicker">${K}</p>
           <h2>Tracer les circuits dans le navigateur</h2>
-          <p class="mx-lead">« Organisation › Tracer » sert à préparer les circuits d'une course ou d'un entraînement, de la carte vierge aux cartes imprimées :
+          <p class="mx-lead">Le tracé, qui s'ouvre depuis l'onglet « Tracé » d'un événement dans Orga, sert à préparer les circuits d'une course ou d'un entraînement, de la carte vierge aux cartes imprimées :
             placer les postes, composer les circuits, remplir les définitions, vérifier, imprimer, préparer les fichiers du chronométrage. Rien à installer :
             tout se passe dans le navigateur, et l'événement est enregistré sur le site.</p>
           <p>Il reprend les règles de traçage et le format de fichier de <a href="https://purple-pen.org/" target="_blank" rel="noopener">Purple Pen</a>,
@@ -963,7 +963,7 @@ export function build(X) {
             d'entraînement.</div>
           <h3>Les étapes</h3>
           <div class="mx-steps" style="--c:#a7179b">
-            <div class="mx-step"><b>Créer l'événement</b>La page « Tracer » s'ouvre sur trois choix ; « Nouvel événement » : une compétition de son club ou un entraînement, et sa carte.</div>
+            <div class="mx-step"><b>Commencer le tracé</b>Dans Orga, l'onglet « Tracé » de l'événement : « Commencer le tracé » ouvre un tracé préparé pour la compétition ou l'entraînement, et rattaché à lui ; il reste à donner la carte.</div>
             <div class="mx-step"><b>Poser les postes</b>Avec l'outil Poste, sur l'onglet « Tous les postes » ou directement dans un circuit.</div>
             <div class="mx-step"><b>Composer les circuits</b>Un onglet par circuit : départ, postes dans l'ordre, arrivée.</div>
             <div class="mx-step"><b>Remplir les définitions</b>Dans le panneau de gauche, case par case, symboles ou texte.</div>
@@ -971,7 +971,7 @@ export function build(X) {
             <div class="mx-step"><b>Imprimer et exporter</b>Les PDF des cartes et des définitions, les fichiers pour le chronométrage.</div>
           </div>
           <h3>Les trois choix</h3>
-          <p>La page « Tracer » ouvre tout de suite l'écran du tracé, vide, et par-dessus trois choix :</p>
+          <p>Depuis l'onglet « Tracé » d'un événement, la page « Tracer » s'ouvre directement sur son tracé. Ouverte autrement (un lien, une invitation), elle montre tout de suite l'écran du tracé, vide, et par-dessus trois choix :</p>
           <ul class="mx-list">
             <li><b>Nouvel événement</b> : tracer les circuits d'une compétition de votre club ou d'un entraînement. Il faut la carte.</li>
             <li><b>Importer un événement</b> : reprendre un événement préparé ailleurs, sur un autre compte, dans un autre club dans Purple Pen ou dans OCAD. Il faut un fichier
@@ -1329,7 +1329,7 @@ export function build(X) {
               leur trace GPS. La même fenêtre règle toute l'analyse : son nom (qui peut différer de celui de l'événement), sa date, qui l'ouvre (tous les comptes, avec ou
               sans les visiteurs, le club, un mot de passe), les actions activées pour les coureurs ; puis « Publier », ou « Enregistrer en brouillon » (seuls ses
               organisateurs la voient). Une fenêtre suit l'avancement — chaque circuit est imprimé sur sa carte puis envoyé —, puis ouvre l'analyse d'un clic, ou sa
-              page de gestion (Orga › Gérer, onglet « Analyse », où tout reste modifiable). Une nouvelle publication crée une autre analyse, ou met à jour, au choix, l'une de
+              page de gestion (l'onglet « Analyse » de l'événement, dans Orga, où tout reste modifiable). Une nouvelle publication crée une autre analyse, ou met à jour, au choix, l'une de
               celles déjà publiées depuis l'événement (ses circuits et ses réglages remplacés, les traces partagées gardées) ; une compétition n'a qu'une analyse ;</li>
             <li><b>envoyer les circuits à « Résultats »</b> (${W("send-results")}) : un complément aux résultats, pas des résultats. Le fichier de résultats exporté
               par le logiciel de chronométrage (MeOS, OE…) en IOF XML donne déjà la longueur, la dénivelée et les postes de chaque circuit : avec lui, cet envoi n'apporte
@@ -1423,7 +1423,7 @@ export function build(X) {
             OCAD définit, et le violet dans une encre à part (ou l'une des encres de la carte, si on lui donne son nom), avec la vraie
             surimpression de PDF. Les <b>séparations</b> donnent une page par plaque — chaque encre d'accompagnement, ou C, M, J et N —, en
             noir, avec ses repères de calage et son nom ; elles demandent une carte OCAD ou Mapper, ou le circuit seul. C'est le même
-            moteur que les séparations de Cartographier.</p>
+            moteur que les séparations de Carto.</p>
           <h3>Autres formats</h3>
           <p>${W("export-geotiff")}, SVG (chaque objet nommé), KMZ avec la carte, MapRun, le texte OCAD des circuits, IOF XML 2.0.3 avec
             chaque variante comme un circuit, et un paquet pour la page d'import de Livelox (l'envoi direct à Livelox demande un accord avec

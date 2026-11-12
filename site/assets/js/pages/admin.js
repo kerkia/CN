@@ -329,7 +329,7 @@ export async function render(main, { query = {} } = {}) {
     try { list = (await call("/pending")).pending; } catch (e) { $("#ev-pending").innerHTML = html`<div class="empty">${String(e.message)}</div>`; return; }
     $("#ev-pending").innerHTML = list.length ? html`<table class="data compact"><thead><tr><th>${t("mg.f.date")}</th><th>${t("mg.col.event")}</th><th>${t("mg.ad.asked")}</th>
         <th>${t("mg.ad.by")}</th><th></th></tr></thead><tbody>${list.map((e) => html`<tr data-ev="${e.id}"><td class="num">${fmtDate(e.date, "short")}</td>
-        <td><a href="#/gerer?ev=${e.id}">${e.name}</a></td>
+        <td><a href="#/orga?ev=${e.id}">${e.name}</a></td>
         <td>${e.competition ? html`${e.competition.name}<br><span class="muted">${e.competition.org || ""}</span>` : "—"}${e.held ? html`<br><span class="tag">${t("mg.ad.heldBy", { name: e.held })}</span>` : ""}</td>
         <td>${e.byName}<br><span class="muted">${e.byEmail}${e.byClub ? ` · ${e.byClub}` : ""}</span></td>
         <td class="r" style="white-space:nowrap"><button type="button" class="btn btn-sm btn-primary" data-ok="1">${t("mg.ad.approve")}</button>

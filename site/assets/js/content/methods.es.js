@@ -951,7 +951,7 @@ export function build(X) {
         <section class="mx-slide" id="tr-principe">
           <p class="mx-kicker">${K}</p>
           <h2>Trazar los recorridos en el navegador</h2>
-          <p class="mx-lead">«Organización › Trazado» sirve para preparar los recorridos de una carrera o de un entrenamiento, del mapa en blanco a los mapas impresos:
+          <p class="mx-lead">El trazado, que se abre desde la pestaña «Trazado» de un evento en Orga, sirve para preparar los recorridos de una carrera o de un entrenamiento, del mapa en blanco a los mapas impresos:
             colocar los controles, componer los recorridos, rellenar las descripciones, verificar, imprimir, preparar los archivos del cronometraje. Nada que instalar:
             todo ocurre en el navegador, y el evento se guarda en el sitio.</p>
           <p>Retoma las reglas de trazado y el formato de archivo de <a href="https://purple-pen.org/" target="_blank" rel="noopener">Purple Pen</a>,
@@ -963,7 +963,7 @@ export function build(X) {
             de entrenamiento.</div>
           <h3>Los pasos</h3>
           <div class="mx-steps" style="--c:#a7179b">
-            <div class="mx-step"><b>Crear el evento</b>La página «Trazado» se abre con tres opciones; «Nuevo evento»: una competición de tu club o un entrenamiento, y su mapa.</div>
+            <div class="mx-step"><b>Empezar el trazado</b>En Orga, la pestaña «Trazado» del evento: «Empezar el trazado» abre un trazado preparado para la competición o el entrenamiento, y vinculado a él; solo falta dar el mapa.</div>
             <div class="mx-step"><b>Colocar los controles</b>Con la herramienta Control, en la pestaña «Todos los controles» o directamente en un recorrido.</div>
             <div class="mx-step"><b>Componer los recorridos</b>Una pestaña por recorrido: salida, controles en orden, meta.</div>
             <div class="mx-step"><b>Rellenar las descripciones</b>En el panel de la izquierda, casilla a casilla, con símbolos o texto.</div>
@@ -971,7 +971,7 @@ export function build(X) {
             <div class="mx-step"><b>Imprimir y exportar</b>Los PDF de los mapas y de las descripciones, los archivos para el cronometraje.</div>
           </div>
           <h3>Las tres opciones</h3>
-          <p>La página «Trazado» abre enseguida la pantalla del trazado, vacía, y encima tres opciones:</p>
+          <p>Desde la pestaña «Trazado» de un evento, la página «Trazado» se abre directamente en su trazado. Abierta de otro modo (un enlace, una invitación), muestra enseguida la pantalla del trazado, vacía, y encima tres opciones:</p>
           <ul class="mx-list">
             <li><b>Nuevo evento</b>: trazar los recorridos de una competición de tu club o de un entrenamiento. Hace falta el mapa.</li>
             <li><b>Importar un evento</b>: retomar un evento preparado en otro sitio, en otra cuenta, en otro club en Purple Pen o en OCAD. Hace falta un archivo
@@ -1329,7 +1329,7 @@ export function build(X) {
               su track GPS. La misma ventana ajusta todo el análisis: su nombre (que puede ser distinto del del evento), su fecha, quién lo abre (todas las cuentas, con o sin
               visitantes, el club, una contraseña), las acciones activadas para los corredores; después «Publicar», o «Guardar como borrador» (solo lo ven sus
               organizadores). Una ventana sigue el avance — cada recorrido se imprime en su mapa y se envía — y luego abre el análisis con un clic, igual que su página de
-              gestión (Orga › Gestionar, pestaña «Análisis», donde todo sigue siendo modificable). Una nueva publicación crea otro análisis o, a elección, actualiza uno de los ya
+              gestión (pestaña «Análisis» del evento, en Orga, donde todo sigue siendo modificable). Una nueva publicación crea otro análisis o, a elección, actualiza uno de los ya
               publicados desde el evento (sus recorridos y ajustes reemplazados, los tracks compartidos conservados); una competición tiene un solo análisis;</li>
             <li><b>enviar los recorridos a «Resultados»</b> (${W("send-results")}): un complemento de los resultados, no resultados. El archivo de resultados que
               exporta el software de cronometraje (MeOS, OE…) en IOF XML ya da la longitud, el desnivel y los controles de cada recorrido: con él, este envío no aporta
@@ -1422,7 +1422,7 @@ export function build(X) {
           <p>Para una <b>imprenta offset</b>, los colores del PDF pueden ser <b>tintas planas</b>: las que define un mapa de OCAD, y el
             violeta en una tinta aparte (o en una de las tintas del mapa, si se le da su nombre), con la sobreimpresión real de PDF. Las
             <b>separaciones</b> dan una página por plancha —cada tinta plana, o C, M, Y y K—, en negro, con sus marcas de registro y su
-            nombre; requieren un mapa de OCAD o Mapper, o solo el recorrido. Es el mismo motor que las separaciones de Cartographier.</p>
+            nombre; requieren un mapa de OCAD o Mapper, o solo el recorrido. Es el mismo motor que las separaciones de Carto.</p>
           <h3>Otros formatos</h3>
           <p>${W("export-geotiff")}, SVG (cada objeto con nombre), KMZ con el mapa, MapRun, el texto OCAD de los recorridos, IOF XML 2.0.3 con
             cada variante como un recorrido, y un paquete para la página de importación de Livelox (el envío directo a Livelox requiere un acuerdo con

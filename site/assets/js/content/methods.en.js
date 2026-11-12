@@ -951,7 +951,7 @@ export function build(X) {
         <section class="mx-slide" id="tr-principe">
           <p class="mx-kicker">${K}</p>
           <h2>Setting courses in the browser</h2>
-          <p class="mx-lead">“Organising › Course setting” is for preparing the courses of a race or a training session, from the blank map to the printed maps:
+          <p class="mx-lead">Course setting, opened from an event's “Course setting” tab in Orga, is for preparing the courses of a race or a training session, from the blank map to the printed maps:
             placing the controls, building the courses, filling in the descriptions, checking, printing, preparing the files for timing. Nothing to install:
             everything happens in the browser, and the event is saved on the site.</p>
           <p>It follows the course-setting rules and the file format of <a href="https://purple-pen.org/" target="_blank" rel="noopener">Purple Pen</a>,
@@ -963,7 +963,7 @@ export function build(X) {
             maps.</div>
           <h3>The steps</h3>
           <div class="mx-steps" style="--c:#a7179b">
-            <div class="mx-step"><b>Create the event</b>The “Course setting” page opens on three choices; “New event”: a competition of your club or a training session, and its map.</div>
+            <div class="mx-step"><b>Start the course setting</b>In Orga, the event's “Course setting” tab: “Start setting the courses” opens a course setting prepared for the competition or the training session, and tied to it; all that is left is to give the map.</div>
             <div class="mx-step"><b>Place the controls</b>With the Control tool, on the “All controls” tab or directly in a course.</div>
             <div class="mx-step"><b>Build the courses</b>One tab per course: start, controls in order, finish.</div>
             <div class="mx-step"><b>Fill in the descriptions</b>In the left-hand pane, box by box, symbols or text.</div>
@@ -971,7 +971,7 @@ export function build(X) {
             <div class="mx-step"><b>Print and export</b>The PDFs of the maps and descriptions, the files for timing.</div>
           </div>
           <h3>The three choices</h3>
-          <p>The “Course setting” page opens the course-setting screen straight away, empty, and over it three choices:</p>
+          <p>From an event's “Course setting” tab, the “Course setting” page opens straight on its course setting. Opened otherwise (a link, an invitation), it shows the course-setting screen straight away, empty, and over it three choices:</p>
           <ul class="mx-list">
             <li><b>New event</b>: set the courses of a competition of your club or of a training session. You need the map.</li>
             <li><b>Import event</b>: take up an event prepared elsewhere, on another account, in another club in Purple Pen or in OCAD. You need an
@@ -1327,7 +1327,7 @@ export function build(X) {
             <li><b>publish the courses to the analysis</b> (${W("publish")}): each course arrives there with its map and its calibration, and the runners only have to upload
               their GPS track. The same dialog sets the whole analysis: its name (which may differ from the event's), its date, who opens it (every account, with or without
               visitors, the club, a password), the runners' action rights; then “Publish”, or “Save as draft” (only its organisers see it). A window follows the
-              progress — each course is printed on its map, then sent — and then opens the analysis in one click, or its management page (Orga › Manage, the “Analysis” tab, where
+              progress — each course is printed on its map, then sent — and then opens the analysis in one click, or its management page (the event's “Analysis” tab, in Orga, where
               everything can still be changed). A new publication creates another analysis or, as chosen, updates one of those already published from the event (its
               courses and settings replaced, the shared tracks kept); a competition has only one analysis;</li>
             <li><b>send the courses to “Results”</b> (${W("send-results")}): a complement to the results, not results. The results file exported by the timing
@@ -1416,7 +1416,7 @@ export function build(X) {
           <p>For an <b>offset print shop</b>, the PDF's colours can be <b>spot inks</b>: those an OCAD map defines, and the purple in an ink
             of its own (or one of the map's inks, if given its name), with PDF's real overprint. <b>Separations</b> give one page per
             plate — each spot ink, or C, M, Y and K —, in black, with its registration marks and its name; they need an OCAD or Mapper map,
-            or the course alone. It is the same engine as Cartographier's separations.</p>
+            or the course alone. It is the same engine as Carto's separations.</p>
           <h3>Other formats</h3>
           <p>${W("export-geotiff")}, SVG (each object named), KMZ with the map, MapRun, OCAD's text of the courses, IOF XML 2.0.3 with each
             variation as a course, and a package for Livelox's import page (a direct upload to Livelox needs an agreement with Livelox).</p>

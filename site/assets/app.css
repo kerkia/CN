@@ -4428,3 +4428,20 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
   .mg-ev { grid-template-columns: 44px minmax(0, 1fr); }
   .mg-chips { grid-column: 1 / -1; justify-content: flex-start; }
 }
+
+/* ---- Ozimut Carto and Ozimut Pixel (owner, 2026-11-12): modules of their own; Carto in the map's contour brown, Pixel in a teal ---- */
+:root { --carto: #9a5523; --carto-wash: #f4e6da; --pixel: #0b8a98; --pixel-wash: #d9f0f2; }
+:root[data-theme="dark"], :root[data-theme="undergrowth"] { --carto: #dc9a63; --carto-wash: #3d2a1c; --pixel: #52cfdb; --pixel-wash: #153a3f; }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"]):not([data-theme="clearing"]):not([data-theme="forest"])) { --carto: #dc9a63; --carto-wash: #3d2a1c; --pixel: #52cfdb; --pixel-wash: #153a3f; } }
+body[data-group="carto"] { --grp: var(--carto); --grp-wash: var(--carto-wash); }
+body[data-group="pixel"] { --grp: var(--pixel); --grp-wash: var(--pixel-wash); }
+.hub-card[data-mod="carto"], .hub-tabs button[data-mod="carto"], .doc[data-mod="carto"], .doc-card[data-mod="carto"], .doc-mods a[data-mod="carto"],
+.tour-mod[data-mod="carto"], .mod-tiles-page[data-mod="carto"] { --m: var(--carto); --m-wash: var(--carto-wash); }
+.hub-card[data-mod="pixel"], .hub-tabs button[data-mod="pixel"], .doc[data-mod="pixel"], .doc-card[data-mod="pixel"], .doc-mods a[data-mod="pixel"],
+.tour-mod[data-mod="pixel"], .mod-tiles-page[data-mod="pixel"] { --m: var(--pixel); --m-wash: var(--pixel-wash); }
+.tour-feat-table th[data-mod="carto"], .tour-feat-table td[data-mod="carto"] .tour-feat-m { color: var(--carto); }
+/* Orga's event page: the « Tracé » tab's course-setting events */
+.mg-trlist { display: grid; gap: 8px; }
+.mg-tr { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.mg-tr:last-child { border-bottom: 0; }
+.mg-tr-closed { max-width: 46ch; font-size: 13px; }

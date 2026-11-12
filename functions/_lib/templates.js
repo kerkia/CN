@@ -950,5 +950,5 @@ const EVENT = {
 export function eventPush(lang, kind, ev, who = "") {
   const T = EVENT[L(lang)], line = T[kind];
   return { title: ev.name, body: typeof line === "function" ? line(who) : line,
-    url: `/#/gerer?ev=${encodeURIComponent(ev.id)}${kind === "request" ? "&onglet=equipe" : ""}`, tag: `event-${ev.id}-${kind}` };
+    url: `/#/orga?ev=${encodeURIComponent(ev.id)}${kind === "request" ? "&onglet=equipe" : ""}`, tag: `event-${ev.id}-${kind}` };
 }

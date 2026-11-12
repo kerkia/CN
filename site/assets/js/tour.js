@@ -21,6 +21,8 @@ const LEGS = [
   { id: "clubs", who: ["c", "l"], main: "relays", side: ["club", "clubcompare"], pair: ["clubs", "ia"] },
   { id: "training", who: ["r", "c"], main: "game-forestroute", side: ["descriptions", "vma"], row: ["game-photo", "game-contour", "game-maze"] },
   { id: "orga", who: ["o", "c"], main: "@tracer", side: ["orga-starts", "orga-results"], pair: ["orga-competitions", "orga-direct"] },
+  // Ozimut Carto (owner, 2026-11-12): no screenshot yet (to take on the scrambled copy's invented map, as the others)
+  { id: "carto", who: ["o", "c"] },
   { id: "phones", who: ["all"], phones: ["phone-hub", "phone-agenda", "phone-race", "phone-ranking", "phone-runner"] },
 ];
 // the four modules (owner, 2026-10-30): each a section of the page, its introduction then its legs; the bar's links lead to
@@ -30,6 +32,7 @@ export const MODS = [
   { id: "stats", legs: ["runner", "ranking", "method", "clubs"] },
   { id: "coach", legs: ["analysis", "multi", "training"] },
   { id: "orga", legs: ["orga"] },
+  { id: "carto", legs: ["carto"] },
 ];
 // who sees what (owner, 2026-10-30): the modules as columns, the access levels as rows — without an account, with one, with
 // the Orga module —, each level adding to the one above; in each cell the capabilities it adds (`tour.f.<key>`). What only a
@@ -42,6 +45,7 @@ const CAPS = {
   stats: { guest: seq("stats.guest", 5), account: seq("stats.fed", 11), orga: [] },
   coach: { guest: seq("coach.guest", 8), account: [...seq("coach.account", 5), "coach.fed.1"], orga: [] },
   orga: { guest: [], account: ["orga.account.1"], orga: ["orga.orga.1", "orga.fed.1", ...seq("orga.orga", 9).slice(1)] },
+  carto: { guest: [], account: seq("carto.account", 4), orga: [] },
 };
 const MAIL = "contact@ozimut.com";       // i18n-ignore
 const src = (name) => (name === "@trace" ? "assets/reel-trace.webp" : name === "@tracer" ? "assets/reel-tracer.webp"
@@ -105,7 +109,7 @@ const FINISH = `<svg class="tour-ctrl tour-ctrl-finish" viewBox="0 0 45 45" aria
 
 /** A module's section, a course of its own: its introduction at the start, its legs numbered from 1, its way in at the finish. */
 function mod(M) {
-  const cta = M.id === "orga" ? html`<a class="btn btn-primary" href="#/compte/inscription">${t("tour.mod.orga.cta")}</a>`
+  const cta = M.id === "orga" || M.id === "carto" ? html`<a class="btn btn-primary" href="#/compte/inscription">${t(`tour.mod.${M.id}.cta`)}</a>`
     : html`<button type="button" class="btn btn-primary" data-guest-enter="${M.id}">${t("tour.mod.try", { mod: t(`mod.${M.id}`) })}</button>`;
   return html`<div class="tour-sec tour-mod" id="mod-${M.id}" data-mod="${M.id}"><div class="tour-course">${raw(START)}
     <header class="tour-mod-head"><span class="tour-mod-badge">${t(`mod.${M.id}`)}</span><h2>${t(`tour.mod.${M.id}.title`)}</h2>
