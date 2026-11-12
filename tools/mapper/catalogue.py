@@ -152,7 +152,7 @@ RIB = {
   "bg-calage": ("Caler", "Adjust", "Einpassen", "Ajustar"), "bg-georef": ("Géoréférencer", "Georeference", "Georeferenzieren", "Georreferenciar"),
   "bg-toggle": ("Afficher les fonds", "Show backgrounds", "Hintergründe zeigen", "Mostrar fondos"), "map-fade": ("Estomper la carte", "Fade the map", "Karte abblenden", "Atenuar el mapa"),
   "data-area": ("Zone des données", "Data area", "Datengebiet", "Zona de datos"), "data-lidar": ("LiDAR", "LiDAR", "LiDAR", "LiDAR"), "data-contours": ("Courbes de niveau", "Contours", "Höhenlinien", "Curvas de nivel"),
-  "data-osm": ("OpenStreetMap", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap"), "data-bdtopo": ("BD TOPO (France)", "BD TOPO (France)", "BD TOPO (Frankreich)", "BD TOPO (Francia)"), "draft-accept": ("Accepter", "Accept", "Übernehmen", "Aceptar"),
+  "data-osm": ("OpenStreetMap", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap"), "data-bdtopo": ("BD TOPO (France)", "BD TOPO (France)", "BD TOPO (Frankreich)", "BD TOPO (Francia)"), "data-town": ("Plan de ville (sprint)", "Town plan (sprint)", "Stadtplan (Sprint)", "Plano urbano (sprint)"), "draft-accept": ("Accepter", "Accept", "Übernehmen", "Aceptar"),
   "draft-acceptKind": ("Accepter ce symbole partout", "Accept this symbol everywhere", "Diese Signatur überall übernehmen", "Aceptar este símbolo en todo"), "draft-reject": ("Rejeter", "Reject", "Verwerfen", "Rechazar"),
   "gps": ("Ma position", "My position", "Meine Position", "Mi posición"), "gps-follow": ("Suivre", "Follow", "Folgen", "Seguir"), "gps-track": ("Enregistrer la trace", "Record track", "Spur aufzeichnen", "Grabar el track"),
   "gps-north": ("Boussole", "Compass", "Kompass", "Brújula"), "photo": ("Photo", "Photo", "Foto", "Foto"), "comment": ("Note sur la carte", "Note on the map", "Notiz auf der Karte", "Nota en el mapa"),
@@ -697,7 +697,39 @@ k("map.rib.data-national", "Données nationales", "National data", "Nationale Da
 k("map.data.national.none", "Pas de données nationales ouvertes pour ce pays : utilisez OpenStreetMap.", "No open national data for this country: use OpenStreetMap.", "Keine offenen nationalen Daten für dieses Land: Verwende OpenStreetMap.", "No hay datos nacionales abiertos para este país: usa OpenStreetMap.")
 k("map.data.national.reading.bdtopo", "Lecture de la BD TOPO de l'IGN…", "Reading IGN's BD TOPO…", "BD TOPO des IGN wird gelesen…", "Leyendo la BD TOPO del IGN…")
 k("map.data.national.reading.swisstopo", "Lecture de swissTLM3D (swisstopo)…", "Reading swissTLM3D (swisstopo)…", "swissTLM3D (swisstopo) wird gelesen…", "Leyendo swissTLM3D (swisstopo)…")
-k("map.data.national.reading.tnm", "Lecture de The National Map (USGS)…", "Reading The National Map (USGS)…", "The National Map (USGS) wird gelesen…", "Leyendo The National Map (USGS)…")
+# « Plan de ville (sprint) » (2026-11-12): BD TOPO, the cadastre and OpenStreetMap merged by the rules of a mapper's review
+k("map.data.town.hint", "Une carte sprint de la ville d'après les données ouvertes, selon les règles d'un cartographe : la voirie publique pavée jusqu'aux limites des parcelles du cadastre, le bord des zones pavées, les trottoirs et pistes cyclables en lignes à leur largeur, les escaliers à leur largeur, le réseau de chemins raccordé, les bâtiments accolés réunis, les jardins privés en olive avec leurs limites à confirmer, les terrains de sport. Tout arrive en brouillon ; les objets d'OpenStreetMap sont gardés sur des symboles masqués (990, 991).",
+  "A sprint map of the town from open data, by a mapper's rules: the public road space paved up to the cadastre's property lines, the edge of paved areas, footways and cycle paths as lines at their width, stairways at their width, the path network joined, adjoining buildings drawn as one, private gardens in olive with their boundaries to confirm, the sports grounds. Everything comes in as a draft; OpenStreetMap's objects are kept on hidden symbols (990, 991).",
+  "Eine Sprintkarte der Stadt aus offenen Daten, nach den Regeln eines Kartografen: der öffentliche Straßenraum befestigt bis zu den Flurstücksgrenzen des Katasters, der Rand befestigter Flächen, Gehwege und Radwege als Linien in ihrer Breite, Treppen in ihrer Breite, das Wegenetz verbunden, aneinandergebaute Gebäude als eines, private Gärten in Oliv mit ihren zu bestätigenden Grenzen, die Sportplätze. Alles kommt als Entwurf; die Objekte von OpenStreetMap bleiben auf ausgeblendeten Signaturen (990, 991).",
+  "Un mapa de sprint de la ciudad a partir de datos abiertos, según las reglas de un cartógrafo: el espacio viario público pavimentado hasta los límites de las parcelas del catastro, el borde de las zonas pavimentadas, aceras y carriles bici como líneas a su anchura, escaleras a su anchura, la red de caminos conectada, los edificios adosados unidos, los jardines privados en oliva con sus límites por confirmar, las instalaciones deportivas. Todo llega como borrador; los objetos de OpenStreetMap se guardan en símbolos ocultos (990, 991).")
+k("map.data.town.sources", "Sources", "Sources", "Quellen", "Fuentes")
+k("map.data.town.src.bdtopo", "BD TOPO de l'IGN : bâtiments, routes à leur largeur, murs, haies, eau, voies ferrées", "IGN's BD TOPO: buildings, roads at their width, walls, hedges, water, railways", "BD TOPO des IGN: Gebäude, Straßen in ihrer Breite, Mauern, Hecken, Gewässer, Bahnstrecken", "BD TOPO del IGN: edificios, calles a su anchura, muros, setos, agua, vías férreas")
+k("map.data.town.src.cadastre", "Cadastre : la voirie publique entre les parcelles, les jardins privés", "Cadastre: the public road space between the parcels, private gardens", "Kataster: der öffentliche Straßenraum zwischen den Flurstücken, private Gärten", "Catastro: el espacio viario público entre las parcelas, los jardines privados")
+k("map.data.town.src.osm", "OpenStreetMap : chemins, trottoirs, escaliers, places, parkings, terrains de sport, arbres", "OpenStreetMap: paths, footways, stairways, squares, car parks, sports grounds, trees", "OpenStreetMap: Wege, Gehwege, Treppen, Plätze, Parkplätze, Sportplätze, Bäume", "OpenStreetMap: caminos, aceras, escaleras, plazas, aparcamientos, instalaciones deportivas, árboles")
+k("map.data.town.src.contours", "Courbes de niveau tous les 2,5 m, coupées aux bâtiments seulement", "Contours every 2.5 m, cut at the buildings only", "Höhenlinien alle 2,5 m, nur an Gebäuden unterbrochen", "Curvas de nivel cada 2,5 m, cortadas solo en los edificios")
+k("map.data.town.src.short.bdtopo", "BD TOPO", "BD TOPO", "BD TOPO", "BD TOPO")
+k("map.data.town.src.short.cadastre", "cadastre", "cadastre", "Kataster", "catastro")
+k("map.data.town.src.short.osm", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap", "OpenStreetMap")
+k("map.data.town.src.short.dem", "courbes de niveau", "contours", "Höhenlinien", "curvas de nivel")
+k("map.data.town.notFrance", "Hors de France, OpenStreetMap seul : ses rues à leur largeur, sans le cadastre.", "Outside France, OpenStreetMap alone: its streets at their width, without the cadastre.", "Außerhalb Frankreichs nur OpenStreetMap: seine Straßen in ihrer Breite, ohne Kataster.", "Fuera de Francia, solo OpenStreetMap: sus calles a su anchura, sin catastro.")
+k("map.data.town.notSprint", "Le plan de ville est fait pour une carte sprint (ISSprOM).", "The town plan is made for a sprint map (ISSprOM).", "Der Stadtplan ist für eine Sprintkarte (ISSprOM) gedacht.", "El plano urbano está pensado para un mapa de sprint (ISSprOM).")
+k("map.data.town.none", "Choisissez au moins une source.", "Choose at least one source.", "Wähle mindestens eine Quelle.", "Elige al menos una fuente.")
+k("map.data.town.starting", "Préparation du plan de ville…", "Preparing the town plan…", "Stadtplan wird vorbereitet…", "Preparando el plano urbano…")
+k("map.data.town.noLib", "La bibliothèque de géométrie n'a pas pu être chargée.", "The geometry library could not be loaded.", "Die Geometrie-Bibliothek konnte nicht geladen werden.", "No se pudo cargar la biblioteca de geometría.")
+k("map.data.town.empty", "Aucune donnée trouvée sur cette zone.", "No data found over this area.", "Keine Daten in diesem Gebiet gefunden.", "No se encontraron datos en esta zona.")
+k("map.data.town.failed", "sources indisponibles : {list}", "sources unavailable: {list}", "Quellen nicht verfügbar: {list}", "fuentes no disponibles: {list}")
+k("map.data.town.reading.bdtopo", "BD TOPO de l'IGN : {layer}…", "IGN's BD TOPO: {layer}…", "BD TOPO des IGN: {layer}…", "BD TOPO del IGN: {layer}…")
+k("map.data.town.reading.osm", "Attente d'OpenStreetMap…", "Waiting for OpenStreetMap…", "Warten auf OpenStreetMap…", "Esperando a OpenStreetMap…")
+k("map.data.town.reading.cadastre", "Lecture du cadastre…", "Reading the cadastre…", "Kataster wird gelesen…", "Leyendo el catastro…")
+for key, v in {
+  "buildings": ("les bâtiments", "buildings", "Gebäude", "edificios"), "paving": ("la voirie", "streets and paths", "Straßen und Wege", "calles y caminos"),
+  "water": ("l'eau, les murs et les haies", "water, walls and hedges", "Gewässer, Mauern und Hecken", "agua, muros y setos"), "sports": ("les terrains de sport", "sports grounds", "Sportplätze", "instalaciones deportivas"),
+  "private": ("les jardins privés", "private gardens", "private Gärten", "jardines privados"), "public": ("la voirie publique", "the public road space", "öffentlicher Straßenraum", "espacio viario público"),
+  "areas": ("les surfaces", "areas", "Flächen", "superficies"), "lines": ("les lignes", "lines", "Linien", "líneas"), "points": ("les points", "points", "Punkte", "puntos"),
+  "contours": ("les courbes de niveau", "contours", "Höhenlinien", "curvas de nivel"),
+}.items():
+  k(f"map.data.town.step.{key}", *(f"{p} {x}…" for p, x in zip(("Plan de ville :", "Town plan:", "Stadtplan:", "Plano urbano:"), v)))
+k("map.data.national.reading.tnm","Lecture de The National Map (USGS)…", "Reading The National Map (USGS)…", "The National Map (USGS) wird gelesen…", "Leyendo The National Map (USGS)…")
 k("map.src.swisstopo", "swisstopo", "swisstopo", "swisstopo", "swisstopo")
 k("map.src.tnm", "The National Map (USGS)", "The National Map (USGS)", "The National Map (USGS)", "The National Map (USGS)")
 k("map.lay.creditSwisstopo", "© swisstopo (swissTLM3D)", "© swisstopo (swissTLM3D)", "© swisstopo (swissTLM3D)", "© swisstopo (swissTLM3D)")
@@ -744,6 +776,21 @@ SITE = {
     "<p>Kartieren wurde gerade entwickelt und ist noch wenig getestet. Es ist eine <b>Beta-Version</b>: {try}</p><p>Behalte eine Kopie deiner OCAD-Dateien: Eine als OCAD gespeicherte Datei behält alles Unveränderte, wurde aber noch nicht in OCAD selbst geprüft.</p>",
     "<p>Cartografiar acaba de crearse y aún se ha probado poco. Es una <b>versión beta</b>: {try}</p><p>Guarda una copia de tus archivos de OCAD: un archivo guardado de nuevo como OCAD conserva todo lo que no hayas modificado, pero todavía no se ha comprobado en el propio OCAD.</p>"),
   "beta.mapper.note": ("Version bêta, encore peu testée : gardez une copie de vos fichiers OCAD.", "Beta version, little tested yet: keep a copy of your OCAD files.", "Beta-Version, noch wenig getestet: Behalte eine Kopie deiner OCAD-Dateien.", "Versión beta, aún poco probada: guarda una copia de tus archivos de OCAD."),
+  # the sprint set's own forms and helpers (2026-11-12, a mapper's review; docs/mapper/sets.mjs reads the English names)
+  "ms.sp.s.501.4": ("Zone pavée, trafic important", "Paved area, heavy traffic", "Befestigte Fläche, starker Verkehr", "Área pavimentada, tráfico intenso"),
+  "ms.sp.s.501.6": ("Zone pavée, emprise 1,4 m", "Paved area, footprint 1.4 m", "Befestigte Fläche, Breite 1,4 m", "Área pavimentada, anchura 1,4 m"),
+  "ms.sp.s.501.7": ("Zone pavée, emprise 2 m", "Paved area, footprint 2 m", "Befestigte Fläche, Breite 2 m", "Área pavimentada, anchura 2 m"),
+  "ms.sp.s.501.8": ("Zone pavée, emprise 3 m", "Paved area, footprint 3 m", "Befestigte Fläche, Breite 3 m", "Área pavimentada, anchura 3 m"),
+  "ms.sp.s.501.9": ("Zone pavée, emprise 4 m", "Paved area, footprint 4 m", "Befestigte Fläche, Breite 4 m", "Área pavimentada, anchura 4 m"),
+  "ms.sp.s.532.1": ("Escalier, 0,5 mm", "Stairway, 0.5 mm", "Treppe, 0,5 mm", "Escalera, 0,5 mm"),
+  "ms.sp.s.532.2": ("Escalier, 0,75 mm", "Stairway, 0.75 mm", "Treppe, 0,75 mm", "Escalera, 0,75 mm"),
+  "ms.sp.s.532.3": ("Escalier, 1 mm", "Stairway, 1 mm", "Treppe, 1 mm", "Escalera, 1 mm"),
+  "ms.sp.s.532.4": ("Escalier, 1,25 mm", "Stairway, 1.25 mm", "Treppe, 1,25 mm", "Escalera, 1,25 mm"),
+  "ms.sp.s.532.5": ("Escalier, 1,5 mm", "Stairway, 1.5 mm", "Treppe, 1,5 mm", "Escalera, 1,5 mm"),
+  "ms.sp.s.532.6": ("Escalier, 2 mm", "Stairway, 2 mm", "Treppe, 2 mm", "Escalera, 2 mm"),
+  "ms.sp.s.990": ("OpenStreetMap, ligne (masquée)", "OpenStreetMap line (hidden)", "OpenStreetMap-Linie (ausgeblendet)", "Línea de OpenStreetMap (oculta)"),
+  "ms.sp.s.991": ("OpenStreetMap, point (masqué)", "OpenStreetMap point (hidden)", "OpenStreetMap-Punkt (ausgeblendet)", "Punto de OpenStreetMap (oculto)"),
+  "ms.sp.s.995": ("Limite à confirmer (mur, clôture ou haie)", "Boundary to confirm (wall, fence or hedge)", "Grenze zu bestätigen (Mauer, Zaun oder Hecke)", "Límite por confirmar (muro, valla o seto)"),
 }
 
 def french(s):

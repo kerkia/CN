@@ -218,7 +218,12 @@ async function newMap() {
     const D = await import("../mapper/dataui.js");
     const nat = E.frame?.geo ? await D.nationalSource(E, E.frame) : null;
     if (v.bdtopo && !nat) v.osm = true;
-    for (const [k, act] of [["dem", "data-contours"], ["bdtopo", "data-national"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) if (v[k] && (k !== "bdtopo" || nat)) await E.act(act);
+    if (sprint && (nat === "bdtopo" || !nat) && (v.bdtopo || v.osm)) {
+      // a sprint map in France (or where only OpenStreetMap is read): one town map from every source, merged by the rules a
+      // mapper's review gave (data/town.js) — the contours with it, cut at the buildings
+      await D.town(E, { bdtopo: nat === "bdtopo" && !!v.bdtopo, cadastre: nat === "bdtopo" && !!v.bdtopo, osm: !!v.osm || !!v.bdtopo, contours: !!v.dem });
+      if (v.lidar) await E.act("data-lidar");
+    } else for (const [k, act] of [["dem", "data-contours"], ["bdtopo", "data-national"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) if (v[k] && (k !== "bdtopo" || nat)) await E.act(act);
   }
 }
 const parsePlace = (s) => { const m = /^\s*(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)\s*$/.exec(String(s || "")); if (!m) return null; const la = Number(m[1].replace(",", ".")), lo = Number(m[2].replace(",", ".")); return Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? [la, lo] : null; };

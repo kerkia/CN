@@ -595,6 +595,13 @@ export function build(X) {
             html`<b>OpenStreetMap</b>: Straßen, Wege, Gebäude, Gewässer, Mauern und Zäune, den Symbolen der Karte zugeordnet.`,
             html`<b>Die nationalen Daten</b>: die BD TOPO des IGN in Frankreich, swissTLM3D in der Schweiz, Straßen, Gewässer und Gebäude von The
               National Map in den Vereinigten Staaten.`,
+            html`<b>Der Stadtplan (Sprint)</b> für eine Sprintkarte: BD TOPO, Kataster und OpenStreetMap nach den Regeln eines Kartografen
+              zusammengeführt — der öffentliche Straßenraum befestigt bis zu den Flurstücksgrenzen, der Rand befestigter Flächen und die
+              Bordsteine der Fahrbahnen, Gehwege und Radwege als Linien in ihrer Breite, Treppen in ihrer Breite, das Wegenetz verbunden,
+              aneinandergebaute Gebäude als eines, private Gärten in Oliv mit einer « zu bestätigenden Grenze » (995, violett, nie gedruckt), wo
+              keine Mauer, kein Zaun und keine Hecke bekannt ist, die Sportplätze und Höhenlinien, die nur an Gebäuden unterbrochen sind. Die
+              Objekte von OpenStreetMap bleiben auf ausgeblendeten Signaturen (990, 991). Eine « Neue Karte » im Sprint nutzt ihn in Frankreich;
+              anderswo nur OpenStreetMap.`,
             html`<b>Das LiDAR</b>, wo ein nationales LiDAR offen ist (Frankreich, Schweiz, Vereinigte Staaten, Kanada, Neuseeland): das Relief, die
               Felsen und die Vegetation, die karttapullautin daraus gewinnt. Die Kacheln werden auf Anfrage berechnet, in wenigen Minuten; ein
               Balken zeigt, wie weit die Berechnung ist.`,

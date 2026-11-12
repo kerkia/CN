@@ -132,7 +132,7 @@ export async function separationsPdf(E, area, base) {
     const page = doc.addPage([W, H]), painter = spotPainter(L, doc, spots);
     const op = cols.some((c) => c.overprint) ? overprintGs(L, doc, page) : null;
     const tg = new PdfTarget(L, page, base0, { fonts, darken: op, minRes: 0.01, painter });
-    drawRect(E.live, tg, r, { minRes: 0.01, overprint: true });
+    drawRect(E.live, tg, r, { minRes: 0.01, overprint: true, print: true });
     await tg.finish();
     if (M) plateMarks(L, page, painter, { m: M * pt, label: `${E.doc.title || ""} — ${t("map.sep.composite")}`, font: fonts.reg });
   } else {
@@ -140,7 +140,7 @@ export async function separationsPdf(E, area, base) {
     for (const plate of list) {
       const page = doc.addPage([W, H]), painter = platePainter(L, plate, spots, list);
       const tg = new PdfTarget(L, page, base0, { fonts, minRes: 0.01, painter });
-      drawRect(E.live, tg, r, { minRes: 0.01 });
+      drawRect(E.live, tg, r, { minRes: 0.01, print: true });
       await tg.finish();
       if (M) plateMarks(L, page, painter, { m: M * pt, font: fonts.reg,
         label: `${E.doc.title || ""} — ${t("map.sep.plate")} ${plate.name}${plate.angle != null ? ` · ${plate.angle}°` : ""}${plate.freq ? ` · ${plate.freq} lpi` : ""}` });

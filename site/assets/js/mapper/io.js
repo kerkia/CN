@@ -88,7 +88,7 @@ async function pdf(E, base) {
   let darken = null;
   if (v.op) darken = page.node.newExtGState("GSdark", doc.context.register(doc.context.obj({ Type: "ExtGState", BM: "Darken" })));
   const tg = new PdfTarget(L, page, new Matrix(pt, 0, 0, pt, -r[0] * pt, -r[1] * pt), { rgb: v.c === "rgb", fonts, darken, minRes: 0.01 });
-  drawRect(E.live, tg, r, { minRes: 0.01, overprint: !!v.op });
+  drawRect(E.live, tg, r, { minRes: 0.01, overprint: !!v.op, print: true });
   await tg.finish();
   download(`${base}.pdf`, await doc.save(), "application/pdf");
   E.say(t("map.io.written"));
@@ -100,7 +100,7 @@ async function png(E, base, geo = false) {
   const r = areaOf(E), k = Number(v.d) / 25.4, W = Math.round((r[2] - r[0]) * k), H = Math.round((r[3] - r[1]) * k);
   if (W * H > 200e6) { E.say(t("map.io.tooLarge"), "bad"); return; }
   E.say(t("map.io.writing"), "busy");
-  const c = E.view.render(r, W, H);
+  const c = E.view.render(r, W, H, { print: true });
   const blob = await new Promise((res) => c.toBlob(res, "image/png"));
   download(`${base}.png`, blob, "image/png");
   const f = E.frame;
@@ -115,7 +115,7 @@ async function png(E, base, geo = false) {
 async function kmz(E, base) {
   if (!E.frame?.geo) { E.say(t("map.data.nogeo"), "bad"); return; }
   const r = areaOf(E), k = 200 / 25.4, W = Math.round((r[2] - r[0]) * k), H = Math.round((r[3] - r[1]) * k);
-  const c = E.view.render(r, Math.min(W, 8000), Math.min(H, Math.round(8000 * H / W)));
+  const c = E.view.render(r, Math.min(W, 8000), Math.min(H, Math.round(8000 * H / W)), { print: true });
   const jpg = new Uint8Array(await (await new Promise((res) => c.toBlob(res, "image/jpeg", 0.9))).arrayBuffer());
   const ll = [[r[0], r[1]], [r[2], r[1]], [r[2], r[3]], [r[0], r[3]]].map(([x, y]) => E.frame.toLatLon(x, y));
   const kml = `<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2"><Document><name>${(E.doc.title || "").replace(/[<&]/g, " ")}</name>
@@ -135,7 +135,7 @@ async function toTracer(E) {
 }
 async function toMyMaps(E) {
   const r = areaOf(E), k = 300 / 25.4, W = Math.round((r[2] - r[0]) * k), H = Math.round((r[3] - r[1]) * k);
-  const c = E.view.render(r, Math.min(W, 9000), Math.min(H, Math.round(9000 * H / W)));
+  const c = E.view.render(r, Math.min(W, 9000), Math.min(H, Math.round(9000 * H / W)), { print: true });
   const blob = await new Promise((res) => c.toBlob(res, "image/png"));
   const { handOver } = await import("../pwa.js").catch(() => ({}));
   const file = new File([blob], `${fileName(E.doc.title)}.png`, { type: "image/png" });

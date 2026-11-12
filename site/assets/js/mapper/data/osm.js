@@ -61,18 +61,46 @@ export function overpassQuery({ s, w, n, e }) {
 out geom;`;
 }
 
-/** The area's elements from Overpass (one query; the servers tried in turn). opts: fetch (Node), signal, headers. */
+/**
+ * The query of a town's sprint map (data/town.js; tools/virtually/town_fetch.py's): every highway, building, barrier, land
+ * use, leisure, natural, amenity and man-made feature, the trees, the monuments and the street furniture — everything the map
+ * draws, and the rest kept on hidden helper symbols.
+ */
+export function townQuery({ s, w, n, e }) {
+  const b = `${s.toFixed(6)},${w.toFixed(6)},${n.toFixed(6)},${e.toFixed(6)}`;
+  return `[out:json][timeout:120];
+(
+  way["highway"](${b}); way["area:highway"](${b});
+  way["building"](${b}); relation["building"](${b}); way["building:part"](${b}); relation["building:part"](${b});
+  way["barrier"](${b}); node["barrier"](${b});
+  way["landuse"](${b}); relation["landuse"](${b}); way["leisure"](${b}); relation["leisure"](${b});
+  way["natural"](${b}); relation["natural"](${b}); node["natural"="tree"](${b}); way["natural"="tree_row"](${b});
+  way["amenity"](${b}); relation["amenity"](${b}); node["amenity"](${b});
+  way["man_made"](${b}); node["man_made"](${b}); node["highway"](${b});
+  node["leisure"](${b}); node["tourism"](${b}); node["historic"](${b});
+  way["waterway"](${b}); way["railway"](${b}); way["place"="square"](${b}); way["access"](${b}); way["garden:type"](${b});
+  way["power"="line"](${b});
+);
+out geom;`;
+}
+
+/**
+ * The area's elements from Overpass (one query; the servers tried in turn, each given up after 150 s — a busy one may never
+ * answer). opts: fetch (Node), signal, headers, query (a function of the box: another query), timeoutMs.
+ */
 export async function fetchOverpass(box, opts = {}) {
-  const f = opts.fetch || fetch, body = new URLSearchParams({ data: overpassQuery(box) }).toString();
+  const f = opts.fetch || fetch, body = new URLSearchParams({ data: (opts.query || overpassQuery)(box) }).toString();
   let err = null;
   for (let attempt = 0; attempt < 4; attempt++) {
     if (opts.signal?.aborted) throw new Error("aborted");
+    const ac = new AbortController(), stop = () => ac.abort(), tm = setTimeout(stop, opts.timeoutMs || 150000);
+    opts.signal?.addEventListener("abort", stop);
     try {
-      const r = await f(OVERPASS[attempt % OVERPASS.length], { method: "POST", body, signal: opts.signal, credentials: "omit", referrerPolicy: "no-referrer",
+      const r = await f(OVERPASS[attempt % OVERPASS.length], { method: "POST", body, signal: ac.signal, credentials: "omit", referrerPolicy: "no-referrer",
         headers: { "Content-Type": "application/x-www-form-urlencoded", ...(opts.headers || {}) } });
       if (r.ok) return await r.json();
       err = new Error(`Overpass ${r.status}`);
-    } catch (e) { if (opts.signal?.aborted) throw e; err = e; }
+    } catch (e) { if (opts.signal?.aborted) throw e; err = e; } finally { clearTimeout(tm); opts.signal?.removeEventListener("abort", stop); }
     await new Promise((ok) => setTimeout(ok, 3000 * (attempt + 1)));
   }
   throw err || new Error("Overpass");
@@ -96,7 +124,7 @@ function ground(tg) {
 }
 
 /** A multipolygon's rings, its member ways joined end to end: [[role, [[lat, lon]…]]] (mapgen/osm.py _rings). */
-function rings(rel) {
+export function rings(rel) {
   const out = [];
   for (const role of ["outer", "inner"]) {
     const parts = (rel.members || []).filter((m) => m.type === "way" && (m.role || "outer") === role && m.geometry?.length)

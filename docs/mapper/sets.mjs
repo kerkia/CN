@@ -144,13 +144,13 @@ function halfDot(color, d, lw, inset) {
 
 // ---- symbol records ----------------------------------------------------------------------------------------------------------
 const symNum = (code) => { const [n, s = "0"] = String(code).split("."); return Number(n) * 1000 + Number(s); };
-function base(code, otp, description, flags = 0, note = null) {
-  const r = { sym: symNum(code), otp, symTp: 0, flags, extent: 0, selected: 0, status: 0, nColors: 0, description };
+function base(code, otp, description, flags = 0, note = null, status = 0) {
+  const r = { sym: symNum(code), otp, symTp: 0, flags, extent: 0, selected: 0, status, nColors: 0, description };
   if (note) r.note = note;
   return r;
 }
-/** A point symbol. */
-const point = (code, desc, elts, { rotatable = false, note } = {}) => ({ ...base(code, 1, desc, rotatable ? 1 : 0, note), dataSize: eltSize(elts), elts });
+/** A point symbol (status 2: hidden, OCAD's « hidden » symbol state). */
+const point = (code, desc, elts, { rotatable = false, note, status = 0 } = {}) => ({ ...base(code, 1, desc, rotatable ? 1 : 0, note, status), dataSize: eltSize(elts), elts });
 
 /**
  * A line symbol. o: { color, w, ends: "butt"|"round"|"miter"|"pointed", dash: [main, gap, end = main], secGap, endGap,
@@ -158,8 +158,8 @@ const point = (code, desc, elts, { rotatable = false, note } = {}) => ({ ...base
  * start, end (element lists), dbl: { fill, left, right, gap (between the side lines), lw, rw, dashed: [len, gap], mode },
  * frame: { color, w }, shorten: [start, end] }.
  */
-function line(code, desc, o, { note } = {}) {
-  const r = base(code, 2, desc, 0, note);
+function line(code, desc, o, { note, status = 0 } = {}) {
+  const r = base(code, 2, desc, 0, note, status);
   const ends = o.ends || "butt";
   Object.assign(r, {
     lineColor: o.color ? c(o.color) : 0, lineWidth: H(o.w || 0), lineEnds: ends === "round" ? 1 : ends === "miter" ? 4 : ends === "pointed" ? 2 : 0,
@@ -541,6 +541,11 @@ function sprint() {
   add(line(501.2, N(501.2), { color: "black", w: 0.1, dash: [0.7, 0.2], shorten: [0.15, 0.15] },
     { note: "Dashed as the specification draws it, a gap of 0.15 mm left at both ends." }));
   add(area(501.3, N(501.3), { fill: "brown30", struct: screen45("whiteB", 0.6, 0.75) }));
+  // a paved footway or cycle path as a line (a mapper's review, 2026-11-12: « a paved area without edge is very seldom useful
+  // — and there it is a path »): the paved strip in brown 30 % between two thin black edges, at its width on the ground —
+  // OpenOrienteering Mapper's 501.6-501.9 « paved area, footprint 1.4 / 2 / 3 / 4 m » (1:4 000: 0.35 to 1 mm)
+  [1.4, 2, 3, 4].forEach((m, i) => add(line(`501.${6 + i}`, N(`501.${6 + i}`), { dbl: { fill: "brown30", left: "black", right: "black", lw: 0.1, gap: (m * 1000) / 4000 } },
+    { note: "A paved path drawn at its width on the ground (OpenOrienteering Mapper's numbering); the strip between the edges' centres." })));
   add(line(505, N(505), { dbl: { fill: "brown30", left: "black", right: "black", lw: 0.12, gap: 0.38, dashed: [2.0, 0.25], mode: 3 } },
     { note: "OCAD fills between the side lines only: the brown band is 0.38 mm wide under the dashes' gaps (0.5 in the drawing, the same outer width)." }));
   add(line(506, N(506), { color: "black", w: 0.27, dash: [1.5, 0.37] }));
@@ -589,11 +594,22 @@ function sprint() {
   add(point(531, N(531), squareCross("black", 1.2, 0.22)));
   add(line(532, N(532), { dbl: { left: "black", right: "black", lw: 0.1, gap: 1.56 }, prim: { elts: [L("black", 0.1, [[0, -0.83], [0, 0.83]])], every: 0.47, first: 0 } },
     { note: "Drawn 1.66 mm wide outside, as the specification's drawing; a stairway is drawn to its width on the ground (at least 0.4 mm inside)." }));
+  // stairways at their width on the ground (a mapper's review, 2026-11-12: one width for all drew 6.6 m over a street): the
+  // side lines 0.5 to 2 mm apart (2 to 8 m at 1:4 000), the treads 0.05 mm beyond them, as 532
+  [0.5, 0.75, 1.0, 1.25, 1.5, 2.0].forEach((w, i) => add(line(`532.${i + 1}`, N(`532.${i + 1}`),
+    { dbl: { left: "black", right: "black", lw: 0.1, gap: w }, prim: { elts: [L("black", 0.1, [[0, -(w / 2 + 0.05)], [0, w / 2 + 0.05]])], every: 0.47, first: 0 } },
+    { note: `A stairway ${w} mm wide between its side lines' centres (${w * 4} m at 1:4 000).` })));
   add(area(533, N(533), { struct: screen45("black50", 0.55, 0.75) }));
   // 6 technical symbols
   add(line(601, N(601), { color: "black", w: 0.14 }));
   add(line(601.1, "Magnetic north line, blue", { color: "blue", w: 0.18 }));
   course(add, N, true);
+  // helpers (900 and up: never printed, Cartographier's exports leave them out): a « boundary to confirm » — the edge of ground
+  // not to be entered where no wall, fence or hedge is known, for the mapper to replace on the ground (a mapper's review,
+  // 2026-11-12) — and OpenStreetMap's ways and tagged nodes, kept hidden for the mapper to show at will
+  add(line(995, N(995), { color: "purple50", w: 0.25 }, { note: "A helper: replace it by a wall, a fence, a hedge or nothing once seen on the ground." }));
+  add(line(990, N(990), { color: "purple50", w: 0.1 }, { status: 2, note: "Hidden: every OpenStreetMap way of the area, for reference." }));
+  add(point(991, N(991), [ring("purple50", 0.1, 0.3)], { status: 2, note: "Hidden: every tagged OpenStreetMap node of the area, for reference." }));
   return S;
 }
 

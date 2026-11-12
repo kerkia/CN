@@ -45,6 +45,9 @@ PACKAGES = {
     # « Cartographier » (2026-11-06): GeoTIFF / COG heights read by HTTP range (swissALTI3D, 3DEP, HRDEM, LINZ; MIT). The UMD
     # bundle defines GeoTIFF and holds its decoders (Deflate, LZW, PackBits, JPEG, LERC and Zstandard as inlined WebAssembly, WebP)
     "geotiff": ("2.1.3", "geotiff", ["dist-browser/geotiff.js"]),
+    # « Cartographier » (2026-11-12): buffers, unions, line merging and noding for a sprint map built from open data
+    # (mapper/data/town.js; the JavaScript port of JTS, EDL-1.0 or EPL-1.0 as its package.json says: no LICENSE file in the package)
+    "jsts": ("2.12.1", "jsts", ["dist/jsts.min.js", "package.json"]),
 }
 BUNDLE = {"apache-arrow": "17.0.0", "esbuild": "0.24.0"}      # to bundle DuckDB's browser module
 

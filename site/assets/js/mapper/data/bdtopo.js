@@ -29,7 +29,8 @@ export function url(layer, { s, w, n, e }, start = 0) {
     BBOX: `${s},${w},${n},${e},urn:ogc:def:crs:EPSG::4326`, OUTPUTFORMAT: "application/json", COUNT: String(PAGE), STARTINDEX: String(start) });
   return `${WFS}?${q}`;
 }
-async function layerFeatures(layer, box, f = fetch) {
+/** One layer's features over an area (degrees), page by page. */
+export async function layerFeatures(layer, box, f = fetch) {
   const out = [];
   for (let page = 0; page < MAX_PAGES; page++) {
     const r = await f(url(layer, box, page * PAGE), { credentials: "omit" });

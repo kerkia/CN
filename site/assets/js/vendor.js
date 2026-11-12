@@ -13,6 +13,7 @@
 //   QRCODE     — « Depuis mon téléphone »'s QR code (phonelink.js)
 //   POLYCLIP   — Cartographier's union, difference and intersection of areas (mapper/boolean.js)
 //   GEOTIFF    — national terrain models read as GeoTIFF / COG (trace/terrain.js: Switzerland, the USA, Canada, New Zealand)
+//   JSTS       — Cartographier's sprint map from open data (mapper/data/town.js: buffers, unions, line merging)
 const V = "/assets/vendor";
 export const ECHARTS = `${V}/echarts@5.5.1`;
 export const PDFJS = `${V}/pdfjs-dist@4.10.38/build/pdf.min.mjs`;
@@ -27,6 +28,7 @@ export const THREE = `${V}/three@0.185.1/build/three.module.min.js`;
 export const QRCODE = `${V}/qrcode-generator@2.0.4/dist/qrcode.mjs`;
 export const POLYCLIP = `${V}/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js`;
 export const GEOTIFF = `${V}/geotiff@2.1.3/dist-browser/geotiff.js`;
+export const JSTS = `${V}/jsts@2.12.1/dist/jsts.min.js`;
 /** A country's flag (ISO alpha-2), a 4:3 SVG. */
 export const flag = (cc) => `${V}/flag-icons@7.5.0/flags/4x3/${String(cc).toLowerCase()}.svg`;
 export const FONT_PKG = {

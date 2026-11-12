@@ -33,7 +33,7 @@ export const TABS = [
   ] },
   { id: "data", groups: [
     { id: "area", items: [B("data-area", "frame", true)] },
-    { id: "sources", items: [B("data-lidar", "mountain", true), B("data-contours", "routes", true), B("data-national", "layers", true), B("data-osm", "map", true)] },
+    { id: "sources", items: [B("data-lidar", "mountain", true), B("data-contours", "routes", true), B("data-national", "layers", true), B("data-osm", "map", true), B("data-town", "boundary", true)] },
     { id: "draft", items: [{ stack: [B("draft-accept", "check"), B("draft-acceptKind", "check"), B("draft-reject", "close")] }] },
   ] },
   { id: "field", groups: [

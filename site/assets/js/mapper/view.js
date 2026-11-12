@@ -192,11 +192,12 @@ export class View {
 }
 
 /** The part of a live map in `rect` (mm) drawn on a graphics target (tracer/vmap/target.js), colour by colour as OCAD layers
- *  them, from the objects the index finds there (VMap.draw draws from every object). */
-export function drawRect(live, g, rect, { minRes = 0.05, hide = null, overprint = false } = {}) {
+ *  them, from the objects the index finds there (VMap.draw draws from every object). print: the helper symbols (900 and up: a
+ *  « boundary to confirm », OpenStreetMap's objects) left out, as on any printed map. */
+export function drawRect(live, g, rect, { minRes = 0.05, hide = null, overprint = false, print = false } = {}) {
   const map = live.map, ro = { minRes, metric: map.metric, view: rect, skip: null };
   const groups = new Map();
-  const add = (s) => { if (!s || s.visible === false || !s.bbox || !(s.bbox[0] <= rect[2] && s.bbox[2] >= rect[0] && s.bbox[1] <= rect[3] && s.bbox[3] >= rect[1])) return; let l = groups.get(s.def); if (!l) groups.set(s.def, (l = [])); l.push(s); };
+  const add = (s) => { if (!s || s.visible === false || (print && s.__rec?.sym >= 900000) || !s.bbox || !(s.bbox[0] <= rect[2] && s.bbox[2] >= rect[0] && s.bbox[1] <= rect[3] && s.bbox[3] >= rect[1])) return; let l = groups.get(s.def); if (!l) groups.set(s.def, (l = [])); l.push(s); };
   for (const o of live.near(rect)) add(o.inst);
   for (const b of live.layoutImages || []) add(b);
   for (const l of groups.values()) l.sort((a, b) => (a.__rec?.ord ?? 0) - (b.__rec?.ord ?? 0));

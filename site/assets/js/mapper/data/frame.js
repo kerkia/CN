@@ -147,6 +147,23 @@ export function simplify(pts, tol) {
 }
 /** A line's points [[x, y]…] (map mm) as OCAD coordinates. */
 export const lineCoords = (pts) => pts.map(([x, y]) => ocad(x, y));
+/**
+ * A line's points [[x, y]…] (map mm) as OCAD Bézier curves through them: point, handle (x flag 1), handle (x flag 2), point…
+ * — Catmull-Rom tangents, each segment's two handles a sixth of the way along its neighbours' chord; a closed line keeps its
+ * tangent across the join (a mapper's review, 2026-11-12: contours, streams and paths bend on the ground). Two points: straight.
+ */
+export function bezier(pts) {
+  const n = pts.length;
+  if (n < 3) return lineCoords(pts);
+  const closed = pts[0][0] === pts[n - 1][0] && pts[0][1] === pts[n - 1][1];
+  const P = (i) => (closed ? pts[(((i % (n - 1)) + (n - 1)) % (n - 1))] : pts[Math.max(0, Math.min(n - 1, i))]);
+  const out = [ocad(pts[0][0], pts[0][1])];
+  for (let i = 0; i < n - 1; i++) {
+    const a = P(i - 1), b = P(i), c = P(i + 1), d = P(i + 2);
+    out.push(ocad(b[0] + (c[0] - a[0]) / 6, b[1] + (c[1] - a[1]) / 6, 1), ocad(c[0] - (d[0] - b[0]) / 6, c[1] - (d[1] - b[1]) / 6, 2), ocad(pts[i + 1][0], pts[i + 1][1]));
+  }
+  return out;
+}
 /** An area's rings (the first the outer one, the others holes) as OCAD coordinates, each ring closed. */
 export function areaCoords(rings) {
   const out = [];

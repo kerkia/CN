@@ -1092,8 +1092,9 @@ Every multiple-choice game was played through to its score page at phone size, w
   30 % between two black edges, made by mkocd.mjs; build.py draws it as paving at its width), not a borderless paved area; **the
   path network joined** before it is drawn (noded, merged through its junctions, an end stopping within 4 m of another path drawn
   on to it); **a grass pitch's edge** as 415 (distinct cultivation boundary). These rules are the generator's (`town_map.py`,
-  `mkocd.mjs`), so every town map made after Gif has them; Cartographier's « Nouvelle carte » imports OSM and BD TOPO by its own
-  code (`mapper/data/osm.js`, `bdtopo.js`) and does not have them yet.
+  `mkocd.mjs`), so every town map made after Gif has them; Cartographier's « Nouvelle carte » sprint has them too since the same
+  day (`mapper/data/town.js`, « Plan de ville (sprint) » under Cartographier), and the symbols mkocd.mjs used to make (501.6-501.9,
+  532.1-532.6, 990, 991, 995) are the ISSprOM set's own (`docs/mapper/sets.mjs`); mkocd.mjs takes its curves from `frame.js bezier`.
   **Sports grounds** (owner, 2026-11-11: « a rugby field, soccer fields, tennis courts, a track: can the scene show them? »):
   `town_map.py` reads OpenStreetMap's `leisure=pitch|track` with their `sport` and `surface` (BD TOPO's `terrain_de_sport` where
   OSM has none, its `nature_detaillee` giving the sport; a filled oval's track 8.5 m wide) into `src/sports.json`; the map (owner,
@@ -2526,6 +2527,40 @@ Every multiple-choice game was played through to its score page at phone size, w
   and online backgrounds' dialogs, and as a dialog of its own for « Données nationales » and « LiDAR » there; Analyse solo's map
   generation outside the LiDAR countries likewise (`an.gen.ask`).
   Not done: other countries' data (the Netherlands, Sweden, Spain, Belgium, Germany's open Länder next).
+  **« Plan de ville (sprint) »** (2026-11-12, the port of « A mapper's review » of tools/virtually's town map; `mapper/data/town.js`,
+  ribbon Données › `data-town`, `dataui.town`): a sprint map's town from **BD TOPO, France's cadastre and OpenStreetMap merged by
+  feature kind**, by the generator's rules as far as the browser's data allows (no LiDAR nor photograph: no vegetation from the
+  ground, no measured wall heights — BD TOPO's walls 515, OSM's by their `height` —, trees only OSM's): the **public road space** —
+  what the cadastre's parcels leave uncovered within their reach (closed by 20 m) — paved to the property line, OSM's lawns and parks
+  in it open land; BD TOPO's roads at their carriageway width plus 1.8 m sidewalks in town; 501.4 for importance 1-3; **501.1** where
+  the paving meets anything but a building, wall, fence or hedge, plus the kerbs of the town carriageways (the union's boundary: no
+  line across a junction); paved footways and cycle paths as **501.6-501.9** lines at their width; 505 / 506 unpaved paths and BD
+  TOPO's paths and stairways kept wherever OSM has none of the same kind within 4 m; the **path network joined** (JTS union, line
+  merging, ends within 4 m drawn on to the nearest path); **532.1-532.6** stairways by OSM's `width`, else 2 m; touching buildings
+  drawn as one; **520** for parcels under 6 000 m² holding over 25 m² of houses (BD TOPO's `usage_1`) and no church or sports
+  building, schools, OSM's private ground, the railway's corridor — inside it no shed under 20 m², hedge, wall, fence, path or tree;
+  **995** on its edge where no wall, fence, hedge or building is known; sports grounds (OSM's, BD TOPO's where OSM has none): grass
+  pitches 401 edged by 415 with a **531** at each goal and rugby posts (`rotatedRect`, town_sports.py's frame), tennis courts paved
+  and fenced 518, the track and multi-sport courts paved under 709; **990 / 991** every OSM way and tagged node; contours (optional)
+  every 2.5 m from the terrain model smoothed over 4 m (`contours.js` `smoothM`), dropped or kept whole (`minLoopArea` 600 m²,
+  `minOpenLength` 40 m), cut at the buildings only (`cut`). **Every contour, stream and path is a Bézier curve** (`frame.js bezier`,
+  Catmull-Rom; `contours.js` `curve`, on for every contour import since). The « Nouvelle carte » sprint dialog runs it in France (BD
+  TOPO + cadastre + OSM, OSM included whenever BD TOPO is ticked) and where no national data is read (OSM alone: its streets at
+  their width, `STREET_W`); Switzerland and the USA keep their separate national and OSM imports. The town symbols a map made before
+  lacks are added from the set (`ensureTownSymbols`). **The helpers 900 and up are never printed**: Cartographier's PDF, image and
+  separation exports leave them out (`view.drawRect` `print`). Sources: the cadastre from **Etalab** (`data/cadastre.js`: the
+  communes by geo.api.gouv.fr at the area's corners and centre, a city's arrondissement first; one GeoJSON a commune), else — when
+  geo.api.gouv.fr or Etalab does not answer within 10 / 60 s (geo.api took 83 s once on 2026-11-12) — **IGN's PCI parcels** on the
+  same WFS as BD TOPO (`CADASTRALPARCELS.PARCELLAIRE_EXPRESS:parcelle`, the same DGFiP parcels, by box); OSM through `osm.townQuery`
+  (town_fetch.py's query), each Overpass attempt now given up after 150 s (a busy server never answered). Geometry: **JSTS 2.12.1
+  vendored** (`tools/vendor.py`, `vendor.JSTS`, loaded only here; EDL-1.0 / EPL-1.0), in the map's metres; the area coverage made
+  **tile by tile (120 m)** then each kind put together (one overlay over the town took 18 s: JTS's overlay throws on two sources'
+  nearly coincident edges — the fallback snaps the operands to the centimetre), the « within 4 m of OSM » masks buffered locally
+  (`nearIndex`). Measured on Gif-sur-Yvette's centre (600 × 600 m, the PC loaded): ~20-25 s to build after the sources (BD TOPO
+  ~10 s, Overpass 40 s to several minutes), 1 990 objects; in the dev server 0.5 km in full, 1 554 objects with the contours. Test:
+  `node --import ./tools/mapper/shim.mjs tools/mapper/t_town.mjs <out.ocd> <cache.json> [lat lon half-side-m]` (the sources kept in
+  the cache file — outside the repository —, `CONTOURS=1`, `DUMP=<objects.json>`). Not done: the generator's LiDAR- and infrared-made
+  vegetation, verges and lone trees, the multi-sport courts' fences seen by the LiDAR, the « plan de ville » for Switzerland and the USA.
 - **Organisation › Tracer** (`#/orga-tracer`, route `orgTracer`, `pages/tracer.js` + `site/assets/js/tracer/`; owner, 2026-10-15,
   after the Purple Pen study, private artifact https://claude.ai/artifact/Vi5wAeHwMkpsDtvo6x7gFv): course setting as Purple Pen
   does it (phases 1-3 of the study; OCAD and Mapper maps since the third pass, below), in the browser. **No AGPL code**: Purple
@@ -3737,7 +3772,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   `CF_ANALYTICS_TOKEN` with « Zone › Zone › Read » and « Zone › Analytics › Read » on ozimut.com (the zone from `CF_ZONE_ID`,
   else found by name); written from Cloudflare's documentation, not yet run against a real token.
 - **Third-party code is served by the site itself** (owner, 2026-10-18: Safari reported cdn.jsdelivr.net as a tracker; no
-  public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, the countries' flags (flag-icons' 4:3 SVGs, `vendor.flag`;
+  public CDN since): ECharts, pdf.js, pdf-lib, fontkit, fflate, proj4, JSTS (Cartographier's « Plan de ville »), the countries' flags (flag-icons' 4:3 SVGs, `vendor.flag`;
   `python tools/vendor.py build <package>` rebuilds one package alone), DuckDB-WASM (its browser module bundled with
   apache-arrow by esbuild) and the fontsource fonts (Roboto, Roboto Condensed, Noto Sans JP / TC / HK: their CSS and the .woff
   files the Tracer reads) live in `site/assets/vendor/<name>@<version>/` with their licences, built from npm by `tools/vendor.py`

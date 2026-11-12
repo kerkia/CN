@@ -590,6 +590,12 @@ export function build(X) {
             html`<b>OpenStreetMap</b> : routes, chemins, bâtiments, eau, murs et clôtures, rangés dans les symboles de la carte.`,
             html`<b>Les données nationales</b> : la BD TOPO de l'IGN en France, swissTLM3D en Suisse, les routes, l'eau et les bâtiments de The
               National Map aux États-Unis.`,
+            html`<b>Le plan de ville (sprint)</b>, pour une carte sprint : la BD TOPO, le cadastre et OpenStreetMap réunis selon les règles d'un
+              cartographe — la voirie publique pavée jusqu'aux limites des parcelles, le bord des zones pavées et les bordures des chaussées, les
+              trottoirs et pistes cyclables en lignes à leur largeur, les escaliers à leur largeur, le réseau de chemins raccordé, les bâtiments
+              accolés réunis, les jardins privés en olive avec une « limite à confirmer » (995, violet, jamais imprimée) là où aucun mur, clôture
+              ou haie n'est connu, les terrains de sport, et les courbes coupées aux bâtiments seulement. Les objets d'OpenStreetMap sont gardés sur
+              des symboles masqués (990, 991). La « Nouvelle carte » sprint l'utilise en France ; ailleurs, OpenStreetMap seul.`,
             html`<b>Le LiDAR</b>, là où un LiDAR national est ouvert (France, Suisse, États-Unis, Canada, Nouvelle-Zélande) : le relief, les falaises
               et la végétation qu'en tire karttapullautin. Les dalles se calculent à la demande, en quelques minutes ; une barre dit où en est le calcul.`,
           ])}
