@@ -13,9 +13,6 @@
   "104": {
    "length": 0.6
   },
-  "105": {
-   "length": 2
-  },
   "106": {
    "length": 3.65
   },
@@ -23,7 +20,7 @@
    "length": 1.15
   },
   "108": {
-   "length": 1.15
+   "length": 0.7
   },
   "201": {
    "length": 0.6
@@ -62,7 +59,7 @@
    "length": 2.75
   },
   "307": {
-   "width": 0.3
+   "width": 0.8
   },
   "308": {
    "area": 0.2
@@ -121,7 +118,7 @@
    "length": 2
   },
   "416": {
-   "length": 2.5
+   "length": 2
   },
   "501": {
    "area": 1
@@ -153,9 +150,6 @@
   "512": {
    "length": 0.4
   },
-  "513": {
-   "length": 1.4
-  },
   "514": {
    "length": 3.65
   },
@@ -186,7 +180,7 @@
   },
   "522": {
    "area": 0.36,
-   "width": 0.3
+   "width": 0.4
   },
   "523": {
    "area": 0.64
@@ -207,10 +201,26 @@
    "length": 1
   },
   "709": {
-   "area": 4
+   "width": 3,
+   "area": 9
   },
   "711": {
    "length": 6
+  },
+  "105.1": {
+   "length": 1.4
+  },
+  "105.2": {
+   "length": 1.4
+  },
+  "416.1": {
+   "length": 1.8
+  },
+  "513.1": {
+   "length": 1.4
+  },
+  "513.2": {
+   "length": 1.4
   }
  },
  "issprom": {
@@ -388,7 +398,7 @@
    "length": 1.4
   },
   "513.2": {
-   "length": 2.4
+   "length": 1.4
   }
  },
  "notes": {
@@ -396,13 +406,15 @@
   "isom": {
    "101": "A contour knoll: 0.9 mm long, 0.6 mm wide (outside); a depression: 1.1 × 0.7 mm.",
    "103": "A closed form line (knoll or depression): 1.1 mm outside; an open one: two dashes.",
+   "108": "Revision 6: two dots (0.7 mm).",
    "301": "Inside the bank line: 0.55 × 0.55 mm.",
    "302": "Inside the outline: 0.7 × 0.7 mm; without outline (full colour): 0.55 × 0.55 mm.",
-   "307": "The text also says « Minimum area: 0.5 mm (inside) », left out (no second dimension).",
+   "307": "Revision 6: « 2 lines or 0.8 mm (inside) ».",
    "401": "general (100% yellow).",
    "403": "width: general (screens).",
    "405": "For openings in screens; in 408 and 401 0.7 × 0.7 mm, in 410 0.55 × 0.55 mm.",
    "410": "general (100% green).",
+   "416": "Revision 6: the dotted line 5 dots (2.0 mm), the green dashed line 4 dashes (1.8 mm).",
    "502": "0.3 + 2 × 0.14 mm.",
    "515": "gap: general (passages between impassable features).",
    "518": "gap: general.",

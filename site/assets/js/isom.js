@@ -1,7 +1,8 @@
 // The map's own symbols (« Symboles de carte », Coach; owner, 2026-10-31): every symbol of ISOM 2017-2, the IOF's
 // specification for forest orienteering maps, drawn as a map's legend draws it — a swatch for each, in its colour, its
 // dimensions in mm taken from the specification's own drawings (the line widths, dot sizes, dashes and spacings), our own
-// drawings. Grouped as the specification groups them, which is also by colour: landforms (brown), rock and boulders
+// drawings. Revision 6 of January 2024 (mandatory since 2025; owner, 2026-11-12), read in the Czech federation's translation
+// and its errata: 105.1/105.2, 203.1/203.2, 513.1/513.2 and 715, and the widths, colours and screens its errata changed. Grouped as the specification groups them, which is also by colour: landforms (brown), rock and boulders
 // (black, grey), water and marsh (blue), vegetation (yellow, green), man-made features (black), technical symbols, course
 // planning symbols (purple). Names and notes in the catalogues (`ms.s.<code>`, `ms.n.<code>`).
 
@@ -75,7 +76,7 @@ let areaK = 1;
 // ---- helpers of the forest symbols, each after a dimension of the specification (ISOM 2017-2 and its « 3.8 Précise
 // définition des symboles ») --------------------------------------------------------------------------------------------
 /** Colours the specification names beyond C: green 20 % (408's stripes), green + black 50 % (416's dashed line). */
-const CF = { green20: "#d8f0db", greenDark: "#1e5a25" };
+const CF = { greenDark: "#1e5a25" };
 /** A deterministic random number in [0, 1) for the i-th draw of a seed. */
 const rnd = (i, seed) => { const v = Math.sin(i * 12.9898 + seed * 78.233) * 43758.5453; return v - Math.floor(v); };
 /** Points at random over the swatch, `density` a mm², no two closer than `min` mm centre to centre and none further than
@@ -165,9 +166,11 @@ const S = {
   101: () => line(wave(), C.brown, 0.14),
   102: () => line(wave(), C.brown, 0.25),
   103: () => line(wave(), C.brown, 0.1, dash(2, 0.2)), // 0.1 wide, dashes 2.0, gaps 0.2
-  // top line 0.18, tags 0.14 wide every 0.5 reaching 0.40 beyond the line's edge
-  104: () => { const y = 1.2; return line(straight(y, 0.8, W - 0.8), C.brown, 0.18) + tagsAt(along(0.5, 0.25, 0.8, W - 0.8), y, 0.09 + 0.4, 0.14, C.brown); },
-  105: () => line(straight(), C.brown, 0.18) + along(2, 1).map((x) => dot(x, cy(), 0.45, C.brown)).join(""),
+  // top line 0.25 (0.18 before revision 6), tags 0.14 wide every 0.5 reaching 0.40 beyond the line's edge
+  104: () => { const y = 1.2; return line(straight(y, 0.8, W - 0.8), C.brown, 0.25) + tagsAt(along(0.5, 0.25, 0.8, W - 0.8), y, 0.125 + 0.4, 0.14, C.brown); },
+  "105.1": () => line(straight(), C.brown, 0.18) + along(2, 1).map((x) => dot(x, cy(), 0.45, C.brown)).join(""),
+  // revision 6: line 0.18, half dots ø 0.45 every 1.0 on the lower side, their flat side 0.07 below the line's middle
+  "105.2": () => line(straight(), C.brown, 0.18) + spHalfDots(along(1, 0.5), cy(), 0.45, 0.18, 0.02, C.brown),
   106: () => line(straight(), C.brown, 0.18, dash(1.65, 0.35)) + along(2, 0.825).map((x) => dot(x, cy(), 0.45, C.brown)).join(""),
   107: () => { // a line tapering to points at both ends, 0.25 at its widest
     const pts = [], m = 24;
@@ -188,7 +191,8 @@ const S = {
   201: () => { const y = 1.2; return line(straight(y, 0.8, W - 0.8), C.black, 0.35) + tagsAt(along(0.5, 0.25, 0.8, W - 0.8), y, 0.175 + 0.4, 0.12, C.black); },
   202: () => { const y = 0.95; return line(straight(y, 0.8, W - 0.8), C.black, 0.25) + tagsAt(along(0.5, 0.25, 0.8, W - 0.8), y, 0.125 + 0.4, 0.12, C.black)
     + line(straight(2.2, 0.9, W - 0.9), C.black, 0.25, ' stroke-linecap="round"'); },
-  203: () => veeOM(0.7, 0.8, 0.16, C.black),
+  "203.1": () => veeOM(0.7, 0.8, 0.16, C.black),
+  "203.2": () => ring(cx(), cy(), 0.9, C.black, 0.35), // revision 6: a black ring 0.9 outside, line 0.35, white inside
   204: () => dot(cx(), cy(), 0.4, C.black),
   205: () => dot(cx(), cy(), 0.6, C.black),
   206: () => fillp(`M${P([[cx() - 0.9, cy() - 0.2], [cx() - 0.3, cy() - 0.85], [cx() + 0.6, cy() - 0.6], [cx() + 0.95, cy() + 0.3], [cx() + 0.2, cy() + 0.85], [cx() - 0.7, cy() + 0.55]])}Z`, C.black),
@@ -202,7 +206,7 @@ const S = {
   211: () => scatterMM(7, 0.32, 0.4, 6).map(([x, y]) => dot(x, y, 0.2, C.black)).join(""),
   212: () => scatterMM(11, 0.25, 0.32, 7).map(([x, y]) => dot(x, y, 0.2, C.black)).join(""),
   213: () => area(C.yellow50) + diag45(0.45, 0.16, C.black), // yellow 50 %, black dots ø 0.16, 0.45 apart at 45°
-  214: () => area(C.grey30),
+  214: () => area(SC.grey35), // black 35 % (revision 6; 30 % before)
   215: () => line(straight(cy() - 0.1, 0.8, W - 0.8) + straight(cy() + 0.1, 0.8, W - 0.8), C.black, 0.1),
   // 3 water and marsh (blue)
   301: () => area(C.blue, C.black, 0.18),
@@ -213,7 +217,7 @@ const S = {
   304: () => line(wave(), C.blue, 0.3),
   305: () => line(wave(), C.blue, 0.18),
   306: () => line(wave(), C.blue, 0.18, dash(1.25, 0.25)),
-  307: () => area(C.paper) + lines(0.5, 0.25, C.blue) + `<rect x="${X0}" y="${Y0}" width="${n(X1() - X0)}" height="${n(Y1() - Y0)}" fill="none" stroke="${C.black}" stroke-width="0.18"/>`,
+  307: () => area(C.paper) + lines(0.5, 0.25, C.blue) + `<rect x="${X0}" y="${Y0}" width="${n(X1() - X0)}" height="${n(Y1() - Y0)}" fill="none" stroke="${C.black}" stroke-width="0.12"/>`, // outline 0.12 (0.18 before revision 6)
   308: () => lines(0.3, 0.1, C.blue),
   309: () => line(wave(), C.blue, 0.25, ` stroke-linecap="round"${dash(0.001, 0.45)}`),
   310: () => { let o = ""; for (let j = 0, y = Y0 + 0.15; y < Y1(); j++, y += 0.3) o += line(`M${X0},${n(y)}L${n(X1())},${n(y)}`, C.blue, 0.1, `${dash(0.9, 0.25)} stroke-dashoffset="${j % 2 ? 0.55 : 0}"`); return o; },
@@ -230,7 +234,7 @@ const S = {
   // a screen, and on its right half the stripes left in it for a better direction of running (0.4 wide, 1.5 apart)
   406: () => area(C.green30) + line(`M${cx()},${cy() - 0.75}H${n(X1())}M${cx()},${cy() + 0.75}H${n(X1())}`, C.paper, 0.4),
   407: () => area(C.paper) + lines(0.84, 0.12, C.green, true),
-  408: () => area(C.green60) + line(`M${cx()},${cy() - 0.75}H${n(X1())}`, C.paper, 0.4) + line(`M${cx()},${cy() + 0.75}H${n(X1())}`, CF.green20, 0.4),
+  408: () => area(C.green60) + line(`M${cx()},${cy() - 0.75}H${n(X1())}`, C.paper, 0.4) + line(`M${cx()},${cy() + 0.75}H${n(X1())}`, C.green30, 0.4),
   409: () => area(C.paper) + lines(0.42, 0.14, C.green, true),
   410: () => area(C.green) + line(`M${cx()},${cy() - 0.75}H${n(X1())}`, C.paper, 0.4) + line(`M${cx()},${cy() + 0.75}H${n(X1())}`, C.green60, 0.4),
   412: () => { let o = area(C.yellow); for (let y = Y0 + 0.4; y < Y1(); y += 0.8) for (let x = X0 + 0.4; x < X1(); x += 0.8) o += dot(x, y, 0.2, C.black); return o; },
@@ -238,12 +242,14 @@ const S = {
   413: () => { let o = area(C.yellow50) + rect(cx(), Y0, X1(), Y1(), C.yellow); for (let y = Y0 + 0.4; y < Y1(); y += 0.8) for (let x = X0 + 0.4; x < X1(); x += 0.8) o += dot(x, y, 0.45, C.green); return o; },
   // green dashes 0.2 wide, 1.3 long, gaps 0.6, lines 0.85 apart, neighbouring lines staggered; on yellow 50 % or yellow
   414: () => { let o = area(C.yellow50) + rect(cx(), Y0, X1(), Y1(), C.yellow); for (let j = 0, x = X0 + 0.425; x < X1(); j++, x += 0.85) o += line(`M${n(x)},${Y0}V${n(Y1())}`, C.green, 0.2, `${dash(1.3, 0.6)} stroke-dashoffset="${j % 2 ? 0.95 : 0}"`); return o; },
-  415: () => line(straight(), C.black, 0.14),
+  415: () => line(straight(), C.black, 0.1),
   // its two forms (a map uses one): black dots ø 0.22, 0.45 apart; or green + black 50 % dashes 0.14 wide, 0.3 long, gaps 0.2
   416: () => line(straight(cy() - 0.5), C.black, 0.22, ` stroke-linecap="round"${dash(0.001, 0.45)}`) + line(straight(cy() + 0.5), CF.greenDark, 0.14, dash(0.3, 0.2)),
-  417: () => ring(cx(), cy(), 0.9, C.green, 0.18),
+  // 417 and 419 over a white mask (417: 1.1 outside; 419: lines 0.36, 0.18 longer at each end), seen where they stand in
+  // yellow or green
+  417: () => dot(cx(), cy(), 1.1, C.paper) + ring(cx(), cy(), 0.9, C.green, 0.18),
   418: () => ring(cx(), cy(), 0.6, C.green, 0.2), // ø 0.6, its white centre 0.2
-  419: () => cross(cx(), cy(), 0.773, C.green, 0.18), // 0.9 × 0.9 outside
+  419: () => cross(cx(), cy(), 0.773 + 0.36 / Math.SQRT2, C.paper, 0.36) + cross(cx(), cy(), 0.773, C.green, 0.18), // 0.9 × 0.9 outside
   // 5 man-made features (black, brown, grey)
   501: () => area(C.brown50, C.black, 0.14),
   502: () => fillp(`M0.5,${cy() - 0.22}H${W - 0.5}V${cy() + 0.22}H0.5Z`, C.brown50) + line(straight(cy() - 0.22) + straight(cy() + 0.22), C.black, 0.14), // at its minimum: 0.3 + 2 × 0.14
@@ -261,7 +267,9 @@ const S = {
     return line(`M${cx()},${Y0}V${n(cy() - y)}M${cx()},${n(cy() + y)}V${n(Y1())}`, C.blue, 0.18) + line(straight(cy(), 0.25, W - 0.5), C.black, 0.25, dash(2, 0.25)) // a dash centred on the crossing
       + line(`M${n(cx() - b - ex)},${n(cy() - y - ey)}L${n(cx() - b)},${n(cy() - y)}H${n(cx() + b)}L${n(cx() + b + ex)},${n(cy() - y - ey)}`
       + `M${n(cx() - b - ex)},${n(cy() + y + ey)}L${n(cx() - b)},${n(cy() + y)}H${n(cx() + b)}L${n(cx() + b + ex)},${n(cy() + y + ey)}`, C.black, 0.18); },
-  513: () => line(straight(), C.black, 0.14) + along(2, 1).map((x) => dot(x, cy(), 0.4, C.black)).join(""),
+  "513.1": () => line(straight(), C.black, 0.14) + along(2, 1).map((x) => dot(x, cy(), 0.4, C.black)).join(""),
+  // retaining wall: line 0.14, half dots ø 0.4 every 1.0 on the lower side, their flat side 0.05 below the line's middle
+  "513.2": () => line(straight(), C.black, 0.14) + spHalfDots(along(1, 0.5), cy(), 0.4, 0.14, 0.02, C.black),
   514: () => line(straight(), C.black, 0.14, dash(1.65, 0.35)) + along(2, 0.825).map((x) => dot(x, cy(), 0.4, C.black)).join(""),
   515: () => line(straight(), C.black, 0.25) + along(3, 1.1).flatMap((x) => [dot(x, cy(), 0.6, C.black), dot(x + 0.8, cy(), 0.6, C.black)]).join(""),
   516: () => line(straight(), C.black, 0.14) + ticks60(along(2, 1), cy(), 0.4, 0.14, C.black), // ticks 0.4 at 60°, every 2.0
@@ -271,12 +279,12 @@ const S = {
   // two lines 0.18 wide, 1.0 long, 0.6 apart, across a wall or fence: an impassable one is broken between them (as drawn, 518)
   519: () => line(straight(cy(), 0.5, cx() - 0.3) + straight(cy(), cx() + 0.3, W - 0.5), C.black, 0.25) + ticks60([1.1, 1.7, cx() + 1.1, cx() + 1.7], cy(), 0.4, 0.14, C.black)
     + line(`M${cx() - 0.3},${cy() - 0.5}V${cy() + 0.5}M${cx() + 0.3},${cy() - 0.5}V${cy() + 0.5}`, C.black, 0.18),
-  // yellow + green 50 % with its black outline 0.18, or (right) black stripes 0.35 wide, 0.75 apart, outline 0.25
-  520: () => rect(X0, Y0, cx(), Y1(), C.olive) + line(`M${cx()},${Y0}H${X0}V${n(Y1())}H${cx()}`, C.black, 0.18)
-    + line(along(0.75, 0.375, cx(), X1() - 0.1).map((x) => `M${n(x)},${Y0}V${n(Y1())}`).join(""), C.black, 0.35)
-    + line(`M${cx()},${n(Y0 + 0.05)}H${n(X1() - 0.05)}V${n(Y1() - 0.05)}H${cx()}`, C.black, 0.25),
-  // black; or (large buildings in towns) black 65 % with a black outline 0.2
-  521: () => rect(cx() - 2.6, cy() - 0.9, cx() - 0.4, cy() + 0.9, C.black) + fillp(`M${cx() + 0.4},${cy() - 0.9}H${cx() + 2.6}V${cy() + 0.9}H${cx() + 0.4}Z`, C.grey65, C.black, 0.2),
+  // yellow + green 50 % with its black outline 0.18; revision 6: a path open to the runners goes through on white, 0.15
+  // beyond the path on both sides (the black stripes of before are gone)
+  520: () => rect(X0, Y0, X1(), Y1(), C.olive, C.black, 0.18) + line(straight(cy(), X0, X1()), C.paper, 0.25 + 0.3)
+    + line(straight(cy(), X0, X1()), C.black, 0.25, dash(2, 0.25)),
+  // black; or (large buildings in towns) black 50 % with a black outline 0.2
+  521: () => rect(cx() - 2.6, cy() - 0.9, cx() - 0.4, cy() + 0.9, C.black) + fillp(`M${cx() + 0.4},${cy() - 0.9}H${cx() + 2.6}V${cy() + 0.9}H${cx() + 0.4}Z`, SC.grey50, C.black, 0.2),
   522: () => fillp(`M${cx() - 1.6},${cy() - 0.8}H${cx() + 1.6}V${cy() + 0.8}H${cx() - 1.6}Z`, C.grey20, C.black, 0.1),
   523: () => line(`M${cx() - 1.2},${cy() - 0.8}H${cx() + 1.2}V${cy() + 0.8}H${cx() - 1.2}Z`, C.black, 0.16, dash(0.5, 0.25)),
   524: () => dot(cx(), cy(), 0.8, C.black) + line(`M${cx() - 0.7},${cy()}H${cx() + 0.7}M${cx()},${cy() - 0.7}V${cy() + 0.7}`, C.black, 0.16),
@@ -291,7 +299,7 @@ const S = {
   531: () => cross(cx(), cy(), 0.687, C.black, 0.16), // 0.8 × 0.8 outside
   532: () => { const x0 = cx() - 1.8, x1 = cx() + 1.8, y0 = cy() - 0.25, y1 = cy() + 0.25; let d = `M${x0},${y0}H${x1}M${x0},${y1}H${x1}`; for (let x = x0; x <= x1 + 1e-6; x += 0.25) d += `M${n(x)},${y0}V${y1}`; return line(d, C.black, 0.1); }, // 0.4 inside
   // 6 technical symbols
-  601: () => line(`M${cx() - 2},${Y0}V${n(Y1())}M${cx() + 2},${Y0}V${n(Y1())}`, C.black, 0.1) + line(`M${cx()},${Y0}V${n(Y1())}`, C.blue, 0.18),
+  601: () => line(`M${cx() - 2},${Y0}V${n(Y1())}M${cx() + 2},${Y0}V${n(Y1())}`, C.black, 0.1) + line(`M${cx()},${Y0}V${n(Y1())}`, C.blue, 0.12),
   602: () => line(`M${cx() - 1.1},${cy()}H${cx() + 1.1}M${cx()},${cy() - 1.1}V${cy() + 1.1}`, C.black, 0.1),
   603: () => dot(cx() - 1.85, cy() + 0.45, 0.3, C.black) + digits(cx() - 1.55, cy(), "219", 1.5, C.black, true),
 };
@@ -305,9 +313,10 @@ const COURSE = {
   706: () => ring(cx(), cy(), 6.35, C.purple, 0.35) + ring(cx(), cy(), 4.35, C.purple, 0.35), // ø 6.0 and 4.0 centre to centre
   707: () => line(straight(cy(), 0.8, W - 0.8), C.purple, 0.35, dash(2, 0.5)),
   708: () => line(straight(cy(), 0.8, W - 0.8), C.purple, 0.7),
-  709: () => { let d = ""; for (let s = -H; s < W + H; s += 0.8 * Math.SQRT2) d += `M${n(s)},${Y0}L${n(s + H)},${n(Y1())}M${n(s + H)},${Y0}L${n(s)},${n(Y1())}`;
-    return `<clipPath id="isom-709"><rect x="${X0}" y="${Y0}" width="${n(X1() - X0)}" height="${n(Y1() - Y0)}"/></clipPath><g clip-path="url(#isom-709)">${line(d, C.purple, 0.25)}</g>`
-      // hatching 0.25 wide, 0.8 apart at 45°; its outline 0.25: solid (marked continuously, top) or dashed 3.0 / 0.5 (bottom)
+  709: () => { let d = ""; for (let s = -H; s < W + H; s += 1.2 * Math.SQRT2) d += `M${n(s)},${Y0}L${n(s + H)},${n(Y1())}M${n(s + H)},${Y0}L${n(s)},${n(Y1())}`;
+    return `<clipPath id="isom-709"><rect x="${X0}" y="${Y0}" width="${n(X1() - X0)}" height="${n(Y1() - Y0)}"/></clipPath><g clip-path="url(#isom-709)">${line(d, C.purple, 0.2)}</g>`
+      // hatching 0.2 wide, 1.2 apart at 45° (0.25 and 0.8 before 2022); its outline 0.25: solid (marked continuously, top)
+      // or dashed 3.0 / 0.5 (bottom)
       + line(`M${X0},${Y0}H${n(X1())}`, C.purple, 0.25) + line(`M${X0},${n(Y1())}H${n(X1())}`, C.purple, 0.25, dash(3, 0.5)); },
   // two lines 0.35 curving outwards, 3.0 long, at least 0.6 apart inside
   710: () => line(`M${cx() - 0.75},${cy() - 1.5}Q${cx() - 0.2},${cy()} ${cx() - 0.75},${cy() + 1.5}M${cx() + 0.75},${cy() - 1.5}Q${cx() + 0.2},${cy()} ${cx() + 0.75},${cy() + 1.5}`, C.purple, 0.35),
@@ -319,20 +328,24 @@ const COURSE = {
   713: () => { const ye = cy() - 1.75 + 0.55, yb = ye + 2.75;
     return line(`M${cx() - 1.55},${n(ye)}L${cx() - 0.92},${n(yb - 0.3)}Q${cx() - 0.85},${n(yb)} ${cx()},${n(yb)}Q${cx() + 0.85},${n(yb)} ${cx() + 0.92},${n(yb - 0.3)}L${cx() + 1.55},${n(ye)}`, C.purple, 0.4, ' stroke-linejoin="round"')
       + `<ellipse cx="${cx()}" cy="${n(ye)}" rx="1.55" ry="0.35" fill="none" stroke="${C.purple}" stroke-width="0.4"/>`; },
+  // revision 6: a circle ø 5.0 (centre to centre of the line, as 703) and the triangle inside it, pointing to the next
+  // control, line 0.35
+  715: () => ring(cx(), cy(), 5.35, C.purple, 0.35) + line(`M${P([[cx() - 2.165, cy() + 1.25], [cx() + 2.165, cy() + 1.25], [cx(), cy() - 2.5]])}Z`, C.purple, 0.35, ' stroke-linejoin="miter"'),
 };
 
 /** The groups, as the specification orders them: their key (`ms.g.<key>` names it), colours and symbols. */
 export const GROUPS = [
-  { key: "land", colours: ["brown"], codes: [101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115] },
-  { key: "rock", colours: ["black", "grey30"], codes: [201, 202, 203, 204, 205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215] },
-  { key: "water", colours: ["blue"], codes: [301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313] },
-  { key: "veg", colours: ["yellow", "paper", "green"], codes: [401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 412, 413, 414, 415, 416, 417, 418, 419] },
-  { key: "man", colours: ["black", "brown50", "grey65"], codes: [501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520, 521, 522, 523, 524, 525, 526, 527, 528, 529, 530, 531, 532] },
-  { key: "tech", colours: ["black"], codes: [601, 602, 603] },
-  { key: "course", colours: ["purple"], codes: [701, 702, 703, 704, 705, 706, 707, 708, 709, 710, 711, 712, 713] },
+  { key: "land", colours: ["brown"], codes: ["101", "102", "103", "104", "105.1", "105.2", "106", "107", "108", "109", "110", "111", "112", "113", "114", "115"] },
+  { key: "rock", colours: ["black", "grey35"], codes: ["201", "202", "203.1", "203.2", "204", "205", "206", "207", "208", "209", "210", "211", "212", "213", "214", "215"] },
+  { key: "water", colours: ["blue"], codes: ["301", "302", "303", "304", "305", "306", "307", "308", "309", "310", "311", "312", "313"] },
+  { key: "veg", colours: ["yellow", "paper", "green"], codes: ["401", "402", "403", "404", "405", "406", "407", "408", "409", "410", "412", "413", "414", "415", "416", "417", "418", "419"] },
+  { key: "man", colours: ["black", "brown50", "grey50"], codes: ["501", "502", "503", "504", "505", "506", "507", "508", "509", "510", "511", "512", "513.1", "513.2", "514", "515", "516", "517", "518", "519",
+    "520", "521", "522", "523", "524", "525", "526", "527", "528", "529", "530", "531", "532"] },
+  { key: "tech", colours: ["black"], codes: ["601", "602", "603"] },
+  { key: "course", colours: ["purple"], codes: ["701", "702", "703", "704", "705", "706", "707", "708", "709", "710", "711", "712", "713", "715"] },
 ];
 /** The symbols that shall not be crossed or entered (the specification's own words): tagged on the page. */
-export const FORBIDDEN = new Set([520, 708, 709, 711]);
+export const FORBIDDEN = new Set(["520", "708", "709", "711"]);
 /** A colour's swatch value (`GROUPS[].colours`). */
 export const colour = (k) => C[k] || SC[k];
 
@@ -647,8 +660,8 @@ export const GROUPS_SPRINT = [
 ];
 /** What a sprint map says may not be crossed or entered (ISSprOM 2019-2's own words). */
 export const FORBIDDEN_SPRINT = new Set(["301", "307", "411", "515", "518", "520", "521", "708", "709"]);
-/** The sprint map's own symbols, which a forest map (ISOM 2017-2) does not have. */
-export const SPRINT_ONLY = new Set(["105.2", "411", "501.1", "501.2", "501.3", "509.2", "512.2", "512.3", "513.2", "522.1", "533", "710.2", "714", "715"]);
+/** The sprint map's own symbols, which a forest map (ISOM 2017-2, revision 6) does not have. */
+export const SPRINT_ONLY = new Set(["411", "501.1", "501.2", "501.3", "509.2", "512.2", "512.3", "522.1", "533", "710.2", "714"]);
 
 // ---- a control's feature on the map (« Définitions de postes », column D; owner, 2026-11-04: « a Colline would show contour
 // lines that draw a colline »): the feature drawn with the map symbol in question — its line widths, tags, fills and
@@ -704,14 +717,14 @@ function tagNear(pts, x, y, len, w, col, side = 1) {
  *  from the contour's centre), and the tagged lines (line, tags, their spacing and length from the line's centre). */
 const LS = {
   forest: { 101: [C.brown, 0.14], 102: [C.brown, 0.25], 103: [C.brown, 0.1, dash(2, 0.2)], slope: [0.14, 0.47],
-    104: [C.brown, 0.18, 0.14, 0.5, 0.49], 201: [C.black, 0.35, 0.12, 0.5, 0.575], 202: [C.black, 0.25, 0.12, 0.5, 0.525],
-    415: [C.black, 0.14], 416: [C.black, 0.22, ` stroke-linecap="round"${dash(0.001, 0.45)}`], 505: [C.black, 0.25, dash(2, 0.25)] },
+    104: [C.brown, 0.25, 0.14, 0.5, 0.525], 201: [C.black, 0.35, 0.12, 0.5, 0.575], 202: [C.black, 0.25, 0.12, 0.5, 0.525],
+    415: [C.black, 0.1], 416: [C.black, 0.22, ` stroke-linecap="round"${dash(0.001, 0.45)}`], 505: [C.black, 0.25, dash(2, 0.25)] },
   sprint: { 101: [C.brown, 0.21], 102: [C.brown, 0.3], 103: [C.brown, 0.15, dash(3, 0.3)], slope: [0.21, 0.86],
     104: [C.brown, 0.27, 0.21, 0.75, 0.75], 201: [C.black, 0.5, 0.18, 0.75, 0.75], 202: [C.black, 0.3, 0.18, 0.75, 0.75],
     415: [C.black, 0.15], 416: [C.black, 0.25, ` stroke-linecap="round"${dash(0.001, 0.6)}`], 505: [C.black, 0.35, dash(2, 0.3)] },
 };
 /** The outlines areas have where they end (the bank of water, an uncrossable marsh's border, a paved area's edge). */
-const EDGE = { forest: { 301: [C.black, 0.18], 302: [C.blue, 0.1], 307: [C.black, 0.18], 501: [C.black, 0.14] },
+const EDGE = { forest: { 301: [C.black, 0.18], 302: [C.blue, 0.1], 307: [C.black, 0.12], 501: [C.black, 0.14] },
   sprint: { 301: [C.black, 0.18], 302: [C.blue, 0.18], 307: [C.black, 0.18], 501: [C.black, 0.1] } };
 const CONTOURS = new Set(["101", "102", "103"]);
 /** The green screens without the stripes their swatches add for a better direction of running (a thicket is one green). */

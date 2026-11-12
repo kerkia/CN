@@ -23,7 +23,8 @@ const groupOf = (sym) => { const n = Math.floor(sym / 1000); return GROUPS.find(
 export function symName(s) {
   if (s?.set) {
     const pre = /issprom/i.test(s.set) ? "ms.sp.s." : "ms.s.", n = numLabel(s.sym), base = String(Math.floor(s.sym / 1000));
-    for (const k of [pre + n, pre + base]) if (hasKey(k)) return tSite(k);
+    // a set of before ISOM 2017-2's revision 6 numbered 105, 203 and 513 what are now 105.1, 203.1 and 513.1
+    for (const k of [pre + n, pre + base, `${pre}${base}.1`]) if (hasKey(k)) return tSite(k);
   }
   return s?.description || "";
 }

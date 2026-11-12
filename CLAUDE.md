@@ -2449,7 +2449,15 @@ Every multiple-choice game was played through to its score page at phone size, w
   1:4 000; `minimums.json` the specifications' minimum sizes), written by `docs/mapper/sets.mjs` from `isom.js`'s dimensions and the
   specification texts; every symbol of both, variants and helper symbols as `.1`… / `.8`, `.9`, approximations noted in `note`;
   **their CMYK not yet checked against the specifications' colour appendix**. Names shown from the site's catalogues (`ms.s.*`,
-  `ms.sp.s.*`: `panels.symName`), a file's own symbols by the name it gives.
+  `ms.sp.s.*`: `panels.symName`), a file's own symbols by the name it gives. **ISOM 2017-2 revision 6** (January 2024, mandatory
+  since 2025; owner, 2026-11-12: Cartographier lacked it), read in the Czech federation's translation and its errata of 2020-2024
+  (`isomrev6cz.pdf`, the English one at the IOF): 105 → 105.1 and 105.2 retaining earth wall, 203 → 203.1 and 203.2 dangerous
+  pit, 513 → 513.1 and 513.2 retaining wall, 715 continuing point after map exchange (on forest maps too: `isom.js SPRINT_ONLY`
+  lost 105.2, 513.2, 715); 104 0.25, 307's outline 0.12, 415 0.10, 601 blue 0.12, 214 black 35 %, large buildings black 50 %,
+  408's stripes green 30 %, 709 hatching 0.2 every 1.2, 520 without its black stripes (a path through it on white), 417/419's
+  white masks (`isom.js` only: a set would need a green of its own above them), and the minimum sizes. ISSprOM's set: bare rock
+  black 35 % and 513.2's 1.4 mm (its drawings were already revision 6). Maps made with the earlier set keep 105, 203, 513:
+  `symName` finds them as `.1`. The set's `standard` stays « ISOM2017-2 » (the IOF's name for every revision).
   **The page**: start (one's maps, « Nouvelle carte » — sprint or forest, its place in Lambert 93 in France else UTM, its size, the
   open data to start from —, « Importer » OCAD/Mapper/.ozmap); the editor (`editor.js`): ribbon (`ribbon.js` data: Dessiner,
   Modifier, Fonds, Données, Terrain, Vérifier, Mise en page, Imprimer, Équipe, a contextual tab by the selection's kind, Alt+Q

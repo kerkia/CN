@@ -1,5 +1,7 @@
 // Cartographier's IOF symbol sets, authored as data from the IOF specifications (never from OCAD's or OpenOrienteering
-// Mapper's symbol files): ISOM 2017-2 (forest, dimensions at 1:15 000) and ISSprOM 2019-2 revision 6 (sprint, 1:4 000).
+// Mapper's symbol files): ISOM 2017-2 revision 6 (forest, dimensions at 1:15 000) and ISSprOM 2019-2 revision 6 (sprint, 1:4 000).
+// ISOM's revision 6 (January 2024; 2026-11-12) read in the Czech federation's translation and its errata: 105.1/105.2, 203.1/203.2,
+// 513.1/513.2 and 715, and the widths, colours, screens and minimum sizes the errata of 2020-2024 changed.
 // The dimensions are those `site/assets/js/isom.js` draws (read there from the specifications' « exact definition »
 // drawings), the minimum sizes those the specifications' texts give (§2.11 and each symbol's text; ISOM 2017-2 read in FFCO's
 // bilingual FR/EN edition, ISSprOM in its 2019 bilingual edition, numbers mapped to revision 6).
@@ -45,6 +47,7 @@ const COLORS = [
   ["darkGreen", "Green 100% + Black 50%", mix(BASE.green, screen("black", 0.5))],
   ["olive", "Olive green (Yellow 100% + Green 50%)", mix(BASE.yellow, screen("green", 0.5))],
   ["black30", "Black 30%", screen("black", 0.3)],
+  ["black35", "Black 35%", screen("black", 0.35)],
   ["brown30", "Brown 30%", screen("brown", 0.3)],
   ["brown50", "Brown 50%", screen("brown", 0.5)],
   ["whiteB", "White over brown", [0, 0, 0, 0]],
@@ -253,8 +256,10 @@ function forest() {
   add(text(102.8, "Index contour value", "brown", 1.5, { align: 1, note: "The specification asks for figures 1.5 mm high in a sans-serif font; Arial chosen." }));
   add(line(103, N(103), { color: "brown", w: 0.1, dash: [2.0, 0.2] }));
   add(point(103.9, "Slope line (form line)", [L("brown", 0.1, [[0, 0], [0, -0.45]])], { rotatable: true }));
-  add(line(104, N(104), tagged("brown", 0.18, 0.14, 0.49, 0.5, 0.25)));
-  add(line(105, N(105), dotsOn("brown", 0.18, 0.45, 2.0)));
+  add(line(104, N(104), tagged("brown", 0.25, 0.14, 0.525, 0.5, 0.25)));
+  add(line(105.1, N(105.1), dotsOn("brown", 0.18, 0.45, 2.0)));
+  add(line(105.2, N(105.2), { color: "brown", w: 0.18, prim: { elts: [halfDot("brown", 0.45, 0.18, 0.02)], every: 1.0 } },
+    { note: "Draw it with the lower ground on the right: the half dots point to the lower level." }));
   add(line(106, N(106), { color: "brown", w: 0.18, dash: [1.65, 0.35], dashSym: [dot("brown", 0.45)] },
     { note: "The dots are OCAD secondary symbols, centred on the dashes between the first and the last." }));
   add(line(107, N(107), { color: "brown", w: 0.25, ends: "pointed", shorten: [1.0, 1.0] },
@@ -271,7 +276,8 @@ function forest() {
   add(line(201, N(201), tagged("black", 0.35, 0.12, 0.575, 0.5, 0.25)));
   add(line(202, N(202), tagged("black", 0.25, 0.12, 0.525, 0.5, 0.25)));
   add(line(202.1, "Cliff, without tags", { color: "black", w: 0.25, ends: "round" }));
-  add(point(203, N(203), [veeForest("black", 0.7, 0.8, 0.16)]));
+  add(point(203.1, N(203.1), [veeForest("black", 0.7, 0.8, 0.16)]));
+  add(point(203.2, N(203.2), [ring("black", 0.35, 0.9)]));
   add(point(204, N(204), [dot("black", 0.4)]));
   add(point(205, N(205), [dot("black", 0.6)]));
   add(area(206, N(206), { fill: "black" }));
@@ -287,7 +293,7 @@ function forest() {
   add(area(211, N(211), { struct: scatter(7, 0.32, [dot("black", 0.2)]) }));
   add(area(212, N(212), { struct: scatter(11, 0.25, [dot("black", 0.2)]) }));
   add(area(213, N(213), { fill: "yellow50", struct: screen45("black", 0.16, 0.45) }));
-  add(area(214, N(214), { fill: "black30" }));
+  add(area(214, N(214), { fill: "black35" }));
   add(line(215, N(215), { dbl: { left: "black", right: "black", lw: 0.1, gap: 0.1 } }));
   // 3 water and marsh
   add(line(301.9, "Uncrossable body of water, bank line", { color: "black", w: 0.18 }));
@@ -300,7 +306,7 @@ function forest() {
   add(line(304, N(304), { color: "blue", w: 0.3 }));
   add(line(305, N(305), { color: "blue", w: 0.18 }));
   add(line(306, N(306), { color: "blue", w: 0.18, dash: [1.25, 0.25] }));
-  add(line(307.9, "Uncrossable marsh, outline", { color: "black", w: 0.18 }));
+  add(line(307.9, "Uncrossable marsh, outline", { color: "black", w: 0.12 }));
   add(area(307, N(307), { hatch: { color: "blue", w: 0.25, dist: 0.5, a1: 0 }, border: 307.9 }));
   add(area(308, N(308), { hatch: { color: "blue", w: 0.1, dist: 0.3, a1: 0 } }));
   add(line(309, N(309), dotted("blue", 0.25, 0.45)));
@@ -323,7 +329,7 @@ function forest() {
   add(area(407, N(407), { hatch: { color: "green", w: 0.12, dist: 0.84, a1: 90 } }));
   add(area(408, N(408), { fill: "green60" }));
   add(area(408.1, "Vegetation, walk, better running direction (white)", { fill: "green60", hatch: stripes("whiteG"), rotatable: true }));
-  add(area(408.2, "Vegetation, walk, better running direction (green 20%)", { fill: "green60", hatch: stripes("green20s"), rotatable: true }));
+  add(area(408.2, "Vegetation, walk, better running direction (green 30%)", { fill: "green60", hatch: stripes("green30s"), rotatable: true }));
   add(area(409, N(409), { hatch: { color: "green", w: 0.14, dist: 0.42, a1: 90 } }));
   add(area(410, N(410), { fill: "green" }));
   add(area(410.1, "Vegetation, fight, better running direction (white)", { fill: "green", hatch: stripes("whiteG"), rotatable: true }));
@@ -335,10 +341,10 @@ function forest() {
   const vine = (fill) => ({ fill, rotatable: true, struct: { mode: 2, w: 1.9, h: 0.85, angle: 90, elts: [L("green", 0.2, [[0, -0.65], [0, 0.65]])] } });
   add(area(414, N(414), vine("yellow50")));
   add(area(414.1, "Vineyard or similar, on open land", vine("yellow")));
-  add(line(415, N(415), { color: "black", w: 0.14 }));
+  add(line(415, N(415), { color: "black", w: 0.1 }));
   add(line(416, N(416), dotted("black", 0.22, 0.45)));
   add(line(416.1, "Distinct vegetation boundary, green line", { color: "darkGreen", w: 0.14, dash: [0.3, 0.2] }));
-  add(point(417, N(417), [ring("green", 0.18, 0.9)]));
+  add(point(417, N(417), [ring("green", 0.18, 0.9)], { note: "The specification's white mask under it (1.1 mm) is left out: a white above the green areas and under this green would need a green of its own." }));
   add(point(418, N(418), [ring("green", 0.2, 0.6)]));
   add(point(419, N(419), [L("green", 0.18, [[-0.3865, -0.3865], [0.3865, 0.3865]]), L("green", 0.18, [[-0.3865, 0.3865], [0.3865, -0.3865]])]));
   // 5 man-made features
@@ -361,7 +367,9 @@ function forest() {
   const flare = (dir) => [-1, 1].map((s) => L("black", 0.18, [[0, s * 0.45], [dir * 0.4 * Math.cos(rad(60)), s * (0.45 + 0.4 * Math.sin(rad(60)))]]));
   add(line(512, N(512), { dbl: { left: "black", right: "black", lw: 0.18, gap: 0.72 }, start: flare(-1), end: flare(1) },
     { note: "Drawn along the path it carries: the two side lines, their ends turned away at 60°." }));
-  add(line(513, N(513), dotsOn("black", 0.14, 0.4, 2.0)));
+  add(line(513.1, N(513.1), dotsOn("black", 0.14, 0.4, 2.0)));
+  add(line(513.2, N(513.2), { color: "black", w: 0.14, prim: { elts: [halfDot("black", 0.4, 0.14, 0.02)], every: 1.0 } },
+    { note: "Draw it with the lower ground on the right: the half dots point to the lower level." }));
   add(line(514, N(514), { color: "black", w: 0.14, dash: [1.65, 0.35], dashSym: [dot("black", 0.4)] },
     { note: "The dots are OCAD secondary symbols, centred on the dashes between the first and the last." }));
   add(line(515, N(515), dotsOn("black", 0.25, 0.6, 3.0, 2, 0.8)));
@@ -372,12 +380,10 @@ function forest() {
   add(line(518, N(518), { color: "black", w: 0.25, prim: { elts: tick60(0.4, 0.14), every: 2.5, n: 2, dist: 0.6 } }));
   add(point(519, N(519), [L("black", 0.18, [[-0.3, -0.5], [-0.3, 0.5]]), L("black", 0.18, [[0.3, -0.5], [0.3, 0.5]])], { rotatable: true }));
   add(line(520.9, "Area that shall not be entered, boundary line", { color: "black", w: 0.18 }));
-  add(line(520.8, "Area that shall not be entered, boundary line (stripes)", { color: "black", w: 0.25 }));
-  add(area(520, N(520), { fill: "olive" }, { note: "Olive green as one colour: yellow 100% + green 50%. Bounded with 520.9 where needed." }));
-  add(area(520.1, "Area that shall not be entered, black stripes", { hatch: { color: "black", w: 0.35, dist: 0.75, a1: 90 }, border: 520.8 }));
+  add(area(520, N(520), { fill: "olive" }, { note: "Olive green as one colour: yellow 100% + green 50%. Bounded with 520.9 where needed. Revision 6: a path open to the runners goes through on white, 0.15 mm beyond the path on both sides (its black stripes are gone)." }));
   add(line(521.9, "Building, outline", { color: "black", w: 0.2 }));
   add(area(521, N(521), { fill: "black" }));
-  add(area(521.1, "Building, large (urban areas)", { fill: "black65", border: 521.9 }));
+  add(area(521.1, "Building, large (urban areas)", { fill: "black50", border: 521.9 }));
   add(line(522.9, "Canopy, outline", { color: "black", w: 0.1 }));
   add(area(522, N(522), { fill: "black20", border: 522.9 }));
   add(line(523, N(523), { color: "black", w: 0.16, dash: [0.5, 0.25] }));
@@ -397,7 +403,7 @@ function forest() {
     { note: "Drawn 0.4 mm wide inside (the minimum); the specification draws a stairway to its width on the ground." }));
   // 6 technical symbols
   add(line(601, N(601), { color: "black", w: 0.1 }));
-  add(line(601.1, "Magnetic north line, blue", { color: "blue", w: 0.18 }));
+  add(line(601.1, "Magnetic north line, blue", { color: "blue", w: 0.12 }));
   add(point(602, N(602), [L("black", 0.1, [[-1.1, 0], [1.1, 0]]), L("black", 0.1, [[0, -1.1], [0, 1.1]])]));
   add(point(603, N(603), [dot("black", 0.3)]));
   add(text(603.9, "Spot height, figures", "black", 1.5, { note: "Figures 1.5 mm high (Arial)." }));
@@ -416,7 +422,7 @@ function course(add, N, sprint) {
   add(point(706, N(706), [ring("purple", 0.35, (sprint ? 7.0 : 6.0) + 0.35), ring("purple", 0.35, (sprint ? 5.0 : 4.0) + 0.35)]));
   add(line(707, N(707), { color: "purple", w: 0.35, dash: [2.0, 0.5] }));
   add(line(708, N(708), { color: "purple", w: sprint ? 1.0 : 0.7 }));
-  const [hw, hd, bw] = sprint ? [0.2, 1.2, 0.4] : [0.25, 0.8, 0.25];
+  const [hw, hd, bw] = sprint ? [0.2, 1.2, 0.4] : [0.2, 1.2, 0.25];
   add(area(709, N(709), { hatch: { color: "purple", w: hw, dist: hd, a1: 45, a2: 135 } }));
   add(line(709.1, "Out-of-bounds area, boundary marked continuously", { color: "purple", w: bw }));
   add(line(709.2, "Out-of-bounds area, boundary marked intermittently", { color: "purple", w: bw, dash: [3.0, 0.5] }));
@@ -437,8 +443,10 @@ function course(add, N, sprint) {
       { note: "The two purple lines along the passage, their ends turned away from it." }));
     add(line(714.9, "Temporary construction or closed area, outline", { color: "purple", w: 0.1 }));
     add(area(714, N(714), { fill: "purple50", border: 714.9 }));
-    add(point(715, N(715), [ring("purple", 0.35, 6.35), L("purple", 0.35, [[0, 3], [-2.598, -1.5], [2.598, -1.5], [0, 3]], "miter")], { rotatable: true }));
   }
+  // a circle as 703 and the triangle inside it, pointing to the next control
+  const r = sprint ? 3 : 2.5, h = (r * Math.sqrt(3)) / 2;
+  add(point(715, N(715), [ring("purple", 0.35, 2 * r + 0.35), L("purple", 0.35, [[0, r], [-h, -r / 2], [h, -r / 2], [0, r]], "miter")], { rotatable: true }));
 }
 
 // ==== ISSprOM 2019-2 (revision 6) ==================================================================================================
@@ -484,7 +492,7 @@ function sprint() {
   add(area(210, N(210), { struct: scatter(1.15, 0.4, [dot("black", 0.25)]) },
     { note: "Density 1.15 dots a mm² as the specification's drawing shows it, never closer than 0.15 mm edge to edge." }));
   add(area(213, N(213), { fill: "yellow50", struct: screen45("black", 0.18, 0.5) }));
-  add(area(214, N(214), { fill: "black30" }));
+  add(area(214, N(214), { fill: "black35" }));
   // 3 water and marsh
   add(line(301.9, "Uncrossable body of water, bank line", { color: "black", w: 0.18 }));
   add(area(301, N(301), { fill: "blue", border: 301.9 }));
@@ -620,17 +628,17 @@ function sprint() {
 // « general » in MIN_NOTES. « n dashes / dots » lengths as the text converts them.
 const MIN = {
   isom: {
-    101: { length: 0.9, width: 0.6 }, 103: { length: 1.1 }, 104: { length: 0.6 }, 105: { length: 2.0 }, 106: { length: 3.65 }, 107: { length: 1.15 },
-    108: { length: 1.15 }, 201: { length: 0.6 }, 202: { length: 0.6 }, 206: { width: 0.25, area: 0.3 }, 213: { area: 1 }, 214: { area: 1 },
+    101: { length: 0.9, width: 0.6 }, 103: { length: 1.1 }, 104: { length: 0.6 }, "105.1": { length: 1.4 }, "105.2": { length: 1.4 }, 106: { length: 3.65 }, 107: { length: 1.15 },
+    108: { length: 0.7 }, 201: { length: 0.6 }, 202: { length: 0.6 }, 206: { width: 0.25, area: 0.3 }, 213: { area: 1 }, 214: { area: 1 },
     215: { length: 1.0 }, 301: { width: 0.3, area: 0.3025 }, 302: { width: 0.3, area: 0.49 }, 304: { length: 1.0 }, 305: { length: 1.0 }, 306: { length: 2.75 },
-    307: { width: 0.3 }, 308: { area: 0.2 }, 309: { length: 0.7 }, 310: { area: 1.4 }, 401: { width: 0.3 }, 402: { width: 1.5, area: 4 },
+    307: { width: 0.8 }, 308: { area: 0.2 }, 309: { length: 0.7 }, 310: { area: 1.4 }, 401: { width: 0.3 }, 402: { width: 1.5, area: 4 },
     403: { area: 1, width: 0.4 }, 404: { width: 1.5, area: 6.25 }, 405: { area: 1 }, 406: { area: 1, width: 0.4 }, 407: { area: 1.5 }, 408: { area: 0.49, width: 0.3 },
-    409: { area: 1 }, 410: { width: 0.25 }, 412: { area: 9 }, 413: { area: 4 }, 414: { area: 4 }, 415: { length: 2.0 }, 416: { length: 2.5 },
+    409: { area: 1 }, 410: { width: 0.25 }, 412: { area: 9 }, 413: { area: 4 }, 414: { area: 4 }, 415: { length: 2.0 }, 416: { length: 2.0 }, "416.1": { length: 1.8 },
     501: { area: 1 }, 502: { width: 0.58 }, 504: { length: 6.25 }, 505: { length: 4.25 }, 506: { length: 2.25 }, 507: { length: 5.3 }, 508: { length: 3.25 },
-    509: { length: 4.0 }, 510: { length: 5.0 }, 512: { length: 0.4 }, 513: { length: 1.4 }, 514: { length: 3.65 }, 515: { length: 3.0, gap: 0.4 },
+    509: { length: 4.0 }, 510: { length: 5.0 }, 512: { length: 0.4 }, "513.1": { length: 1.4 }, "513.2": { length: 1.4 }, 514: { length: 3.65 }, 515: { length: 3.0, gap: 0.4 },
     516: { length: 1.5 }, 517: { length: 3.65 }, 518: { length: 2.0, gap: 0.4 }, 519: { gap: 0.4 }, 520: { area: 1, gap: 0.4 }, 521: { area: 0.25, gap: 0.4 },
-    522: { area: 0.36, width: 0.3 }, 523: { area: 0.64 }, 528: { length: 1.5 }, 529: { length: 2.0 }, 532: { width: 0.4 }, 707: { length: 4.5 },
-    708: { length: 1.0 }, 709: { area: 4 }, 711: { length: 6.0 },
+    522: { area: 0.36, width: 0.4 }, 523: { area: 0.64 }, 528: { length: 1.5 }, 529: { length: 2.0 }, 532: { width: 0.4 }, 707: { length: 4.5 },
+    708: { length: 1.0 }, 709: { width: 3, area: 9 }, 711: { length: 6.0 },
   },
   issprom: {
     "105.1": { length: 1.4 }, 107: { length: 2.0 }, 108: { length: 1.6 }, 201: { length: 0.9 }, 202: { length: 0.9 }, 206: { width: 0.3, area: 0.75 },
@@ -640,7 +648,7 @@ const MIN = {
     408: { width: 0.4, area: 0.5 }, 409: { width: 0.56 }, 410: { width: 0.25, area: 0.5 }, 411: { width: 0.4, area: 0.3 }, 412: { width: 3, area: 9 },
     413: { width: 2, area: 4 }, 414: { width: 2, area: 4 }, 415: { length: 1.0 }, 416: { length: 2.65 }, "501.3": { width: 2.2, area: 6.25 },
     506: { length: 3.4 }, 507: { length: 7.9 }, 508: { length: 9.75 }, "509.1": { length: 4.0 }, "512.2": { length: 0.75 }, "513.1": { length: 1.4 },
-    "513.2": { length: 2.4 }, 515: { gap: 0.4 }, 516: { length: 2.2 }, 518: { length: 3.0, gap: 0.4 }, 520: { width: 0.25, area: 0.25, gap: 0.4 },
+    "513.2": { length: 1.4 }, 515: { gap: 0.4 }, 516: { length: 2.2 }, 518: { length: 3.0, gap: 0.4 }, 520: { width: 0.25, area: 0.25, gap: 0.4 },
     521: { width: 0.5, area: 0.25, gap: 0.4 }, 522: { width: 0.5, area: 0.25 }, 528: { length: 2.2 }, 529: { length: 3.0 }, 532: { width: 0.4 },
     709: { width: 2, area: 4 }, 714: { width: 0.5, area: 0.25 },
   },
@@ -651,7 +659,8 @@ const MIN_NOTES = {
     101: "A contour knoll: 0.9 mm long, 0.6 mm wide (outside); a depression: 1.1 × 0.7 mm.",
     103: "A closed form line (knoll or depression): 1.1 mm outside; an open one: two dashes.",
     301: "Inside the bank line: 0.55 × 0.55 mm.", 302: "Inside the outline: 0.7 × 0.7 mm; without outline (full colour): 0.55 × 0.55 mm.",
-    307: "The text also says « Minimum area: 0.5 mm (inside) », left out (no second dimension).",
+    307: "Revision 6: « 2 lines or 0.8 mm (inside) ».", 416: "Revision 6: the dotted line 5 dots (2.0 mm), the green dashed line 4 dashes (1.8 mm).",
+    108: "Revision 6: two dots (0.7 mm).",
     401: "general (100% yellow).", 403: "width: general (screens).", 410: "general (100% green).",
     405: "For openings in screens; in 408 and 401 0.7 × 0.7 mm, in 410 0.55 × 0.55 mm.", 502: "0.3 + 2 × 0.14 mm.",
     515: "gap: general (passages between impassable features).", 518: "gap: general.", 519: "The opening in an impassable wall or fence (general rule).",
