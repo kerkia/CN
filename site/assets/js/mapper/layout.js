@@ -9,6 +9,7 @@ import * as S from "./store.js";
 import { modal, field, sel, num } from "../tracer/dialogs.js";
 import * as P from "./panels.js";
 import { t, tn, locale } from "./lang.js";
+import { scaled, scaleSymbol } from "./symscale.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const nf = (v, d = 0) => new Intl.NumberFormat(locale(), { minimumFractionDigits: d, maximumFractionDigits: d }).format(v);
@@ -181,22 +182,8 @@ export async function loadSet(name) {
   if (!r.ok) throw new Error(t("map.lay.noSet"));
   return r.json();
 }
-/** A set's symbols at a map's scale: ISOM's 1:15 000 dimensions enlarged 150 % for 1:10 000 (the specification's rule). */
-export function scaled(set, scale) {
-  const f = set.scale === 15000 && scale <= 10000 ? 1.5 : 1;
-  return f === 1 ? set.symbols : set.symbols.map((s) => scaleSymbol(s, f));
-}
-/** A symbol record with every dimension multiplied by f (line widths, dashes, gaps, patterns, elements, font sizes…). */
-export function scaleSymbol(s, f) {
-  const L = ["lineWidth", "distFromStart", "distToEnd", "mainLength", "endLength", "mainGap", "secGap", "endGap", "primSymDist", "dblWidth", "dblLeftWidth", "dblRightWidth", "dblLength", "dblGap",
-    "frWidth", "hatchLineWidth", "hatchDist", "structWidth", "structHeight", "extent", "fontSize", "lbWidth", "lbDist", "cellWidth", "cellHeight", "radius", "frSize", "frLeft", "frTop", "frRight", "frBottom", "frOfX", "frOfY"];
-  const el = (e) => ({ ...e, lineWidth: Math.round((e.lineWidth || 0) * f), diameter: Math.round((e.diameter || 0) * f), coords: (e.coords || []).map((c) => ({ x: ((Math.round((c.x >> 8) * f)) << 8) | (c.x & 0xff), y: ((Math.round((c.y >> 8) * f)) << 8) | (c.y & 0xff) })) });
-  const o = JSON.parse(JSON.stringify(s));
-  for (const k of L) if (typeof o[k] === "number") o[k] = Math.round(o[k] * f);
-  for (const k of ["elts", "prim", "sec", "corner", "start", "end"]) if (Array.isArray(o[k])) o[k] = o[k].map(el);
-  // `min` stays the specification's own (the checks scale it by the map's scale)
-  return o;
-}
+// the symbols' scaling lives in symscale.js (light: Pixel's invented maps use it without Cartographier's interface)
+export { scaled, scaleSymbol };
 async function symbolSet(E) {
   const v = await modal(E, { title: t("map.rib.symbol-set"), body: field(t("map.lay.set"), sel("s", Object.entries(SETS).map(([k, n]) => [k, n]), E.doc.scale <= 5000 ? "issprom2019-2" : "isom2017-2"))
     + `<fieldset class="mp-choice"><legend>${esc(t("map.lay.setHow"))}</legend><label><input type="radio" name="h" value="add" checked> ${esc(t("map.lay.setAdd"))}</label><label><input type="radio" name="h" value="replace"> ${esc(t("map.lay.setReplace"))}</label></fieldset>` });

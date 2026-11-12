@@ -12,6 +12,9 @@
 //                                      (owner, 2026-11-11: played once — a second run of one event and course is refused, 409;
 //                                      only competitions make the virtual index and the ranking), event its event's id
 //   DELETE runs/<race>/<run>           one's own run (an administrator: any)
+// The « Carte du jour » (pages/virtuallygen.js; owner, 2026-11-12): an invented terrain made in the browser from the day's seed has
+// no package here; its runs are kept under the race « day-YYYYMMDD » (today or yesterday in Paris, training only), their event the
+// signature of the courses the browser made (games/vgenpack.js courseSig).
 // The maps are made from open data, or are a club's with its permission (owner, 2026-11-12); served to the administrators
 // only for now. The runs live in R2 (cn-state)
 // virtual-runs/<race>/<course>/<u>-<time>.json — the route in the object, its summary in custom metadata (one R2 list gives
@@ -24,6 +27,13 @@ const FILE = /^([a-z0-9-]{1,40})\/(race\.json|h\.png|cls\.png|veg\.png|ground\.j
 const TYPES = { json: "application/json", png: "image/png", jpg: "image/jpeg", webp: "image/webp", bin: "application/octet-stream", ocd: "application/octet-stream" };
 const ID = /^[a-z0-9-]{1,40}$/, COURSE = /^[a-z0-9_]{1,24}$/, RUN = /^[0-9a-f]{12}-[0-9a-z]{6,12}$/;
 const RUNS = "virtual-runs/";
+const DAY = /^day-(\d{8})$/, SIG = /^[0-9a-f]{1,8}$/;
+/** Paris's day as YYYYMMDD, `back` days ago. */
+const parisDay = (back = 0) => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Paris", year: "numeric", month: "2-digit", day: "2-digit" })
+    .formatToParts(new Date(Date.now() - back * 86400000)).map((x) => [x.type, x.value]));
+  return `${p.year}${p.month}${p.day}`;
+};
 
 async function listAll(env, prefix, opts = {}) {
   const out = []; let cursor;
@@ -102,7 +112,11 @@ export const onRequestPost = withUser(async ({ request, env, params }, user) => 
   const race = String(b?.race || ""), course = String(b?.course || ""), t = Number(b?.t);
   const sp = Array.isArray(b?.sp) ? b.sp.map(Number) : [];
   if (!ID.test(race) || !COURSE.test(course) || !(t > 0 && t < 86400) || sp.length > 60 || !sp.every((x) => x >= 0 && x <= t + 1)) return json({ error: "bad request" }, 400);
-  if (!(await env.BUCKET.head(`virtual/${race}/race.json`))) return json({ error: "not found" }, 404);
+  const day = DAY.exec(race);
+  if (day) {                                               // the « Carte du jour »: today's or yesterday's, a training with its courses' signature
+    if (day[1] !== parisDay() && day[1] !== parisDay(1)) return json({ error: "not found" }, 404);
+    if (b?.kind === "competition" || !SIG.test(String(b?.event || ""))) return json({ error: "bad request" }, 400);
+  } else if (!(await env.BUCKET.head(`virtual/${race}/race.json`))) return json({ error: "not found" }, 404);
   // the route: [t s, x m, z m] every second or so, rounded to a decimetre; 6 hours at most
   const route = (Array.isArray(b?.route) ? b.route : []).slice(0, 22000)
     .filter((p) => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite)).map(([a, x, z]) => [Math.round(a * 10) / 10, Math.round(x * 10) / 10, Math.round(z * 10) / 10]);

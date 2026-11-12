@@ -193,7 +193,11 @@ export async function render(main, { query }) {
           ${race && sel.course && race.event?.type !== "competition" ? html`<label class="vtp-ghosts" title="${t("vt.gh.tip")}">${t("vt.gh.label")}
             <select id="vtp-ghosts">${Array.from({ length: GHOSTS_MAX + 1 }, (_, i) => html`<option value="${i}" ${raw(i === ghostCount() ? "selected" : "")}>${i ? fmt(i) : t("vt.gh.none")}</option>`)}</select></label>` : ""}
           <span class="muted">${!race ? t("vt.tr.needMap") : !sel.course ? t("vt.tr.needCourse") : t("vt.tr.ready", { course: courseName(courses.find((c) => c.id === sel.course)), map: mapName(race.id) })}</span></div>
-          ${race && sel.course ? moChooser(race) : ""}</div>`;
+          ${race && sel.course ? moChooser(race) : ""}</div>
+        <div class="vtp-gen" id="vtp-gen"></div>`;
+      // invented terrain (pages/virtuallygen.js): the « Carte du jour » and the « Terrain libre », played by `play` as any map
+      const genHost = $("#vtp-gen", el);
+      import("./virtuallygen.js").then((m) => { if (genHost.isConnected) m.renderGen(genHost, { play, runsOf, courseName, swatch }); }).catch((e) => console.error(e));
       if (inline) $(".vtp-inline", el).append($(".vtp-below", el));
       const into = (q) => requestAnimationFrame(() => $(q, el)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
       $$(".vtp-map", el).forEach((b) => b.addEventListener("click", () => { sel.race = b.dataset.race; sel.course = null; setQuery({ carte: sel.race, circuit: null }); drawChooser(); into(".vtp-below"); }));
@@ -206,24 +210,27 @@ export async function render(main, { query }) {
       $("#vtp-go", el)?.addEventListener("click", () => play(race, courses.find((c) => c.id === sel.course)));
     };
     const play = async (race, course) => {
+      const name = race.name || mapName(race.id);              // an invented terrain names itself (pages/virtuallygen.js)
       el.innerHTML = html`<p class="vtp-back"><button type="button" class="btn btn-sm" id="vtp-back">${t("vt.tr.back")}</button>
-        <b>${mapName(race.id)} · ${courseName(course)}</b></p><div class="g-root card vtp-game"><div class="card-body"></div></div>`;
+        <b>${name} · ${courseName(course)}</b></p><div class="g-root card vtp-game"><div class="card-body"></div></div>`;
       const seed = mySeed();
       const { mount } = await import("../games/virtually.js");
       const ev = race.event;
       game = mount($(".vtp-game .card-body", el), race.id, {
-        course: course.id, title: `${mapName(race.id)} · ${courseName(course)}`, base: ev ? `/api/virtual/events/${ev.id}/pkg/` : undefined, race: race.race,
-        // the ghosts: in training only, never in a competition
-        ghosts: ev?.type === "competition" ? [] : pickGhosts(race, course.id, ghostCount()),
+        course: course.id, title: `${name} · ${courseName(course)}`, base: ev ? `/api/virtual/events/${ev.id}/pkg/` : undefined, race: race.race, load: race.load,
+        // the ghosts: in training only, never in a competition nor on invented terrain (the day's first runs are ranked blind)
+        ghosts: ev?.type === "competition" || race.gen ? [] : pickGhosts(race, course.id, ghostCount()),
         env: ev?.env,
         // the map options: an event's, fixed by its creator; a map's training, the runner's choice (games/vmapopt.js)
-        map: ev ? mapOptOf(ev.mapOpt) : savedOpt(),
+        // (the « Carte du jour »'s ranked runs: the whole map for everyone)
+        map: ev ? mapOptOf(ev.mapOpt) : race.day ? null : savedOpt(),
         onFinish: async (run) => {
           const note = () => $("#vt-saved", el);
+          if (race.noSave) { if (note()) note().textContent = t("vtg.notKept"); return; }       // a « Terrain libre »: played, not kept
           try {
             // an event's runs go to its own address, which decides their kind (a competition: once per account and course)
             const r = await fetch(ev ? `/api/virtual/events/${ev.id}/runs` : `${API}runs`, { method: "POST", credentials: "same-origin",
-              headers: { "Content-Type": "application/json" }, body: JSON.stringify({ race: race.id, kind: "training", event: "", ...run, seed: await seed }) });
+              headers: { "Content-Type": "application/json" }, body: JSON.stringify({ race: race.id, kind: "training", event: race.sig || "", ...run, seed: await seed }) });
             if (r.status === 409) { if (note()) note().textContent = t("vo.already"); return; }
             if (!r.ok) throw new Error(String(r.status));
             if (ev?.type === "competition" && !ev.mine) { ev.played = [...(ev.played || []), course.id]; RACES = null; }
@@ -232,7 +239,8 @@ export async function render(main, { query }) {
             if (note()) note().textContent = t("vt.saved");
           } catch (e) { if (note()) note().textContent = t("vt.notSaved"); }
         },
-        onNav: (k) => { setQuery({ run: sel.run }); goTab(k === "results" ? "resultats" : "analyse"); },
+        // an invented terrain's results are on the training tab itself (the day's), not in « Résultats »
+        onNav: (k) => { if (race.gen) { game?.stop(); game = null; drawChooser(); return; } setQuery({ run: sel.run }); goTab(k === "results" ? "resultats" : "analyse"); },
       });
       $("#vtp-back", el).addEventListener("click", () => { game?.stop(); game = null; drawChooser(); });
     };

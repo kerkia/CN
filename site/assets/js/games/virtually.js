@@ -110,6 +110,7 @@ const ghostsLine = (n) => (n ? html`<p class="vt-gh-brief">${tn("vt.gh.brief", n
  * never in the way, on the map only while « Ma position » shows (and on the finish's map), their times on the finish card;
  * env an event's conditions { weather, time, lamp } (games/vweather.js; none: a clear day); map the map options { layer, memory }
  * (games/vmapopt.js; none: the whole map) — the run given to onFinish carries them as `mo`.
+ * load (an invented terrain, games/vgenpack.js) a function giving the package's data as loadRace does, instead of fetching it.
  */
 export function mount(root, raceId, opts = {}) {
   let stopped = false, raf = 0, cleanup = [];
@@ -130,7 +131,7 @@ export function mount(root, raceId, opts = {}) {
   fillSheet();
   (async () => {
     try {
-      const [THREE, data, cd, ghostRuns] = await Promise.all([import(THREE_URL), loadRace(opts.base || `${BASE}${raceId}/`), cdLoaded,
+      const [THREE, data, cd, ghostRuns] = await Promise.all([import(THREE_URL), (opts.load ? opts.load() : loadRace(opts.base || `${BASE}${raceId}/`)), cdLoaded,
         Promise.resolve(opts.ghosts || []).catch(() => [])]);
       data.cd = cd;
       if (stopped) return;
