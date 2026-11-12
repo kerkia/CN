@@ -64,12 +64,13 @@ function briefSheet(course, title, cd) {
 
 /** The card before the start (owner, 2026-11-12: shown while the race loads): the course, its descriptions, the commands, « Partir »
  *  once everything is ready. `race`/`course` null while unknown, `sheet` null while the symbols load. */
-function briefCard({ race, course, title, sheet, ready, msg = "" }) {
+function briefCard({ race, course, title, sheet, ready, msg = "", ghosts = 0 }) {
   return html`<div class="vt-card vt-brief"><h2>${title}</h2>
     ${race && course ? html`<p>${t("vt.info", { n: course.controls.length - 2, km: num(course.length / 1000), scale: (race.scale || 0).toLocaleString(lang()) })}</p>
       <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
       ${race.photoCredits?.length ? html`<details class="muted vt-photos"><summary>${t("vt.src.photos", { n: race.photoCredits.length })}</summary>
         <p>${race.photoCredits.map((c, i) => html`${i ? ", " : ""}<a href="${c.url}" target="_blank" rel="noopener">${c.id.slice(0, 8)}</a> (${c.author})`)}</p></details>` : ""}` : ""}
+    ${ghostsLine(ghosts)}
     <div class="vt-brief-cols">
       <section><h3>${t("vt.brief.cd")}</h3><div class="vt-bsheet" id="vt-bsheet">${sheet || html`<div class="spinner vt-spin"></div>`}</div></section>
       <section><h3>${t("vt.brief.keys")}</h3>${keysHtml()}</section>
@@ -79,13 +80,18 @@ function briefCard({ race, course, title, sheet, ready, msg = "" }) {
     ${race?.std ? html`<p class="muted vt-credit">${t("vt.credit", { std: race.std })}</p>` : ""}</div>`;
 }
 
+/** The briefing's line on the ghosts running with one: how many, and where they show. */
+const ghostsLine = (n) => (n ? html`<p class="vt-gh-brief">${tn("vt.gh.brief", n)}</p>` : "");
+
 /**
  * Mount the game for map `raceId` in `root` (Coach › Virtually's Training tab); returns { stop }.
  * opts: course (its id), title (the course's name as the page writes it), onFinish(run) once the finish is punched —
  * run { course, t (the race time, « Ma position »'s penalties included), sp (cumulative splits, s, the same), d (m run),
  * route [[t, x, z]] (the clock's time) } —, onNav("results" | "analysis") the finish card's buttons; base the package's address
  * when it is not a built-in map's (an event's: /api/virtual/events/<id>/pkg/); race the map's race.json as the page's list has it
- * (the briefing shows the course and its descriptions while the package loads).
+ * (the briefing shows the course and its descriptions while the package loads); ghosts (owner, 2026-11-12: training only) a list,
+ * or a promise of one, of runs replayed beside the runner — { name, t (race time), route [[t, x, z]], mine } —, translucent, named,
+ * never in the way, on the map only while « Ma position » shows (and on the finish's map), their times on the finish card.
  */
 export function mount(root, raceId, opts = {}) {
   let stopped = false, raf = 0, cleanup = [];
@@ -106,7 +112,8 @@ export function mount(root, raceId, opts = {}) {
   fillSheet();
   (async () => {
     try {
-      const [THREE, data, cd] = await Promise.all([import(THREE_URL), loadRace(opts.base || `${BASE}${raceId}/`), cdLoaded]);
+      const [THREE, data, cd, ghostRuns] = await Promise.all([import(THREE_URL), loadRace(opts.base || `${BASE}${raceId}/`), cdLoaded,
+        Promise.resolve(opts.ghosts || []).catch(() => [])]);
       data.cd = cd;
       if (stopped) return;
       if (!brief.course) { brief.race = data.race; brief.course = courseIn(data.race); fillSheet(); }
@@ -116,7 +123,7 @@ export function mount(root, raceId, opts = {}) {
       say("vt.preparing");
       await new Promise((r) => setTimeout(r, 60));   // the message shown before the world is built (no animation frame: a hidden tab has none)
       if (stopped) return;
-      cleanup = start(root, THREE, data, mapImg, raceId);
+      cleanup = start(root, THREE, data, mapImg, raceId, ghostRuns);
     } catch (e) {
       console.error(e);
       root.innerHTML = html`<div class="empty">${t(e.status === 404 ? "vt.noData" : e.status === 403 ? "vt.forbidden" : "vt.error")}<br><span class="muted">${String(e.message || e)}</span></div>`;
@@ -125,7 +132,7 @@ export function mount(root, raceId, opts = {}) {
   return { stop: () => { stopped = true; cancelAnimationFrame(raf); cleanup.forEach((f) => f()); } };
 
   // ---- the game ----------------------------------------------------------------------------------------------------------
-  function start(root, T, data, mapImg, raceId) {
+  function start(root, T, data, mapImg, raceId, ghostRuns = []) {
     const race = data.race, cs = coursesOf(race), C0 = cs.find((c) => c.id === opts.course) || cs[0];
     race.course = { ...C0, name: opts.title || C0.name || race.id };
     const course = race.course.controls, nC = course.length - 2;
@@ -180,6 +187,17 @@ export function mount(root, raceId, opts = {}) {
     // the runner in the avatar's costume for the race's discipline: a sprint map (ISSprOM, or 1:5000 and larger) the sprint's
     const sprint = /ISSprOM/i.test(race.std || "") || (race.scale && race.scale <= 5000);
     const me = runnerFigure(T, opts.avatar || loadAvatar(sprint ? "sprint" : "forest")); scene.add(me);
+    // the ghosts: each run as a translucent runner in a colour of its own, its name above it; nothing in the world knows them
+    // (no collision, no shadow), their place read on the race's clock from their route
+    const ghosts = ghostRuns.filter((g) => g.route?.length > 1).map((g, i) => {
+      const colour = GHOST_COLOURS[i % GHOST_COLOURS.length], fig = runnerFigure(T, { shirt: colour, shorts: "#3a3f47", socks: colour, shoes: "#f2f2f2" });
+      fig.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.42; o.material.depthWrite = false; o.castShadow = false; } });
+      const tag = nameTag(T, g.name, colour); tag.position.y = 2.15; fig.add(tag);
+      fig.visible = false; scene.add(fig);
+      return { ...g, colour, fig };
+    });
+    brief.ghosts = ghosts.length;
+    if (ghosts.length && !$(".vt-gh-brief", root)) $(".vt-brief-cols", root)?.insertAdjacentHTML("beforebegin", String(ghostsLine(ghosts.length)));
     // ---- the runner's state ----
     const st = { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, pitch: -0.08, next: 1, splits: [], track: [], dist: 0,
       view: "third", pace: 1, energy: 1, paceT: {}, speed: 0, lastTrack: -1, msgUntil: 0,
@@ -225,6 +243,15 @@ export function mount(root, raceId, opts = {}) {
       g.save(); g.translate(w / 2, h / 2); g.rotate(mv.ang); g.scale(mv.zoom, mv.zoom); g.translate(-mv.cx, -mv.cy);
       g.imageSmoothingQuality = "high"; g.drawImage(mapImg.canvas, 0, 0);
       overprint(g);
+      for (const gh of ghosts) {                                     // the ghosts: only while one's position shows, and at the finish
+        if (st.phase === "done") {
+          g.strokeStyle = gh.colour; g.globalAlpha = 0.75; g.lineWidth = 1.6 / mv.zoom; g.beginPath();
+          gh.route.forEach(([, x, z], i) => (i ? g.lineTo(x * mPer, z * mPer) : g.moveTo(x * mPer, z * mPer))); g.stroke(); g.globalAlpha = 1;
+        } else if (st.posLeft > 0 && st.phase === "run") {
+          const p = ghostAt(gh.route, st.t);
+          g.fillStyle = gh.colour; g.strokeStyle = "#fff"; g.lineWidth = 1.5 / mv.zoom; g.beginPath(); g.arc(p[0] * mPer, p[1] * mPer, 4 / mv.zoom, 0, 7); g.fill(); g.stroke();
+        }
+      }
       if (st.phase === "done") {
         g.strokeStyle = "rgba(220, 30, 30, 0.9)"; g.lineWidth = 2.2 / mv.zoom; g.beginPath();
         st.track.forEach(([, x, z], i) => (i ? g.lineTo(x * mPer, z * mPer) : g.moveTo(x * mPer, z * mPer))); g.stroke();
@@ -583,12 +610,23 @@ export function mount(root, raceId, opts = {}) {
         ${paceLine()}
         <table class="data"><thead><tr><th>${t("vt.col.leg")}</th><th>${t("vt.col.code")}</th><th>${t("vt.col.split")}</th><th>${t("vt.col.total")}</th>${st.posN ? html`<th>${t("vt.col.pen")}</th>` : ""}</tr></thead>
         <tbody>${legs.map(([leg, tot], i) => html`<tr><td>${i + 1 <= nC ? i + 1 : t("vt.finish")}</td><td>${course[i + 1].code || ""}</td><td>${fmt(leg)}</td><td>${fmt(tot)}</td>${st.posN ? html`<td>${st.legPen[i] ? `+${st.legPen[i]} s` : ""}</td>` : ""}</tr>`)}</tbody></table>
+        ${ghostTable(T)}
         <div class="vt-btns"><button type="button" class="btn btn-primary" id="vt-again">${t("vt.again")}</button>
           ${opts.onNav ? html`<button type="button" class="btn" id="vt-to-res">${t("vt.toResults")}</button><button type="button" class="btn" id="vt-to-an">${t("vt.toAnalysis")}</button>` : ""}</div>
         <p class="muted" id="vt-saved">${opts.onFinish ? t("vt.saving") : ""}</p></div>`);
       $("#vt-again", root).addEventListener("click", () => { $("#vt-over", root).classList.remove("side"); reset(); startScreen(); });
       $("#vt-to-res", root)?.addEventListener("click", () => opts.onNav("results"));
       $("#vt-to-an", root)?.addEventListener("click", () => opts.onNav("analysis"));
+    }
+    /** The ghosts' times against one's own, fastest first, for the finish card (the gap: theirs less one's own). */
+    function ghostTable(T) {
+      if (!ghosts.length) return "";
+      const rows = ghosts.map((g) => ({ name: g.name, t: g.t, colour: g.colour })).concat([{ name: t("vt.gh.you"), t: T, me: true }]).sort((a, b) => a.t - b.t);
+      const gap = (s) => { const r = Math.round(s); return r === 0 ? "±0:00" : `${r > 0 ? "+" : "−"}${fmt(Math.abs(r))}`; };
+      return html`<h3 class="vt-gh-h">${t("vt.gh.done")}</h3><table class="data vt-gh-t"><thead><tr><th>${t("vt.col.runner")}</th><th>${t("vt.col.time")}</th>
+        <th title="${t("vt.gh.gapTip")}">${t("vt.col.gap")}</th></tr></thead>
+        <tbody>${rows.map((r) => html`<tr class="${r.me ? "vt-gh-me" : ""}"><td>${r.me ? "" : html`<span class="vt-gh-sw" style="background:${r.colour}"></span>`}${r.name}</td>
+          <td>${fmt(r.t)}</td><td>${r.me ? "" : gap(r.t - T)}</td></tr>`)}</tbody></table>`;
     }
     /** The share of the time spent moving at each pace, for the finish card. */
     function paceLine() {
@@ -674,6 +712,13 @@ export function mount(root, raceId, opts = {}) {
       const y = world.heightAt(st.x, st.z);
       me.position.set(st.x, y, st.z); me.rotation.y = -st.yaw + Math.PI; me.userData.animate(st.speed, sdt);
       me.visible = st.view === "third";
+      for (const gh of ghosts) {
+        const p = ghostAt(gh.route, st.t), q = ghostAt(gh.route, st.t + 1), d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+        gh.fig.position.set(p[0], world.heightAt(p[0], p[1]), p[1]);
+        if (d > 0.05) gh.fig.rotation.y = -Math.atan2(q[0] - p[0], -(q[1] - p[1])) + Math.PI;
+        gh.fig.userData.animate(st.phase === "run" ? d : 0, sdt);
+        gh.fig.visible = Math.hypot(p[0] - st.x, p[1] - st.z) < 220;
+      }
       const dx = Math.sin(st.yaw), dz = -Math.cos(st.yaw);
       let want;
       if (st.view === "first") want = new T.Vector3(st.x, y + 1.7, st.z);
@@ -709,7 +754,7 @@ export function mount(root, raceId, opts = {}) {
       }
     };
     reset(); resize();
-    window.vtDebug = { st, mv, course, world };          // for support and scripted tests (the console)
+    window.vtDebug = { st, mv, course, world, ghosts };          // for support and scripted tests (the console)
     // build the chunks around the start before the first frame, then « Partir »
     while (world.update(st.x, st.z, 6) > 0) { /* all near chunks */ }
     startScreen();
@@ -722,6 +767,32 @@ export function mount(root, raceId, opts = {}) {
 }
 
 const $$$ = (root, sel) => [...root.querySelectorAll(sel)];
+
+// the ghosts' kit colours (their name tags and their marks on the map too)
+const GHOST_COLOURS = ["#e8b21e", "#19a7a0", "#d64f9b", "#7a5cf0", "#4caf3c", "#e2703a"];
+/** A route's place ([x, z]) at race time s, between its points; its first point before, its last after. */
+function ghostAt(route, s) {
+  if (s <= route[0][0]) return [route[0][1], route[0][2]];
+  const n = route.length - 1;
+  if (s >= route[n][0]) return [route[n][1], route[n][2]];
+  let lo = 0, hi = n;
+  while (hi - lo > 1) { const m = (lo + hi) >> 1; if (route[m][0] <= s) lo = m; else hi = m; }
+  const [ta, xa, za] = route[lo], [tb, xb, zb] = route[hi], f = (s - ta) / (tb - ta || 1);
+  return [xa + (xb - xa) * f, za + (zb - za) * f];
+}
+/** A name above a ghost: its own canvas, always facing the camera, readable through the leaves. */
+function nameTag(T, text, colour) {
+  const c = document.createElement("canvas"), g = c.getContext("2d"), font = "600 34px system-ui, sans-serif";
+  g.font = font; const w = Math.ceil(g.measureText(text).width) + 36;
+  c.width = w; c.height = 56;
+  g.font = font; g.fillStyle = "rgba(20, 24, 28, 0.62)"; g.beginPath(); g.roundRect(0, 4, w, 48, 24); g.fill();
+  g.fillStyle = colour; g.beginPath(); g.arc(22, 28, 8, 0, 7); g.fill();
+  g.fillStyle = "#fff"; g.textBaseline = "middle"; g.fillText(text, 36, 30);
+  const tex = new T.CanvasTexture(c); tex.colorSpace = T.SRGBColorSpace;
+  const sp = new T.Sprite(new T.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+  sp.scale.set(0.32 * w / 56, 0.32, 1); sp.renderOrder = 10;
+  return sp;
+}
 
 /** Purple Pen's description symbols and their drawing (tracer/symbols.js, cdsymbol.js), or null: the sheet then says the words. */
 async function loadDescriptions() {

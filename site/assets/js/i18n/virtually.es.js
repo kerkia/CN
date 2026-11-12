@@ -321,4 +321,14 @@ export default {
   "va.kit.note.forest": "Para las carreras en bosque. Pantalón hasta la rodilla y calcetines altos, sin piel a la vista, o pantalón largo.",
   "va.kit.note.sprint": "Para las carreras de sprint. Pantalón corto y calcetines bajos.",
   "va.legs.knee": "Pantalón hasta la rodilla",
+  // the ghosts (Training tab and the race; 2026-11-12)
+  "vt.gh.label": "Fantasmas",
+  "vt.gh.none": "ninguno",
+  "vt.gh.tip": "Carreras de entrenamiento de este recorrido reproducidas a tu lado: tu mejor, la más rápida y luego las de los corredores cercanos a tu tiempo. Nunca te estorban, solo aparecen en el mapa mientras muestras tu posición y no cambian nada en los resultados ni en la clasificación.",
+  "vt.gh.me": "Mi mejor",
+  "vt.gh.you": "Tú",
+  "vt.gh.done": "Contra los fantasmas",
+  "vt.gh.gapTip": "El tiempo del fantasma menos el tuyo: + fue más lento, − más rápido",
+  "vt.gh.brief.one": "{n} fantasma corre contigo: nunca te estorba y solo aparece en el mapa mientras muestras tu posición.",
+  "vt.gh.brief.other": "{n} fantasmas corren contigo: nunca te estorban y solo aparecen en el mapa mientras muestras tu posición.",
 };

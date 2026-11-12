@@ -321,4 +321,14 @@ export default {
   "va.kit.note.forest": "Portée dans les courses en forêt. Short au genou et chaussettes montantes : pas de peau à nu, ou un pantalon long.",
   "va.kit.note.sprint": "Portée dans les courses de sprint. Short court et chaussettes basses.",
   "va.legs.knee": "Short au genou",
+  // the ghosts (Training tab and the race; 2026-11-12)
+  "vt.gh.label": "Fantômes",
+  "vt.gh.none": "aucun",
+  "vt.gh.tip": "Des courses d'entraînement de ce circuit rejouées à côté de vous : votre meilleure, la plus rapide, puis celles des coureurs proches de votre temps. Ils ne vous gênent pas, n'apparaissent sur la carte que lorsque vous montrez votre position, et ne changent rien aux résultats ni au classement.",
+  "vt.gh.me": "Mon meilleur",
+  "vt.gh.you": "Vous",
+  "vt.gh.done": "Contre les fantômes",
+  "vt.gh.gapTip": "Le temps du fantôme moins le vôtre : + il était plus lent, − plus rapide",
+  "vt.gh.brief.one": "{n} fantôme court avec vous : il ne vous gêne pas et n'apparaît sur la carte que lorsque vous montrez votre position.",
+  "vt.gh.brief.other": "{n} fantômes courent avec vous : ils ne vous gênent pas et n'apparaissent sur la carte que lorsque vous montrez votre position.",
 };

@@ -68,6 +68,24 @@ async function allRuns() {
   return compute(runs);
 }
 
+// ---- the ghosts (owner, 2026-11-12: « a user could select a number of ghosts to run with, in training for now ») -------------
+const GHOSTS_KEY = "ocn.vt.ghosts", GHOSTS_MAX = 5;
+const ghostCount = () => { try { const n = Number(localStorage.getItem(GHOSTS_KEY)); return n >= 0 && n <= GHOSTS_MAX ? n : 0; } catch (e) { return 0; } };
+/** The n ghosts of a course: training runs only (a competition's never), each runner's best, picked as one's own best first, then
+ *  the fastest, then the runners nearest one's own best time (else the field's median); their routes read one by one. */
+async function pickGhosts(race, courseId, n) {
+  if (!n) return [];
+  const runs = (await runsOf(race.id)).filter((r) => r.course === courseId && r.kind !== "competition" && !r.help && r.t > 0);
+  const best = new Map();
+  for (const r of runs) { const b = best.get(r.u); if (!b || r.t < b.t) best.set(r.u, r); }
+  const all = [...best.values()].sort((a, b) => a.t - b.t), mine = all.find((r) => r.mine), others = all.filter((r) => !r.mine);
+  const ref = mine ? mine.t : others[Math.floor(others.length / 2)]?.t;
+  const out = [mine, others[0], ...others.slice(1).sort((a, b) => Math.abs(a.t - ref) - Math.abs(b.t - ref))].filter(Boolean).slice(0, n);
+  const got = await Promise.all(out.map((r) => getJson(`${API}runs/${encodeURIComponent(race.id)}/${r.id}`)
+    .then((d) => ({ name: r.mine ? t("vt.gh.me") : displayName(r.name), t: r.t, mine: !!r.mine, route: d.route || [] })).catch(() => null)));
+  return got.filter((g) => g && g.route.length > 1);
+}
+
 /** The account's own Ozimut forest index today, the seed of their virtual index (games/vindex.js), or null. */
 async function mySeed() {
   try {
@@ -154,12 +172,15 @@ export async function render(main, { query }) {
             ${swatch(c.id)}<b>${courseName(c)}</b><span>${t("vt.tr.courseLine", { km: fmt(c.length / 1000, 1), climb: fmt(c.climb || 0), n: c.controls.length - 2 })}</span>
             <span class="muted">${race.event?.played?.includes(c.id) ? t("vo.played") : t(`vt.lvlHint.${LEVELS.includes(c.id) ? c.id : "other"}`)}</span></button>`)}</div>` : ""}
         <div class="vtp-go"><button type="button" class="btn btn-primary" id="vtp-go" ${raw(race && sel.course ? "" : "disabled")}>${t("vt.tr.start")}</button>
+          ${race && sel.course && race.event?.type !== "competition" ? html`<label class="vtp-ghosts" title="${t("vt.gh.tip")}">${t("vt.gh.label")}
+            <select id="vtp-ghosts">${Array.from({ length: GHOSTS_MAX + 1 }, (_, i) => html`<option value="${i}" ${raw(i === ghostCount() ? "selected" : "")}>${i ? fmt(i) : t("vt.gh.none")}</option>`)}</select></label>` : ""}
           <span class="muted">${!race ? t("vt.tr.needMap") : !sel.course ? t("vt.tr.needCourse") : t("vt.tr.ready", { course: courseName(courses.find((c) => c.id === sel.course)), map: mapName(race.id) })}</span></div></div>`;
       if (inline) $(".vtp-inline", el).append($(".vtp-below", el));
       const into = (q) => requestAnimationFrame(() => $(q, el)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
       $$(".vtp-map", el).forEach((b) => b.addEventListener("click", () => { sel.race = b.dataset.race; sel.course = null; setQuery({ carte: sel.race, circuit: null }); drawChooser(); into(".vtp-below"); }));
       $$(".vtp-course", el).forEach((b) => b.addEventListener("click", () => { sel.course = b.dataset.course; setQuery({ circuit: sel.course }); drawChooser(); into("#vtp-go"); }));
       $("#vtp-palm", el)?.addEventListener("click", () => palmares(race, sel.course));
+      $("#vtp-ghosts", el)?.addEventListener("change", (e) => { try { localStorage.setItem(GHOSTS_KEY, e.target.value); } catch (x) { /* not kept */ } });
       $("#vtp-go", el)?.addEventListener("click", () => play(race, courses.find((c) => c.id === sel.course)));
     };
     const play = async (race, course) => {
@@ -170,6 +191,8 @@ export async function render(main, { query }) {
       const ev = race.event;
       game = mount($(".vtp-game .card-body", el), race.id, {
         course: course.id, title: `${mapName(race.id)} · ${courseName(course)}`, base: ev ? `/api/virtual/events/${ev.id}/pkg/` : undefined, race: race.race,
+        // the ghosts: in training only, never in a competition
+        ghosts: ev?.type === "competition" ? [] : pickGhosts(race, course.id, ghostCount()),
         onFinish: async (run) => {
           const note = () => $("#vt-saved", el);
           try {

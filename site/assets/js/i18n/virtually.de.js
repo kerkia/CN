@@ -321,4 +321,14 @@ export default {
   "va.kit.note.forest": "Getragen bei Waldläufen. Knielange Hose und Kniestrümpfe, keine nackte Haut, oder eine lange Hose.",
   "va.kit.note.sprint": "Getragen bei Sprints. Kurze Hose und kurze Socken.",
   "va.legs.knee": "Knielange Hose",
+  // the ghosts (Training tab and the race; 2026-11-12)
+  "vt.gh.label": "Geister",
+  "vt.gh.none": "keine",
+  "vt.gh.tip": "Trainingsläufe dieser Bahn neben dir abgespielt: dein bester, der schnellste, dann die der Läufer nahe deiner Zeit. Sie stören dich nie, erscheinen auf der Karte nur, solange du deine Position zeigst, und ändern nichts an den Ergebnissen oder der Rangliste.",
+  "vt.gh.me": "Mein Bester",
+  "vt.gh.you": "Du",
+  "vt.gh.done": "Gegen die Geister",
+  "vt.gh.gapTip": "Die Zeit des Geistes minus deine: + er war langsamer, − schneller",
+  "vt.gh.brief.one": "{n} Geist läuft mit dir: Er stört dich nie und erscheint auf der Karte nur, solange du deine Position zeigst.",
+  "vt.gh.brief.other": "{n} Geister laufen mit dir: Sie stören dich nie und erscheinen auf der Karte nur, solange du deine Position zeigst.",
 };

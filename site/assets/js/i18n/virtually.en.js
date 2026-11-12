@@ -321,4 +321,14 @@ export default {
   "va.kit.note.forest": "Worn in forest races. Knee-length shorts and knee-high socks, no bare skin, or long trousers.",
   "va.kit.note.sprint": "Worn in sprint races. Short shorts and low socks.",
   "va.legs.knee": "Knee-length shorts",
+  // the ghosts (Training tab and the race; 2026-11-12)
+  "vt.gh.label": "Ghosts",
+  "vt.gh.none": "none",
+  "vt.gh.tip": "Training runs of this course replayed beside you: your best, the fastest, then those of the runners nearest your time. They never get in your way, show on the map only while you show your position, and change nothing in the results or the ranking.",
+  "vt.gh.me": "My best",
+  "vt.gh.you": "You",
+  "vt.gh.done": "Against the ghosts",
+  "vt.gh.gapTip": "The ghost's time less yours: + it was slower, − faster",
+  "vt.gh.brief.one": "{n} ghost runs with you: it never gets in your way and shows on the map only while you show your position.",
+  "vt.gh.brief.other": "{n} ghosts run with you: they never get in your way and show on the map only while you show your position.",
 };

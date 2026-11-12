@@ -5,7 +5,8 @@
 //   GET  <race>/<file>                 a map's package (made offline by tools/virtually: race.json — its courses —, h.png,
 //                                      cls.png, veg.png, ground.jpg, feats.json, trees.bin when LiDAR, map.ocd, thumb.webp; a town's town.json, town.bin, surf.png and facades.webp, tools/virtually/town_3d.py)
 //   GET  runs?race=<id>                every finished run of that map: [{ id, u, name, course, t, sp, d, at, help, seed, mine }]
-//   GET  runs/<race>/<run>             one run with its route (the analysis)
+//   GET  runs/<race>/<run>             one run with its route (the analysis): one's own, any to an administrator, and any
+//                                      training run to every account — the ghosts the Training tab replays (owner, 2026-11-12)
 //   POST runs { race, course, kind, event, t, sp, d, help, seed, route }   a run just finished, kept under the account's name;
 //                                      kind "training" (played as often as one likes; a map's own courses) or "competition"
 //                                      (owner, 2026-11-11: played once — a second run of one event and course is refused, 409;
@@ -70,10 +71,11 @@ export const onRequestGet = withUser(async ({ request, env, params }, user) => {
     }
     const [, race, run] = path;
     if (!ID.test(race || "") || !RUN.test(run || "")) return json({ error: "bad request" }, 400);
-    if (!run.startsWith(`${me}-`) && !isAdmin(env, user)) return json({ error: "forbidden" }, 403);   // the analysis: the administrators'
     const found = await env.BUCKET.list({ prefix: `${RUNS}${race}/`, include: ["customMetadata"] });
     const o = found.objects.find((x) => x.key.endsWith(`/${run}.json`));
     if (!o) return json({ error: "not found" }, 404);
+    // the analysis of another's run: the administrators'; a training run's route: everyone's, for the ghosts
+    if (!run.startsWith(`${me}-`) && !isAdmin(env, user) && o.customMetadata?.k === "competition") return json({ error: "forbidden" }, 403);
     const body = await env.BUCKET.get(o.key);
     if (!body) return json({ error: "not found" }, 404);
     return json({ ...summary(o, me), route: (await body.json()).route || [] }, 200, { "Cache-Control": "private, max-age=3600" });
