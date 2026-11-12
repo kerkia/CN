@@ -2559,7 +2559,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   black 35 % and 513.2's 1.4 mm (its drawings were already revision 6). Maps made with the earlier set keep 105, 203, 513:
   `symName` finds them as `.1`, and the importers' walls (513.1, 513.2) and earth walls (105.1: `osm.js`, `bdtopo.js`, `ch.js`) land on
   their plain number there (`dataui.bring`'s `symIn`; a plain number finds its `.1` too). The set's `standard` stays « ISOM2017-2 » (the IOF's name for every revision).
-  **The page**: start (one's maps, « Nouvelle carte » — sprint or forest, its place in Lambert 93 in France else UTM, its size, the
+  **The page**: start (one's maps, « Nouvelle carte » — sprint (1:4 000) or forest, **1:15 000 by default, ISOM's own scale** (owner, 2026-11-12: it made
+  every forest map at 1:10 000; 1:10 000 is a choice, its symbols enlarged 150 %), its place in Lambert 93 in France else UTM, its size, the
   open data to start from —, « Importer » OCAD/Mapper/.ozmap); the editor (`editor.js`): ribbon (`ribbon.js` data: Dessiner,
   Modifier, Fonds, Données, Terrain, Vérifier, Mise en page, Imprimer, Équipe, a contextual tab by the selection's kind, Alt+Q
   search), symbols on the left (`panels.js`, swatches drawn by the map's engine), selection / parts / backgrounds / colours / problems

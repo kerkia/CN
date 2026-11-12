@@ -50,7 +50,7 @@ async function openBlank() {
   await closeEditor();
   if (leaving) return;
   pageMain.innerHTML = "";
-  await open({ container: pageMain, blank: true, id: null, card: null, role: "viewer", doc: D.blank({ scale: 10000 }), version: 0, onStart, onClose });
+  await open({ container: pageMain, blank: true, id: null, card: null, role: "viewer", doc: D.blank({ scale: 15000 }), version: 0, onStart, onClose });
 }
 /** The editor closed by itself (Fichier › Fermer): the empty editor and the start screen. */
 function onClose() {
@@ -177,14 +177,17 @@ async function newMap() {
     <fieldset class="mp-choice"><legend>${t("map.new.kind")}</legend>
       <label><input type="radio" name="kind" value="sprint" required> ${t("map.new.sprint")}</label>
       <label><input type="radio" name="kind" value="forest" required> ${t("map.new.forest")}</label></fieldset>
+    <fieldset class="mp-choice" data-fscale style="display:none"><legend>${t("map.new.scale")}</legend>
+      <label><input type="radio" name="fscale" value="15000" checked> ${t("map.new.scale15")}</label>
+      <label><input type="radio" name="fscale" value="10000"> ${t("map.new.scale10")}</label></fieldset>
     ${field(t("map.new.place"), `<input name="place" placeholder="48.3512, -1.2038">`, t("map.new.placeHint"))}
     <p><button type="button" class="btn btn-sm" data-here>${t("map.new.here")}</button></p>
-    ${field(t("map.new.size"), `<select name="size"><option value="0.5">0,5 km</option><option value="1" selected>1 km</option><option value="2">2 km</option><option value="3">3 km</option></select>`)}
+    ${field(t("map.new.size"), `<select name="size">${[0.5, 1, 2, 3].map((a) => `<option value="${a}" ${a === 1 ? "selected" : ""}>${t("map.new.sizeOpt", { a: new Intl.NumberFormat(locale()).format(a) })}</option>`).join("")}</select>`)}
     <fieldset class="mp-choice"><legend>${t("map.new.data")}</legend>
-      <label><input type="checkbox" name="bdtopo" checked> ${t("map.new.bdtopo")}</label>
-      <label><input type="checkbox" name="osm"> ${t("map.new.osm")}</label>
-      <label><input type="checkbox" name="dem" checked> ${t("map.new.dem")}</label>
-      <label><input type="checkbox" name="lidar"> ${t("map.new.lidar")}</label></fieldset>
+      ${dataBox("bdtopo", true, "map.new.national", "map.new.nationalTip")}
+      ${dataBox("osm", false, "map.new.osm", "map.new.osmTip")}
+      ${dataBox("dem", true, "map.new.dem", "map.new.demTip")}
+      ${dataBox("lidar", false, "map.new.lidar", "map.new.lidarTip")}</fieldset>
     <div data-support></div>`,
     onOpen: (form) => {
       // what Cartographier has at the place typed; where something is missing, the way to ask Ozimut for that country
@@ -196,11 +199,15 @@ async function newMap() {
         if (my === tick) box.innerHTML = SP.noteHtml(s, ...p);
       };
       form.place.addEventListener("input", support);
+      // the forest map's scale: ISOM's own 1:15 000 by default, 1:10 000 its 150 % enlargement
+      form.querySelectorAll("[name=kind]").forEach((r) => r.addEventListener("change", () => { form.querySelector("[data-fscale]").style.display = form.kind.value === "forest" ? "" : "none"; }));
+      // ⓘ: the source in a tooltip; a tap (no hover on a phone) shows it under the line
+      form.querySelectorAll("[data-tip]").forEach((b) => b.addEventListener("click", () => { const p = b.parentElement.querySelector(".mp-tip"); p.style.display = p.style.display === "none" ? "block" : "none"; }));
       form.querySelector("[data-here]").addEventListener("click", () => navigator.geolocation?.getCurrentPosition((p) => { form.place.value = `${p.coords.latitude.toFixed(5)}, ${p.coords.longitude.toFixed(5)}`; support(); }, () => {}, { enableHighAccuracy: true, timeout: 15000 }));
     },
     validate: (x) => (!x.kind ? t("map.new.needKind") : x.place && !parsePlace(x.place) ? t("map.new.badPlace") : null) });
   if (!v) { backToStart(); return; }
-  const sprint = v.kind === "sprint", scale = sprint ? 4000 : 10000, standard = sprint ? "ISSprOM2019-2" : "ISOM2017-2";
+  const sprint = v.kind === "sprint", scale = sprint ? 4000 : Number(v.fscale) === 10000 ? 10000 : 15000, standard = sprint ? "ISSprOM2019-2" : "ISOM2017-2";
   const L = await import("../mapper/layout.js"), D = await import("../mapper/doc.js");
   const set = await L.loadSet(sprint ? "issprom2019-2" : "isom2017-2");
   const doc = D.blank({ title: v.title, scale, standard, colors: set.colors, symbols: L.scaled(set, scale).map((s) => ({ ...s, set: sprint ? "issprom2019-2" : "isom2017-2" })) });
@@ -226,6 +233,8 @@ async function newMap() {
     } else for (const [k, act] of [["dem", "data-contours"], ["bdtopo", "data-national"], ["osm", "data-osm"], ["lidar", "data-lidar"]]) if (v[k] && (k !== "bdtopo" || nat)) await E.act(act);
   }
 }
+/** A data checkbox with its ⓘ (outside the label, so that a tap on it does not tick the box). */
+const dataBox = (name, on, label, tip) => `<span style="flex-basis:100%"><label><input type="checkbox" name="${name}" ${on ? "checked" : ""}> ${t(label)}</label> <button type="button" class="muted" style="border:0;background:none;padding:0 2px;cursor:help;font:inherit" data-tip title="${t(tip).replace(/"/g, "&quot;")}" aria-label="${t(tip).replace(/"/g, "&quot;")}">ⓘ</button><span class="mp-tip muted" style="display:none;font-size:12.5px">${t(tip)}</span></span>`;
 const parsePlace = (s) => { const m = /^\s*(-?\d+(?:[.,]\d+)?)\s*[,; ]\s*(-?\d+(?:[.,]\d+)?)\s*$/.exec(String(s || "")); if (!m) return null; const la = Number(m[1].replace(",", ".")), lo = Number(m[2].replace(",", ".")); return Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? [la, lo] : null; };
 /** The map's grid at a place: Lambert 93 in metropolitan France, the national grid in Switzerland and New Zealand, else UTM. */
 async function realWorldAt([lat, lon], scale) {

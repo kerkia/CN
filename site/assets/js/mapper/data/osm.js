@@ -266,7 +266,7 @@ export function toObjects(data, frame, style = "forest", rect = null) {
   const feats = features(data), objects = [], counts = {};
   const mm = (pts) => dedupe(pts.map(([la, lo]) => frame.fromLatLon(la, lo)));
   const add = (o) => { objects.push(o); counts[o.sym] = (counts[o.sym] || 0) + 1; };
-  const scale = frame.scale || (style === "sprint" ? 4000 : 10000);
+  const scale = frame.scale || (style === "sprint" ? 4000 : 15000);
   for (const f of feats) {
     for (const c of classify(f, style)) {
       const base = { sym: c.sym, otp: c.otp, ang: 0, src: "osm", srcId: f.id, draft: true };

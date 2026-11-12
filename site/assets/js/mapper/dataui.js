@@ -247,12 +247,11 @@ async function lidar(E) {
   const f = await frameOrSay(E); if (!f) return;
   const P = await placeOf(E, f).catch(() => null);
   if (P && !P.s.lidar) { await P.SP.explain(E, P.s, P.lat, P.lon, ["lidar"]); return; }
-  // the style first, nothing chosen beforehand (owner, 2026-11-01)
-  const v = await modal(E, { title: t("map.rib.data-lidar"), body: `<fieldset class="mp-choice"><legend>${esc(t("map.data.kind"))}</legend>
-    <label><input type="radio" name="s" value="sprint" required> ${esc(t("map.data.kind.sprint"))}</label>
-    <label><input type="radio" name="s" value="forest" required> ${esc(t("map.data.kind.forest"))}</label></fieldset><p class="mp-hint">${esc(t("map.data.lidarHint"))}</p>`,
-    validate: (x) => (x.s ? null : t("map.data.needKind")) });
+  // the style is the map's own (its standard, else its scale): not asked again (owner, 2026-11-12)
+  const style = styleOf(E);
+  const v = await modal(E, { title: t("map.rib.data-lidar"), body: `<p><b>${esc(t(`map.data.kind.${style}`))}</b></p><p class="mp-hint">${esc(t("map.data.lidarHint"))}</p>` });
   if (!v) return;
+  v.s = style;
   const say = progress(E);
   const L = await import("./data/lidar.js");
   let r;

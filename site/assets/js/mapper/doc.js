@@ -16,7 +16,7 @@ const clone = (o) => (o == null ? o : JSON.parse(JSON.stringify(o, (k, v) => (k 
 const symKey = (sym) => `${Math.floor(sym / 1000)}.${sym % 1000}`;
 
 /** A new, empty document. */
-export function blank({ title = "", scale = 10000, standard = null, colors = [], symbols = [] } = {}) {
+export function blank({ title = "", scale = 15000, standard = null, colors = [], symbols = [] } = {}) {
   return { format: FORMAT, version: VERSION, title, ocad: null, scale, printScale: scale, printArea: null, realWorld: null, declination: 0,
     standard, colors: clone(colors), symbols: clone(symbols), objects: [], params: [], parts: [{ id: "p1", name: "", hidden: false, locked: false }],
     backgrounds: [], layoutImages: [], dirty: {} };
