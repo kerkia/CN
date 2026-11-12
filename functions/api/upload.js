@@ -22,6 +22,7 @@
 // the account that declared it; meta.json then carries the competition (`declared`), so the run can add it if it is new.
 
 import { adminEmails, allow, isAdmin, json, nowIso, withUser } from "../_lib/api.js";
+import { showModule } from "../_lib/modules.js";
 import { findRace, organises, raceOf } from "../_lib/club.js";
 import { claimed } from "../_lib/events.js";
 import { sendOrQueue } from "../_lib/mail.js";
@@ -124,6 +125,7 @@ export const onRequestPost = withUser(async ({ request, env, waitUntil }, user) 
     ...(declared ? { declared } : {}) };
   await env.BUCKET.put(`uploads/${id}/meta.json`, JSON.stringify(m), { httpMetadata: { contentType: "application/json" } });
   await env.DB.prepare("UPDATE uploads SET r2_key = ? WHERE id = ?").bind(r2Key, id).run();
+  if (organiser || kind !== "results") await showModule(env, user.id, "orga");     // an organiser's deposit: Orga shows (_lib/modules.js)
 
   // a run at once, but not for the courses of a race still to come: nothing of them is shown before the race
   const soon = courses && raceDay > isoDay(new Date()) ? false : await startRun(env);

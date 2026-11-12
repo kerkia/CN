@@ -1,4 +1,4 @@
-// POST /api/account/register { email, password, first, last, countries: [{ country, club, id }], consent, website, lang, orga,
+// POST /api/account/register { email, password, first, last, countries: [{ country, club, id }], consent, website, lang, creator (orga before),
 //   turnstile } — `licence` alone (the form of before) stands for France.
 //
 // Every country asked is checked by its policy (_lib/countries.js): France's only if (first name, last name, licence)
@@ -75,8 +75,11 @@ export async function onRequestPost({ request, env }) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING *`,
   ).bind(email, pw.hash, pw.salt, pw.iter, first, last, licence, display, nowIso(), nowIso(), LANGS.includes(b.lang) ? b.lang : "fr").first();
   if (rows.length) await env.DB.batch(rows.map((r) => saveMembership(env, row.id, r)));
-  // the Orga module asked for at registration (migration 0016; without the column, left for Réglages)
-  if (b.orga === true) { try { await env.DB.prepare("UPDATE users SET orga = 1 WHERE id = ?").bind(row.id).run(); } catch (e) { /* no column yet */ } }
+  // « J'organise des courses ou je fais des cartes » (one optional box, owner 2026-11-12): the creators' modules, Orga and
+  // Carto (migrations 0016, 0027; `orga` the form of before). A new account has no work to look at (_lib/modules.js autoShow).
+  const creator = b.creator === true || b.orga === true;
+  try { await env.DB.prepare(`UPDATE users SET modules_checked = 1${creator ? ", orga = 1, carto = 1" : ""} WHERE id = ?`).bind(row.id).run(); }
+  catch (e) { if (creator) { try { await env.DB.prepare("UPDATE users SET orga = 1 WHERE id = ?").bind(row.id).run(); } catch (e2) { /* no column yet */ } } }
   const mail = await sendVerification(env, row);
   return json({ ok: true, mail });
 }

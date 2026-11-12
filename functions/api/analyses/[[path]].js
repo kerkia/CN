@@ -55,6 +55,7 @@
 //                                                      training's corridors and compass legs
 
 import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
+import { showModule } from "../../_lib/modules.js";
 import { hashPassword, checkPassword, b64url, randomBytes } from "../../_lib/crypto.js";
 import { clubOf, clubLabel, findRace, orgCode, organises } from "../../_lib/club.js";
 import { strict, teamIndex } from "../../_lib/events.js";
@@ -449,6 +450,7 @@ const forUsers = withUser(async (ctx, user) => {
       const meta = { id: newId(), kind, title, date, race, club: club || "", orgClub, cc, orgName, vis, pw, ...(code ? { code } : {}), owner: user.id, ownerName: user.display_name || "",
         created: nowIso(), updated: nowIso(), courses: [], draft: true, ...(VIA.includes(b.via) ? { via: b.via } : {}) };
       await saveMeta(env, meta);
+      await showModule(env, user.id, "orga");        // what the account starts here shows its module (_lib/modules.js, owner 2026-11-12)
       return json({ id: meta.id });
     }
     return json({ error: "method" }, 405);

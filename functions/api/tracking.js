@@ -9,6 +9,7 @@
 // `race` is a competition's key: the agenda's « a<id> », a declared « d<id> », or a race of « Résultats ». Kept in R2
 // (cn-state, tracking/<race>.json, the link in the object's custom metadata so that the list is one R2 list).
 import { allow, currentUser, isAdmin, json, nowIso, readBody, withUser } from "../_lib/api.js";
+import { showModule } from "../_lib/modules.js";
 import { findRace, organises } from "../_lib/club.js";
 
 const PREFIX = "tracking/";
@@ -74,6 +75,7 @@ export const onRequest = withUser(async ({ request, env }, user) => {
       // (custom metadata travels as HTTP headers: the name percent-encoded)
       customMetadata: { race: key, url, date, name: encodeURIComponent(name), by: String(user.id) },
     });
+    await showModule(env, user.id, "orga");          // what the account starts here shows its module (_lib/modules.js, owner 2026-11-12)
     return json({ ok: true, link: { race: key, url, name, date, mine: true } });
   }
   if (request.method === "DELETE") {

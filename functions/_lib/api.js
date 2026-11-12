@@ -2,6 +2,7 @@
 
 import { COOKIE, readSession, signSession, nameKey } from "../_middleware.js";
 import { sha256hex } from "./crypto.js";
+import { hiddenOf } from "./modules.js";
 
 export const SESSION_DAYS = 30;
 
@@ -69,6 +70,10 @@ export const publicUser = (env, u, countries = []) => ({
   bookMail: u.book_mail === 1, pushBook: u.book_push !== 0,  // « Mes horaires réservés » (migration 0023)
   // the Orga module, chosen by the account (migration 0016; owner, 2026-10-30); before the migration, every account has it
   orga: u.orga === undefined ? true : u.orga === 1,
+  // the Carto module (Cartographier, migration 0027; owner, 2026-11-12), shown as Orga is; the consumers' modules hidden
+  // in Réglages (_lib/modules.js). Before the migration Carto shows to the accounts that have Orga (it was Orga's page).
+  carto: u.carto === undefined ? (u.orga === undefined ? true : u.orga === 1) : u.carto === 1,
+  hiddenModules: hiddenOf(u),
   // the countries joined (migration 0014): { cc, club, id, status } — status "ok" opens that country's data
   countries: countries.map((c) => ({ cc: c.country, club: c.club, id: c.member_id, status: c.status })),
 });

@@ -1,13 +1,14 @@
 // The modules page (#/modules; owner, 2026-10-30): where one lands once signed in or entered without an account, and where
 // the logo leads back. Ozimut's four modules — Arena, Stats, Coach, Orga — side by side, each opening on its first page; the
 // session's own actions under them (sign out; for a visitor without an account: sign in, create an account, leave). Also
-// the page an Orga address shows to an account that has not turned the module on, or on a phone (route « orgaOff »).
+// the page an Orga address shows without an account, or on a phone (route « orgaOff »): signed in on a computer, it opens
+// whether the module is shown or not (2026-11-12).
 
 import { html, raw, $, $$, nameParts } from "../util.js";
 import { t } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
-import { visibleModules, moduleMenus, moduleHome, isPhone, orgaOpen, leaveGuest } from "../app.js";
+import { visibleModules, moduleShown, CREATOR_MODULES, moduleMenus, moduleHome, isPhone, leaveGuest } from "../app.js";
 
 // one drawing a module, in the module's colour (currentColor)
 const ICONS = {
@@ -21,22 +22,36 @@ const ICONS = {
 };
 export const icon = (m) => raw(`<svg class="hub-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[m]}</svg>`);
 
-/** Turn the Orga module on for this account, then show the page again. */
-async function turnOrgaOn(btn) {
+/** Show a creator's module (Orga, Carto) to this account (owner, 2026-11-12: one click from the modules page). */
+async function turnOn(btn, m) {
   btn.disabled = true;
-  const r = await auth.api("api/account/settings", { orga: true });
+  const r = await auth.api("api/account/settings", { [m]: true });
   if (!r.ok) { btn.disabled = false; btn.insertAdjacentHTML("afterend", html`<p class="notice">${t("hub.orga.err")}</p>`.toString()); return false; }
   await auth.refresh();
   return true;
 }
 
-/** What the Orga card says, and its button, by who is visiting and on what. */
+/** What the Orga card says when it cannot open here — without an account, on a phone —, and its button; else null. Shown
+ *  or not (app.moduleShown), Orga opens for any signed-in account on a computer (owner, 2026-11-12: hidden never blocks). */
 function orgaState() {
   const me = auth.session();
   if (!me) return { note: t("hub.orga.guest"), action: html`<a class="btn btn-primary" href="#/compte/inscription">${t("hub.orga.register")}</a>` };
   if (isPhone()) return { note: t("hub.orga.phone") };
-  if (!me.orga) return { note: t("hub.orga.off"), action: html`<button type="button" class="btn btn-primary" data-orga-on>${t("hub.orga.on")}</button>` };
   return null;
+}
+
+/** Under the cards, one quiet line (owner, 2026-11-12): the creators' modules not shown, each a click away, and the consumers'
+ *  modules hidden in Réglages. A visitor without an account is told they come with one. */
+function quietLine() {
+  const me = auth.session();
+  if (!me) return html`<p class="hub-quiet muted">${t("hub.creators.guest")}</p>`;
+  const off = CREATOR_MODULES.filter((m) => !moduleShown(m) && !(m === "orga" && isPhone()));
+  const hidden = (me.hiddenModules || []).filter((m) => m !== "pixel" || me.admin);
+  if (!off.length && !hidden.length) return "";
+  return html`<div class="hub-quiet">
+    ${off.length ? html`<span class="hub-quiet-ask">${t("hub.creators.ask")}</span>${off.map((m) => html`<button type="button" class="btn btn-sm" data-mod="${m}" data-show-mod="${m}" title="${t(`mod.${m}.tag`)}">${icon(m)}<span>${t("hub.creators.show", { mod: t(`mod.${m}`) })}</span></button>`)}` : ""}
+    ${hidden.length ? html`<span class="muted hub-quiet-hidden">${t("hub.hidden", { mods: hidden.map((m) => t(`mod.${m}`)).join(", ") })} <a href="#/reglages?onglet=modules">${t("st.link")}</a></span>` : ""}
+  </div>`;
 }
 
 // Arena is one page, the competitions: its card says what a competition chosen there offers (owner, 2026-10-30), not links
@@ -80,8 +95,8 @@ function session() {
 export async function render(main, r) {
   if (r.route === "orgaOff") return orgaOff(main);
   const me = auth.session();
-  // no Orga tile on a phone (owner, 2026-10-30): the module is never open there
-  const mods = visibleModules().filter((m) => m !== "orga" || !isPhone());
+  // the modules shown to this visitor (app.moduleShown: no Orga tile on a phone, the creators' to those who use them)
+  const mods = visibleModules();
   // on a phone the modules are tabs over one card (owner, 2026-10-31: as a notebook's, every module in sight without
   // scrolling); app.css shows the tabs under 640 px only, the cards side by side above. The tab chosen is kept for the visit.
   let cur = null;
@@ -93,6 +108,7 @@ export async function render(main, r) {
     <div class="hub-tabs" role="tablist" aria-label="${t("mod.pick")}">${mods.map((m) => html`<button type="button" role="tab"
       data-hub-tab="${m}" data-mod="${m}" aria-selected="${String(m === cur)}">${icon(m)}<span>${t(`mod.${m}`)}</span></button>`)}</div>
     <div class="hub-grid tabbed">${mods.map(card)}</div>
+    ${quietLine()}
     ${session()}
   </div>`;
   const showTab = (m) => {
@@ -104,8 +120,8 @@ export async function render(main, r) {
   main.addEventListener("click", async (e) => {
     const tab = e.target.closest("[data-hub-tab]");
     if (tab) { showTab(tab.dataset.hubTab); return; }
-    const on = e.target.closest("[data-orga-on]");
-    if (on && (await turnOrgaOn(on))) { location.hash = moduleMenus().orga[0][1]; return; }
+    const on = e.target.closest("[data-show-mod]");
+    if (on && (await turnOn(on, on.dataset.showMod))) { location.hash = moduleHome(on.dataset.showMod); return; }
     if (e.target.closest("[data-hub-logout]")) {
       await auth.logout();
       data.dropPrivate();
@@ -116,16 +132,12 @@ export async function render(main, r) {
   return { title: t("mod.pick") };
 }
 
-/** An Orga page to an account without the module, or on a phone: why, and the way to turn it on. */
+/** An Orga page without an account, or on a phone: why. */
 function orgaOff(main) {
-  const st = orgaState() || { note: t("hub.orga.off") };
+  const st = orgaState() || { note: t("hub.orga.phone") };
   main.innerHTML = html`<div class="hub hub-narrow">
     <div class="hub-grid one">${card("orga")}</div>
     <p><a href="#/modules">${t("mod.back")}</a></p>
   </div>`;
-  main.addEventListener("click", async (e) => {
-    const on = e.target.closest("[data-orga-on]");
-    if (on && (await turnOrgaOn(on)) && orgaOpen()) window.dispatchEvent(new HashChangeEvent("hashchange"));
-  });
   return { title: t("mod.orga"), note: st.note };
 }

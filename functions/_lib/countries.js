@@ -7,6 +7,7 @@
 // Only a membership with status 'ok' counts (rights, the session's `cc`); a club typed by the user grants nothing by itself.
 
 import { checkLicensee, cleanLicence, nowIso, publicUser, sessionCookie } from "./api.js";
+import { autoShow } from "./modules.js";
 
 // The IOF's member federations (2026), by ISO code; France first. A code outside this list is refused.
 export const COUNTRIES = ["FR",
@@ -77,6 +78,7 @@ export const sessionCountries = (user, rows) => (user.demo_until ? ["FR"] : acce
 
 /** The logged-in view of an account and its fresh session cookie: what login, hand-off and a change of country answer. */
 export async function accountView(env, user) {
+  user = await autoShow(env, user);            // its existing work shows its creators' modules (_lib/modules.js)
   const rows = await memberships(env, user.id);
   return { body: publicUser(env, user, rows), cookie: await sessionCookie(env, user, sessionCountries(user, rows)) };
 }

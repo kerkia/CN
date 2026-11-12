@@ -13,6 +13,7 @@
 // results, split times and start list stay after the race. POST { op: "link", id, race } ties one's broadcast to another
 // competition (race null: none); POST { op: "publish", id } saves it now and starts a results run (« Publier maintenant »).
 import { isAdmin, json, readBody, withUser } from "../../_lib/api.js";
+import { showModule } from "../../_lib/modules.js";
 import { broadcasts, liveDir, newMopKey } from "../../_lib/live.js";
 import { findRace, organises } from "../../_lib/club.js";
 import { teamIndex } from "../../_lib/events.js";
@@ -101,5 +102,6 @@ export const onRequestPost = withUser(async ({ request, env }, user) => {
     body: JSON.stringify({ op: "new", name, date, organizer: String(b.organizer || race?.org || "").trim().slice(0, 160),
       key: b.key ? String(b.key).slice(0, 40) : null, mop: newMopKey(), by: user.id, race: race?.key || null }),
   });
+  if (r.ok) await showModule(env, user.id, "orga");    // what the account starts here shows its module (_lib/modules.js, owner 2026-11-12)
   return json(await r.json());
 });

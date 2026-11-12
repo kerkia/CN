@@ -410,12 +410,26 @@ async function pickCountry(cc) {
 // analysis and team); Carto (« Cartographier », the map editor: a map outlives its events, mappers are not organisers, and it
 // works on a phone) and Pixel (« Virtually », the virtual races; administrators only for now) are modules of their own.
 export const MODULES = ["arena", "stats", "coach", "orga", "carto", "pixel"];
-/** The modules this visitor is offered (Pixel to the administrators only, as its page). */
-export const visibleModules = () => MODULES.filter((m) => m !== "pixel" || !!auth.session()?.admin);
+// Shown by need (owner, 2026-11-12; migration 0027): Arena, Stats, Coach and Pixel are the consumers' modules, shown unless the
+// account hid one in Réglages › Modules; Orga and Carto are the creators', shown only to the accounts that use them — chosen at
+// registration (one box), in Réglages or on the modules page, and turned on by themselves by what the account already manages or
+// starts to (functions/_lib/modules.js). Never hidden by themselves. **Hidden never blocks**: a module's addresses always open
+// (an invitation, an e-mail's link, a bookmark).
+export const CREATOR_MODULES = ["orga", "carto"];
+/** Is this module shown in the bar and on the modules page (Pixel to the administrators only, as its page; Orga never on a phone)? */
+export function moduleShown(m, me = auth.session()) {
+  if (m === "pixel" && !me?.admin) return false;
+  if (m === "orga" && isPhone()) return false;
+  if (CREATOR_MODULES.includes(m)) return !!me?.[m];
+  return !(me?.hiddenModules || []).includes(m);
+}
+/** The modules this visitor is offered. */
+export const visibleModules = () => MODULES.filter((m) => moduleShown(m));
+let hiddenCreatorWas = false;           // the last page was a creator's module not shown (route_)
 /** A phone (the same test as index.html's default theme): the Orga module is for computers. */
 export const isPhone = () => matchMedia("(pointer: coarse) and (max-width: 900px)").matches;
-/** May this visitor open the Orga module here? A signed-in account that turned it on (Réglages, the modules page), not on a phone. */
-export const orgaOpen = () => !!auth.session()?.orga && !isPhone();
+/** May this visitor open the Orga module here? Any signed-in account, on a computer — shown or not (moduleShown). */
+export const orgaOpen = () => !!auth.session() && !isPhone();
 /** Each module's menu: [key, address, label]; the key is the route's (menuKey). */
 export function moduleMenus() {
   const me = auth.session();
@@ -972,9 +986,13 @@ async function route_() {
       r = parseHash();
     }
   }
-  // the Orga module: an account that turned it on, on a computer (owner, 2026-10-30); else a page that says how (Carto, its
-  // own module since 2026-11-12, opens on a phone too and needs no Orga)
+  // the Orga module: any signed-in account on a computer, shown or not (hidden never blocks, 2026-11-12); else a page that says
+  // why (Carto, its own module since 2026-11-12, opens on a phone too)
   if (r.route !== "methods" && moduleOf(r) === "orga" && !orgaOpen()) r = { ...r, route: "orgaOff", from: r.route };
+  // leaving a page of a creator's module not shown: what was done there may have turned it on (functions/_lib/modules.js
+  // showModule): the account read again, the bar drawn again once it is
+  if (hiddenCreatorWas && auth.session()) auth.refresh().then(() => renderHeader(parseHash())).catch(() => {});
+  { const m = moduleOf(r); hiddenCreatorWas = CREATOR_MODULES.includes(m) && !moduleShown(m); }
   // every page for every account (owner, 2026-10-15): « En direct », « Entrainement », the analyses and « Organisation »
   // were for the administrators (or the « live » right) until then
   // a shared link may carry the discipline (?t=For|Spr): it sets the site-wide switch

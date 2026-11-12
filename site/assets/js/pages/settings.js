@@ -7,7 +7,7 @@ import { t, tn, lang, setLang, OPEN, LANGS, LANG_NAMES } from "../i18n.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import * as store from "../store.js";
-import { link } from "../app.js";
+import { link, MODULES, CREATOR_MODULES } from "../app.js";
 import { methodShort } from "../ui.js";
 import * as pwa from "../pwa.js";
 import { name as countryName, membershipFields, bindMembershipFields, readMembership, flagImg } from "../country.js";
@@ -104,9 +104,13 @@ export async function render(main, { query = {} } = {}) {
         <div class="notice ok" id="alerts-ok" hidden>${t("st.saved")}</div>
       </div></section>
 
-      <section class="card"><div class="card-head"><h2>${t("st.orga.title")}</h2></div><div class="card-body stack" style="gap:8px">
-        <label class="check"><input type="checkbox" id="st-orga" ${user.orga ? "checked" : ""}><span>${t("st.orga.label")}</span></label>
-        <p class="muted" style="margin:0;font-size:12.5px">${t("st.orga.hint")}</p>
+      <section class="card" id="st-modules"><div class="card-head"><h2>${t("st.mod.title")}</h2></div><div class="card-body stack" style="gap:8px">
+        <p class="muted" style="margin:0;font-size:12.5px">${t("st.mod.lede")}</p>
+        <b class="st-mod-h">${t("st.mod.consumers")}</b>
+        ${MODULES.filter((m) => !CREATOR_MODULES.includes(m) && (m !== "pixel" || user.admin)).map((m) => html`<label class="check"><input type="checkbox" data-mod-box="${m}" ${(user.hiddenModules || []).includes(m) ? "" : "checked"}><span><b>${t(`mod.${m}`)}</b> · ${t(`mod.${m}.tag`)}</span></label>`)}
+        <b class="st-mod-h">${t("st.mod.creators")}</b>
+        ${CREATOR_MODULES.map((m) => html`<label class="check"><input type="checkbox" data-mod-box="${m}" ${user[m] ? "checked" : ""}><span><b>${t(`mod.${m}`)}</b> · ${t(`mod.${m}.tag`)}</span></label>`)}
+        <p class="muted" style="margin:0;font-size:12.5px">${t("st.mod.hint")}</p>
       </div></section>
 
       ${store.METHODS.every((m) => store.available().includes(m)) && auth.sees("FR") ? html`<section class="card"><div class="card-head"><h2>${t("st.arenaM.title")}</h2></div><div class="card-body stack" style="gap:8px">
@@ -199,22 +203,25 @@ export async function render(main, { query = {} } = {}) {
   }
   drawCountries();
   if (query.onglet === "pays") $("#st-countries").scrollIntoView({ block: "start" });
+  if (query.onglet === "modules") $("#st-modules")?.scrollIntoView({ block: "start" });
 
   // the language: on the account (its e-mails), then on this device, the page drawn again in it
   $("#st-lang")?.addEventListener("change", (e) => {
     const l = e.target.value;
     auth.api("api/account/settings", { lang: l }).catch(() => {}).finally(() => setLang(l));
   });
-  // the Orga module (migration 0016): saved as it changes, the bar drawn again
-  $("#st-orga")?.addEventListener("change", async (e) => {
-    const box = e.target;
+  // the modules shown (migrations 0016, 0027; owner, 2026-11-12): each box saved as it changes, the bar drawn again — the
+  // creators' modules by their own switch, the consumers' as the list of those unticked
+  $$("[data-mod-box]").forEach((b) => b.addEventListener("change", async (e) => {
+    const box = e.target, m = box.dataset.modBox;
     box.disabled = true;
-    const res = await auth.api("api/account/settings", { orga: box.checked });
+    const res = await auth.api("api/account/settings", CREATOR_MODULES.includes(m) ? { [m]: box.checked }
+      : { hiddenModules: $$("[data-mod-box]").filter((x) => !x.checked && !CREATOR_MODULES.includes(x.dataset.modBox)).map((x) => x.dataset.modBox) });
     box.disabled = false;
     if (!res.ok) { box.checked = !box.checked; return; }
     await auth.refresh();
     window.dispatchEvent(new Event("ocn:countries"));
-  });
+  }));
   // the alerts: each box saved as it changes; the regions shown while an agenda alert is on, by either channel
   const agendaOn = () => $$("[data-alert]").some((i) => i.checked && /^(agendaAlert|deadlineAlert|pushAgenda|pushDeadline)$/.test(i.dataset.alert));
   const regions = () => $$("[data-region]").filter((i) => i.checked).map((i) => i.dataset.region);

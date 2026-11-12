@@ -29,6 +29,7 @@
 //   GET|POST|DELETE /api/mapper/<id>/invites, POST /api/mapper/<id>/join   as the Tracer's
 
 import { allow, json, readBody, withUser, nowIso, isAdmin } from "../../_lib/api.js";
+import { showModule } from "../../_lib/modules.js";
 import { newToken, randomBytes, sha256hex } from "../../_lib/crypto.js";
 
 const META = "mapper-meta/", DATA = "mapper/";
@@ -126,6 +127,7 @@ export const onRequest = withUser(async (ctx, user) => {
         scale: Math.max(500, Math.min(100000, Number(b.scale) || 10000)), standard: STANDARDS.includes(b.standard) ? b.standard : "",
         place: placeOf(b.place), created: nowIso(), updated: nowIso(), version: 0, source: null, objects: 0 };
       await saveMeta(env, meta);
+      await showModule(env, user.id, "carto");       // what the account starts here shows its module (_lib/modules.js, owner 2026-11-12)
       return json({ id: meta.id });
     }
     return json({ error: "method" }, 405);
@@ -148,6 +150,7 @@ export const onRequest = withUser(async (ctx, user) => {
     meta.team.push({ uid: user.id, name: user.display_name || "", role: inv.role, joined: nowIso() });
     meta.updated = nowIso();
     await saveMeta(env, meta);
+    await showModule(env, user.id, "carto");         // invited to a map: Carto shows (_lib/modules.js)
     return json({ ok: true, role: inv.role, joined: true });
   }
   if (!role) return json({ error: "forbidden" }, 403);

@@ -28,6 +28,7 @@ import { flushPush, queuePush } from "../../_lib/push.js";
 import { eventPush } from "../../_lib/templates.js";
 import { broadcasts } from "../../_lib/live.js";
 import { startRun } from "../upload.js";
+import { showModule } from "../../_lib/modules.js";
 
 const TERRAINS = ["Forêt", "Sprint", "VTT", "Ski"];
 const FORMATS = ["Sprint", "MD", "LD", "Nuit", "Autre"];
@@ -186,6 +187,7 @@ export const onRequest = withUser(async ({ request, env, params, waitUntil }, us
       env.DB.prepare("INSERT INTO event_members (event_id, user_id, joined_at) VALUES (?, ?, ?)").bind(id, user.id, now),
     ]);
     await mirror(env, ev);
+    await showModule(env, user.id, "orga");          // what the account starts here shows its module (_lib/modules.js, owner 2026-11-12)
     return json({ ok: true, event: view(ev), soon: race_key === `d${id}` ? await startRun(env) : false });
   }
 
@@ -245,6 +247,7 @@ export const onRequest = withUser(async ({ request, env, params, waitUntil }, us
       .bind(accept ? "accepted" : "declined", now, user.id, rq.id)];
     if (accept) st.push(env.DB.prepare("INSERT OR IGNORE INTO event_members (event_id, user_id, joined_at, added_by) VALUES (?, ?, ?, ?)").bind(id, rq.user_id, now, user.id));
     await env.DB.batch(st);
+    if (accept) await showModule(env, rq.user_id, "orga");     // a member of the team now: Orga shows (_lib/modules.js)
     await tell(env, waitUntil, [rq.user_id], (lang) => eventPush(lang, accept ? "accepted" : "declined", ev));
     return json({ ok: true });
   }
@@ -440,5 +443,7 @@ async function migrate(env, request) {
       await env.DB.prepare("UPDATE events SET analysis = ? WHERE race_key = ? AND status = 'active' AND analysis IS NULL").bind(m.id, m.race).run();
     }
   }
+  // every team member made here sees Orga (_lib/modules.js; before migration 0027 or 0016, nothing)
+  try { await env.DB.prepare("UPDATE users SET orga = 1 WHERE orga = 0 AND id IN (SELECT user_id FROM event_members)").run(); } catch (e) { /* no column yet */ }
   return out;
 }

@@ -31,9 +31,11 @@ export function build(X) {
     return html`
       ${slide("El sitio", "Los módulos y la cuenta", html`
         <p>Ozimut tiene varios módulos, Arena, Stats, Coach, Orga y Carto: la página de módulos, a la que llegas al entrar, te propone elegir uno,
-          y la barra superior muestra entonces solo sus páginas. El logotipo de Ozimut te devuelve a ella en cualquier momento. Orga se activa al
-          registrarte, en los Ajustes o en la página de módulos, y se usa en ordenador; Carto está abierto a cualquier cuenta, en ordenador y en
-          móvil.</p>
+          y la barra superior muestra entonces solo sus páginas. El logotipo de Ozimut te devuelve a ella en cualquier momento. Orga y Carto, los módulos de
+          los organizadores y los cartógrafos, solo aparecen a quienes los usan: márcalos al registrarte, en Ajustes › Módulos o al pie de la página
+          de módulos, o deja que lleguen solos: aparecen en cuanto te unes al equipo de un evento, de un trazado o de un mapa, o empiezas uno. Arena,
+          Stats y Coach se ocultan en Ajustes › Módulos. Un módulo oculto sigue abriéndose desde un enlace; Orga se usa en ordenador, Carto también
+          en el móvil.</p>
         ${list([
           html`<b>Sin cuenta</b>, Ozimut muestra lo que es público: Arena, Coach salvo la comparación con los demás corredores, y en Stats el corredor, la clasificación y las
             carreras del periodo que la federación publica libremente.`,
@@ -420,7 +422,7 @@ export function build(X) {
     return chapters(ORGA, {
       qui: () => html`
         ${slide("Orga", "Tus eventos", html`
-          <p>Orga sirve a los clubes que organizan; se activa al registrarte, en los Ajustes o en la página de módulos, y se usa en ordenador.
+          <p>Orga sirve a los clubes que organizan; aparece en cuanto te unes al equipo de un evento o creas uno, o si lo marcas, y se usa en ordenador.
             Es una sola página, ${P("#/orga", "Mis eventos")}: tus eventos pasados, de hoy y próximos —una carrera o un entrenamiento cada uno—, cada
             uno con las herramientas del organizador, en pestañas según su tipo:</p>
           ${list([

@@ -25,6 +25,7 @@
 //   POST   /api/booking/<race>/publish       the organisers: the start list published now (also done at the closing)
 
 import { allow, currentUser, isAdmin, json, nowIso, readBody } from "../../_lib/api.js";
+import { showModule } from "../../_lib/modules.js";
 import { clubOf as accountClub, findRace, organises } from "../../_lib/club.js";
 import {
   MAX_RUNNERS, clean, cleanConfig, clubKey, clubOf, eventOf, isOpen, loadEvent, parisDay, personOf, publish, slotOk, tellBookers,
@@ -299,6 +300,7 @@ async function config(ctx, user, key) {
     org = excluded.org, place = excluded.place, country = excluded.country, config = excluded.config, status = excluded.status, updated_at = excluded.updated_at`)
     .bind(key, clean(race.name, 140), race.date_iso, clean(race.org, 120), clean(race.place, 120), race.country || "FR", JSON.stringify(cfg), status,
       user.id, now, now).run();
+  await showModule(env, user.id, "orga");            // what the account starts here shows its module (_lib/modules.js, owner 2026-11-12)
   return json({ ok: true, event: eventOf(await env.DB.prepare("SELECT * FROM booking_events WHERE race_key = ?").bind(key).first()) });
 }
 

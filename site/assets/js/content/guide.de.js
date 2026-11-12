@@ -31,8 +31,11 @@ export function build(X) {
     return html`
       ${slide("Die Website", "Die Module und das Konto", html`
         <p>Ozimut hat mehrere Module, Arena, Stats, Coach, Orga und Carto: Die Modulseite, auf der du landest, lässt dich eines davon wählen, und
-          die obere Leiste zeigt dann nur dessen Seiten. Das Ozimut-Logo bringt dich jederzeit dorthin zurück. Orga wird bei der Registrierung, in den
-          Einstellungen oder auf der Modulseite aktiviert und am Computer genutzt; Carto steht jedem Konto offen, am Computer wie am Handy.</p>
+          die obere Leiste zeigt dann nur dessen Seiten. Das Ozimut-Logo bringt dich jederzeit dorthin zurück. Orga und Carto, die Module der Veranstalter
+          und Kartografen, erscheinen nur bei denen, die sie nutzen: Hake sie bei der Registrierung, unter Einstellungen › Module oder unten auf der
+          Modulseite an, oder lass sie von selbst kommen – sie erscheinen, sobald du dem Team einer Veranstaltung, einer Bahnlegung oder einer Karte
+          beitrittst oder selbst eines beginnst. Arena, Stats und Coach lassen sich unter Einstellungen › Module ausblenden. Ein ausgeblendetes Modul
+          öffnet sich weiterhin über einen Link; Orga wird am Computer genutzt, Carto auch am Handy.</p>
         ${list([
           html`<b>Ohne Konto</b> zeigt Ozimut, was öffentlich ist: Arena, Coach außer dem Vergleich mit den anderen Läufern, und in Stats den Läufer, die Rangliste und die
             Läufe aus dem Zeitraum, den der Verband frei veröffentlicht.`,
@@ -424,8 +427,8 @@ export function build(X) {
     return chapters(ORGA, {
       qui: () => html`
         ${slide("Orga", "Deine Veranstaltungen", html`
-          <p>Orga ist für Vereine, die veranstalten; es wird bei der Registrierung, in den Einstellungen oder auf der Modulseite aktiviert und am Computer
-            genutzt. Es ist eine einzige Seite, ${P("#/orga", "Meine Veranstaltungen")}: deine vergangenen, heutigen und kommenden Veranstaltungen –
+          <p>Orga ist für Vereine, die veranstalten; es erscheint, sobald du dem Team einer Veranstaltung beitrittst oder eine anlegst, oder wenn du es
+            anhakst, und wird am Computer genutzt. Es ist eine einzige Seite, ${P("#/orga", "Meine Veranstaltungen")}: deine vergangenen, heutigen und kommenden Veranstaltungen –
             jede ein Lauf oder ein Training –, jede mit den Werkzeugen des Veranstalters, in Reitern je nach ihrer Art:</p>
           ${list([
             html`<b>Einzelwettkampf</b> und <b>Score</b>: Bahnlegung, Starts, Live, Ergebnisse, Analyse, Team.`,

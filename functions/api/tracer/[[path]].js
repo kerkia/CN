@@ -39,6 +39,7 @@
 //   POST   /api/tracer/<id>/join             { token } -> { role, joined }: any signed-in account (but a demo one) joins the team
 
 import { allow, isAdmin, json, readBody, withUser, nowIso } from "../../_lib/api.js";
+import { showModule } from "../../_lib/modules.js";
 import { newToken, randomBytes, sha256hex } from "../../_lib/crypto.js";
 import { clubOf, findRace, orgCode, organises } from "../../_lib/club.js";
 import { isMember, ready as eventsReady, shortName } from "../../_lib/events.js";
@@ -175,6 +176,7 @@ export const onRequest = withUser(async (ctx, user) => {
       const meta = { id: newId(), kind, title, date, race, orgClub, ...(orga ? { event: orga.id } : {}), owner: user.id, ownerName: user.display_name || "", ownerLic: String(user.licence || ""),
         team: [], encrypted: null, mapPrivate: !!b.mapPrivate, created: nowIso(), updated: nowIso(), version: 0, map: null };
       await saveMeta(env, meta);
+      await showModule(env, user.id, "orga");        // what the account starts here shows its module (_lib/modules.js, owner 2026-11-12)
       return json({ id: meta.id });
     }
     return json({ error: "method" }, 405);
@@ -199,6 +201,7 @@ export const onRequest = withUser(async (ctx, user) => {
       joined: nowIso() });
     meta.updated = nowIso();
     await saveMeta(env, meta);
+    await showModule(env, user.id, "orga");          // invited to set courses: Orga shows (_lib/modules.js)
     return json({ ok: true, role: inv.role, joined: true });
   }
   if (!role) return json({ error: "forbidden" }, 403);

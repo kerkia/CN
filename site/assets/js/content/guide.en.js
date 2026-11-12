@@ -31,8 +31,10 @@ export function build(X) {
     return html`
       ${slide("The site", "Modules and account", html`
         <p>Ozimut has several modules, Arena, Stats, Coach, Orga and Carto: the modules page, where you land, offers to pick one, and the top bar
-          then shows its pages only. The Ozimut logo brings you back there at any time. Orga is turned on when registering, in Settings or on the
-          modules page, and is used on a computer; Carto is open to every account, on a computer and on a phone alike.</p>
+          then shows its pages only. The Ozimut logo brings you back there at any time. Orga and Carto, the organisers' and mappers' modules, show
+          only to those who use them: tick them when registering, in Settings › Modules or at the bottom of the modules page, or let them come by
+          themselves — they appear as soon as you join the team of an event, a course setting or a map, or start one. Arena, Stats and Coach can be
+          hidden in Settings › Modules. A hidden module still opens from a link; Orga is used on a computer, Carto on a phone too.</p>
         ${list([
           html`<b>Without an account</b>, Ozimut shows what is public: Arena, Coach except comparing with the other runners, and in Stats the runner, the ranking and the
             races over the period the federation publishes openly.`,
@@ -406,7 +408,7 @@ export function build(X) {
     return chapters(ORGA, {
       qui: () => html`
         ${slide("Orga", "Your events", html`
-          <p>Orga serves the clubs that organise; it is turned on when registering, in Settings or on the modules page, and is used on a computer.
+          <p>Orga serves the clubs that organise; it shows as soon as you join an event's team or create an event, or when you tick it, and is used on a computer.
             It is one page, ${P("#/orga", "My events")}: your events, past, today's and coming — one race or one training session each —, each with
             the organiser's tools, in tabs by its type:</p>
           ${list([

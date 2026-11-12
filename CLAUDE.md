@@ -265,6 +265,25 @@ section (`tour.js` `carto`, no screenshot yet) and a column in the pricing table
 one-page modules list what they offer (`hub.js` `STEPS`, `hub.<module>.step.<key>`); Orga's card is still hidden on a phone, Carto's
 and Pixel's are not.
 
+**Modules shown by need** (owner, 2026-11-12; migration 0027): **Arena, Stats, Coach and Pixel are the consumers' modules**, shown
+unless the account hid one in Réglages › Modules (`users.hidden_modules`, « arena,coach »); **Orga and Carto are the creators'**,
+shown only to the accounts that use them (`users.orga`, `users.carto`). `app.js` `CREATOR_MODULES`, `moduleShown(m)` (also Pixel to
+the administrators, Orga never on a phone), `visibleModules()`. **Hidden never blocks**: a module's addresses always open (an
+invitation, an e-mail's link, a bookmark) — `orgaOpen()` is any signed-in account on a computer, `orgaOff` only without an account or
+on a phone. **Never hidden by themselves, shown by themselves** (owner: « no to auto-hide, yes to auto-show »): `functions/_lib/modules.js`
+— `autoShow` (from `/api/account/me` and `accountView`: login, hand-off) looks once at an account's existing work
+(`users.modules_checked` 0 → 1: `event_members`, `booking_events.created_by`, R2 `analyses-meta/` owner, `tracer-meta/` owner or
+team → Orga; `mapper-meta/` → Carto), and `showModule(env, uid, m)` turns a module on as work is made (an event created or a request
+to join accepted, « Créer les événements »'s members, a Tracer event made or invitation accepted, a map analysis opened, an
+organiser's deposit, a competition declared, a booking opened, a GPS tracking link, a live broadcast → Orga; a map made or a
+Cartographier invitation accepted → Carto); a module the account turned off stays off until such new work. The browser reads the
+account again when leaving a page of a creator's module not shown (`route_`'s `hiddenCreatorWas`), so its menu appears. Where to
+choose: registration's one box « J'organise des courses ou je fais des cartes » (`creator`, both modules; `orga` the form of
+before), Réglages › Modules (`#/reglages?onglet=modules`: a box a module, the consumers' sent as `hiddenModules`), and the modules
+page's quiet line under the cards (`hub.js` `quietLine`: « Vous organisez des courses ou faites des cartes ? » with « Afficher Orga »
+/ « Afficher Carto », the hidden consumers' modules named with a link to Réglages; a visitor without an account is told they come
+with one). Before migration 0027 the server sends Carto as Orga and no hidden module; a new account is checked at once (no work).
+
 Ozimut is four **modules**, the same names in both languages: **Arena** (the competitions: coming, live, run — the map's
 water blue), **Stats** (the rankings and their analyses — forest green), **Coach** (training: Analyse solo, Analyse multi,
 « Définitions de postes », Jeux, VMA — the course's purple), **Orga** (the organisers' tools — the control flag's orange).

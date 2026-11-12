@@ -128,6 +128,8 @@ export async function handoffLogin(token) {
 /** What the browser keeps of the account (the rights decide what the pages show). */
 const fromUser = (u) => ({ uid: u.uid, lic: String(u.lic || ""), nom: u.nom, email: u.email, admin: !!u.admin, demo: u.demo || null,
   agendaAllowed: !!u.agendaAllowed, movedNotice: !!u.movedNotice, preview: Array.isArray(u.preview) ? u.preview : [], orga: !!u.orga,
+  // the Carto module and the consumers' modules hidden (migration 0027; app.moduleShown); a server of before sends no carto: Orga's
+  carto: u.carto === undefined ? !!u.orga : !!u.carto, hiddenModules: Array.isArray(u.hiddenModules) ? u.hiddenModules : [],
   nutrition: ["admin", "author", "reader"].includes(u.nutrition) ? u.nutrition : "",
   countries: Array.isArray(u.countries) ? u.countries : null });     // { cc, club, id, status }: `sees`
 /** Re-read the account from the server: rights granted or withdrawn by the administrator apply at once. */

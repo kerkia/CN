@@ -3089,6 +3089,16 @@ div.tr-field { position: absolute; left: 50%; bottom: 34px; transform: translate
 .hub-session { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 22px; padding: 14px 16px;
   border: 1px solid var(--border); border-radius: 12px; background: var(--surface); font-size: 14px; color: var(--ink-2); }
 .hub-session > span { flex: 1 1 260px; }
+/* under the cards, one quiet line (hub.js quietLine; owner, 2026-11-12): the creators' modules not shown, a click each, and the
+   consumers' hidden in Réglages */
+.hub-quiet { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; margin: 16px 0 0;
+  font-size: 13.5px; color: var(--ink-2); text-align: center; }
+.hub-quiet .btn { display: inline-flex; align-items: center; gap: 6px; }
+.hub-quiet .btn .hub-icon { width: 18px; height: 18px; padding: 0; border-radius: 0; background: none; color: var(--m); }
+.hub-quiet .btn[data-mod="orga"] { --m: var(--flag); }
+.hub-quiet .btn[data-mod="carto"] { --m: var(--carto); }
+/* Réglages › Modules: the two groups' headings (settings.js) */
+.st-mod-h { margin-top: 4px; font-size: 13px; }
 /* the documentation (pages/methods.js; owner, 2026-10-31): its home's choice of module, a module's way back and colours */
 .doc { --m: var(--flag); --m-wash: var(--flag-wash); }
 .doc[data-mod="stats"], .doc-card[data-mod="stats"], .doc-mods a[data-mod="stats"] { --m: var(--forest); --m-wash: var(--forest-wash); }

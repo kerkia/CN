@@ -33,8 +33,11 @@ export function build(X) {
     return html`
       ${slide("Le site", "Les modules et le compte", html`
         <p>Ozimut a plusieurs modules, Arena, Stats, Coach, Orga et Carto : la page des modules, où l'on arrive, propose de choisir l'un d'eux, et
-          la barre du haut montre alors ses pages seulement. Le logo Ozimut y ramène à tout moment. Orga s'active à l'inscription, dans les Réglages ou
-          sur la page des modules, et s'utilise sur ordinateur ; Carto est ouvert à tout compte, sur ordinateur comme sur téléphone.</p>
+          la barre du haut montre alors ses pages seulement. Le logo Ozimut y ramène à tout moment. Orga et Carto, les modules des organisateurs et des
+          cartographes, ne s'affichent qu'à ceux qui s'en servent : cochez-les à l'inscription, dans Réglages › Modules ou en bas de la page des
+          modules, ou laissez-les venir d'eux-mêmes — ils apparaissent dès que vous rejoignez l'équipe d'un événement, d'un tracé ou d'une carte, ou
+          que vous en commencez un. Arena, Stats et Coach se masquent dans Réglages › Modules. Un module masqué s'ouvre toujours depuis un lien ;
+          Orga s'utilise sur ordinateur, Carto aussi sur téléphone.</p>
         ${list([
           html`<b>Sans compte</b>, Ozimut montre ce qui est public : Arena, Coach sauf la comparaison avec les autres coureurs, et dans Stats le coureur, le classement et les
             courses sur la période que la fédération publie librement.`,
@@ -422,7 +425,7 @@ export function build(X) {
     return chapters(ORGA, {
       qui: () => html`
         ${slide("Orga", "Vos événements", html`
-          <p>Orga sert aux clubs qui organisent ; il s'active à l'inscription, dans les Réglages ou sur la page des modules, et s'utilise sur ordinateur.
+          <p>Orga sert aux clubs qui organisent ; il s'affiche dès que vous rejoignez l'équipe d'un événement ou en créez un, ou si vous le cochez, et s'utilise sur ordinateur.
             C'est une seule page, ${P("#/orga", "Mes événements")} : vos événements passés, du jour et à venir — une course ou un entraînement
             chacun —, chacun avec les outils de l'organisateur, en onglets selon son type :</p>
           ${list([

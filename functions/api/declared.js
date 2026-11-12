@@ -10,6 +10,7 @@
 // A change starts a provisional-results run (upload.startRun) so that the site shows it within minutes.
 
 import { allow, isAdmin, json, nowIso, parisToday, readBody, withUser } from "../_lib/api.js";
+import { showModule } from "../_lib/modules.js";
 import { DECLARED, loadDeclared } from "../_lib/club.js";
 import { memberships, validCountry } from "../_lib/countries.js";
 import { randomBytes } from "../_lib/crypto.js";
@@ -88,6 +89,7 @@ export const onRequest = withUser(async ({ request, env }, user) => {
     const id = newId(), now = nowIso();
     const d = { id, key: `d${id}`, ...f, owner: user.id, ownerName: user.display_name || "", status: "active", created: now, updated: now };
     await save(env, d);
+    await showModule(env, user.id, "orga");          // what the account starts here shows its module (_lib/modules.js, owner 2026-11-12)
     return json({ ok: true, competition: view(d, user), soon: await startRun(env) });
   }
   // a change or a removal: the competition's organiser, or an administrator
