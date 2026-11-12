@@ -269,12 +269,12 @@ export class Town {
           box(p[0], p[1], q[0], q[1], 0.03, ya + h - 0.07, yb + h - 0.07, 0.07, [0.95, 0.95, 0.93]);
           for (const [x, z, y] of [[p[0], p[1], ya], [q[0], q[1], yb]]) box(x - 0.04, z, x + 0.04, z, 0.08, y - 0.05, y - 0.05, 1.12, [0.14, 0.24, 0.18]);
         }
-      } else if (kind === "steps") {                                    // a stairway: treads 0.3 m deep, each a block at its ground's height
+      } else if (kind === "steps") {                                    // a stairway (h: its width): treads 0.3 m deep, each a block at its ground's height
         const L = Math.hypot(q[0] - p[0], q[1] - p[1]), n = Math.max(1, Math.round(L / 0.32));
         for (let k = 0; k < n; k++) {
           const t0 = k / n, t1 = (k + 1) / n, xa = p[0] + (q[0] - p[0]) * t0, za = p[1] + (q[1] - p[1]) * t0, xb = p[0] + (q[0] - p[0]) * t1, zb = p[1] + (q[1] - p[1]) * t1;
           const y = Math.max(w.heightAt(xa, za), w.heightAt(xb, zb)) + 0.04;
-          box(xa, za, xb, zb, 2.2, y - 0.6, y - 0.6, 0.6, k % 2 ? [0.62, 0.6, 0.57] : [0.66, 0.64, 0.61]);
+          box(xa, za, xb, zb, h > 0.5 && h < 12 ? h : 2.2, y - 0.6, y - 0.6, 0.6, k % 2 ? [0.62, 0.6, 0.57] : [0.66, 0.64, 0.61]);
         }
       } else if (kind === "kerb") box(p[0], p[1], q[0], q[1], 0.16, ya - 0.08, yb - 0.08, 0.21, [0.74, 0.73, 0.7], 0.04);
       else if (kind === "hedge") {                                       // a hedge: a dark core, leafy crowns every 0.55 m along it

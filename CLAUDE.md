@@ -1027,6 +1027,21 @@ Every multiple-choice game was played through to its score page at phone size, w
   eaves (shader); the runner is
   stopped by the buildings' outlines, impassable walls/fences/hedges, cars and posts (8 m cells; the ground classes `building` /
   `block` then run as paving); the camera by the buildings alone.
+  **A mapper's review** (2026-11-12, Alec, setter and mapper; owner: « take it into account as far as possible »): `town_map.py`
+  draws the **public road space** paved — what the cadastre leaves between its parcels, within their reach (`PUBLIC`: the
+  parcels closed by 20 m less the parcels), so a street's paving runs to the property line, the strip at its side a sidewalk,
+  its grass verges open land, its street trees points —; the areas are **one coverage simplified together**
+  (`shapely.coverage_simplify`, 0.9 m: the cells' staircases gone, two neighbours keeping one shared edge); **no 402 ring**: a
+  wood of 400 m² or more is forest, every tree outside it a 417/418 point; **contours** smoothed over 2.5 m, kept 1.5 m off the
+  buildings, no loop under 400 m² nor piece under 25 m; **paths** OpenStreetMap's, BD TOPO's only where OSM has none within 4 m
+  (they were doubled); **stairways at their width** (OSM's `width`, else 2 m; 532 was one line 1.66 mm wide, 6.6 m on the ground:
+  `mkocd.mjs` makes 532.1-532.6 from the set's 532, 0.5-2 mm; the 3D's treads take the width from walls.json's `h`); **every
+  tennis court fenced all round** (518, OSM giving each court); a **« boundary to confirm »** (995, purple 50 %, a helper made by
+  `mkocd.mjs`): the edge of the ground not to be entered where no wall, fence, hedge or building is known within 1.5 m — on the
+  ground it is one of them, the mapper replaces it; and **every OpenStreetMap way and tagged node** on hidden helper symbols (990
+  lines, 991 points: status hidden, shown at will in Cartographier or OCAD). The race's map and its thumbnail do not draw symbols
+  900 and up (`virtually.js`, `thumb.mjs`). BD TOPO stays for the buildings (footprints with height, use, wall and roof materials
+  for the 3D), the carriageways' widths, walls, hedges, water and the sports grounds OSM lacks.
   **Sports grounds** (owner, 2026-11-11: « a rugby field, soccer fields, tennis courts, a track: can the scene show them? »):
   `town_map.py` reads OpenStreetMap's `leisure=pitch|track` with their `sport` and `surface` (BD TOPO's `terrain_de_sport` where
   OSM has none, its `nature_detaillee` giving the sport; a filled oval's track 8.5 m wide) into `src/sports.json`; the map (owner,

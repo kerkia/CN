@@ -523,7 +523,8 @@ export async function drawMap(data) {
   const c = document.createElement("canvas"); c.width = Math.round(wmm * ppm); c.height = Math.round(hmm * ppm);
   const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
   const [X0, Y1] = r.mm0, l = X0, top = Y1, b = Y1 - hmm, rr = X0 + wmm;
-  const skip = new Set(map.symdefs.map((d) => d.id).filter((id) => { const n = parseInt(id, 10); return n >= 700 && n <= 799 && n !== 709; }));
+  // the course's own symbols, and the mapper's helpers (900 and up: a boundary to confirm…), are not the race's map
+  const skip = new Set(map.symdefs.map((d) => d.id).filter((id) => { const n = parseInt(id, 10); return (n >= 700 && n <= 799 && n !== 709) || n >= 900; }));
   map.draw(new CanvasTarget(g, new Matrix(ppm, 0, 0, -ppm, -l * ppm, top * ppm)), [l, b, rr, top], { minRes: 1 / ppm, hideSyms: skip });
   return { canvas: c, ppm };
 }

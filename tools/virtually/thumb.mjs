@@ -24,7 +24,7 @@ const wmm = r.W / r.k, hmm = r.H / r.k, ppm = ${Number(width)} / wmm;
 const c = document.createElement("canvas"); c.width = Math.round(wmm * ppm); c.height = Math.round(hmm * ppm);
 const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
 const [X0, Y1] = r.mm0;
-const skip = new Set(map.symdefs.map((d) => d.id).filter((id) => { const n = parseInt(id, 10); return n >= 700 && n <= 799 && n !== 709; }));
+const skip = new Set(map.symdefs.map((d) => d.id).filter((id) => { const n = parseInt(id, 10); return (n >= 700 && n <= 799 && n !== 709) || n >= 900; }));
 map.draw(new CanvasTarget(g, new Matrix(ppm, 0, 0, -ppm, -X0 * ppm, Y1 * ppm)), [X0, Y1 - hmm, X0 + wmm, Y1], { minRes: 1 / ppm, hideSyms: skip });
 window.out = c.toDataURL("image/webp", 0.82);
 </script>`;
