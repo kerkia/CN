@@ -10,6 +10,7 @@ import { bar, setBar, elapsed } from "../waitbar.js";
 import { confirmBox, alertBox } from "../askbox.js";
 import * as auth from "../auth.js";
 import { WEATHERS, TIMES, LAMPS, envOf, envText } from "../games/vweather.js";
+import { LAYERS, mapOptOf, mapOptText } from "../games/vmapopt.js";
 
 const API = "/api/virtual/events";
 const MAX_MB = { "map.ocd": 40, "courses.ocd": 40, "courses.xml": 5 };
@@ -41,7 +42,8 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
           <span class="tag ${e.type === "competition" ? "vo-comp" : ""}">${t(`vo.type.${e.type}`)}</span>
           <span class="muted">${t(`vo.status.${e.status}`)}${e.published ? html` · ${t("vo.published")}` : ""}${e.source === "lidar" ? html` · ${t("vo.src.lidar")}` : ""}</span>
           <span class="muted">${e.courses.length ? t("vo.nCourses", { n: e.courses.length }) : ""}${e.from || e.to ? html` · ${dates(e)}` : ""}</span>
-          ${envText(t, e.env) ? html`<span class="vtp-env">${envText(t, e.env)}</span>` : ""}</button>`)}</div>`
+          ${envText(t, e.env) ? html`<span class="vtp-env">${envText(t, e.env)}</span>` : ""}
+          ${mapOptText(t, e.mapOpt) ? html`<span class="vtp-env">${mapOptText(t, e.mapOpt)}</span>` : ""}</button>`)}</div>`
         : html`<div class="card"><div class="empty">${t("vo.none")}</div></div>`}
       <details class="vtp-how"><summary>${t("vo.how.title")}</summary>${raw(t("vo.how.body"))}</details>`;
     $("#vo-new", el).addEventListener("click", () => form());
@@ -57,6 +59,16 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
       <p class="muted">${t("vo.f.envHint")}</p></fieldset>`;
   };
   const readEnv = () => ({ weather: $("#vo-weather", el).value, time: $("#vo-time", el).value, lamp: $("#vo-lamp", el).value });
+  // the map options (owner, 2026-11-12; games/vmapopt.js): fixed by the creator, the same for every runner; a race from the LiDAR
+  // alone has an image for its map, so « map at the controls only » alone applies there
+  const moFields = (o, lidar) => {
+    const M = mapOptOf(o);
+    return html`<fieldset class="vo-env vo-mo"><legend>${t("vo.f.mapOpt")}</legend>
+      <label class="vo-layer" ${raw(lidar ? "hidden" : "")}>${t("vt.mo.layer")} <select id="vo-layer">${LAYERS.map((l) => html`<option value="${l}" ${raw(l === M.layer ? "selected" : "")}>${t(`vt.mo.l.${l}`)}</option>`)}</select></label>
+      <label class="vo-radio"><input type="checkbox" id="vo-memory" ${raw(M.memory ? "checked" : "")}> ${t("vt.mo.memory")}</label>
+      <p class="muted">${t("vo.f.mapOptHint")}</p><p class="muted vo-mo-lidar" ${raw(lidar ? "" : "hidden")}>${t("vt.mo.imageOnly")}</p></fieldset>`;
+  };
+  const readMo = () => ({ layer: $("#vo-layer", el)?.value || "full", memory: !!$("#vo-memory", el)?.checked });
   const bindEnv = () => $("#vo-time", el).addEventListener("change", (e) => { $(".vo-lamp", el).hidden = e.target.value !== "night"; });
   const dates = (e) => (e.from && e.to ? t("vo.dates", { from: fmtDate(e.from), to: fmtDate(e.to) }) : e.from ? t("vo.from", { d: fmtDate(e.from) }) : t("vo.until", { d: fmtDate(e.to) }));
 
@@ -85,6 +97,7 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
           <label class="vo-radio"><input type="radio" name="vo-courses" value="file"> <b>${t("vo.courses.file")}</b> <span class="muted">${t("vo.courses.fileHint")}</span></label>
         </fieldset>
         ${envFields(null)}
+        ${moFields(null, false)}
         <p class="vo-err" id="vo-err" hidden></p>
         <div class="vtp-go"><button type="button" class="btn btn-primary" id="vo-create">${t("vo.create")}</button></div>
       </div></div>`;
@@ -93,12 +106,13 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
       $(".vo-dates", el).hidden = val("vo-type") !== "competition";
       $(".vo-lidar", el).hidden = val("vo-src") !== "lidar";
       $(".vo-coursesf", el).hidden = val("vo-src") === "lidar";
+      $(".vo-layer", el).hidden = val("vo-src") === "lidar"; $(".vo-mo-lidar", el).hidden = val("vo-src") !== "lidar";
     };
     $$("input[type=radio]", el).forEach((r) => r.addEventListener("change", sync));
     $("#vo-back", el).addEventListener("click", list);
     $("#vo-create", el).addEventListener("click", async () => {
       const err = $("#vo-err", el), say = (m) => { err.textContent = m; err.hidden = !m; };
-      const body = { name: $("#vo-name", el).value.trim(), type: val("vo-type"), source: val("vo-src"), courses: val("vo-courses"), env: readEnv() };
+      const body = { name: $("#vo-name", el).value.trim(), type: val("vo-type"), source: val("vo-src"), courses: val("vo-courses"), env: readEnv(), mapOpt: readMo() };
       if (!body.name) return say(t("vo.err.name"));
       if (body.type === "competition") { body.from = $("#vo-from", el).value; body.to = $("#vo-to", el).value; }
       if (body.source === "lidar") {
@@ -153,6 +167,7 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
         ${ev.source === "ocad" ? html`<label>${t("vo.f.courses")} <select id="vo-courses"><option value="proposed" ${raw(ev.coursesFrom !== "file" ? "selected" : "")}>${t("vo.courses.proposed")}</option>
           <option value="file" ${raw(ev.coursesFrom === "file" ? "selected" : "")}>${t("vo.courses.file")}</option></select></label>` : ""}
         ${envFields(ev.env)}
+        ${moFields(ev.mapOpt, ev.source === "lidar")}
         <p class="vo-err" id="vo-err" hidden></p>
         <div class="vtp-go"><button type="button" class="btn" id="vo-save">${t("vo.save")}</button><span class="muted" id="vo-saved"></span></div>
       </div></div>`;
@@ -181,7 +196,7 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
       try { await call(`${API}/${id}`, { method: "DELETE" }); onChange?.(); list(); } catch (e) { alertBox(errText(e)); }
     });
     $("#vo-save", el).addEventListener("click", async () => {
-      const body = { name: $("#vo-name", el).value.trim(), type: $("#vo-type", el).value, from: $("#vo-from", el).value, to: $("#vo-to", el).value, env: readEnv() };
+      const body = { name: $("#vo-name", el).value.trim(), type: $("#vo-type", el).value, from: $("#vo-from", el).value, to: $("#vo-to", el).value, env: readEnv(), mapOpt: readMo() };
       if ($("#vo-courses", el)) body.courses = $("#vo-courses", el).value;
       try { await post(`${API}/${id}`, body, "PUT"); onChange?.(); detail(id); } catch (e) { say(errText(e)); }
     });

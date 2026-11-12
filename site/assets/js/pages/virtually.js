@@ -22,6 +22,7 @@ import { pageTabs, tabFrom, bindPageTabs, dataTable, scoreCell, subHead } from "
 import * as auth from "../auth.js";
 import * as data from "../data.js";
 import { envText } from "../games/vweather.js";
+import { LAYERS, mapOptOf, mapOptText, imageMap, savedOpt, saveOpt, moOf } from "../games/vmapopt.js";
 
 const API = "/api/virtual/";
 // a sprint has no violet nor middle and long distances: its orange courses are short and long (orange_s, orange_l)
@@ -148,6 +149,18 @@ export async function render(main, { query }) {
   }
 
   // ---- Entraînement ------------------------------------------------------------------------------------------------------
+  /** The map options under « Commencer » (owner, 2026-11-12): a map's training, the runner's choice kept in this browser; an event,
+   *  its creator's, said and not changed; a map from the LiDAR alone (an image) offers « map at the controls only » alone. */
+  function moChooser(race) {
+    if (race.event) {
+      const txt = mapOptText(t, race.event.mapOpt);
+      return txt ? html`<p class="vtp-mo muted"><b>${t("vt.mo.label")}</b> ${txt} — ${t("vt.mo.fixed")}</p>` : "";
+    }
+    const o = savedOpt(), img = imageMap(race.race);
+    return html`<div class="vtp-mo" title="${t("vt.mo.tip")}"><b>${t("vt.mo.label")}</b>
+      ${img ? html`<span class="muted">${t("vt.mo.imageOnly")}</span>` : html`<label>${t("vt.mo.layer")} <select id="vtp-layer">${LAYERS.map((l) => html`<option value="${l}" ${raw(l === o.layer ? "selected" : "")}>${t(`vt.mo.l.${l}`)}</option>`)}</select></label>`}
+      <label class="vtp-mo-mem"><input type="checkbox" id="vtp-memory" ${raw(o.memory ? "checked" : "")}> ${t("vt.mo.memory")}</label></div>`;
+  }
   async function training(el) {
     if (game) return;
     el.innerHTML = html`<div class="boot"><div class="spinner"></div></div>`;
@@ -165,6 +178,7 @@ export async function render(main, { query }) {
           <b>${mapName(r.id)}</b><span class="muted">${t("vt.tr.mapLine", { scale: fmt(r.race.scale), std: r.race.std || "", n: r.race.courses.length })}</span>
           ${r.event ? html`<span><span class="tag ${r.event.type === "competition" ? "vo-comp" : ""}">${t(`vo.type.${r.event.type}`)}</span> <span class="muted">${r.event.org}</span></span>` : ""}
           ${r.event && envText(t, r.event.env) ? html`<span class="vtp-env">${envText(t, r.event.env)}</span>` : ""}
+          ${r.event && mapOptText(t, r.event.mapOpt) ? html`<span class="vtp-env">${mapOptText(t, r.event.mapOpt)}</span>` : ""}
           <span class="muted">${t(`vt.src.${r.race.source}`, { authors: (r.race.photoAuthors || []).join(", ") || "—" })}</span></button>${inline && r.id === race.id ? raw('<div class="vtp-inline"></div>') : ""}`)}</div>
         <div class="vtp-below">${race ? html`<h2 class="vtp-h vtp-h-row"><span>${t("vt.tr.courses", { map: mapName(race.id) })}</span>
           <button type="button" class="btn btn-sm" id="vtp-palm" title="${t("vt.palm.tip")}">🏆 ${t("vt.palm.btn")}</button></h2>
@@ -176,13 +190,17 @@ export async function render(main, { query }) {
         <div class="vtp-go"><button type="button" class="btn btn-primary" id="vtp-go" ${raw(race && sel.course ? "" : "disabled")}>${t("vt.tr.start")}</button>
           ${race && sel.course && race.event?.type !== "competition" ? html`<label class="vtp-ghosts" title="${t("vt.gh.tip")}">${t("vt.gh.label")}
             <select id="vtp-ghosts">${Array.from({ length: GHOSTS_MAX + 1 }, (_, i) => html`<option value="${i}" ${raw(i === ghostCount() ? "selected" : "")}>${i ? fmt(i) : t("vt.gh.none")}</option>`)}</select></label>` : ""}
-          <span class="muted">${!race ? t("vt.tr.needMap") : !sel.course ? t("vt.tr.needCourse") : t("vt.tr.ready", { course: courseName(courses.find((c) => c.id === sel.course)), map: mapName(race.id) })}</span></div></div>`;
+          <span class="muted">${!race ? t("vt.tr.needMap") : !sel.course ? t("vt.tr.needCourse") : t("vt.tr.ready", { course: courseName(courses.find((c) => c.id === sel.course)), map: mapName(race.id) })}</span></div>
+          ${race && sel.course ? moChooser(race) : ""}</div>`;
       if (inline) $(".vtp-inline", el).append($(".vtp-below", el));
       const into = (q) => requestAnimationFrame(() => $(q, el)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
       $$(".vtp-map", el).forEach((b) => b.addEventListener("click", () => { sel.race = b.dataset.race; sel.course = null; setQuery({ carte: sel.race, circuit: null }); drawChooser(); into(".vtp-below"); }));
       $$(".vtp-course", el).forEach((b) => b.addEventListener("click", () => { sel.course = b.dataset.course; setQuery({ circuit: sel.course }); drawChooser(); into("#vtp-go"); }));
       $("#vtp-palm", el)?.addEventListener("click", () => palmares(race, sel.course));
       $("#vtp-ghosts", el)?.addEventListener("change", (e) => { try { localStorage.setItem(GHOSTS_KEY, e.target.value); } catch (x) { /* not kept */ } });
+      const moSave = () => saveOpt({ layer: $("#vtp-layer", el)?.value || savedOpt().layer, memory: !!$("#vtp-memory", el)?.checked });
+      $("#vtp-layer", el)?.addEventListener("change", moSave);
+      $("#vtp-memory", el)?.addEventListener("change", moSave);
       $("#vtp-go", el)?.addEventListener("click", () => play(race, courses.find((c) => c.id === sel.course)));
     };
     const play = async (race, course) => {
@@ -196,6 +214,8 @@ export async function render(main, { query }) {
         // the ghosts: in training only, never in a competition
         ghosts: ev?.type === "competition" ? [] : pickGhosts(race, course.id, ghostCount()),
         env: ev?.env,
+        // the map options: an event's, fixed by its creator; a map's training, the runner's choice (games/vmapopt.js)
+        map: ev ? mapOptOf(ev.mapOpt) : savedOpt(),
         onFinish: async (run) => {
           const note = () => $("#vt-saved", el);
           try {
@@ -288,7 +308,7 @@ ${ci.kind === "training" ? html` · <span class="tag">${t("vt.res.trainingTag")}
       const idxOf = (r) => all.runners.get(r.u)?.index;
       const cols = (place) => [
         { key: "place", label: t("vt.col.place"), align: "num", render: (r) => (place ? r._place : html`<span class="dim">${t(`vt.why.${r.why === "" ? "again" : r.why === "training" ? (r.help ? "help" : "again") : r.why}`)}</span>`), sort: (r) => (place ? r._place : null) },
-        { key: "name", label: t("vt.col.runner"), render: (r) => html`${displayName(r.name)}${r.mine ? html` <span class="tag">${t("vt.me")}</span>` : ""}`, sort: (r) => r.name },
+        { key: "name", label: t("vt.col.runner"), render: (r) => html`${displayName(r.name)}${r.mine ? html` <span class="tag">${t("vt.me")}</span>` : ""}${r.mo && ci.kind === "training" ? html` <span class="tag vtp-motag" title="${t("vt.mo.label")}">${mapOptText(t, moOf(r.mo))}</span>` : ""}`, sort: (r) => r.name },
         { key: "time", label: t("vt.col.time"), align: "num", render: (r) => clock(r.t), sort: (r) => r.t },
         { key: "gap", label: t("vt.col.gap"), align: "num", render: (r) => gapClock(best != null ? r.t - best : null), sort: (r) => r.t },
         { key: "idx", label: subHead(t("vt.col.index"), t("vt.col.indexSub")), align: "num", render: (r) => (idxOf(r) ? fmt(idxOf(r)) : "—"), sort: (r) => idxOf(r) },

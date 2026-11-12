@@ -1294,6 +1294,20 @@ Every multiple-choice game was played through to its score page at phone size, w
   map panel is 2D: readable at night. Measured 2026-11-12 in headless Edge on Granites (`work\vr3d\envtest.mjs`, `nighttest.mjs`):
   1400 × 860 clear 36 fps, overcast 41, rain 41, fog 43, snow 49, dusk 33, night 49, strong lamp 46, rainy night 45; a phone's
   390 × 844 56-60 fps for every condition (60 the headless cap).
+  **Map options** (owner, 2026-11-12, after the map-generation ideas: the map as a training exercise; `games/vmapopt.js`): what the
+  race's map shows — the whole map, « Sans chemins », « Sans végétation », « Relief seul », « Courbes de niveau seules » (the
+  Tracer's training-map choices, moved to `tracer/vmap/presets.js` `presetSymbols` / `PRESETS` and shared with `mapview.js`;
+  `drawMap(data, layer)` adds their symbols to those it leaves out) — and « Carte aux postes seulement » (`memory`: the map panel a
+  blank sheet but within `MEM_R` 25 m of the last control punched, the start included, for `MEM_S` 45 race s after a punch, while
+  « Ma position » shows, before the start and after the finish; never during a pause — a memory exercise). A map's training: the
+  runner's choice under « Commencer » (`moChooser`, kept in `localStorage ocn.vt.mapopt`); an event: its creator's in Orga
+  (« Carte pendant la course », the event's `mapOpt` { layer, memory }, `cleanMapOpt` in the events API, changed at any time
+  without a rebuild), the same for every runner, said under « Commencer » and on the event's card. A race from the LiDAR alone
+  draws its map as an image (`imageMap`: `race.map` "webp" or source « lidaronly »): only « Carte aux postes seulement » applies
+  there, which the chooser, the Orga form and the briefing say (`usable`). The briefing gives the choice and the rule (`moLine`);
+  the finish card says « Couru avec : … » and shows the whole map again; the run keeps them (`mo`, « contours+mem », in its R2
+  custom metadata; an event's run takes the event's own, whatever the page sent), shown as a tag beside the runner in a training's
+  results and in the analysis. Nothing else changes: the index counts competitions, whose runners all ran with the same options.
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
   open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only

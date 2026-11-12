@@ -4453,6 +4453,12 @@ html.vt-fs-on, html.vt-fs-on body { overflow: hidden; }
 /* a Pixel event's conditions (games/vweather.js): weather, dusk or night */
 .vtp-env { font-size: 0.85rem; color: var(--course, #7c3aed); font-weight: 600; }
 .vt-env { margin: 0 0 8px; }
+/* the map options (games/vmapopt.js): the training's choice under « Commencer », the briefing's line, the results' tag */
+.vtp-mo { display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; font-size: 0.9rem; margin: 2px 0 8px; }
+.vtp-mo label { display: inline-flex; align-items: center; gap: 6px; }
+.vt-mo { margin: 0 0 8px; }
+.vtp-motag { font-size: 0.75rem; }
+
 .vo-env { flex-direction: row !important; flex-wrap: wrap; align-items: end; }
 .vo-env > p { flex-basis: 100%; margin: 0; }
 .vo-dates, .vo-lidar { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }

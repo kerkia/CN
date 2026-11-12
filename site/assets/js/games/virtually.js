@@ -13,6 +13,7 @@ import { THREE as THREE_URL } from "../vendor.js";
 import { loadRace, World, runnerFigure } from "./vworld.js";
 import { loadAvatar } from "./vavatar.js";
 import { applyEnv, envOf, envText } from "./vweather.js";
+import { mapOptOf, plainMap, imageMap, usable, mapOptText, moCode, MEM_R, MEM_S } from "./vmapopt.js";
 
 await loadArea("virtually");
 
@@ -65,10 +66,11 @@ function briefSheet(course, title, cd) {
 
 /** The card before the start (owner, 2026-11-12: shown while the race loads): the course, its descriptions, the commands, « Partir »
  *  once everything is ready. `race`/`course` null while unknown, `sheet` null while the symbols load. */
-function briefCard({ race, course, title, sheet, ready, env, msg = "", ghosts = 0 }) {
+function briefCard({ race, course, title, sheet, ready, env, mapOpt, msg = "", ghosts = 0 }) {
   const cond = envText(t, env), night = envOf(env).time === "night";
   return html`<div class="vt-card vt-brief"><h2>${title}</h2>
     ${cond ? html`<p class="vt-env"><b>${t("vt.env.label")}</b> ${cond}${night ? html`<br><span class="muted">${t("vt.env.nightRule")}</span>` : ""}</p>` : ""}
+    ${moLine(mapOpt, race)}
     ${race && course ? html`<p>${t("vt.info", { n: course.controls.length - 2, km: num(course.length / 1000), scale: (race.scale || 0).toLocaleString(lang()) })}</p>
       <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
       ${race.photoCredits?.length ? html`<details class="muted vt-photos"><summary>${t("vt.src.photos", { n: race.photoCredits.length })}</summary>
@@ -83,6 +85,17 @@ function briefCard({ race, course, title, sheet, ready, env, msg = "", ghosts = 
     ${race?.std ? html`<p class="muted vt-credit">${t("vt.credit", { std: race.std })}</p>` : ""}</div>`;
 }
 
+/** The briefing's line on the map options (games/vmapopt.js): what the map shows, the rule of « map at the controls only », and
+ *  what this map cannot leave out (a race from the LiDAR alone: its map is an image, without symbols). */
+function moLine(o, race) {
+  const v = mapOptOf(o);
+  if (plainMap(v)) return "";
+  const u = usable(v, race), lost = race && imageMap(race) && v.layer !== "full";
+  return html`<p class="vt-mo"><b>${t("vt.mo.label")}</b> ${mapOptText(t, u) || t("vt.mo.l.full")}
+    ${u.memory ? html`<br><span class="muted">${t("vt.mo.memRule", { m: MEM_R, s: MEM_S })}</span>` : ""}
+    ${lost ? html`<br><span class="muted">${t("vt.mo.noLayer", { layer: t(`vt.mo.l.${v.layer}`) })}</span>` : ""}</p>`;
+}
+
 /** The briefing's line on the ghosts running with one: how many, and where they show. */
 const ghostsLine = (n) => (n ? html`<p class="vt-gh-brief">${tn("vt.gh.brief", n)}</p>` : "");
 
@@ -95,13 +108,14 @@ const ghostsLine = (n) => (n ? html`<p class="vt-gh-brief">${tn("vt.gh.brief", n
  * (the briefing shows the course and its descriptions while the package loads); ghosts (owner, 2026-11-12: training only) a list,
  * or a promise of one, of runs replayed beside the runner — { name, t (race time), route [[t, x, z]], mine } —, translucent, named,
  * never in the way, on the map only while « Ma position » shows (and on the finish's map), their times on the finish card;
- * env an event's conditions { weather, time, lamp } (games/vweather.js; none: a clear day).
+ * env an event's conditions { weather, time, lamp } (games/vweather.js; none: a clear day); map the map options { layer, memory }
+ * (games/vmapopt.js; none: the whole map) — the run given to onFinish carries them as `mo`.
  */
 export function mount(root, raceId, opts = {}) {
   let stopped = false, raf = 0, cleanup = [];
   // the briefing at once, over the game's dark box: the course, its descriptions, the commands; « Partir » once all is loaded
   const courseIn = (r) => { const cs = coursesOf(r || {}); return cs.find((c) => c.id === opts.course) || cs[0] || null; };
-  const brief = { race: opts.race || null, course: courseIn(opts.race), sheet: null, env: opts.env || null };
+  const brief = { race: opts.race || null, course: courseIn(opts.race), sheet: null, env: opts.env || null, mapOpt: mapOptOf(opts.map) };
   brief.title = opts.title || brief.course?.name || raceId;
   root.innerHTML = html`<div class="vt" tabindex="0" data-view="scene"><div class="vt-over" id="vt-over">${briefCard({ ...brief, msg: t("vt.loading") })}</div></div>`;
   const say = (k, v) => { const m = $("#vt-msg", root); if (m) m.textContent = t(k, v); };
@@ -122,7 +136,7 @@ export function mount(root, raceId, opts = {}) {
       if (stopped) return;
       if (!brief.course) { brief.race = data.race; brief.course = courseIn(data.race); fillSheet(); }
       say("vt.drawingMap");
-      const mapImg = await drawMap(data);
+      const mapImg = await drawMap(data, usable(brief.mapOpt, data.race).layer);
       if (stopped) return;
       say("vt.preparing");
       await new Promise((r) => setTimeout(r, 60));   // the message shown before the world is built (no animation frame: a hidden tab has none)
@@ -244,6 +258,12 @@ export function mount(root, raceId, opts = {}) {
       if (mapC.width !== Math.round(w * dpr)) { mapC.width = Math.round(w * dpr); mapC.height = Math.round(h * dpr); }
       const g = mapC.getContext("2d");
       g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = "#fff"; g.fillRect(0, 0, w, h);
+      if (!(memoShown = mapShown())) {                              // « map at the controls only »: a blank sheet between them
+        g.fillStyle = "#e7e3d8"; g.fillRect(0, 0, w, h); g.fillStyle = "#555"; g.textAlign = "center"; g.textBaseline = "middle";
+        g.font = `bold ${Math.max(11, Math.min(15, w / 18))}px Arial`; g.fillText(t("vt.mo.hidden"), w / 2, h / 2 - 9);
+        g.font = `${Math.max(10, Math.min(13, w / 22))}px Arial`; g.fillText(t("vt.mo.hiddenSub", { m: MEM_R }), w / 2, h / 2 + 10);
+        return;
+      }
       mv.ang = mapAngle();
       g.save(); g.translate(w / 2, h / 2); g.rotate(mv.ang); g.scale(mv.zoom, mv.zoom); g.translate(-mv.cx, -mv.cy);
       g.imageSmoothingQuality = "high"; g.drawImage(mapImg.canvas, 0, 0);
@@ -277,6 +297,15 @@ export function mount(root, raceId, opts = {}) {
       }
     }
     function overprint(g) { drawOverprint(g, course, mPer, ppm); }
+    // « map at the controls only » (games/vmapopt.js): shown within MEM_R m of the last control punched (the start first), for MEM_S
+    // s of race after a punch, while « Ma position » shows, and before the start and after the finish; never during a pause
+    const memo = usable(brief.mapOpt, race).memory, layered = mapImg.canvas;
+    let memoShown = true;
+    const mapShown = () => {
+      if (!memo || st.phase === "ready" || st.phase === "done" || st.posLeft > 0 || st.t - st.punchT < MEM_S) return true;
+      const c = course[Math.max(0, st.next - 1)];
+      return Math.hypot(c.x - st.x, c.z - st.z) < MEM_R;
+    };
     // ---- the control descriptions (owner, 2026-11-12): an IOF sheet at the bottom right — the next control's line, every line once
     // opened (its bar, a click on it, or C) —, and the whole screen's in the descriptions' view
     const cd = data.cd, sheet = $("#vt-sheet", root);
@@ -594,7 +623,8 @@ export function mount(root, raceId, opts = {}) {
       $("#vt-quit", root).addEventListener("click", () => { reset(); startScreen(); });
     }
     function reset() {
-      Object.assign(st, { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, next: 1, splits: [], track: [], dist: 0, lastTrack: -1,
+      if (mapImg.canvas !== layered) mapImg.canvas = layered;        // the finish drew the whole map
+      Object.assign(st, { phase: "ready", t: 0, punchT: -1e9, x: course[0].x, z: course[0].z, yaw: 0, next: 1, splits: [], track: [], dist: 0, lastTrack: -1,
         posLeft: 0, posN: 0, pen: 0, legPen: [], pace: 1, energy: 1, paceT: {} });
       showPosBtn(); showSpeed(); showEnergy(); setView("scene"); sheet.hidden = false; describe(); mapSize("small"); mv.cx = course[0].x * mPer; mv.cy = course[0].z * mPer; fitZoom(700); drawMapPanel();
     }
@@ -602,7 +632,9 @@ export function mount(root, raceId, opts = {}) {
       st.phase = "done"; keys.clear(); st.posLeft = 0; showPosBtn(); help(false);
       const legs = st.splits.map((s, i) => [s - (i ? st.splits[i - 1] : 0), s]);   // the splits hold the race time, penalties included
       const straight = race.course.length, T = total();
-      opts.onFinish?.({ course: C0.id, t: T, sp: st.splits.slice(), d: st.dist, route: st.track.concat([[st.t, st.x, st.z]]) });
+      const mo = usable(brief.mapOpt, race);
+      opts.onFinish?.({ course: C0.id, t: T, sp: st.splits.slice(), d: st.dist, route: st.track.concat([[st.t, st.x, st.z]]), mo: moCode(mo) });
+      if (mo.layer !== "full") drawMap(data).then((m) => { if (st.phase === "done") { mapImg.canvas = m.canvas; drawMapPanel(); } }).catch(() => {});  // the whole map to look back
       setView("scene"); sheet.hidden = true; mapSize("full");
       const all = st.track.map(([, x, z]) => [x, z]).concat(course.map((c) => [c.x, c.z])); const xs = all.map((p) => p[0]), zs = all.map((p) => p[1]);
       mv.cx = ((Math.min(...xs) + Math.max(...xs)) / 2) * mPer; mv.cy = ((Math.min(...zs) + Math.max(...zs)) / 2) * mPer;
@@ -611,6 +643,7 @@ export function mount(root, raceId, opts = {}) {
       over(html`<div class="vt-card vt-done"><h2>${t("vt.done")}</h2>
         <p class="vt-big">${fmt(T)}</p>
         ${st.posN ? html`<p class="vt-penline">${tn("vt.pen.done", st.posN, { s: st.pen })}</p>` : ""}
+        ${mapOptText(t, mo) ? html`<p class="muted vt-mo-done">${t("vt.mo.done", { list: mapOptText(t, mo) })}</p>` : ""}
         <p>${t("vt.dist", { run: num(st.dist / 1000, 2), course: num(straight / 1000, 2) })}</p>
         ${paceLine()}
         <table class="data"><thead><tr><th>${t("vt.col.leg")}</th><th>${t("vt.col.code")}</th><th>${t("vt.col.split")}</th><th>${t("vt.col.total")}</th>${st.posN ? html`<th>${t("vt.col.pen")}</th>` : ""}</tr></thead>
@@ -649,7 +682,7 @@ export function mount(root, raceId, opts = {}) {
       const n = nearest(); if (!n) return;
       const c = course[n.i], last = course.length - 1;
       if (n.i === st.next) {
-        st.splits.push(total()); st.next++; describe(); beep(n.i === last ? 2 : 1);
+        st.splits.push(total()); st.next++; st.punchT = st.t; describe(); beep(n.i === last ? 2 : 1);
         if (n.i === last) { finished(); return; }
         toast(t("vt.punched", { n: n.i, code: c.code }));
       } else if (n.i === last) toast(t("vt.finishNotYet", { n: last - st.next }), false);
@@ -753,7 +786,8 @@ export function mount(root, raceId, opts = {}) {
       showEnergy();
       const penEl = $("#vt-pen", root); penEl.hidden = !st.pen; if (st.pen) penEl.textContent = t("vt.pen.hud", { s: st.pen });
       $("#vt-next", root).textContent = st.next >= course.length - 1 ? `→ ${t("vt.finish")}` : `→ ${st.next} (${course[st.next].code})`;
-      if (st.posLeft > 0 && run && (mapTick++ % 6 === 0)) drawMapPanel();
+      if (memo && mapShown() !== memoShown) drawMapPanel();
+      else if (st.posLeft > 0 && run && (mapTick++ % 6 === 0)) drawMapPanel();
       else if (orient !== "north" && mapEl.dataset.size !== "hidden") {
         const d = mapAngle() - mv.ang;
         if (Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) > 0.004) drawMapPanel();
@@ -860,8 +894,9 @@ export function drawOverprint(g, course, mPer, mm) {
 }
 
 /** The orienteering map, drawn once from the OCAD file over the world's rectangle: { canvas, ppm }. The file's own course
- *  overprint (7xx symbols but the out-of-bounds 709) is left out; the game draws its course. */
-export async function drawMap(data) {
+ *  overprint (7xx symbols but the out-of-bounds 709) is left out; the game draws its course. `layer` one of the map options'
+ *  (games/vmapopt.js: nopaths, noveg, relief, contours) leaves out its symbols too; a generated map (an image) is drawn whole. */
+export async function drawMap(data, layer = "full") {
   if (data.mapImage) {                     // the generated map (a race from the LiDAR alone): its image over the world, mapPx m a pixel
     const c = document.createElement("canvas"); c.width = data.mapImage.width; c.height = data.mapImage.height;
     c.getContext("2d").drawImage(data.mapImage, 0, 0);
@@ -877,6 +912,11 @@ export async function drawMap(data) {
   const [X0, Y1] = r.mm0, l = X0, top = Y1, b = Y1 - hmm, rr = X0 + wmm;
   // the course's own symbols, and the mapper's helpers (900 and up: a boundary to confirm…), are not the race's map
   const skip = new Set(map.symdefs.map((d) => d.id).filter((id) => { const n = parseInt(id, 10); return (n >= 700 && n <= 799 && n !== 709) || n >= 900; }));
+  if (layer !== "full") {
+    const { presetSymbols } = await import("../tracer/vmap/presets.js");
+    const syms = map.symdefs.filter((d) => d.kind !== "image" && d.id != null && d.id !== "").map((d) => ({ id: d.id, n: Math.floor(parseFloat(d.id)), kind: d.kind }));
+    for (const id of presetSymbols(syms, layer)) skip.add(id);
+  }
   map.draw(new CanvasTarget(g, new Matrix(ppm, 0, 0, -ppm, -l * ppm, top * ppm)), [l, b, rr, top], { minRes: 1 / ppm, hideSyms: skip });
   return { canvas: c, ppm };
 }

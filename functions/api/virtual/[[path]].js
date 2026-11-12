@@ -4,10 +4,10 @@
 //   GET  races                         the maps: [{ id, race }] (each race.json, read here so that the page asks once)
 //   GET  <race>/<file>                 a map's package (made offline by tools/virtually: race.json — its courses —, h.png,
 //                                      cls.png, veg.png, ground.jpg, feats.json, trees.bin when LiDAR, map.ocd, thumb.webp; a town's town.json, town.bin, surf.png and facades.webp, tools/virtually/town_3d.py)
-//   GET  runs?race=<id>                every finished run of that map: [{ id, u, name, course, t, sp, d, at, help, seed, mine }]
+//   GET  runs?race=<id>                every finished run of that map: [{ id, u, name, course, t, sp, d, at, help, seed, mo, mine }]
 //   GET  runs/<race>/<run>             one run with its route (the analysis): one's own, any to an administrator, and any
 //                                      training run to every account — the ghosts the Training tab replays (owner, 2026-11-12)
-//   POST runs { race, course, kind, event, t, sp, d, help, seed, route }   a run just finished, kept under the account's name;
+//   POST runs { race, course, kind, event, t, sp, d, help, seed, mo, route }   a run just finished, kept under the account's name;
 //                                      kind "training" (played as often as one likes; a map's own courses) or "competition"
 //                                      (owner, 2026-11-11: played once — a second run of one event and course is refused, 409;
 //                                      only competitions make the virtual index and the ranking), event its event's id
@@ -35,11 +35,14 @@ async function listAll(env, prefix, opts = {}) {
   return out;
 }
 
+/** A run's map options as games/vmapopt.js writes them (« nopaths+mem »), anything else left out; "" the whole map. */
+const LAYERS = ["nopaths", "noveg", "relief", "contours"];
+const cleanMo = (s) => { const p = String(s || "").split("+"); return [p.find((x) => LAYERS.includes(x)), p.includes("mem") ? "mem" : ""].filter(Boolean).join("+"); };
 const summary = (o, me) => {
   const m = o.customMetadata || {}, parts = o.key.slice(RUNS.length).split("/");
   return { id: parts[2].replace(/\.json$/, ""), course: parts[1], u: m.u, name: m.n || "", t: Number(m.t), d: Number(m.d) || 0,
     sp: String(m.sp || "").split(",").filter(Boolean).map(Number), at: m.at || "", help: m.h === "1", seed: Number(m.s) || null,
-    kind: m.k === "competition" ? "competition" : "training", event: m.e || "", mine: m.u === me };
+    kind: m.k === "competition" ? "competition" : "training", event: m.e || "", mo: m.mo || "", mine: m.u === me };
 };
 
 export const onRequestGet = withUser(async ({ request, env, params }, user) => {
@@ -55,7 +58,7 @@ export const onRequestGet = withUser(async ({ request, env, params }, user) => {
       try {
         const r = await o.json(), th = await env.BUCKET.head(`virtual/${id}/thumb.webp`);
         // the frame and the courses: what the page lists and draws (not the classes and speeds)
-        return { id, thumb: !!th, race: { id, scale: r.scale, std: r.std, W: r.W, H: r.H, k: r.k, mm0: r.mm0, source: r.source, photoAuthors: r.photoAuthors,
+        return { id, thumb: !!th, race: { id, scale: r.scale, std: r.std, W: r.W, H: r.H, k: r.k, mm0: r.mm0, source: r.source, map: r.map, photoAuthors: r.photoAuthors,
           lonlat: r.lonlat, courses: r.courses || (r.course ? [{ id: "course", ...r.course }] : []) } };
       } catch (e) { return null; }
     }))).filter(Boolean);
@@ -115,6 +118,7 @@ export const onRequestPost = withUser(async ({ request, env, params }, user) => 
   const seed = Number(b?.seed), d = Number(b?.d);
   const meta = { u, n: String(user.display_name || "").slice(0, 80), t: String(Math.round(t * 10) / 10), sp: sp.map((x) => Math.round(x * 10) / 10).join(","),
     at, h: b?.help ? "1" : "0", d: Number.isFinite(d) ? String(Math.round(d)) : "0", s: seed > 0 && seed < 20000 ? String(Math.round(seed)) : "", k: kind, e: event };
+  if (cleanMo(b?.mo)) meta.mo = cleanMo(b.mo);           // the map options the runner chose (games/vmapopt.js)
   await env.BUCKET.put(`${RUNS}${race}/${course}/${id}.json`, JSON.stringify({ route }),
     { httpMetadata: { contentType: "application/json" }, customMetadata: meta });
   return json({ id, at });

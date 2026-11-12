@@ -6,7 +6,7 @@
 //   GET    events/<id>                    one event; its organisers also get its build's progress
 //   POST   events { name, type, from, to, source, courses, area }   a new event (a draft); source "ocad" or "lidar"
 //                                         (administrators: area { lat, lon, size } in metres), courses "proposed" or "file"
-//   PUT    events/<id> { name, type, from, to, published, env }      its settings; env { weather, time, lamp } the race's
+//   PUT    events/<id> { name, type, from, to, published, env, mapOpt }      its settings; env { weather, time, lamp } the race's
 //                                         conditions (owner, 2026-11-12: clear | overcast | rain | fog | snow; day | dusk | night;
 //                                         a night's headlamp normal | strong), drawn by games/vweather.js
 //   PUT    events/<id>/file/<map.ocd|courses.ocd|courses.xml>        the organiser's files (the body), kept privately in R2
@@ -44,7 +44,7 @@ function mayPlay(env, user, ev) {
 /** What everyone may know of an event (never who made it, beyond the name shown). */
 const view = (ev, extra = {}) => ({ id: ev.id, name: ev.name, type: ev.type, from: ev.from || "", to: ev.to || "", source: ev.source,
   status: ev.status, published: !!ev.published, org: ev.orgName || "", courses: ev.courses || [], std: ev.std || "", scale: ev.scale || 0,
-  lonlat: ev.lonlat || null, thumb: !!ev.thumb, open: ev.type === "training" || openNow(ev), env: cleanEnv(ev.env), ...extra });
+  lonlat: ev.lonlat || null, thumb: !!ev.thumb, open: ev.type === "training" || openNow(ev), env: cleanEnv(ev.env), mapOpt: cleanMapOpt(ev.mapOpt, ev), ...extra });
 
 async function getEvent(env, id) {
   if (!ID.test(id || "")) return null;
@@ -71,6 +71,14 @@ function cleanEnv(e) {
   return { weather: pick(e?.weather, ["clear", "overcast", "rain", "fog", "snow"]), time: pick(e?.time, ["day", "dusk", "night"]),
     lamp: pick(e?.lamp, ["normal", "strong"]) };
 }
+/** The map options its creator fixed (games/vmapopt.js; the same for every runner): { layer, memory }; a race from the LiDAR alone
+ *  (its map an image without symbols) keeps « map at the controls only » alone. */
+function cleanMapOpt(o, ev) {
+  const layer = ["full", "nopaths", "noveg", "relief", "contours"].includes(o?.layer) && ev?.source !== "lidar" ? o.layer : "full";
+  return { layer, memory: o?.memory === true };
+}
+/** A run's code of them, « nopaths+mem » ("" the whole map). */
+const moCode = (o) => [o.layer !== "full" ? o.layer : "", o.memory ? "mem" : ""].filter(Boolean).join("+");
 const cleanName = (s) => String(s || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 80);
 const cleanDate = (s) => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || "")) ? String(s) : "");
 
@@ -147,7 +155,7 @@ export async function onRequestGet(ctx) {
     const runs = (await listAll(env, `${RUNS}${ev.id}/`, { include: ["customMetadata"] })).map((o) => {
       const m = o.customMetadata || {}, parts = o.key.slice(RUNS.length).split("/");
       return { id: parts[2].replace(/\.json$/, ""), course: parts[1], name: m.n || "", t: Number(m.t), d: Number(m.d) || 0,
-        sp: String(m.sp || "").split(",").filter(Boolean).map(Number), at: m.at || "", help: m.h === "1", kind: m.k || "training", mine: !!me && m.u === me };
+        sp: String(m.sp || "").split(",").filter(Boolean).map(Number), at: m.at || "", help: m.h === "1", kind: m.k || "training", mo: m.mo || "", mine: !!me && m.u === me };
     }).filter((r) => Number.isFinite(r.t));
     return json({ runs }, 200, { "Cache-Control": "private, no-store" });
   }
@@ -180,7 +188,8 @@ export async function onRequestPost(ctx) {
     }
     const id = `e${Date.now().toString(36).slice(-6)}${Math.random().toString(36).slice(2, 5)}`.slice(0, 10).padEnd(10, "0");
     const ev = { id, name, type: b?.type === "competition" ? "competition" : "training", from: cleanDate(b?.from), to: cleanDate(b?.to),
-      source, area, coursesFrom: b?.courses === "file" && source === "ocad" ? "file" : "proposed", env: cleanEnv(b?.env), by: user.id,
+      source, area, coursesFrom: b?.courses === "file" && source === "ocad" ? "file" : "proposed", env: cleanEnv(b?.env),
+      mapOpt: cleanMapOpt(b?.mapOpt, { source }), by: user.id,
       orgName: String(user.display_name || "").slice(0, 80), created: nowIso(), status: "draft", published: false, courses: [] };
     await putEvent(env, ev);
     return json(view(ev, { mine: true, files: {}, area, coursesFrom: ev.coursesFrom }));
@@ -221,6 +230,8 @@ export async function onRequestPost(ctx) {
     const id = `${u}-${Date.now().toString(36)}`, at = nowIso(), seed = Number(b?.seed), d = Number(b?.d);
     const meta = { u, n: String(user.display_name || "").slice(0, 80), t: String(Math.round(t * 10) / 10), sp: sp.map((x) => Math.round(x * 10) / 10).join(","),
       at, h: b?.help ? "1" : "0", d: Number.isFinite(d) ? String(Math.round(d)) : "0", s: seed > 0 && seed < 20000 ? String(Math.round(seed)) : "", k: kind, e: ev.id };
+    const mo = moCode(cleanMapOpt(ev.mapOpt, ev));         // the event's own options, whatever the page sent
+    if (mo) meta.mo = mo;
     await env.BUCKET.put(`${RUNS}${ev.id}/${course}/${id}.json`, JSON.stringify({ route }), { httpMetadata: { contentType: "application/json" }, customMetadata: meta });
     return json({ id, at, kind });
   }
@@ -254,6 +265,7 @@ export async function onRequestPut(ctx) {
   if (b?.from !== undefined) ev.from = cleanDate(b.from);
   if (b?.to !== undefined) ev.to = cleanDate(b.to);
   if (b?.env !== undefined) ev.env = cleanEnv(b.env);
+  if (b?.mapOpt !== undefined) ev.mapOpt = cleanMapOpt(b.mapOpt, ev);
   if (b?.courses !== undefined && ev.source === "ocad") ev.coursesFrom = b.courses === "file" ? "file" : "proposed";
   if (b?.published !== undefined) {
     if (b.published && !["ready", "stale"].includes(ev.status)) return json({ error: "not built" }, 400);

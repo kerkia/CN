@@ -9,6 +9,7 @@ import { t } from "../i18n.js";
 import { refLegs, legLoss, bestLegs } from "../trace/legs.js";
 import { drawPaceStrip, stripSamples, stripFraction } from "../trace/pacestrip.js";
 import { clock } from "./virtually.js";
+import { mapOptText, moOf } from "../games/vmapopt.js";
 
 const API = "/api/virtual/";
 const ME = "#d7191c", OTHERS = ["#1f6fd1", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#be185d", "#65a30d", "#475569"];
@@ -84,7 +85,7 @@ export async function drawAnalysis(el, { run, race, course, all, mineRuns, mapNa
 
   el.innerHTML = html`<div class="vtp-anhead">
       <select id="vtp-run" aria-label="${t("vt.an.run")}">${mineRuns.map((r) => html`<option value="${r.id}" ${raw(r.id === run.id ? "selected" : "")}>${mapName(r.race)} · ${courseName({ id: r.course })} · ${fmtDate(String(r.at).slice(0, 10))} · ${clock(r.t)}</option>`)}</select>
-      <span class="muted">${t("vt.an.summary", { time: clock(run.t), km: fmt((run.d || 0) / 1000, 2), lost: clock(lost) })}${run.help ? html` · <span class="tag">${t("vt.why.help")}</span>` : ""}</span>
+      <span class="muted">${t("vt.an.summary", { time: clock(run.t), km: fmt((run.d || 0) / 1000, 2), lost: clock(lost) })}${run.help ? html` · <span class="tag">${t("vt.why.help")}</span>` : ""}${run.mo ? html` · <span class="tag" title="${t("vt.mo.label")}">${mapOptText(t, moOf(run.mo))}</span>` : ""}</span>
     </div>
     ${others.length ? html`<div class="vtp-cmp"><span class="muted">${t("vt.an.compare")}</span>${others.map((r, i) => html`<label class="vtp-chip"><input type="checkbox" data-other="${r.id}">
       <span class="vtp-sw" style="background:${OTHERS[i % OTHERS.length]}"></span>${displayName(r.name)} <span class="muted">${clock(r.t)}</span></label>`)}</div>` : ""}
