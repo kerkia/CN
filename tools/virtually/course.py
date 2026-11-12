@@ -1,6 +1,6 @@
 """Set the courses of a « Virtually » map (build.py first): py course.py <race> [seed] [seconds a course]
-Six courses a map, at FFCO's colour levels (owner, 2026-11-11): Bleu, Jaune, Orange MD, Orange LD, Violet court (MD) and
-Violet long (LD), written as `courses` into pkg/race.json, with a review picture for each (course_review_<id>.png beside pkg/).
+Six courses a map, at FFCO's colour levels (owner, 2026-11-11): Bleu, Jaune, Orange court, Orange long, Violet court and
+Violet long (« MD » / « LD » dropped from the names, owner 2026-11-12), written as `courses` into pkg/race.json, with a review picture for each (course_review_<id>.png beside pkg/).
 
 The levels follow FFCO's and the IOF's course-setting habits, measured on the package's own ground classes:
 - Bleu and Jaune keep near the handrails (paths, tracks, roads, streams): the control sites within 15 m (Bleu) or 40 m (Jaune)
