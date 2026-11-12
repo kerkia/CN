@@ -17,9 +17,9 @@ await loadArea("virtually");
 
 const BASE = "/api/virtual/";
 const RUN = 3.7;                    // m/s on flat open ground (about 4:30 a km)
-// the race's clock runs twice as fast as the wall clock (owner, 2026-11-11: the real pace, seen on a screen, looked like walking):
-// the times stay a runner's real times, only the play is shorter
-const PLAY = 2;
+// the race's clock runs three times as fast as the wall clock (owner, 2026-11-11: the real pace, seen on a screen, looked like
+// walking — twice then; 2026-11-12: « ×1 still feels slow »): the times stay a runner's real times, only the play is shorter
+const PLAY = 3;
 // The runner's pace (owner, 2026-11-12; a fast-forward of the game until then, which made thinking at « ×2 » cost twice as much):
 // ×0.5 walking, ×1 running, ×1.5 running fast, ×2 running very fast, the speed over the ground multiplied, the clock unchanged —
 // going fast saves time by itself, and leaves less time to read the map. The two fast paces empty the runner's energy (a full
@@ -531,7 +531,7 @@ export function mount(root, raceId, opts = {}) {
       let v = 0;
       const pace = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 0.5 : st.pace;   // Shift held: walking
       if (fwd || side) {
-        const f = world.terrainSpeed(st.x, st.z) || 0.3;
+        const f = (world.terrainSpeed(st.x, st.z) || 0.3) * world.rough(st.x, st.z);
         const dx0 = Math.sin(st.yaw) * fwd + Math.cos(st.yaw) * side, dz0 = -Math.cos(st.yaw) * fwd + Math.sin(st.yaw) * side, l = Math.hypot(dx0, dz0);
         const ahead = world.heightAt(st.x + (dx0 / l) * 2, st.z + (dz0 / l) * 2) - world.heightAt(st.x, st.z), grade = ahead / 2;
         const slope = grade > 0 ? 1 / (1 + 7 * grade) : 1 / (1 + 2.5 * Math.max(0, -grade - 0.12));

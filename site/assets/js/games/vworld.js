@@ -18,6 +18,9 @@ async function pixels(blob) {
 }
 
 /** The race package's files: { race, h, cls, veg, groundImg, feats, trees, ocd }. onFile(name) as each arrives. */
+// a rock lower than this (m) is climbed over, not walked round (owner, 2026-11-12)
+const STEP_OVER = 1.2;
+
 export async function loadRace(base, onFile = () => {}) {
   const get = async (f, kind) => {
     const r = await fetch(base + f, { credentials: "same-origin" });
@@ -105,15 +108,25 @@ export class World {
   /** The terrain's speed factor (0: impassable). */
   terrainSpeed(x, z) { return this.speedOf[this.classAt(x, z)] || 0; }
   className(x, z) { return this.race.classes[this.classAt(x, z)]; }
-  /** Is a body of radius r at (x, z) against a trunk or a large rock? */
+  /** Is a body of radius r at (x, z) against a trunk or a rock too tall to step over? */
   hits(x, z, r = 0.3) {
     if (this.town?.hits(x, z, r)) return true;
     const ci = Math.floor(x / 8), cj = Math.floor(z / 8);
     for (let a = ci - 1; a <= ci + 1; a++) for (let b = cj - 1; b <= cj + 1; b++) {
       const list = this.trunks.get(`${a},${b}`);
-      if (list) for (const [tx, tz, tr] of list) if ((tx - x) ** 2 + (tz - z) ** 2 < (tr + r) ** 2) return true;
+      if (list) for (const [tx, tz, tr, low] of list) if (!low && (tx - x) ** 2 + (tz - z) ** 2 < (tr + r) ** 2) return true;
     }
     return false;
+  }
+  /** Over a rock low enough to step over (owner, 2026-11-12: « blocked by very little rocks »): the speed's factor there, else 1. */
+  rough(x, z) {
+    const ci = Math.floor(x / 8), cj = Math.floor(z / 8);
+    let f = 1;
+    for (let a = ci - 1; a <= ci + 1; a++) for (let b = cj - 1; b <= cj + 1; b++) {
+      const list = this.trunks.get(`${a},${b}`);
+      if (list) for (const [tx, tz, tr, low] of list) if (low && (tx - x) ** 2 + (tz - z) ** 2 < tr * tr) f = Math.min(f, low);
+    }
+    return f;
   }
 
   // ---- materials and shapes -----------------------------------------------------------------------------------------------
@@ -338,7 +351,12 @@ export class World {
       let y = Infinity; for (const [dx, dz] of [[0, 0], [s / 2, 0], [-s / 2, 0], [0, s / 2], [0, -s / 2]]) y = Math.min(y, this.heightAt(x + dx, z + dz));
       inst[pick(["rock0", "rock1", "rock2"])].push([x, y - sink, z, s, h * 1.3, s * (0.8 + r() * 0.4), rot, tint(pick(this.rockC), 0.5)]);
       shadeAt(x, z, s * 0.9 + 0.4, 0.4);
-      if (solid) this.trunk_(g, x, z, s * 0.42);
+      // a rock stops the runner only when it stands taller than a step over it (its top ≈ 0.96 × h less what is sunk: the
+      // shape's top is ~0.74 of a unit, drawn × 1.3 h); a lower one is climbed over, slowly — the « solid » flag of build.py
+      // took every boulder over 1.1 m across, knee-high ones too
+      const top = 0.96 * h - sink;
+      if (solid && top >= STEP_OVER) this.trunk_(g, x, z, s * 0.42);
+      else if (top >= 0.35) this.trunk_(g, x, z, s * 0.42, top >= 0.7 ? 0.35 : 0.6);
     }
     for (const p of B_.points) {
       const y = this.heightAt(p.x, p.z);
@@ -414,10 +432,10 @@ export class World {
     this.scene.add(g); this.chunks.set(k, g);
   }
   /** A trunk (or a large rock) for the collisions, kept with its chunk. */
-  trunk_(g, x, z, r) {
+  trunk_(g, x, z, r, low = 0) {
     const key = `${Math.floor(x / 8)},${Math.floor(z / 8)}`;
     let l = this.trunks.get(key); if (!l) { this.trunks.set(key, (l = [])); g.userData.cells.push(key); }
-    l.push([x, z, r]);
+    l.push(low ? [x, z, r, low] : [x, z, r]);
   }
 
   // ---- the course's flags -----------------------------------------------------------------------------------------------------
