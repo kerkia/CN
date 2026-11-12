@@ -784,6 +784,7 @@ SITE = {
   "ms.sp.s.532.6": ("Escalier, 2 mm", "Stairway, 2 mm", "Treppe, 2 mm", "Escalera, 2 mm"),
   "ms.sp.s.990": ("OpenStreetMap, ligne (masquée)", "OpenStreetMap line (hidden)", "OpenStreetMap-Linie (ausgeblendet)", "Línea de OpenStreetMap (oculta)"),
   "ms.sp.s.991": ("OpenStreetMap, point (masqué)", "OpenStreetMap point (hidden)", "OpenStreetMap-Punkt (ausgeblendet)", "Punto de OpenStreetMap (oculto)"),
+  "ms.sp.s.993": ("Passage au niveau inférieur (masqué)", "Passage at the lower level (hidden)", "Durchgang auf der unteren Ebene (ausgeblendet)", "Paso en el nivel inferior (oculto)"),
   "ms.sp.s.995": ("Limite à confirmer (mur, clôture ou haie)", "Boundary to confirm (wall, fence or hedge)", "Grenze zu bestätigen (Mauer, Zaun oder Hecke)", "Límite por confirmar (muro, valla o seto)"),
 }
 

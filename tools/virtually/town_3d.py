@@ -213,10 +213,17 @@ def push(key, part, pos, col, idx, extra=None):
         c["w"][5].append(extra[2])
 
 
+# a passage through a building (town_map.py's src/passages.json: a building passage, a tunnel beneath) is cut out of it: the runner
+# goes through
+_pf = SRC / "passages.json"
+PASSES = unary_union([shapely.transform(shape(g), lambda c: np.c_[wx(c[:, 0]), wz(c[:, 1])])
+                      for g in (json.load(open(_pf))["passages"] if _pf.exists() else [])] or [Polygon()])
 for f in feats:
     pr = f["properties"]; g = shapely.force_2d(shape(f["geometry"])).buffer(0)
     g = shapely.transform(g, lambda c: np.c_[wx(c[:, 0]), wz(c[:, 1])])
     g = g.intersection(world_box)
+    if not PASSES.is_empty and g.intersects(PASSES):
+        g = g.difference(PASSES.buffer(0.2))
     for poly in getattr(g, "geoms", [g]):
         if poly.geom_type != "Polygon" or poly.area < 4:
             continue
@@ -753,7 +760,7 @@ for k in range(1, n_ + 1):
     if not (3.2 <= Lc <= 5.8 and 1.3 <= Wc <= 2.5 and Lc / Wc > 1.5):
         continue
     ang = math.degrees(math.atan2(evec[0, 1], evec[1, 1]))
-    if 0 < mu[0] < W and 0 < mu[1] < H and not any(s_["g"].buffer(5).contains(Point(*mu)) for s_ in SPORTS):   # a pitch's dugouts are no cars
+    if 0 < mu[0] < W and 0 < mu[1] < H and not any(s_["g"].buffer(5).contains(Point(*mu)) for s_ in SPORTS)             and not PASSES.buffer(4).contains(Point(*mu)):                    # a pitch's dugouts, a tunnel's mouth are no cars
         cars.append([round(float(mu[0]), 2), round(float(mu[1]), 2), round(ang, 1), round(min(Lc, 4.8), 2), round(min(Wc, 1.9), 2),
                      int(rng.integers(len(CARCOL)))])
 log("cars", len(cars), "kerbs", sum(1 for w_ in walls if w_["kind"] == "kerb"))

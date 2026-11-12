@@ -4673,4 +4673,6 @@ export default {
   "ms.sp.s.990": "OpenStreetMap, ligne (masquée)",
   "ms.sp.s.991": "OpenStreetMap, point (masqué)",
   "ms.sp.s.995": "Limite à confirmer (mur, clôture ou haie)",
+  // « Cartographier » (Orga, 2026-11-06)
+  "ms.sp.s.993": "Passage au niveau inférieur (masqué)",
 };

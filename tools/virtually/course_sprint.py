@@ -45,6 +45,12 @@ Z0, Z1 = WZ0 - by1 + 25, WZ0 - by0 - 25
 inbox = lambda x, z: X0 < x < X1 and Z0 < z < Z1
 near_block = distance_transform_edt(free) < 1.5                   # within 1.5 m of a wall or a building
 ok_ground = free & np.isin(cls, [C[k] for k in ("paved", "open", "open_t", "path", "road", "track", "small_path", "forest", "stairs")])
+# a flag stands on runnable ground in the ground that joins the rest of the town (not a pocket between a wall and a garden, which
+# no route reaches)
+from scipy.ndimage import label as _label
+_lab, _n = _label(free)
+MAIN = _lab == (np.argmax(np.bincount(_lab.ravel())[1:]) + 1) if _n else free
+ok_ground = ok_ground & MAIN
 
 # ---- control sites ----------------------------------------------------------------------------------------------------------
 sites = []
@@ -52,7 +58,8 @@ sites = []
 
 def site(x, z, kind):
     i, j = int(z), int(x)
-    if not inbox(x, z) or not (0 <= i < H and 0 <= j < W) or not ok_ground[i, j]:
+    i2, j2 = min(H - 1, int(round(z))), min(W - 1, int(round(x)))          # the cell it falls in, however it is rounded
+    if not inbox(x, z) or not (0 <= i < H and 0 <= j < W) or not ok_ground[i, j] or not ok_ground[i2, j2]:
         return
     sites.append((x, z, kind))
 

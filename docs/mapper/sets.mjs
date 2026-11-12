@@ -628,6 +628,8 @@ function sprint() {
   add(line(995, N(995), { color: "purple50", w: 0.25 }, { note: "A helper: replace it by a wall, a fence, a hedge or nothing once seen on the ground." }));
   add(line(990, N(990), { color: "purple50", w: 0.1 }, { status: 2, note: "Hidden: every OpenStreetMap way of the area, for reference." }));
   add(point(991, N(991), [ring("purple50", 0.1, 0.3)], { status: 2, note: "Hidden: every tagged OpenStreetMap node of the area, for reference." }));
+  // a passage beneath a bridge, the railway or a building (tools/virtually/town_map.py): hidden, for the game, which makes it runnable
+  add({ ...area(993, N(993), { fill: "brown30" }, { note: "Hidden: a passage at the lower level, which Pixel's game makes runnable whatever lies above it." }), status: 2 });
   return S;
 }
 

@@ -1012,7 +1012,10 @@ Every multiple-choice game was played through to its score page at phone size, w
   **Foley Mountain** (Orienteering Ottawa's), the first two races, were removed from R2, live and local, that day; their inputs stay
   outside git in `data\virtual\` for tests only. The work of the day (Desquinemarre's movies, `C:\kerkia\Ozimut\work\vr3d`) stays outside git.
   **Sprint in a town** (owner, 2026-11-11: « LiDAR + OpenStreetMap, as realistic as possible »; race **Gif-sur-Yvette**, `gif`, its
-  centre 600 × 600 m between the RER station and the church, 48.7006 N 2.1357 E): a race made from open data alone, no club map.
+  centre 600 × 600 m between the RER station and the church until 2026-11-12, then 1 320 × 1 040 m round 48.6989 N 2.1315 E, Lambert 93
+  635420-636740 × 6844142-6845182 — the owner's area drawn on IGN's map (0.48 km², the sports grounds, Le Clos, the station and
+  l'Abbaye, georeferenced on two roundabouts of OSM at 0.93 m a pixel) with the old square; the 600 m race kept in
+  `DATA/gif_v3_600m`): a race made from open data alone, no club map.
   `tools/virtually/town_fetch.py <race> <lat> <lon> <w> <h>` fetches IGN's LiDAR HD tiles (into `lidar/laz/`, where build.py reads
   them), BD TOPO V3's layers (WFS), BD ORTHO colour and infrared at 0.2 m (WMS), the cadastre's parcels (Etalab) and OpenStreetMap
   (Overpass), 60 m beyond the area, into `DATA/<race>/src/`; `town_all.py <race> [--courses] [--from <step>]` then runs
@@ -1119,10 +1122,20 @@ Every multiple-choice game was played through to its score page at phone size, w
   cycle path is a line**, OpenOrienteering Mapper's 501.6-501.9 « paved area, footprint 1.4 / 2 / 3 / 4 m » (the strip in brown
   30 % between two black edges, made by mkocd.mjs; build.py draws it as paving at its width), not a borderless paved area; **the
   path network joined** before it is drawn (noded, merged through its junctions, an end stopping within 4 m of another path drawn
-  on to it); **a grass pitch's edge** as 415 (distinct cultivation boundary). These rules are the generator's (`town_map.py`,
+  on to it); **a grass pitch's edge** as 415 (distinct cultivation boundary). **Bridges and passages** (owner, 2026-11-12: « bridges
+  and tunnels need to be shown »): decks from OSM's bridge ways (roads, paths, railways at their width), else BD TOPO's roads and
+  railways above ground and its « Pont » lines (« Passerelle » a footbridge); a passage = a way on a lower layer crossing a deck (a
+  road under the railway), or a way in a tunnel, covered, under a building or on a negative layer (its part beneath a deck, the
+  railway, a building or a carriageway: the Chemin du Bras Mort, `layer=-1` under Rue Alphonse Pécard, dropped until then), else BD
+  TOPO's ways below ground and « Tunnel » lines; 512.1 across each mouth (triangles out, toward the lower level), along a deck's
+  sides over water, a stream or the railway, 512.2 along a passage of 15 m or more; a hidden 993 area that build.py makes runnable
+  over the railway's block line or a building, and `src/passages.json`, cut out of the 3D's buildings by town_3d.py; the water and
+  streams cut under decks and in culverts. **Water and wetland** (« you completely ignored the wetland »): OSM's water areas join
+  BD TOPO's (not a dry detention basin), its streams where BD TOPO has none, ditches and drains as 306, its `natural=wetland` as 308
+  marsh over the ground. These rules are the generator's (`town_map.py`,
   `mkocd.mjs`), so every town map made after Gif has them — and **Cartographier's « Plan de ville (sprint) » is this same
   generator** (owner, 2026-11-12: one engine, quality before speed; the townmap workflow, see Cartographier), so a rule changed here
-  reaches both; the symbols mkocd.mjs used to make (501.6-501.9, 532.1-532.6, 990, 991, 995) are the ISSprOM set's own
+  reaches both; the symbols mkocd.mjs used to make (501.6-501.9, 532.1-532.6, 990, 991, 993, 995) are the ISSprOM set's own
   (`docs/mapper/sets.mjs`); mkocd.mjs takes its curves from `frame.js bezier`. `town_map.py --clip` cuts the objects to the area
   asked for (area.json `box`; Pixel keeps the 60 m margin), the edges' rules ignoring that cut; the kerbs are the outline of the town
   carriageways put together, each kind of section merged end to end before it is widened (each section's own outline had drawn a
@@ -1152,7 +1165,8 @@ Every multiple-choice game was played through to its score page at phone size, w
   artificial turf, mostly outside the area), 11 tennis courts (clay, hard, fine gravel), 2 multi-sport courts, the track, 2
   boules grounds.
   **`course_sprint.py`**: sites on outer building corners (the flag 1.1 m out), monuments, fountains, lone trees and bushes,
-  impassable walls' ends, stairways' feet; legs 60-260 m timed on the speeds grid (skimage `MCP_Geometric`, a 130 m window), a leg
+  impassable walls' ends, stairways' feet, each on runnable ground joined to the rest of the town (2026-11-12: a wall's end in a pocket
+  between a wall and a garden had taken a control no route reached); legs 60-260 m timed on the speeds grid (skimage `MCP_Geometric`, a 130 m window), a leg
   scoring for its route choice (a second route kept 10 m off the best, within 12 % of its time); four courses at the sprint's
   levels (owner, 2026-11-11: « in Sprint there is no violet, and middle makes no sense »), `race.courses` [{ id:
   blue|yellow|orange_s|orange_l, controls, length, climb }] (6, 8, 10, 14 controls, 0.85 to 2.7 km in Gif; the orange ones searched 200

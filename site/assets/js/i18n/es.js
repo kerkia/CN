@@ -5715,4 +5715,6 @@ export default {
   "ms.sp.s.990": "Línea de OpenStreetMap (oculta)",
   "ms.sp.s.991": "Punto de OpenStreetMap (oculto)",
   "ms.sp.s.995": "Límite por confirmar (muro, valla o seto)",
+  // « Cartographier » (Orga, 2026-11-06)
+  "ms.sp.s.993": "Paso en el nivel inferior (oculto)",
 };

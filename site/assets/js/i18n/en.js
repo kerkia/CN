@@ -5499,4 +5499,6 @@ export default {
   "ms.sp.s.990": "OpenStreetMap line (hidden)",
   "ms.sp.s.991": "OpenStreetMap point (hidden)",
   "ms.sp.s.995": "Boundary to confirm (wall, fence or hedge)",
+  // « Cartographier » (Orga, 2026-11-06)
+  "ms.sp.s.993": "Passage at the lower level (hidden)",
 };

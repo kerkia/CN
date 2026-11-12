@@ -244,6 +244,10 @@ for o in objs:
         elif n in POINT:
             points.append({"k": POINT[n], "x": x, "z": z, "a": a, "sub": s % 1000})
 cls = np.array(img)
+# a passage beneath a bridge, the railway or a building (town_map.py's hidden 993): runnable whatever lies above it
+for o in D["objs"]:                                        # (the hidden helpers are not in `objs`)
+    if o["otp"] == 3 and o["sym"] == 993000:
+        draw_area(flatten(o["c"]), C["paved"])
 # stony ground and boulder fields as ground patches; buildings drawn as points
 img = Image.fromarray(cls); dr = ImageDraw.Draw(img)
 for p in points:

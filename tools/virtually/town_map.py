@@ -22,7 +22,11 @@ What each symbol comes from:
 - 501.6-501.9 paved footways and cycle paths as lines, the paved strip with its edges at their width (1.4, 2, 3, 4 m: Mapper's
   « paved area, footprint »; mkocd.mjs makes them);
 - 505/506 unpaved paths (OpenStreetMap; BD TOPO's only where OSM has none within 4 m), 532 stairways at their width on the ground
-  (OSM's `width`, else 2 m: variants 532.1-532.6 made by mkocd.mjs; BD TOPO's where OSM has no stairway within 4 m); 509 railway; 301/305 water (BD TOPO);
+  (OSM's `width`, else 2 m: variants 532.1-532.6 made by mkocd.mjs; BD TOPO's where OSM has no stairway within 4 m); 509 railway;
+  301 water (BD TOPO's and OpenStreetMap's areas), 305 streams, 306 ditches and drains, cut in culverts and under bridges;
+  308 marsh (OpenStreetMap's wetlands);
+- bridges and passages: 512.1 across a passage's mouths and along a bridge's sides over water, a stream or the railway, 512.2
+  along a passage 15 m long or more; the passages for the game on a hidden area (993) and in src/passages.json (town_3d.py);
 - 995 « boundary to confirm » (purple 50 %, a helper the race's map does not draw): the edge of the ground not to be entered where
   no wall, fence, hedge or building is known — on the ground it is one of them, the mapper says which;
 - 990 / 991 every OpenStreetMap way and tagged node of the area, on hidden helper symbols, for the mapper to use;
@@ -214,9 +218,41 @@ def width_of(t, default):
         return max(0.8, min(12.0, float(str(t.get("width", "")).replace(",", ".").split()[0])))
     except (ValueError, IndexError):
         return default
+def is_lower(t):
+    """An OSM way beneath something: in a tunnel, under a cover or a building, or on a negative layer."""
+    return (t.get("tunnel") in ("yes", "building_passage", "covered") or t.get("covered") == "yes"
+            or str(t.get("layer", "0")).strip().startswith("-"))
+
+
+def put_way(g, hw, t, is_area):
+    """An OSM way of a path's kind on the map: a stairway, a sidewalk or a paved area, a paved footway (a line at its width), an
+    unpaved path or a small path."""
+    if hw == "steps":
+        steps.append((g, width_of(t, 2.0))); return
+    surf = t.get("surface", "")
+    if t.get("footway") in ("sidewalk", "crossing", "traffic_island") or t.get("cycleway") == "sidewalk":
+        paved.append(g.buffer(1.0, cap_style="flat", join_style="round")); return
+    if is_area and g.geom_type.endswith("Polygon"):
+        if surf not in UNPAVED_SURF:
+            paved.append(g)
+        return
+    if surf in UNPAVED_SURF or (hw in ("path", "track", "bridleway") and surf not in PAVED_SURF):
+        (small_lines if hw == "path" and t.get("informal") == "yes" else path_lines).append(g)
+    elif hw in ("footway", "path", "cycleway", "bridleway"):
+        paved_paths.append((g, width_of(t, 2.0)))
+    else:
+        paved.append(g.buffer({"service": 2.2, "living_street": 2.5, "pedestrian": 2.5, "track": 1.5}.get(hw, 1.1), cap_style="flat", join_style="round"))
+
+
+under, bd_under = [], []                                   # OSM's ways beneath something; BD TOPO's roads below ground
 for f in bdtopo("troncon_de_route"):
     p = f["properties"]; g = geom2d(f["geometry"])
-    if g is None or (p.get("position_par_rapport_au_sol") or "0").startswith("-"):
+    if g is None:
+        continue
+    if (p.get("position_par_rapport_au_sol") or "0").startswith("-"):
+        if g.geom_type == "LineString":
+            nat = (p.get("nature") or "").lower()
+            bd_under.append((g, 2.0 if ("sentier" in nat or "escalier" in nat or "chemin" in nat) else float(p.get("largeur_de_chaussee") or 0) or 5.0))
         continue
     nat = (p.get("nature") or "").lower()
     if "escalier" in nat:
@@ -236,27 +272,15 @@ for e in osm:
         if g0 is not None:
             osm_hw.append(g0)
     if hw in ("pedestrian", "footway", "path", "cycleway", "service", "living_street", "track", "bridleway", "steps", "corridor") or t.get("area:highway"):
-        if t.get("tunnel") in ("yes", "building_passage") or t.get("layer", "0").startswith("-") or t.get("indoor") == "yes":
+        if t.get("indoor") == "yes":
             continue
         is_area = t.get("area") == "yes" or bool(t.get("area:highway"))
         g = osm_geom(e, area=is_area)
         if g is None:
             continue
-        if hw == "steps":
-            steps.append((g, width_of(t, 2.0))); continue
-        surf = t.get("surface", "")
-        if t.get("footway") in ("sidewalk", "crossing", "traffic_island") or t.get("cycleway") == "sidewalk":
-            paved.append(g.buffer(1.0, cap_style="flat", join_style="round")); continue
-        if is_area and g.geom_type.endswith("Polygon"):
-            if surf not in UNPAVED_SURF:
-                paved.append(g)
-            continue
-        if surf in UNPAVED_SURF or (hw in ("path", "track", "bridleway") and surf not in PAVED_SURF):
-            (small_lines if hw == "path" and t.get("informal") == "yes" else path_lines).append(g)
-        elif hw in ("footway", "path", "cycleway", "bridleway"):
-            paved_paths.append((g, width_of(t, 2.0)))
-        else:
-            paved.append(g.buffer({"service": 2.2, "living_street": 2.5, "pedestrian": 2.5, "track": 1.5}.get(hw, 1.1), cap_style="flat", join_style="round"))
+        if is_lower(t) and g.geom_type == "LineString":         # a passage beneath something: placed below, with the bridges
+            under.append((g, hw, t)); continue
+        put_way(g, hw, t, is_area)
     if t.get("place") == "square" or t.get("amenity") in ("parking", "marketplace") or t.get("leisure") == "schoolyard":
         g = osm_geom(e, area=True)
         if g is not None and g.geom_type.endswith("Polygon") and t.get("parking") not in ("underground", "multi-storey"):
@@ -277,6 +301,116 @@ for (half, imp, urb), gs in carr_lines.items():
     u = unary_union(gs)
     m = _linemerge(u) if u.geom_type in ("MultiLineString", "GeometryCollection") else u
     carr.append((m.buffer(half, cap_style="flat", join_style="round"), imp, urb))
+# ---- two levels: the bridges and what passes beneath (the owner, 2026-11-12: « bridges and tunnels need to be shown ») ------------
+# a deck is a bridge's top: OpenStreetMap's bridge ways (roads, paths, railways) at their width, else BD TOPO's roads and railways
+# above ground and its « Pont » lines (axes: « Passerelle » a footbridge). What passes beneath a deck — a way on a lower layer
+# crossing it, a way in a tunnel, under a cover or a building, or on a negative layer (its part beneath a deck, the railway, a
+# building or a carriageway) — is a passage: on the map 512.1 (« bridge / tunnel entrance ») across each of its mouths, the
+# triangles toward the lower level outside, and 512.2 (« underpass or tunnel ») along its sides when it runs 15 m or more under
+# cover; for the game a hidden area (993) that build.py makes runnable over whatever lies above (the railway's block line, a
+# building), and src/passages.json, which town_3d.py cuts out of the buildings it stops the runner with. Over water, a stream or a
+# railway beneath, a deck's sides get 512.1; the water and the streams are cut under it (a road or path deck runnable).
+def lay(t, d=0):
+    try:
+        return int(float(str(t.get("layer", d)).split(";")[0]))
+    except ValueError:
+        return d
+
+
+ROAD_W = {"motorway": 12, "trunk": 10, "primary": 9, "secondary": 8, "tertiary": 7, "unclassified": 6, "residential": 6,
+          "living_street": 5, "service": 4, "track": 3, "pedestrian": 3, "cycleway": 2.5, "bridleway": 2.5, "footway": 2.0,
+          "path": 2.0, "steps": 2.0, "corridor": 2.0}
+PATH_KINDS = {"footway", "path", "cycleway", "bridleway", "steps", "pedestrian", "track", "corridor"}
+RAIL_L = unary_union(rail) if rail else LineString()
+decks = []                                                 # {"g": the deck, "axis", "w", "layer", "kind": road | path | rail}
+for e in osm:
+    t = tags(e)
+    if e["type"] != "way" or t.get("bridge") in (None, "no") or not (t.get("highway") or t.get("railway")):
+        continue
+    g = osm_geom(e)
+    if g is None or g.geom_type != "LineString" or not g.intersects(frame.buffer(30)):
+        continue
+    hw = t.get("highway")
+    kind = "rail" if t.get("railway") else "path" if hw in PATH_KINDS else "road"
+    w = width_of(t, 8.0 if kind == "rail" else ROAD_W.get(hw, 6.0))
+    decks.append({"g": g.buffer(w / 2, cap_style="flat"), "axis": g, "w": w, "layer": max(1, lay(t, 1)), "kind": kind})
+OSM_DECK = unary_union([d["axis"].buffer(3) for d in decks]) if decks else Polygon()
+for layer_name in ("troncon_de_route", "troncon_de_voie_ferree", "construction_lineaire"):
+    for f in bdtopo(layer_name):
+        p = f["properties"]; g = geom2d(f["geometry"])
+        if g is None or g.geom_type != "LineString" or g.length < 2:
+            continue
+        nat, det = (p.get("nature") or "").lower(), (p.get("nature_detaillee") or "").lower()
+        if layer_name == "construction_lineaire":
+            if nat != "pont":
+                continue
+            kind, w = ("path", 2.5) if "passerelle" in det else ("road", 6.0)
+            if not RAIL_L.is_empty and RAIL_L.buffer(5).contains(g):     # along the railway: the railway's own bridge
+                kind, w = "rail", 8.0
+        elif (p.get("position_par_rapport_au_sol") or "0").lstrip("+")[:1] not in ("1", "2", "3"):
+            continue
+        elif layer_name == "troncon_de_voie_ferree":
+            kind, w = "rail", 8.0
+        else:
+            kind = "path" if ("sentier" in nat or "escalier" in nat or "chemin" in nat) else "road"
+            w = float(p.get("largeur_de_chaussee") or 0) or (2.0 if kind == "path" else 6.0)
+        if g.difference(OSM_DECK).length < 0.5 * g.length:  # OpenStreetMap has this bridge already
+            continue
+        decks.append({"g": g.buffer(w / 2, cap_style="flat"), "axis": g, "w": w, "layer": 1, "kind": kind})
+DECK_ALL = unary_union([d["g"] for d in decks]) if decks else Polygon()
+
+
+def pieces_in(g, area):
+    x = g.intersection(area)
+    return [l for l in getattr(x, "geoms", [x]) if l.geom_type == "LineString" and l.length >= 1.0]
+
+
+def across(piece, d):
+    """The piece runs across the deck (a way passing beneath), not along it (a road reaching its own bridge)."""
+    a = d["axis"]; m = piece.interpolate(0.5, normalized=True); s0 = a.project(m)
+    p0, p1 = a.interpolate(max(0.0, s0 - 1)), a.interpolate(min(a.length, s0 + 1))
+    q0, q1 = piece.coords[0], piece.coords[-1]
+    ax, ay, px, py = p1.x - p0.x, p1.y - p0.y, q1[0] - q0[0], q1[1] - q0[1]
+    na, npc = math.hypot(ax, ay), math.hypot(px, py)
+    return na > 1e-6 and npc > 1e-6 and abs(ax * py - ay * px) / (na * npc) > 0.5
+
+
+passages = []                                              # (the line beneath, its width)
+UNDER_NEAR = unary_union([g.buffer(3) for g, _, _ in under] or [Polygon()])   # those come from the tunnels' own ways (below)
+for e in osm:                                              # ways on a lower layer crossing a deck (a road under the railway)
+    t = tags(e); hw = t.get("highway")
+    if e["type"] != "way" or not hw or t.get("bridge") not in (None, "no") or t.get("area") == "yes" or t.get("indoor") == "yes" or is_lower(t):
+        continue
+    g = osm_geom(e)
+    if g is None or g.geom_type != "LineString" or not g.intersects(DECK_ALL):
+        continue
+    for d in decks:
+        if d["layer"] > lay(t, 0) and g.intersects(d["g"]):
+            passages += [(pc, width_of(t, ROAD_W.get(hw, 4.0))) for pc in pieces_in(g, d["g"])
+                         if across(pc, d) and not UNDER_NEAR.contains(pc)]
+UPPER = unary_union([DECK_ALL, RAIL_L.buffer(4), B] + [c for c, _, _ in carr]).buffer(0.5)
+for g, hw, t in under:                                     # tunnels, covered ways, ways on a negative layer
+    w = width_of(t, ROAD_W.get(hw, 2.0))
+    if t.get("tunnel") in ("yes", "building_passage", "covered") or t.get("covered") == "yes":
+        pcs, rest = [g], None                              # the whole way is beneath
+    else:
+        pcs, rest = pieces_in(g, UPPER), g.difference(UPPER)
+        if not pcs and g.length < 40:
+            pcs, rest = [g], None
+    passages += [(pc, w) for pc in pcs]
+    for r in getattr(rest, "geoms", [rest]) if rest is not None else []:
+        if r.geom_type == "LineString" and r.length >= 2:  # the rest of it runs in the open
+            put_way(r, hw, t, False)
+UNDER_OSM = unary_union([g.buffer(8) for g, _, _ in under] + [pc.buffer(8) for pc, _ in passages] or [Polygon()])   # (BD TOPO's lie metres off)
+for g, w in bd_under:                                      # BD TOPO's ways below ground that OpenStreetMap does not have
+    if g.difference(UNDER_OSM).length > 0.5 * g.length:
+        passages.append((g, w))
+for f in bdtopo("construction_lineaire"):
+    g = geom2d(f["geometry"])
+    if (f["properties"].get("nature") or "").lower() == "tunnel" and g is not None and g.geom_type == "LineString" \
+            and g.difference(UNDER_OSM).length > 0.5 * g.length:
+        passages.append((g, 2.5))
+log("decks", len(decks), {k: sum(1 for d in decks if d["kind"] == k) for k in ("road", "path", "rail")}, "passages", len(passages))
 OSM_HW = unary_union([g.buffer(4) for g in osm_hw]) if osm_hw else Polygon()
 for g in bd_paths:
     rest = g.difference(OSM_HW)
@@ -294,6 +428,41 @@ RAIL = unary_union(rail) if rail else LineString()
 water = unary_union([geom2d(f["geometry"]).buffer(0) for f in bdtopo("surface_hydrographique")] or [Polygon()])
 streams = [geom2d(f["geometry"]) for f in bdtopo("troncon_hydrographique")
            if not (f["properties"].get("position_par_rapport_au_sol") or "0").startswith("-")]
+# what one source has exists (the owner's mapper, 2026-11-12): OpenStreetMap's water areas join BD TOPO's — not a basin that is
+# dry most of the time —, its streams, ditches and drains where BD TOPO has none within 4 m (a ditch or a drain as 306, minor
+# watercourse), never a culvert's; a watercourse is cut where it runs in a culvert or beneath a deck
+osm_water, ditches, culverts = [], [], []
+for e in osm:
+    t = tags(e)
+    if t.get("natural") == "water" and t.get("intermittent") != "yes" and t.get("basin") not in ("detention", "retention", "infiltration"):
+        g = osm_geom(e, area=True)
+        if g is not None and g.geom_type.endswith("Polygon"):
+            osm_water.append(g)
+    if e["type"] == "way" and t.get("waterway") in ("river", "stream", "canal", "ditch", "drain"):
+        g = osm_geom(e)
+        if g is None or g.geom_type != "LineString":
+            continue
+        if t.get("tunnel") in ("yes", "culvert") or str(t.get("layer", "0")).startswith("-"):
+            culverts.append(g)
+        elif t["waterway"] in ("ditch", "drain"):
+            ditches.append(g)
+        else:
+            streams.append(("osm", g))
+BD_STREAM = unary_union([g.buffer(4) for g in streams if not isinstance(g, tuple) and g is not None] or [Polygon()])
+streams = [g for g in streams if not isinstance(g, tuple)] + [g for _, g in (x for x in streams if isinstance(x, tuple))
+                                                                 if g.difference(BD_STREAM).length > 0.5 * g.length]
+CULV = unary_union([g.buffer(2.5) for g in culverts]) if culverts else Polygon()
+water = unary_union([water] + osm_water)
+WATER_ALL = water                                          # with what the decks cover, for their sides
+RUN_DECK = unary_union([d["g"] for d in decks if d["kind"] != "rail"] or [Polygon()])
+water = water.difference(DECK_ALL)
+streams = [g.difference(DECK_ALL.buffer(0.3)).difference(CULV) for g in streams if g is not None]
+ditches = [g.difference(DECK_ALL.buffer(0.3)).difference(CULV) for g in ditches]
+# wetlands (the owner, 2026-11-12: « you completely ignored the wetland »): OpenStreetMap's natural=wetland — marsh, wet meadow,
+# reed bed, a detention basin's floor — as 308 marsh, over the ground's own colour; open water and buildings stay what they are
+WET = unary_union([g for e in osm if tags(e).get("natural") == "wetland" for g in [osm_geom(e, True)]
+                   if g is not None and g.geom_type.endswith("Polygon")] or [Polygon()])
+log("water: OSM areas", len(osm_water), "ditches", len(ditches), "culverts", len(culverts), "wetland", round(WET.area), "m²")
 hedges = [geom2d(f["geometry"]) for f in bdtopo("haie")] + [osm_geom(e) for e in osm if e["type"] == "way" and tags(e).get("barrier") == "hedge"]
 hedges = [h for h in hedges if h is not None]
 walls = []                                                  # (line, kind, retaining)
@@ -526,7 +695,9 @@ from rasterio.transform import from_origin as _from_origin
 _cov, _val = [], []
 for geo, v in _shapes(cl, transform=_from_origin(X0, Y1, R, R)):
     _cov.append(shape(geo)); _val.append(int(v))
+log("coverage", len(_cov), "pieces")
 _cov = shapely.coverage_simplify(np.array(_cov, dtype=object), tolerance=1.2)
+log("coverage simplified")
 KNAME = {v: k for k, v in K.items()}
 # what has a vector source is drawn from it, exactly: the water, the hedges, the ground not to be entered (the cadastre's
 # parcels, the railway, the courts), the sports grounds, the paving (the streets, the public road space but its grass, the
@@ -550,13 +721,38 @@ for k, g in VEC_ORDER:
         taken = taken.union(g)
 VECU = shapely.make_valid(taken)
 RVEC = unary_union([g for g, v in zip(_cov, _val) if KNAME.get(v) in ("private", "water", "imp_veg", "building")])
+log("vector areas", round(VECU.area), "m²")
+# both cut once into 50 m tiles: a piece's neighbourhood is then a few tiles, not the whole map's geometry (quadratic on a large
+# town)
+TILE = 50.0
+
+
+def tiles_of(geom):
+    out = {}
+    for ty in range(int((Y1 - Y0) // TILE) + 1):
+        for tx in range(int((X1 - X0) // TILE) + 1):
+            x = shapely.make_valid(shapely.clip_by_rect(geom, X0 + tx * TILE, Y0 + ty * TILE, X0 + (tx + 1) * TILE, Y0 + (ty + 1) * TILE))
+            if not x.is_empty:
+                out[(tx, ty)] = x
+    return out
+
+
+def near(tiles, bx):
+    t0, t1 = int((bx[0] - X0) // TILE), int((bx[2] - X0) // TILE)
+    u0, u1 = int((bx[1] - Y0) // TILE), int((bx[3] - Y0) // TILE)
+    parts = [tiles[(tx, ty)] for tx in range(t0, t1 + 1) for ty in range(u0, u1 + 1) if (tx, ty) in tiles]
+    return shapely.make_valid(unary_union(parts).intersection(sbox(*bx))) if parts else Polygon()
+
+
+VT, RT = tiles_of(VECU), tiles_of(RVEC)
+log("tiles", len(VT), len(RT))
 for g, v in zip(_cov, _val):
     k = KNAME.get(v)
     if k in ("private", "water", "imp_veg", "building") or g.is_empty:
         continue
     bx = g.buffer(0.6).bounds
-    local_v = shapely.make_valid(VECU.intersection(sbox(*bx)))
-    local_r = shapely.make_valid(RVEC.intersection(sbox(*bx)))
+    local_v = near(VT, bx)
+    local_r = near(RT, bx)
     g = shapely.make_valid(g)
     if not local_r.is_empty:
         g = g.union(g.buffer(0.4).intersection(local_r))
@@ -564,6 +760,7 @@ for g, v in zip(_cov, _val):
         g = g.difference(local_v)
     if not g.is_empty:
         COVER.setdefault(k, []).append(g)
+log("areas cut")
 # the through roads (BD TOPO's importance 1-3: the départementales) as paved area with heavy traffic (the owner's mapper,
 # 2026-11-12: OpenOrienteering Mapper's 501 / 501.10, each with its edge)
 PAVED_ALL = shapely.make_valid(unary_union(COVER.get("paved", []))).buffer(0)
@@ -590,9 +787,64 @@ for g in getattr(blocks, "geoms", [blocks]):
 if not canopy.is_empty:
     cg = canopy.difference(B)
     add_area(cg, S(522)); add_line(cg.boundary if not cg.is_empty else None, S(522, 9))
+# the marsh over the ground (308: blue lines, no fill), outside water, buildings, paving and the ground not to be entered
+if not WET.is_empty:
+    add_area(WET.intersection(frame).difference(water).difference(B).difference(PAVED_ALL).difference(PRIVATE.buffer(-1.0)), S(308), 20)
+# the two levels (see « two levels » above)
+def right_out(l, inside):
+    """The line turned so that its right side (512.1's triangles) looks out of `inside`."""
+    m = l.interpolate(0.5, normalized=True); q = l.interpolate(min(l.length, l.project(m) + 0.3))
+    p0 = l.interpolate(max(0.0, l.project(m) - 0.3)); dx, dy = q.x - p0.x, q.y - p0.y; n = math.hypot(dx, dy) or 1
+    return LineString(l.coords[::-1]) if inside.contains(Point(m.x + dy / n * 0.6, m.y - dx / n * 0.6)) else l
+
+
+from shapely.ops import linemerge
+mouths, n_side = [], 0
+LOW_W = unary_union([WATER_ALL] + [g.buffer(1.0) for g in streams + ditches if g is not None and not g.is_empty])
+for d in decks:                                            # a deck's sides over water, a stream or the railway beneath
+    low = unary_union([LOW_W] + ([RAIL_L.buffer(4)] if d["kind"] != "rail" else [])).intersection(d["g"].buffer(2))
+    if low.is_empty:
+        continue
+    for side in (d["w"] / 2, -d["w"] / 2):
+        try:
+            ln = d["axis"].offset_curve(side)
+        except Exception:
+            continue
+        for pc in pieces_in(ln, low.buffer(1.0)):
+            add_line(right_out(pc, d["g"]), S(512, 1), 1); n_side += 1
+PASS = []
+if passages:
+    widths = [(pc.buffer(0.5), w) for pc, w in passages]
+    merged = linemerge(unary_union([pc for pc, _ in passages]))
+    lines_m = [pc for pc in getattr(merged, "geoms", [merged]) if pc.geom_type == "LineString" and pc.length >= 1]
+    for i, pc in enumerate(lines_m):
+        others = unary_union([q for j, q in enumerate(lines_m) if j != i] or [LineString()])
+        w = max([w for b, w in widths if b.intersects(pc)] or [2.0])
+        PASS.append(pc.buffer(w / 2, cap_style="flat"))
+        cs = list(pc.coords)
+        for e, q in ((cs[0], cs[1]), (cs[-1], cs[-2])):    # a mouth at each end out in the open
+            if B.buffer(-0.3).contains(Point(e)) or not frame.buffer(-1).contains(Point(e))                     or (not others.is_empty and others.distance(Point(e)) < 0.5):   # an end joining the rest of the passage: no mouth
+                continue
+            dx, dy = e[0] - q[0], e[1] - q[1]; n = math.hypot(dx, dy)
+            if n < 1e-6:
+                continue
+            dx, dy, h = dx / n, dy / n, w / 2 + 0.5
+            m = LineString([(e[0] + dy * h, e[1] - dx * h), (e[0] - dy * h, e[1] + dx * h)])
+            mouths.append(m); add_line(m, S(512, 1), 0.5)
+        if pc.length >= 15:                                # a long passage: its sides
+            for side in (w / 2, -w / 2):
+                try:
+                    add_line(pc.offset_curve(side), S(512, 2), 2)
+                except Exception:
+                    pass
+    for g in PASS:
+        add_area(g, S(993), 0.5)
+json.dump({"passages": [shapely.geometry.mapping(g) for g in PASS]}, open(SRC / "passages.json", "w"))
+log("bridges: deck sides", n_side, "passage mouths", len(mouths), "passages", len(PASS))
 # the paved area's edge (501.1) where it meets anything but a building, a wall, a fence or a hedge already drawn, and the
 # carriageways' kerbs in town — the 13 cm kerbs the 3D draws (the owner's mapper, 2026-11-12: « the paved area lacks its edge »)
-NOLINE = unary_union([B.buffer(0.4), frame.boundary.buffer(0.6), CLIP.boundary.buffer(0.6)] + [g.buffer(0.6) for g, _, _ in walls] + [h.buffer(0.8) for h in hedges])
+NOLINE = unary_union([B.buffer(0.4), frame.boundary.buffer(0.6), CLIP.boundary.buffer(0.6)] + [g.buffer(0.6) for g, _, _ in walls] + [h.buffer(0.8) for h in hedges]
+                     + [m.buffer(0.8) for m in mouths])
 # the kerbs: the outline of the town carriageways put together, so that no line crosses a street where two sections meet
 URB = unary_union([c for c, _, urb in carr if urb] or [Polygon()]).buffer(0.01)
 kerbs = (URB.boundary if not URB.is_empty else LineString()).intersection(PAVED_ALL.buffer(-0.5))
@@ -734,7 +986,8 @@ FOOT_M = [1.4, 2.0, 3.0, 4.0]
 PAVED_IN = PAVED_ALL.buffer(-0.3)                                      # once: a large polygon
 for k in range(len(FOOT_M)):
     for g in network([g for g, fw in paved_paths if min(range(len(FOOT_M)), key=lambda i: abs(FOOT_M[i] - fw)) == k]):
-        add_line(g.difference(PAVED_IN).difference(B).difference(OLIVE_IN), S(501, 6 + k), 3, curve=True)
+        # a piece still under 8 m once the network is joined is a scrap (a stairway's landing, a station's corridors): left out
+        add_line(g.difference(PAVED_IN).difference(B).difference(OLIVE_IN), S(501, 6 + k), 8, curve=True)
 for g in network(path_lines):
     add_line(g.difference(PAVED).difference(B).difference(OLIVE_IN), S(505), 3, curve=True)
 for g in network(small_lines):
@@ -773,6 +1026,8 @@ log("boundaries to confirm", n_conf)
 for g in streams:
     if g is not None:
         add_line(g.difference(water.buffer(0.5)).difference(B), S(305), 3, curve=True)
+for g in ditches:
+    add_line(g.difference(water.buffer(0.5)).difference(B).difference(OLIVE_IN), S(306), 3, curve=True)
 if not RAIL.is_empty:
     add_line(RAIL.intersection(CLIP), S(509, 1), 3)
 

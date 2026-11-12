@@ -5715,4 +5715,6 @@ export default {
   "ms.sp.s.990": "OpenStreetMap-Linie (ausgeblendet)",
   "ms.sp.s.991": "OpenStreetMap-Punkt (ausgeblendet)",
   "ms.sp.s.995": "Grenze zu bestätigen (Mauer, Zaun oder Hecke)",
+  // « Cartographier » (Orga, 2026-11-06)
+  "ms.sp.s.993": "Durchgang auf der unteren Ebene (ausgeblendet)",
 };
