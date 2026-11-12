@@ -542,10 +542,10 @@ const SP = {
   // revision 6: line 0.15
   415: () => rect(X0, Y0, X1(), cy(), C.yellow) + line(straight(cy(), X0, X1()), C.black, 0.15),
   416: () => line(straight(), C.black, 0.25, ` stroke-linecap="round"${dash(0.001, 0.6)}`),
-  417: () => ring(cx(), cy(), 1.2, C.green, 0.25),
+  417: () => dot(cx(), cy(), 1.4, C.paper) + ring(cx(), cy(), 1.2, C.green, 0.25), // over its white mask, 1.4 outside
   418: () => dot(cx(), cy(), 0.8, C.green) + dot(cx(), cy(), 0.2, C.paper),
   // a cross in a 1.2 mm square, line 0.25
-  419: () => spCross("spc-419", 1.2, 0.25, C.green),
+  419: () => spCross("spc-419m", 1.2 + 0.5 / Math.SQRT2, 0.5, C.paper) + spCross("spc-419", 1.2, 0.25, C.green), // over its white mask: 0.50, 0.25 longer
   // 5 man-made features
   // brown 30 % for light traffic (above), 50 % for heavy traffic (below), bordered by 501.1 (0.1)
   501: () => rect(X0, 0.55, X1(), 1.35, SC.brown30) + rect(X0, 1.65, X1(), 2.45, SC.brown50s) + line(straight(0.55, X0, X1()) + straight(1.35, X0, X1()) + straight(1.65, X0, X1()) + straight(2.45, X0, X1()), C.black, 0.1),

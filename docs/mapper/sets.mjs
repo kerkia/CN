@@ -46,6 +46,10 @@ const COLORS = [
   ["green60s", "Green 60% (stripes)", screen("green", 0.6)],
   ["darkGreen", "Green 100% + Black 50%", mix(BASE.green, screen("black", 0.5))],
   ["olive", "Olive green (Yellow 100% + Green 50%)", mix(BASE.yellow, screen("green", 0.5))],
+  // the white the specifications put under the green point symbols (417-419), above every yellow and green area, and the
+  // green those symbols are drawn in, above their mask: the same ink as Green 100%, one place higher in the table
+  ["whiteMask", "White (mask under green point symbols)", [0, 0, 0, 0]],
+  ["greenPt", "Green 100% (point symbols)", BASE.green],
   ["black30", "Black 30%", screen("black", 0.3)],
   ["black35", "Black 35%", screen("black", 0.35)],
   ["brown30", "Brown 30%", screen("brown", 0.3)],
@@ -344,9 +348,14 @@ function forest() {
   add(line(415, N(415), { color: "black", w: 0.1 }));
   add(line(416, N(416), dotted("black", 0.22, 0.45)));
   add(line(416.1, "Distinct vegetation boundary, green line", { color: "darkGreen", w: 0.14, dash: [0.3, 0.2] }));
-  add(point(417, N(417), [ring("green", 0.18, 0.9)], { note: "The specification's white mask under it (1.1 mm) is left out: a white above the green areas and under this green would need a green of its own." }));
-  add(point(418, N(418), [ring("green", 0.2, 0.6)]));
-  add(point(419, N(419), [L("green", 0.18, [[-0.3865, -0.3865], [0.3865, 0.3865]]), L("green", 0.18, [[-0.3865, 0.3865], [0.3865, -0.3865]])]));
+  // over their white mask (417: 1.1 outside; 418: its white centre; 419: lines 0.36, 0.18 longer at each end along the arms)
+  add(point(417, N(417), [dot("whiteMask", 1.1), ring("greenPt", 0.18, 0.9)]));
+  add(point(418, N(418), [dot("whiteMask", 0.2), ring("greenPt", 0.2, 0.6)]));
+  {
+    const m = 0.3865 + 0.18 / Math.SQRT2;
+    add(point(419, N(419), [L("whiteMask", 0.36, [[-m, -m], [m, m]]), L("whiteMask", 0.36, [[-m, m], [m, -m]]),
+      L("greenPt", 0.18, [[-0.3865, -0.3865], [0.3865, 0.3865]]), L("greenPt", 0.18, [[-0.3865, 0.3865], [0.3865, -0.3865]])]));
+  }
   // 5 man-made features
   add(line(501.9, "Paved area, bounding line", { color: "black", w: 0.14 }));
   add(area(501, N(501), { fill: "brown50" }, { note: "Bordered with 501.9 where the paved area has a distinct boundary." }));
@@ -539,9 +548,10 @@ function sprint() {
   add(area(414.1, "Vineyard or similar, on open land", vine("yellow")));
   add(line(415, N(415), { color: "black", w: 0.15 }));
   add(line(416, N(416), dotted("black", 0.25, 0.6)));
-  add(point(417, N(417), [ring("green", 0.25, 1.2)]));
-  add(point(418, N(418), [ring("green", 0.3, 0.8)]));
-  add(point(419, N(419), squareCross("green", 1.2, 0.25)));
+  // over their white mask (417: 1.4 outside; 418: its white centre; 419: lines 0.50, 0.25 longer at each end along the arms)
+  add(point(417, N(417), [dot("whiteMask", 1.4), ring("greenPt", 0.25, 1.2)]));
+  add(point(418, N(418), [dot("whiteMask", 0.2), ring("greenPt", 0.3, 0.8)]));
+  add(point(419, N(419), [...squareCross("whiteMask", 1.2 + 0.5 / Math.SQRT2, 0.5), ...squareCross("greenPt", 1.2, 0.25)]));
   // 5 man-made features
   add(area(501, N(501), { fill: "brown30" }));
   add(area(501.4, "Paved area, heavy traffic (brown 50%)", { fill: "brown50" }, { note: "The specification's 50% form of 501; numbered 501.4 by Ozimut." }));

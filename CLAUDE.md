@@ -2455,8 +2455,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`isomrev6cz.pdf`, the English one at the IOF): 105 → 105.1 and 105.2 retaining earth wall, 203 → 203.1 and 203.2 dangerous
   pit, 513 → 513.1 and 513.2 retaining wall, 715 continuing point after map exchange (on forest maps too: `isom.js SPRINT_ONLY`
   lost 105.2, 513.2, 715); 104 0.25, 307's outline 0.12, 415 0.10, 601 blue 0.12, 214 black 35 %, large buildings black 50 %,
-  408's stripes green 30 %, 709 hatching 0.2 every 1.2, 520 without its black stripes (a path through it on white), 417/419's
-  white masks (`isom.js` only: a set would need a green of its own above them), and the minimum sizes. ISSprOM's set: bare rock
+  408's stripes green 30 %, 709 hatching 0.2 every 1.2, 520 without its black stripes (a path through it on white), and the
+  minimum sizes. **The white masks under 417 and 419 and 418's white centre** (owner, 2026-11-12; both sets): an OCAD map draws
+  colour by colour, so the mask is a colour of its own (« White (mask under green point symbols) ») above every yellow and green
+  area, and the three symbols are drawn in « Green 100% (point symbols) », the same ink one place higher; forest 1.1 mm and
+  0.36 / +0.18 mm, sprint 1.4 mm and 0.50 / +0.25 mm. ISSprOM's set: bare rock
   black 35 % and 513.2's 1.4 mm (its drawings were already revision 6). Maps made with the earlier set keep 105, 203, 513:
   `symName` finds them as `.1`, and the importers' walls (513.1, 513.2) and earth walls (105.1: `osm.js`, `bdtopo.js`, `ch.js`) land on
   their plain number there (`dataui.bring`'s `symIn`; a plain number finds its `.1` too). The set's `standard` stays « ISOM2017-2 » (the IOF's name for every revision).
