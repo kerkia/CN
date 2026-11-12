@@ -164,4 +164,8 @@ export default {
   "mg.tr.encrypted": "chiffré",
   "mg.tr.by": "Commencé par {by} · {n} dans l'équipe de traçage",
   "mg.tr.secret": "Les circuits restent confidentiels jusqu'à la course. Pour y travailler, demandez à {by} de vous inviter dans l'équipe de traçage.",
+  "mg.tr.import": "Importer les fichiers des circuits",
+  "mg.tr.importTip": "Importer un tracé (OCAD, Purple Pen, Ozimut ou IOF XML) avec sa carte",
+  "mg.tr.fromAnalysis.one": "L'analyse de cet événement a un circuit, mais elle n'en garde que l'image (la carte avec le parcours imprimé), ses postes et son géoréférencement, pas le fichier OCAD ou Purple Pen d'où il vient. Pour le reprendre dans le tracé, importez ce même fichier avec sa carte.",
+  "mg.tr.fromAnalysis.other": "L'analyse de cet événement a {n} circuits, mais elle n'en garde que les images (la carte avec le parcours imprimé), leurs postes et leur géoréférencement, pas les fichiers OCAD ou Purple Pen d'où ils viennent. Pour les reprendre dans le tracé, importez ces mêmes fichiers avec leur carte.",
 };

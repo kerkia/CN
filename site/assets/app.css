@@ -4453,6 +4453,9 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .tag.mg-wait { background: var(--flag-wash); }
 .mg-top { gap: 12px; align-items: center; margin: 0 0 6px; flex-wrap: wrap; }
 .mg-switch { max-width: min(420px, 100%); }
+.mg-one { font-size: 15px; }
+.mg-meta { font-size: 13px; }
+.mg-acts { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; }
 .page-tabs.mg-tabs a { font-size: 15px; font-weight: 600; color: var(--ink-2); padding: 10px 14px; border-bottom: 2px solid transparent; margin-bottom: -1px;
   white-space: nowrap; text-decoration: none; }
 .page-tabs.mg-tabs a:hover { color: var(--ink); }

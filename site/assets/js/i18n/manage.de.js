@@ -164,4 +164,8 @@ export default {
   "mg.tr.encrypted": "verschlüsselt",
   "mg.tr.by": "Begonnen von {by} · {n} im Bahnlegungsteam",
   "mg.tr.secret": "Die Bahnen bleiben bis zum Lauf vertraulich. Um daran mitzuarbeiten, bitte {by}, dich ins Bahnlegungsteam einzuladen.",
+  "mg.tr.import": "Die Bahndateien importieren",
+  "mg.tr.importTip": "Eine Bahnlegung (OCAD, Purple Pen, Ozimut oder IOF XML) mit ihrer Karte importieren",
+  "mg.tr.fromAnalysis.one": "Die Analyse dieser Veranstaltung hat eine Bahn, bewahrt aber nur ihr Bild (die Karte mit aufgedruckter Bahn), ihre Posten und ihre Georeferenzierung auf, nicht die OCAD- oder Purple-Pen-Datei, aus der sie stammt. Um sie in die Bahnlegung zu übernehmen, importiere dieselbe Datei mit ihrer Karte.",
+  "mg.tr.fromAnalysis.other": "Die Analyse dieser Veranstaltung hat {n} Bahnen, bewahrt aber nur ihre Bilder (die Karte mit aufgedruckter Bahn), ihre Posten und ihre Georeferenzierung auf, nicht die OCAD- oder Purple-Pen-Dateien, aus denen sie stammen. Um sie in die Bahnlegung zu übernehmen, importiere dieselben Dateien mit ihrer Karte.",
 };

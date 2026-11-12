@@ -164,4 +164,8 @@ export default {
   "mg.tr.encrypted": "cifrado",
   "mg.tr.by": "Empezado por {by} · {n} en el equipo de trazado",
   "mg.tr.secret": "Los recorridos son confidenciales hasta la carrera. Para trabajar en ellos, pide a {by} que te invite al equipo de trazado.",
+  "mg.tr.import": "Importar los archivos de los recorridos",
+  "mg.tr.importTip": "Importar un trazado (OCAD, Purple Pen, Ozimut o IOF XML) con su mapa",
+  "mg.tr.fromAnalysis.one": "El análisis de este evento tiene un recorrido, pero solo guarda su imagen (el mapa con el recorrido impreso), sus controles y su georreferenciación, no el archivo OCAD o Purple Pen del que procede. Para retomarlo en el trazado, importa ese mismo archivo con su mapa.",
+  "mg.tr.fromAnalysis.other": "El análisis de este evento tiene {n} recorridos, pero solo guarda sus imágenes (el mapa con el recorrido impreso), sus controles y su georreferenciación, no los archivos OCAD o Purple Pen de los que proceden. Para retomarlos en el trazado, importa esos mismos archivos con su mapa.",
 };

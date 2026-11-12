@@ -55,6 +55,7 @@ export async function render(main, r) {
     if (r.query.id && r.query.invite) await joinByInvite(r.query.id, r.query.invite);
     if (r.query.id) openEvent(r.query.id);
     else if (forEvent && r.query.nouveau) choose("new");
+    else if (forEvent && r.query.importer) choose("import");        // Orga's « Importer les fichiers des circuits »
     // a map handed over by Cartographier (« Créer un événement du tracé sur cette carte »): a new event on it (pwa.js inbox)
     else if (r.query.recu) import("../pwa.js").then((m) => m.takeInbox()).then((f) => (f.length ? choose("new", f) : startScreen())).catch(() => startScreen());
     else startScreen();

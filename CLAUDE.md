@@ -256,7 +256,12 @@ who started it, the setting team's size, whether one is in it), « Ouvrir le tra
 `forEvent`, its competition alone or the training's name and day — the event's id sent as `event`, the API checking the account is on
 the event's team; `PUT { event }` ties or unties one). **The courses stay the setting team's** (owner's condition): the Tracer keeps
 its own team, roles and encryption; the event's other members see only that a course setting exists, who started it, and are told to
-ask for an invitation. The Tracer's page stays (`#/orga-tracer`, module Orga, out of any menu). **Ozimut Carto** (`#/carto`, route
+ask for an invitation. The Tracer's page stays (`#/orga-tracer`, module Orga, out of any menu). **An analysis's circuits are pictures** (the map with its
+course printed, the controls in pixels, the georeference), never the OCAD or Purple Pen files they came from: with none of the
+Tracer's events tied, the Tracé tab says so and offers « Importer les fichiers des circuits » (`#/orga-tracer?ev=&importer=1`, the
+Tracer's import preset to the event). **The event's page has no title** (owner, 2026-11-12): « ‹ Mes événements », the events'
+chooser, the type, club and place, « ✎ Modifier » on one line; its tabs in the bar (`data-bar-tabs`, `app.placeBarTabs`: Orga's bar
+holds `#nav` as Arena's). An administrator's « Tous les événements » is remembered (`localStorage ocn.mg.all`). **Ozimut Carto** (`#/carto`, route
 `orgMapper`; `#/orga-carto` still opens it): « Cartographier » as a module of its own — a map outlives its events, mappers are not
 organisers, and it works on a phone — every signed-in account, no Orga needed, in the map's contour brown (`--carto`); a home-page
 section (`tour.js` `carto`, no screenshot yet) and a column in the pricing table. **Ozimut Pixel** (`#/pixel`, route `virtually`;

@@ -105,7 +105,11 @@ const filters = () => { try { return { when: ["today", "soon", "past"], type: ""
 const saveFilters = (f) => { try { sessionStorage.setItem(FKEY, JSON.stringify(f)); } catch (e) { /* this visit only */ } };
 
 async function listPage(main, q) {
-  const all = q.tous === "1";
+  // an administrator's « Tous les événements » is remembered (owner, 2026-11-12: a draft of another organiser seemed lost)
+  const ALL_KEY = "ocn.mg.all";
+  let kept = false;
+  try { kept = localStorage.getItem(ALL_KEY) === "1"; } catch (e) { /* this visit only */ }
+  const all = q.tous ? q.tous === "1" : kept;
   const [D, S] = await Promise.all([api(all ? "?all=1" : ""), states()]);
   const f = filters();
   main.innerHTML = html`
@@ -155,7 +159,10 @@ async function listPage(main, q) {
   $$("[data-when]").forEach((c) => c.addEventListener("change", () => { f.when = $$("[data-when]").filter((x) => x.checked).map((x) => x.dataset.when); saveFilters(f); draw(); }));
   $("#mg-type").addEventListener("change", (e) => { f.type = e.target.value; saveFilters(f); draw(); });
   $("#mg-q").addEventListener("input", draw);
-  $("#mg-all")?.addEventListener("change", (e) => { location.hash = e.target.checked ? href({ tous: 1 }) : BASE; });
+  $("#mg-all")?.addEventListener("change", (e) => {
+    try { localStorage.setItem(ALL_KEY, e.target.checked ? "1" : "0"); } catch (err) { /* this visit only */ }
+    location.hash = href({ tous: e.target.checked ? 1 : 0 });
+  });
   draw();
   // the requests the account sent, still waiting
   if (D.requests.length) {
@@ -361,14 +368,16 @@ async function eventPage(main, id, q) {
   const tab = tabs.includes(q.onglet) ? q.onglet : defaultTab(ev);
   const others = mine.events.filter((e) => e.me || e.id === ev.id).sort((a, b) => b.date.localeCompare(a.date));
   const pending = ev.linkState === "pending";
+  // no title of its own (owner, 2026-11-12: the event chooser says it): the way back, the chooser, the actions; the tabs go to the
+  // bar, empty in Orga (app.placeBarTabs)
   main.innerHTML = html`
     <div class="row mg-top"><a class="back-link" href="${BASE}" style="margin:0">‹ ${t("mg.back")}</a>
-      ${others.length > 1 ? html`<select id="mg-switch" class="mg-switch" aria-label="${t("mg.switch")}">${others.map((e) => html`<option value="${e.id}" ${raw(e.id === ev.id ? "selected" : "")}>${fmtDate(e.date, "short")} · ${e.name}</option>`)}</select>` : ""}</div>
-    <div class="page-head"><div><h1>${ev.name}</h1>
-      <p class="lede meta"><span>${fmtDate(ev.date)}</span><span>${typeLabel(ev.type)}</span>${ev.terrain ? html`<span>${terrainLabel(ev.terrain)}</span>` : ""}${ev.epreuve && ev.epreuve !== ev.terrain ? html`<span>${formatLabel(ev.epreuve)}</span>` : ""}${ev.club ? html`<span>${ev.club}</span>` : ""}${ev.place ? html`<span>${ev.place}</span>` : ""}</p></div>
-      <div class="page-actions">${linkTag(ev)}${!D.member ? html`<span class="tag">${t("mg.notMember")}</span>` : ""}<button type="button" class="btn btn-sm" id="mg-edit">✎ ${t("mg.edit")}</button></div></div>
+      ${others.length > 1 ? html`<select id="mg-switch" class="mg-switch" aria-label="${t("mg.switch")}">${others.map((e) => html`<option value="${e.id}" ${raw(e.id === ev.id ? "selected" : "")}>${fmtDate(e.date, "short")} · ${e.name}</option>`)}</select>`
+        : html`<b class="mg-one">${fmtDate(ev.date, "short")} · ${ev.name}</b>`}
+      <span class="mg-meta muted">${[typeLabel(ev.type), ev.terrain ? terrainLabel(ev.terrain) : "", ev.epreuve && ev.epreuve !== ev.terrain ? formatLabel(ev.epreuve) : "", ev.club, ev.place].filter(Boolean).join(" · ")}</span>
+      <span class="mg-acts">${linkTag(ev)}${!D.member ? html`<span class="tag">${t("mg.notMember")}</span>` : ""}<button type="button" class="btn btn-sm" id="mg-edit">✎ ${t("mg.edit")}</button></span></div>
     ${pending ? html`<div class="notice">${t("mg.link.pending", { name: D.competition?.name || "" })}</div>` : ""}
-    <nav class="page-tabs mg-tabs" role="tablist">${tabs.map((k) => html`<a role="tab" aria-selected="${k === tab}" href="${href({ ev: ev.id, onglet: k })}">${tabLabel(k)}${k === "equipe" && D.requests.length ? html` <span class="mg-badge">${D.requests.length}</span>` : ""}</a>`)}</nav>
+    <div data-bar-tabs><nav class="page-tabs mg-tabs" role="tablist">${tabs.map((k) => html`<a role="tab" aria-selected="${k === tab}" href="${href({ ev: ev.id, onglet: k })}">${tabLabel(k)}${k === "equipe" && D.requests.length ? html` <span class="mg-badge">${D.requests.length}</span>` : ""}</a>`)}</nav></div>
     <div id="mg-panel" class="mg-panel"></div>`;
   $("#mg-switch")?.addEventListener("change", (e) => { const o = others.find((x) => x.id === e.target.value); location.hash = href({ ev: o.id, onglet: (TABS[o.type] || ALL_TABS).includes(tab) ? tab : defaultTab(o) }); });
   $("#mg-edit").addEventListener("click", () => editDialog(D));
@@ -429,13 +438,15 @@ async function analysisTab(panel, D, q) {
 async function traceTab(panel, D) {
   const ev = D.event;
   panel.innerHTML = html`<div class="spinner"></div>`;
-  let list = [];
-  try {
-    const r = await fetch(`api/tracer?event=${encodeURIComponent(ev.id)}`, { credentials: "same-origin", cache: "no-store" });
-    list = r.ok ? (await r.json()).events || [] : [];
-  } catch (e) { /* none */ }
+  const get = (u) => fetch(u, { credentials: "same-origin", cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const [T, A] = await Promise.all([get(`api/tracer?event=${encodeURIComponent(ev.id)}`), ev.analysis ? get(`api/analyses/${encodeURIComponent(ev.analysis)}`) : null]);
+  const list = T?.events || [];
+  // the analysis keeps each circuit as a picture (the map with its course printed), its controls and georeference — never the
+  // OCAD or Purple Pen files it was made from: the course setting takes those same files (owner, 2026-11-12)
+  const circuits = (A?.analysis?.courses || []).length;
   const open = (x) => `#/orga-tracer?${new URLSearchParams({ id: x.id, ev: ev.id })}`;
   const startHref = `#/orga-tracer?${new URLSearchParams({ ev: ev.id, nouveau: "1" })}`;
+  const importHref = `#/orga-tracer?${new URLSearchParams({ ev: ev.id, importer: "1" })}`;
   const pending = ev.linkState === "pending";
   panel.innerHTML = html`<section class="card"><div class="card-head"><div><h2>${t("mg.tr.title")}</h2><div class="hint">${t("mg.tr.hint")}</div></div></div>
     <div class="card-body">
@@ -443,8 +454,10 @@ async function traceTab(panel, D) {
           <div><b>${x.title}</b>${x.encrypted ? html` <span class="tag">${t("mg.tr.encrypted")}</span>` : ""}<div class="muted">${t("mg.tr.by", { by: x.by, n: x.team })}</div></div>
           ${x.member ? html`<a class="btn btn-primary btn-sm" href="${open(x)}">${t("mg.tr.open")}</a>`
             : html`<span class="muted mg-tr-closed">${t("mg.tr.secret", { by: x.by })}</span>`}</div>`)}</div>`
-        : html`<p>${t(pending ? "mg.link.waitTools" : "mg.tr.none")}</p>`}
-      ${pending ? "" : html`<div class="row" style="gap:10px;margin-top:12px"><a class="btn ${list.length ? "" : "btn-primary"}" href="${startHref}">${t(list.length ? "mg.tr.another" : "mg.tr.start")}</a></div>`}
+        : html`<p>${t(pending ? "mg.link.waitTools" : "mg.tr.none")}</p>${!pending && circuits ? html`<p class="notice">${tn("mg.tr.fromAnalysis", circuits, { n: circuits })}</p>` : ""}`}
+      ${pending ? "" : html`<div class="row" style="gap:10px;margin-top:12px;flex-wrap:wrap">
+        <a class="btn ${list.length || circuits ? "" : "btn-primary"}" href="${startHref}">${t(list.length ? "mg.tr.another" : "mg.tr.start")}</a>
+        <a class="btn ${!list.length && circuits ? "btn-primary" : ""}" href="${importHref}" title="${t("mg.tr.importTip")}">${t("mg.tr.import")}</a></div>`}
     </div></section>`;
 }
 

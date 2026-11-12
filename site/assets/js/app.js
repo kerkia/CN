@@ -551,7 +551,7 @@ function renderHeader(r) {
   // the relief behind the bar (owner, 2026-10-30: behind the module's menu, no banner of its own under it); the logo and
   // the site's name lead to the choice of module, the module's name under the site's to the module's first page
   $("#topbar").innerHTML = html`<canvas class="contours" id="contours" aria-hidden="true"></canvas><div class="topbar-inner${visitor ? "" : " guest"}">
-    ${items.length || mod === "arena" ? html`<button class="icon-btn menu-btn" type="button" aria-label="${t("app.menu")}" id="menu-btn" ${raw(items.length ? "" : "hidden")}>
+    ${items.length || mod === "arena" || mod === "orga" ? html`<button class="icon-btn menu-btn" type="button" aria-label="${t("app.menu")}" id="menu-btn" ${raw(items.length ? "" : "hidden")}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
     </button>` : ""}
     <div class="brand"><a class="brand-home" href="${visitor ? homeOf() : "#/"}" title="${visitor ? t("mod.back") : ""}">
@@ -563,7 +563,7 @@ function renderHeader(r) {
         mod ? off ? html`<span class="brand-mod nav-off" title="${t("doc.orgaOff")}">${t(`mod.${mod}`)}</span>`
           : html`<a class="brand-mod" href="${moduleHome(mod)}" title="${t("mod.home", { mod: t(`mod.${mod}`) })}">${t(`mod.${mod}`)}</a>` : ""}</span></div>
     ${visitor ? html`<span class="hist-nav"><button type="button" class="icon-btn" data-hist="back" aria-label="${t("nav.histBack")}" title="${t("nav.histBack")}">‹</button><button type="button" class="icon-btn" data-hist="forward" aria-label="${t("nav.histFwd")}" title="${t("nav.histFwd")}">›</button></span>` : ""}
-    ${items.length || mod === "arena" ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
+    ${items.length || mod === "arena" || mod === "orga" ? html`<nav class="nav mod-nav" id="nav" aria-label="${t(`mod.${mod}`)}">${items.map(navLink)}</nav>` : ""}
     <div class="topbar-tools">
       ${visitor ? country.menu() : ""}
       ${OPEN || me?.admin ? langMenu() : ""}

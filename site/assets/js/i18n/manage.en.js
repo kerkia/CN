@@ -164,4 +164,8 @@ export default {
   "mg.tr.encrypted": "encrypted",
   "mg.tr.by": "Started by {by} · {n} in the setting team",
   "mg.tr.secret": "The courses stay confidential until the race. To work on them, ask {by} to invite you to the setting team.",
+  "mg.tr.import": "Import the course files",
+  "mg.tr.importTip": "Import a course setting (OCAD, Purple Pen, Ozimut or IOF XML) with its map",
+  "mg.tr.fromAnalysis.one": "This event's analysis has one circuit, but it keeps only its picture (the map with the course printed), its controls and its georeference, not the OCAD or Purple Pen file it came from. To take it into the course setting, import that same file with its map.",
+  "mg.tr.fromAnalysis.other": "This event's analysis has {n} circuits, but it keeps only their pictures (the map with the course printed), their controls and their georeference, not the OCAD or Purple Pen files they came from. To take them into the course setting, import those same files with their map.",
 };
