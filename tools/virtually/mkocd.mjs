@@ -27,7 +27,10 @@ L.transact("town", () => {
   for (const o of J.objects) {
     if (!have.has(o.sym)) { missing[o.sym] = (missing[o.sym] || 0) + 1; continue; }
     let coords;
-    if (o.otp === 3) coords = areaCoords(o.rings);
+    if (o.bez) {                                   // Bézier curves made by town_map.py: [x, y, flag] (1, 2 = the handles), a hole's first point flagged
+      coords = [];
+      o.bez.forEach((r, i) => r.forEach(([x, y, f], k) => coords.push(ocad(x, y, f || 0, o.otp === 3 && i > 0 && k === 0 ? 2 : 0))));
+    } else if (o.otp === 3) coords = areaCoords(o.rings);
     else if (o.curve && o.otp === 2 && o.rings[0].length >= 3) coords = bezier(o.rings[0]);
     else coords = o.rings[0].map(([x, y]) => ocad(x, y));
     if (o.otp === 3 && coords.length < 4) continue;

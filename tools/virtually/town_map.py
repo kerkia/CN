@@ -25,15 +25,16 @@ What each symbol comes from:
   (OSM's `width`, else 2 m: variants 532.1-532.6 made by mkocd.mjs; BD TOPO's where OSM has no stairway within 4 m); 509 railway;
   301 water (BD TOPO's and OpenStreetMap's areas), 305 streams, 306 ditches and drains, cut in culverts and under bridges;
   308 marsh (OpenStreetMap's wetlands);
-- bridges and passages: 512.1 across a passage's mouths and along a bridge's sides over water, a stream or the railway, 512.2
-  along a passage 15 m long or more; the passages for the game on a hidden area (993) and in src/passages.json (town_3d.py);
+- bridges and passages: 512.1 across a passage's mouths only (one can go beneath), 515 along the sides of a bridge one cannot
+  pass beneath (over water, a stream or the railway: ISSprOM's text for 512.1), 512.2 along every passage, 512.3 over the
+  part of a bridge one runs on at both levels; the passages for the game on a hidden area (993) and in src/passages.json (town_3d.py);
 - 995 « boundary to confirm » (purple 50 %, a helper the race's map does not draw): the edge of the ground not to be entered where
   no wall, fence, hedge or building is known — on the ground it is one of them, the mapper says which;
 - 990 / 991 every OpenStreetMap way and tagged node of the area, on hidden helper symbols, for the mapper to use;
 - 513/515 walls and 516/518 fences, passable or not by the height the LiDAR measures along them (1.5 m); the tennis and
   multi-sport courts' fences along their outline where the LiDAR sees one;
 - sports grounds (OpenStreetMap's pitches and tracks, else BD TOPO's): grass and turf pitches 401, hard ones, the courts and the
-  athletics track 501; the tennis courts fenced, the track and the multi-sport courts under 709 (out of bounds: not to be
+  athletics track 501 (runnable, its edges 501.1); the tennis courts fenced, the multi-sport courts under 709 (out of bounds: not to be
   entered), the goals and rugby posts a 531 cross (prominent man-made feature) each;
   their sport, surface and outline in src/sports.json for town_3d.py;
 - 101/102 contours every 2.5 m from the LiDAR's ground smoothed over 4 m, each line rounded, dropped whole or kept whole (no loop
@@ -314,9 +315,20 @@ for f in bdtopo("equipement_de_transport"):
         g = geom2d(f["geometry"])
         if g is not None and g.geom_type.endswith("Polygon"):
             paved.append(g)
+# the railway track by track (the owner's mapper, 2026-11-12: « the RER has two tracks, both in OSM »): OpenStreetMap's tracks,
+# BD TOPO's axis only where OSM has none within 10 m (its axis stands for every track of a line)
+osm_rail = []
+for e in osm:
+    t = tags(e)
+    if e["type"] == "way" and t.get("railway") in ("rail", "light_rail", "tram", "narrow_gauge", "subway") and not is_lower(t):
+        g = osm_geom(e)
+        if g is not None and g.geom_type == "LineString":
+            osm_rail.append(g)
+rail += osm_rail
+OSM_RAIL = unary_union([g.buffer(10) for g in osm_rail] or [Polygon()])
 for f in bdtopo("troncon_de_voie_ferree"):
     p = f["properties"]; g = geom2d(f["geometry"])
-    if g is not None and not (p.get("position_par_rapport_au_sol") or "0").startswith("-"):
+    if g is not None and not (p.get("position_par_rapport_au_sol") or "0").startswith("-") and g.difference(OSM_RAIL).length > 0.5 * g.length:
         rail.append(g)
 # the sections of one kind merged through their joins, then widened: no wedge left open where two sections meet at an angle
 from shapely.ops import linemerge as _linemerge
@@ -329,10 +341,12 @@ for (half, imp, urb), gs in carr_lines.items():
 # above ground and its « Pont » lines (axes: « Passerelle » a footbridge). What passes beneath a deck — a way on a lower layer
 # crossing it, a way in a tunnel, under a cover or a building, or on a negative layer (its part beneath a deck, the railway, a
 # building or a carriageway) — is a passage: on the map 512.1 (« bridge / tunnel entrance ») across each of its mouths, the
-# triangles toward the lower level outside, and 512.2 (« underpass or tunnel ») along its sides when it runs 15 m or more under
-# cover; for the game a hidden area (993) that build.py makes runnable over whatever lies above (the railway's block line, a
+# triangles toward the lower level outside, 512.2 (« underpass or tunnel ») along its sides, 512.3 over it where the upper level is run on too (a road, a footbridge);
+# for the game a hidden area (993) that build.py makes runnable over whatever lies above (the railway's block line, a
 # building), and src/passages.json, which town_3d.py cuts out of the buildings it stops the runner with. Over water, a stream or a
-# railway beneath, a deck's sides get 512.1; the water and the streams are cut under it (a road or path deck runnable).
+# railway beneath, a deck's sides are 515, uncrossable wall (ISSprOM: « a simple bridge, which cannot be passed underneath, shall be
+# represented using symbol Uncrossable wall (515) »; 512.1 is a passage's mouth and nothing else — the owner's mapper, 2026-11-12);
+# the water and the streams are cut under it (a road or path deck runnable).
 def lay(t, d=0):
     try:
         return int(float(str(t.get("layer", d)).split(";")[0]))
@@ -395,7 +409,18 @@ def across(piece, d):
     q0, q1 = piece.coords[0], piece.coords[-1]
     ax, ay, px, py = p1.x - p0.x, p1.y - p0.y, q1[0] - q0[0], q1[1] - q0[1]
     na, npc = math.hypot(ax, ay), math.hypot(px, py)
-    return na > 1e-6 and npc > 1e-6 and abs(ax * py - ay * px) / (na * npc) > 0.5
+    if not (na > 1e-6 and npc > 1e-6 and abs(ax * py - ay * px) / (na * npc) > 0.5):
+        return False
+    # and from one side of the deck to the other (the owner's mapper, 2026-11-12: a path meeting a footbridge's end at an angle
+    # was taken for one going under it): both ends on the deck's sides, on either side of its axis, away from its ends
+    sides = []
+    for q in (q0, q1):
+        P = Point(q); sq = a.project(P)
+        if sq < 0.5 or sq > a.length - 0.5 or a.distance(P) < 0.35 * d["w"]:
+            return False
+        c0, c1 = a.interpolate(max(0.0, sq - 0.5)), a.interpolate(min(a.length, sq + 0.5))
+        sides.append((c1.x - c0.x) * (q[1] - c0.y) - (c1.y - c0.y) * (q[0] - c0.x) > 0)
+    return sides[0] != sides[1]
 
 
 passages = []                                              # (the line beneath, its width)
@@ -408,8 +433,9 @@ for e in osm:                                              # ways on a lower lay
     if g is None or g.geom_type != "LineString" or not g.intersects(DECK_ALL):
         continue
     for d in decks:
-        if d["layer"] > lay(t, 0) and g.intersects(d["g"]):
-            passages += [(pc, width_of(t, ROAD_W.get(hw, 4.0))) for pc in pieces_in(g, d["g"])
+        # a footbridge makes no passage of a way not tagged beneath it (the owner's mapper, 2026-11-12: false ones by the river)
+        if d["kind"] != "path" and d["layer"] > lay(t, 0) and g.intersects(d["g"]):
+            passages += [(pc, width_of(t, ROAD_W.get(hw, 4.0)), f"way {e['id']} ({hw}) under a {d['kind']} deck") for pc in pieces_in(g, d["g"])
                          if across(pc, d) and not UNDER_NEAR.contains(pc)]
 UPPER = unary_union([DECK_ALL, RAIL_L.buffer(4), B] + [c for c, _, _ in carr]).buffer(0.5)
 for g, hw, t in under:                                     # tunnels, covered ways, ways on a negative layer
@@ -420,19 +446,21 @@ for g, hw, t in under:                                     # tunnels, covered wa
         pcs, rest = pieces_in(g, UPPER), g.difference(UPPER)
         if not pcs and g.length < 40:
             pcs, rest = [g], None
-    passages += [(pc, w) for pc in pcs]
+    passages += [(pc, w, f"{hw} tunnel={t.get('tunnel')} covered={t.get('covered')} layer={t.get('layer')}") for pc in pcs]
     for r in getattr(rest, "geoms", [rest]) if rest is not None else []:
         if r.geom_type == "LineString" and r.length >= 2:  # the rest of it runs in the open
             put_way(r, hw, t, False)
-UNDER_OSM = unary_union([g.buffer(8) for g, _, _ in under] + [pc.buffer(8) for pc, _ in passages] or [Polygon()])   # (BD TOPO's lie metres off)
+UNDER_OSM = unary_union([g.buffer(8) for g, _, _ in under] + [p[0].buffer(8) for p in passages] or [Polygon()])   # (BD TOPO's lie metres off)
 for g, w in bd_under:                                      # BD TOPO's ways below ground that OpenStreetMap does not have
     if g.difference(UNDER_OSM).length > 0.5 * g.length:
-        passages.append((g, w))
+        passages.append((g, w, "BD TOPO way below ground"))
 for f in bdtopo("construction_lineaire"):
     g = geom2d(f["geometry"])
     if (f["properties"].get("nature") or "").lower() == "tunnel" and g is not None and g.geom_type == "LineString" \
             and g.difference(UNDER_OSM).length > 0.5 * g.length:
-        passages.append((g, 2.5))
+        passages.append((g, 2.5, "BD TOPO tunnel line"))
+for pc, w, why in passages:
+    log("  passage", round(pc.centroid.x), round(pc.centroid.y), round(pc.length, 1), "m:", why)
 log("decks", len(decks), {k: sum(1 for d in decks if d["kind"] == k) for k in ("road", "path", "rail")}, "passages", len(passages))
 OSM_HW = unary_union([g.buffer(4) for g in osm_hw]) if osm_hw else Polygon()
 for g in bd_paths:
@@ -446,6 +474,67 @@ OSM_STEPS = unary_union([g.buffer(4) for g, _ in steps]) if steps else Polygon()
 for g in bd_steps:
     if g.length and g.difference(OSM_STEPS).length > 0.5 * g.length:
         steps.append((g, 2.0))
+# a stairway at its width on the ground, which may vary (the owner, 2026-11-12: « a stairway can have a width that varies, and it
+# must not be on the street »): cut where it reaches a street (its carriageway and sidewalks), then read every metre between the
+# buildings on either side — a stairway squeezed between two buildings is centred in that passage and as wide as it, else the
+# width OSM or BD TOPO gives (2 m without) —, the widths smoothed and rounded to 532.1-532.6 (2, 3, 4, 5, 6, 8 m at 1:4000), the
+# stairway drawn in pieces of one width each (3 m at least)
+STAIR_W = [2.0, 3.0, 4.0, 5.0, 6.0, 8.0]
+STREET = unary_union([c.buffer(1.8 if urb else 0.3) for c, _, urb in carr] or [Polygon()]).buffer(0.2)
+B_TREE = shapely.STRtree([g for g, _ in buildings]) if buildings else None
+
+
+def side_dist(p, n):
+    """Distance from p along n to the nearest building, within 6 m (None beyond)."""
+    ray = LineString([(p.x, p.y), (p.x + n[0] * 6, p.y + n[1] * 6)])
+    best = None
+    for i in (B_TREE.query(ray) if B_TREE is not None else []):
+        x = buildings[i][0].intersection(ray)
+        if not x.is_empty:
+            d = p.distance(x)
+            best = d if best is None else min(best, d)
+    return best
+
+
+def stair_pieces(g, w0):
+    out = []
+    for line in getattr(g, "geoms", [g]):
+        if line.geom_type != "LineString" or line.length < 1.5:
+            continue
+        L = line.length; ds = np.arange(0, L + 1e-6, 1.0) if L >= 2 else np.array([0, L])
+        pts, ws = [], []
+        for d in ds:
+            p = line.interpolate(d); q0, q1 = line.interpolate(max(0, d - 0.5)), line.interpolate(min(L, d + 0.5))
+            tx, ty = q1.x - q0.x, q1.y - q0.y; tn = math.hypot(tx, ty) or 1; n = (-ty / tn, tx / tn)
+            dl, dr = side_dist(p, n), side_dist(p, (-n[0], -n[1]))
+            if dl is not None and dr is not None and dl + dr < 9:
+                sh = (dl - dr) / 2                         # to the passage's middle
+                pts.append((p.x + n[0] * sh, p.y + n[1] * sh)); ws.append(max(1.5, dl + dr - 0.4))
+            else:
+                pts.append((p.x, p.y)); ws.append(w0)
+        ws = np.array([float(np.median(ws[max(0, i - 2):i + 3])) for i in range(len(ws))])
+        k = [min(range(len(STAIR_W)), key=lambda j: abs(STAIR_W[j] - min(w, 8.0))) for w in ws]
+        # runs of one width, a run under 3 m joined to the previous one
+        runs = []
+        for i, kk in enumerate(k):
+            if runs and (runs[-1][0] == kk or i - runs[-1][1] < 3):
+                runs[-1][2] = i
+            else:
+                runs.append([kk, i, i])
+        for kk, i0, i1 in runs:
+            seg = pts[max(0, i0 - 1 if i0 else 0):i1 + 1]
+            if len(seg) >= 2:
+                out.append((LineString(seg), STAIR_W[kk]))
+    return out
+
+
+_steps = []
+for g, w in steps:
+    g = g.difference(STREET)
+    if not g.is_empty:
+        _steps += stair_pieces(g, w)
+steps = _steps
+log("stairways", len(steps), "pieces", {w: sum(1 for _, x in steps if x == w) for w in STAIR_W})
 PAVED = unary_union(paved).intersection(frame)
 RAIL = unary_union(rail) if rail else LineString()
 water = unary_union([geom2d(f["geometry"]).buffer(0) for f in bdtopo("surface_hydrographique")] or [Polygon()])
@@ -522,8 +611,10 @@ SPORT_DEFAULT = {"soccer": "grass", "rugby": "grass", "tennis": "hard", "athleti
 # courts and the track are paved areas one may not enter (the owner, 2026-11-11: « not crossable »; the owner's mapper, 2026-11-12:
 # « the track is obviously a paved area »): 501 on the map, the tennis courts fenced all round, the others under the course
 # setter's 709 out-of-bounds hatching (ISSprOM's way for ground that exists but is not to be entered)
-NO_ENTRY = ("tennis", "multi", "basketball", "handball", "padel", "athletics")
-HATCHED = ("multi", "basketball", "handball", "athletics")
+# the athletics track is paving one may run on (the owner, 2026-11-12, changing the rule of 2026-11-11): 501 with its edges, no
+# hatching
+NO_ENTRY = ("tennis", "multi", "basketball", "handball", "padel")
+HATCHED = ("multi", "basketball", "handball")
 SPORT_NAME = lambda s: "rugby" if s.startswith("rugby") else "athletics" if s in ("athletics", "running") else s
 sports = []
 for e in osm:
@@ -573,7 +664,13 @@ for pg in parcels:
     res = sum(buildings[i][0].intersection(pg).area for i in hits
               if (buildings[i][1].get("usage_1") or "").lower().startswith("résidentiel") and buildings[i][1].get("nature", "").lower() not in ("église", "chapelle"))
     pub = any((buildings[i][1].get("usage_1") or "").lower().startswith(PUBLIC_USE) for i in hits if buildings[i][0].intersection(pg).area > 20)
-    if res > 25 and not pub:
+    # a house's garden only (the owner's mapper, 2026-11-12: an accessible courtyard came out olive): not the ground of a block of
+    # flats (3 dwellings or more) nor of a building with shops or services, which is open to whoever passes
+    def open_to_all(pr, g):
+        u = ((pr.get("usage_1") or "") + " " + (pr.get("usage_2") or "")).lower()
+        return "commercial" in u or (pr.get("nombre_de_logements") or (0 if g.area < 250 else 3)) >= 3
+    flats = any(open_to_all(buildings[i][1], buildings[i][0]) for i in hits if buildings[i][0].intersection(pg).area > 20)
+    if res > 25 and not pub and not flats:
         private.append(pg)
 for f in bdtopo("zone_d_activite_ou_d_interet"):
     p = f["properties"]; cat = (p.get("categorie") or "").lower(); nat = (p.get("nature") or "").lower()
@@ -627,7 +724,12 @@ cl[:] = K["open"]
 # bare, unbuilt ground: paving near buildings and streets (courtyards, schoolyards, forecourts), open land elsewhere (a field
 # out of season, a sports ground's earth)
 near_built = np.zeros((NY, NX), np.uint8); burn(B.buffer(12).union(PAVED.buffer(6)), 1, near_built)
-cl[~green_ground & (lum > 60) & (near_built == 1)] = K["paved"]
+# — but not by a sports ground (the owner's mapper, 2026-11-12: a run-up's or a stand's bare ground came out as paving jutting from
+# the track): there it is open land, unless OSM or BD TOPO says paved (burned below)
+near_sport = np.zeros((NY, NX), np.uint8)
+if sports:
+    _su = unary_union([s["g"] for s in sports]); burn(_su.buffer(12).difference(_su), 1, near_sport)
+cl[~green_ground & (lum > 60) & (near_built == 1) & (near_sport == 0)] = K["paved"]
 cl[~green_ground & (lum <= 60)] = K["open"]
 # the public road space is paved — under its street trees too —, its grass (verges, planted strips) open land
 pub = np.zeros((NY, NX), np.uint8); burn(PUBLIC, 1, pub)
@@ -734,8 +836,28 @@ GREEN_PUB = OPEN_R.intersection(PUBLIC) if not PUBLIC.is_empty else Polygon()
 SP_OPEN = unary_union([s["g"] for s in sports if s["sport"] not in NO_ENTRY and s["surface"] in ("grass", "turf")] or [Polygon()])
 SP_PAVED = unary_union([s["g"] for s in sports if s["sport"] in NO_ENTRY or s["surface"] not in ("grass", "turf")] or [Polygon()])
 OLIVE_A = PRIVATE
-VEC_ORDER = [("water", water), ("imp_veg", HEDGE_G), ("private", OLIVE_A), ("open", SP_OPEN),
-             ("paved", unary_union([SP_PAVED, PAVED, PUBLIC.difference(GREEN_PUB)]))]
+# OpenStreetMap's lawns (the owner's mapper, 2026-11-12: « lawns in front of the town hall are in OSM and not on the map »: the
+# photograph's infrared saw them bare, and the public road space made them paving): grass, village greens, meadows, grassland as
+# open land, drawn from their outline, but where a street or a paved area of OSM or BD TOPO lies
+GRASS = unary_union([g for e in osm if (tags(e).get("landuse") in ("grass", "village_green", "meadow")
+                                       or tags(e).get("natural") == "grassland")
+                     for g in [osm_geom(e, True)] if g is not None and g.geom_type.endswith("Polygon")] or [Polygon()])
+# the paved footways and cycle paths as one paved area with the streets (the owner's mapper, 2026-11-12: « the intersections are
+# still anything » — each drawn as its own double line, their edges crossed at every junction and where one met a sidewalk): the
+# union of each at its width on the ground (OSM's `width`, else 2 m) and the stairways' footprints, merged into the paving, its edge 501.1 drawn with the rest;
+# a piece under 16 m² touching no other paving is a scrap (a stairway's landing, a station's corridor) and left out
+_pp = [g.buffer(max(1.2, fw) / 2, cap_style="flat", join_style="round") for g, fw in paved_paths]
+# a stairway stands on paving (the owner's mapper, 2026-11-12: « nobody has seen a grass stairway »): its footprint at its width
+_pp += [g.buffer(sw / 2 + 0.2, cap_style="flat", join_style="mitre") for g, sw in steps]
+PATHS_A = unary_union(_pp).difference(B).difference(PRIVATE.buffer(-1.0)) if _pp else Polygon()
+_touch = PAVED.buffer(0.5)
+PATHS_A = unary_union([q for q in getattr(PATHS_A, "geoms", [PATHS_A]) if q.geom_type == "Polygon"
+                       and (q.area >= 16 or q.intersects(_touch))] or [Polygon()])
+log("paved footways", len(paved_paths), round(PATHS_A.area), "m²")
+GRASS = GRASS.difference(PAVED).difference(PATHS_A).difference(B) if not GRASS.is_empty else GRASS
+log("OSM lawns", round(GRASS.area), "m²")
+VEC_ORDER = [("water", water), ("imp_veg", HEDGE_G), ("private", OLIVE_A), ("open", unary_union([SP_OPEN, GRASS])),
+             ("paved", unary_union([SP_PAVED, PAVED, PUBLIC.difference(GREEN_PUB), PATHS_A]))]
 taken = Polygon()
 COVER = {}
 for k, g in VEC_ORDER:
@@ -785,6 +907,31 @@ for g, v in zip(_cov, _val):
     if not g.is_empty:
         COVER.setdefault(k, []).append(g)
 log("areas cut")
+# no sliver (the owner's mapper, 2026-11-12: thin white, yellow and paved strips between a garden and a building; « small things
+# should be removed if they don't exist or aren't useful »): any part of an area under 1 m across goes to the area it shares the
+# longest edge with (a strip between two buildings stays what it is)
+GEOM = {k: shapely.make_valid(unary_union(v)).buffer(0) for k, v in COVER.items() if v}
+BT = {k: tiles_of(g.boundary) for k, g in GEOM.items()}     # each class's edges in 50 m tiles: a strip's neighbours, read locally
+moved, n_bits = {}, 0
+for k in list(GEOM):
+    if k == "water":
+        continue
+    g = GEOM[k]
+    thin = g.difference(g.buffer(-0.5).buffer(0.55))
+    for q in getattr(thin, "geoms", [thin]):
+        if q.geom_type != "Polygon" or q.area < 0.01:
+            continue
+        qb = q.buffer(0.05)
+        best = max(((qb.intersection(near(BT[o], qb.bounds)).length, o) for o in GEOM if o not in (k, "water")), default=(0, None))
+        if best[0] > 0.3:
+            moved.setdefault(k, []).append(q); moved.setdefault("+" + best[1], []).append(q); n_bits += 1
+for k, qs in moved.items():
+    if k.startswith("+"):
+        GEOM[k[1:]] = GEOM[k[1:]].union(unary_union(qs)).buffer(0)
+    else:
+        GEOM[k] = GEOM[k].difference(unary_union(qs)).buffer(0)
+COVER = {k: [g] for k, g in GEOM.items() if not g.is_empty}
+log("slivers merged into a neighbour", n_bits)
 # the through roads (BD TOPO's importance 1-3: the départementales) as paved area with heavy traffic (the owner's mapper,
 # 2026-11-12: OpenOrienteering Mapper's 501 / 501.10, each with its edge)
 PAVED_ALL = shapely.make_valid(unary_union(COVER.get("paved", []))).buffer(0)
@@ -802,6 +949,15 @@ inside = frame.buffer(-0.01)
 # generalised: the runner never goes in)
 OLIVE_IN = PRIVATE.buffer(-1.0)
 blocks = unary_union([g.buffer(0.15, join_style="mitre") for g, _ in buildings]).buffer(-0.15, join_style="mitre")
+# a passage through a building (a porch, a covered driveway) is no tunnel: the building cut there and the passage a canopy, 522
+# (ISSprOM: a roofed area one runs under), no 512 symbol (the owner's mapper, 2026-11-12)
+def through_building(pc):
+    return pc.length > 0 and pc.intersection(B).length >= 0.6 * pc.length and not pc.intersects(DECK_ALL)         and (RAIL_L.is_empty or not pc.intersects(RAIL_L.buffer(4)))
+
+
+BPASS = unary_union([pc.buffer(max(2.5, w) / 2, cap_style="flat") for pc, w, _ in passages if through_building(pc)] or [Polygon()]).intersection(B)
+if not BPASS.is_empty:
+    blocks = blocks.difference(BPASS)
 for g in getattr(blocks, "geoms", [blocks]):
     if g.geom_type != "Polygon" or (g.area < 20 and OLIVE_IN.contains(g)):
         continue
@@ -811,6 +967,8 @@ for g in getattr(blocks, "geoms", [blocks]):
 if not canopy.is_empty:
     cg = canopy.difference(B)
     add_area(cg, S(522)); add_line(cg.boundary if not cg.is_empty else None, S(522, 9))
+if not BPASS.is_empty:
+    add_area(BPASS, S(522), 1)
 # the marsh over the ground (308: blue lines, no fill), outside water, buildings, paving and the ground not to be entered
 if not WET.is_empty:
     add_area(WET.intersection(frame).difference(water).difference(B).difference(PAVED_ALL).difference(PRIVATE.buffer(-1.0)), S(308), 20)
@@ -824,6 +982,8 @@ def right_out(l, inside):
 
 from shapely.ops import linemerge
 mouths, n_side = [], 0
+# no 515 where a passage comes out from under the bridge (the owner's mapper, 2026-11-12: a stream and a path under one street)
+PASS_MOUTH = unary_union([p[0].buffer(p[1] / 2 + 1.5) for p in passages] or [Polygon()])
 LOW_W = unary_union([WATER_ALL] + [g.buffer(1.0) for g in streams + ditches if g is not None and not g.is_empty])
 for d in decks:                                            # a deck's sides over water, a stream or the railway beneath
     low = unary_union([LOW_W] + ([RAIL_L.buffer(4)] if d["kind"] != "rail" else [])).intersection(d["g"].buffer(2))
@@ -834,17 +994,19 @@ for d in decks:                                            # a deck's sides over
             ln = d["axis"].offset_curve(side)
         except Exception:
             continue
-        for pc in pieces_in(ln, low.buffer(1.0)):
-            add_line(right_out(pc, d["g"]), S(512, 1), 1); n_side += 1
+        for pc in pieces_in(ln.difference(PASS_MOUTH), low.buffer(1.0)):   # a bridge one cannot pass beneath: its sides 515 (ISSprOM 512.1's text)
+            add_line(pc, S(515), 1); n_side += 1
 PASS = []
 if passages:
-    widths = [(pc.buffer(0.5), w) for pc, w in passages]
-    merged = linemerge(unary_union([pc for pc, _ in passages]))
+    widths = [(p[0].buffer(0.5), p[1]) for p in passages]
+    merged = linemerge(unary_union([p[0] for p in passages]))
     lines_m = [pc for pc in getattr(merged, "geoms", [merged]) if pc.geom_type == "LineString" and pc.length >= 1]
     for i, pc in enumerate(lines_m):
         others = unary_union([q for j, q in enumerate(lines_m) if j != i] or [LineString()])
         w = max([w for b, w in widths if b.intersects(pc)] or [2.0])
         PASS.append(pc.buffer(w / 2, cap_style="flat"))
+        if through_building(pc):                           # a canopy (above), no 512 symbol
+            continue
         cs = list(pc.coords)
         for e, q in ((cs[0], cs[1]), (cs[-1], cs[-2])):    # a mouth at each end out in the open
             if B.buffer(-0.3).contains(Point(e)) or not frame.buffer(-1).contains(Point(e))                     or (not others.is_empty and others.distance(Point(e)) < 0.5):   # an end joining the rest of the passage: no mouth
@@ -852,10 +1014,16 @@ if passages:
             dx, dy = e[0] - q[0], e[1] - q[1]; n = math.hypot(dx, dy)
             if n < 1e-6:
                 continue
-            dx, dy, h = dx / n, dy / n, w / 2 + 0.5
+            # long enough for two triangles at least (the owner's mapper, 2026-11-12): 1.4 mm on the map
+            dx, dy, h = dx / n, dy / n, max(w / 2 + 0.5, 0.7 * SCALE / 1000)
             m = LineString([(e[0] + dy * h, e[1] - dx * h), (e[0] - dy * h, e[1] + dx * h)])
             mouths.append(m); add_line(m, S(512, 1), 0.5)
-        if pc.length >= 15:                                # a long passage: its sides
+        # its sides, 512.2, wherever it runs under cover (the owner's mapper, 2026-11-12: the underpass under a street had only 512.1);
+        # and where what lies above is run on too — a road or a footbridge, not the railway nor a building — 512.3 over it
+        if True:
+            up = pc.buffer(w / 2, cap_style="flat").intersection(RUN_DECK)
+            if not up.is_empty and up.area >= 2:
+                add_area(up, S(512, 3), 2)
             for side in (w / 2, -w / 2):
                 try:
                     add_line(pc.offset_curve(side), S(512, 2), 2)
@@ -871,13 +1039,15 @@ NOLINE = unary_union([B.buffer(0.4), frame.boundary.buffer(0.6), CLIP.boundary.b
                      + [m.buffer(0.8) for m in mouths])
 # the kerbs: the outline of the town carriageways put together, so that no line crosses a street where two sections meet
 URB = unary_union([c for c, _, urb in carr if urb] or [Polygon()]).buffer(0.01)
+# no sliver or spike where two sections meet at a narrow angle (the owner's mapper, 2026-11-12: a spike off a roundabout)
+URB = URB.buffer(1.0, join_style="round").buffer(-2.0, join_style="round").buffer(1.0, join_style="round") if not URB.is_empty else URB
 kerbs = (URB.boundary if not URB.is_empty else LineString()).intersection(PAVED_ALL.buffer(-0.5))
 n_edge = 0
 for line in (PAVED_ALL.boundary, kerbs):
     rest = line.difference(NOLINE)
     for piece in getattr(rest, "geoms", [rest]):
         if piece.geom_type == "LineString" and piece.length >= 2:
-            add_line(piece.simplify(0.2), S(501, 1), 2); n_edge += 1
+            add_line(piece, S(501, 1), 2); n_edge += 1        # (the areas' own vertices: the curves below then coincide)
 log("paved area edges and kerbs", n_edge, "heavy traffic", round(HEAVY.area), "m²")
 for g in COVER.get("water", []):
     for q in getattr(g, "geoms", [g]):
@@ -1009,19 +1179,16 @@ def network(lines, snap=4.0):
 from shapely.ops import linemerge
 FOOT_M = [1.4, 2.0, 3.0, 4.0]
 PAVED_IN = PAVED_ALL.buffer(-0.3)                                      # once: a large polygon
-for k in range(len(FOOT_M)):
-    for g in network([g for g, fw in paved_paths if min(range(len(FOOT_M)), key=lambda i: abs(FOOT_M[i] - fw)) == k]):
-        # a piece still under 8 m once the network is joined is a scrap (a stairway's landing, a station's corridors): left out
-        add_line(g.difference(PAVED_IN).difference(B).difference(OLIVE_IN), S(501, 6 + k), 8, curve=True)
+# (the paved footways are part of the paved area above; an unpaved path is not drawn where it runs on paving)
 for g in network(path_lines):
-    add_line(g.difference(PAVED).difference(B).difference(OLIVE_IN), S(505), 3, curve=True)
+    add_line(g.difference(PAVED_IN).difference(B).difference(OLIVE_IN), S(505), 3, curve=True)
 for g in network(small_lines):
-    add_line(g.difference(PAVED).difference(B).difference(OLIVE_IN), S(506), 3, curve=True)
+    add_line(g.difference(PAVED_IN).difference(B).difference(OLIVE_IN), S(506), 3, curve=True)
 # stairways at their width on the ground (the owner's mapper, 2026-11-12: one width for all drew 6.6 m over the street): the
 # variant of 532 nearest to it, 0.4 mm at least (mkocd.mjs makes 532.1-532.6 from the set's 532)
 STAIR_MM = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
 for g, sw in steps:
-    wmm = max(0.4, sw * 1000 / SCALE)
+    wmm = sw * 1000 / SCALE
     k = min(range(len(STAIR_MM)), key=lambda i: abs(STAIR_MM[i] - wmm)) + 1
     add_line(g.difference(B), S(532, k), 1)
 # boundaries to confirm (the owner's mapper, 2026-11-12: « whether a thing's edge is a wall, a fence or a hedge you have to have
@@ -1036,6 +1203,15 @@ for s in sports:
         for piece in getattr(rest, "geoms", [rest]):
             if piece.geom_type == "LineString" and piece.length >= 2:
                 add_line(piece, S(415), 2)
+# a paved sports ground's outline — the track's two edges, a hard pitch, a multi-sport court — as 501.1 (the owner's mapper,
+# 2026-11-12: « the track's edge, well drawn in OSM, is not on the map »: the ground round it came out paved too, and one paved
+# area has no edge inside); the tennis courts have their fence
+for s in sports:
+    if s["surface"] not in ("grass", "turf") and s["sport"] not in ("tennis", "padel"):
+        rest = s["g"].boundary.difference(EDGE_NO)
+        for piece in getattr(rest, "geoms", [rest]):
+            if piece.geom_type == "LineString" and piece.length >= 2:
+                add_line(piece, S(501, 1), 2)
 OLIVE = PRIVATE
 for s in sports:                                                       # the track and the multi-sport courts: 709 over the paving
     if s["sport"] in HATCHED:
@@ -1145,6 +1321,76 @@ log("OpenStreetMap objects kept hidden", n_osm)
 for xm in np.arange(math.floor((X0 - CX) / 120) * 120, (X1 - CX) + 1, 120):
     objects.append({"sym": S(601, 1), "otp": 2, "rings": [[mm(CX + xm, Y0), mm(CX + xm, Y1)]]})
 
+# ---- curves (the owner's mapper, 2026-11-12: « polylines not turned into curves, as OOM does and as I said last time »): every
+# line and every area's outline becomes Bézier curves through its points (Catmull-Rom tangents), as OpenOrienteering Mapper's
+# « smooth » does — but the buildings, canopies, walls, fences, stairways, the courts' hatching and the helpers, which keep their
+# corners. A point stays a corner (no handles) where the line turns by more than 50°, at a line's ends, and wherever two objects
+# that pass through it do not go on to the same neighbours (a junction of three areas, where an edge leaves an outline): every
+# shared stretch then gets the same curve in each object that holds it, so two areas that touch still touch.
+STRAIGHT = {S(521), S(521, 9), S(522), S(522, 9), S(513, 1), S(513, 2), S(515), S(516), S(518), S(709), S(993), S(990), S(991),
+            S(601, 1)} | {S(532, k) for k in range(0, 7)} | {S(512, k) for k in range(0, 4)}
+_K = lambda p: (round(p[0], 3), round(p[1], 3))
+
+
+def _rings(o):
+    return o["rings"] if o["otp"] == 3 else o["rings"][:1]
+
+
+def _closed(r):
+    return len(r) >= 4 and _K(r[0]) == _K(r[-1])
+
+
+NBR = {}
+for o in objects:
+    if o["otp"] == 1 or o["sym"] in STRAIGHT:
+        continue
+    for r in _rings(o):
+        cl_ = o["otp"] == 3 or _closed(r); pts = r[:-1] if cl_ and _K(r[0]) == _K(r[-1]) else r; n = len(pts)
+        for i, p in enumerate(pts):
+            a = pts[(i - 1) % n] if (cl_ or i > 0) else None; c = pts[(i + 1) % n] if (cl_ or i < n - 1) else None
+            NBR.setdefault(_K(p), set()).add(frozenset([_K(a) if a else None, _K(c) if c else None]))
+
+
+def _bez(r, closed):
+    pts = r[:-1] if closed and _K(r[0]) == _K(r[-1]) else list(r); n = len(pts)
+    if n < 3 if not closed else n < 3:
+        return [[x, y, 0] for x, y in r]
+
+    def corner(i):
+        if not closed and (i == 0 or i == n - 1):
+            return True
+        a, b, c = pts[(i - 1) % n], pts[i], pts[(i + 1) % n]
+        if len(NBR.get(_K(b), ())) > 1:
+            return True
+        u, v = (b[0] - a[0], b[1] - a[1]), (c[0] - b[0], c[1] - b[1])
+        nu, nv = math.hypot(*u), math.hypot(*v)
+        return nu < 1e-9 or nv < 1e-9 or (u[0] * v[0] + u[1] * v[1]) / (nu * nv) < math.cos(math.radians(50))
+
+    cor = [corner(i) for i in range(n)]
+
+    def h(i, j):                                           # the handle at point i toward j (= i ± 1)
+        if cor[i]:
+            return pts[i]
+        a, c = pts[(i - 1) % n], pts[(i + 1) % n]; t = 1 if j == (i + 1) % n else -1
+        return (pts[i][0] + t * (c[0] - a[0]) / 6, pts[i][1] + t * (c[1] - a[1]) / 6)
+
+    out = [[pts[0][0], pts[0][1], 0]]
+    for i in range(n if closed else n - 1):
+        j = (i + 1) % n
+        if cor[i] and cor[j]:
+            out.append([pts[j][0], pts[j][1], 0]); continue
+        h1, h2 = h(i, j), h(j, i)
+        out += [[round(h1[0], 3), round(h1[1], 3), 1], [round(h2[0], 3), round(h2[1], 3), 2], [pts[j][0], pts[j][1], 0]]
+    return out
+
+
+n_curved = 0
+for o in objects:
+    if o["otp"] == 1 or o["sym"] in STRAIGHT:
+        continue
+    o["bez"] = [_bez(r, o["otp"] == 3 or _closed(r)) for r in _rings(o)]
+    o.pop("curve", None); n_curved += 1
+log("curved objects", n_curved)
 json.dump({"title": f"{RACE} sprint", "scale": SCALE, "set": "issprom2019-2", "realWorld": {"x": CX, "y": CY, "epsg": 2154},
            "objects": objects}, open(RD / "map_objects.json", "w"))
 np.savez_compressed(SRC / "classes.npz", cl=cl, chm=chm, canopy=canopy_cover)

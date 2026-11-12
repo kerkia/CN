@@ -1166,7 +1166,25 @@ Every multiple-choice game was played through to its score page at phone size, w
   over the railway's block line or a building, and `src/passages.json`, cut out of the 3D's buildings by town_3d.py; the water and
   streams cut under decks and in culverts. **Water and wetland** (« you completely ignored the wetland »): OSM's water areas join
   BD TOPO's (not a dry detention basin), its streams where BD TOPO has none, ditches and drains as 306, its `natural=wetland` as 308
-  marsh over the ground. These rules are the generator's (`town_map.py`,
+  marsh over the ground. **The mapper's third review** (2026-11-12, the owner forwarding Alec): **512.1 only at a passage's mouth**
+  (one can go beneath), at least two triangles (1.4 mm), and **a bridge one cannot pass beneath has its sides as 515** (ISSprOM's text
+  for 512.1: over water, a stream, the railway), none where a passage comes out; **512.2 along every passage, 512.3** over the part
+  of a road or footbridge run on at both levels; a footbridge makes no passage of a way not tagged beneath it, and a way must cross a
+  deck side to side; **a passage through a building** (a porch, a covered driveway) is cut out of the building as a canopy 522, no
+  512; **the railway track by track** from OSM (the RER's two tracks), BD TOPO's axis only where OSM has none; **every line and
+  outline as Bézier curves** (`bez` in map_objects.json, written by `town_map.py`: Catmull-Rom tangents, a corner kept where a line
+  turns by over 50° and at every point where the objects through it do not share both neighbours, so touching areas keep one
+  edge) but buildings, canopies, walls, fences, stairways, 512 and helpers; the kerbs closed and opened by 1 m (no spike where a road
+  meets a roundabout); **stairways at their width, which varies**: cut at the street (carriageway and sidewalk), centred in the passage
+  between two buildings and as wide as it (else OSM's or BD TOPO's width, 2 m), drawn in pieces of 532.1-532.6, their footprint
+  paved; **paved footways and stairways merged into the paved area** (one area with its 501.1 edge: no crossed edges at junctions;
+  501.6-9 no longer drawn); unpaved paths not drawn on paving; **OSM's lawns** (grass, village green, meadow, grassland) as 401;
+  **the athletics track runnable** (501, its two edges 501.1, no 709 — the owner's change of the same day; a paved sports ground's
+  outline is 501.1); bare ground within 12 m of a sports ground is open land, not paving; **olive only for houses' gardens** (a
+  parcel with a building of 3 dwellings or more, or with shops or services, is open: an accessible courtyard had come out olive);
+  **no sliver**: any part of an area under 1 m across goes to the neighbour it shares the longest edge with. The checks a mapper's
+  software does (OCAD's legibility checker: minimum gaps between impassable features, minimum sizes) are another session's work
+  (2026-11-12). These rules are the generator's (`town_map.py`,
   `mkocd.mjs`), so every town map made after Gif has them — and **Cartographier's « Plan de ville (sprint) » is this same
   generator** (owner, 2026-11-12: one engine, quality before speed; the townmap workflow, see Cartographier), so a rule changed here
   reaches both; the symbols mkocd.mjs used to make (501.6-501.9, 532.1-532.6, 990, 991, 993, 995) are the ISSprOM set's own
