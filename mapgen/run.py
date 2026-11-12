@@ -171,8 +171,15 @@ def catalogue(tids: list[str], http: httpx.Client) -> dict[str, dict]:
         p = f["properties"]
         tid = (p.get("coordonnees_nw") or "").replace("-", "_")
         if tid in tids:
-            out[tid] = {"laz": p.get("url_npl"), "mnt": p.get("url_mnt"), "date": (p.get("date_fin_acquisition") or "")[:10]}
+            out[tid] = {"laz": p.get("url_npl"), "mnt": _no_filename(p.get("url_mnt")),
+                        "date": (p.get("date_fin_acquisition") or "")[:10]}
     return out
+
+
+def _no_filename(url: str | None) -> str | None:
+    """IGN's MNT address without its FILENAME parameter: since November 2026 its WMS answers 400 to a GetMap carrying one
+    (the address its own metadata gives), and the same request without it the GeoTIFF."""
+    return re.sub(r"&FILENAME=[^&]*", "", url, flags=re.I) if url else url
 
 
 class Pace:

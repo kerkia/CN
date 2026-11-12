@@ -990,9 +990,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   ranking, 2026-10); indices and values computed together in 20 rounds, the scale keeping the mean of the seeds of the runners with
   an index. Trainings are scored (each runner's first run valued) but never counted. Local test: launch config `pages-dev-games`
   (8790), `py tools/virtually/upload.py <race>` for the dev server's R2, `work\vr3d\pagetest.mjs` (the four tabs, a race run to its
-  finish, two competition runs posted). Races: **Granites** (Victoria,
-  Australia, ISOM 2017 1:15 000; no open LiDAR: the map and the worldwide relief) and **Foley Mountain** (Ontario, Canada, ISOM 2000
-  1:10 000; NRCan CanElevation LiDAR). The work of the day (Desquinemarre's movies, `C:\kerkia\Ozimut\work\vr3d`) stays outside git.
+  finish, two competition runs posted). **Only maps Ozimut may use** (owner, 2026-11-12): races made from open data (the LiDAR
+  races below, the towns' sprints) or a club's map with its written permission — never a club's OCAD file found online, whose
+  copyright stays the club's. **Granites** (Victoria, Australia: « Donated to and copyright Bendigo Orienteers » in the file) and
+  **Foley Mountain** (Orienteering Ottawa's), the first two races, were removed from R2, live and local, that day; their inputs stay
+  outside git in `data\virtual\` for tests only. The work of the day (Desquinemarre's movies, `C:\kerkia\Ozimut\work\vr3d`) stays outside git.
   **Sprint in a town** (owner, 2026-11-11: « LiDAR + OpenStreetMap, as realistic as possible »; race **Gif-sur-Yvette**, `gif`, its
   centre 600 × 600 m between the RER station and the church, 48.7006 N 2.1357 E): a race made from open data alone, no club map.
   `tools/virtually/town_fetch.py <race> <lat> <lon> <w> <h>` fetches IGN's LiDAR HD tiles (into `lidar/laz/`, where build.py reads
@@ -1189,7 +1191,11 @@ Every multiple-choice game was played through to its score page at phone size, w
   relief; the player's map is the generated map's image (`map.webp`, 0.5 m a pixel; race.json `map` "webp", `mapPx`; `loadRace` →
   `mapImage`, `drawMap`). Measured on Trois Pignons (Fontainebleau, 2 × 2 km, 2026-11-11, PC): mapgen 515 s (karttapullautin 278 s;
   the 1 GB of point clouds 25 min from IGN at the PC's pace), lidarrace 40 s, build.py 234 s, course.py 200 s; 44 747 trees, 9 727
-  boulders, a package of 11 MB; 52-56 fps at 1400 × 860.
+  boulders, a package of 11 MB; 52-56 fps at 1400 × 860. **Autrans (Vercors)** (`autrans`, 2026-11-12, owner: « a very hilly
+  region, Vosges, Jura or the Alps »): 45.19324, 5.54477, 1 760 m square, ~1 100-1 500 m, chosen among the boxes around Autrans by
+  relief, forest share and no cliff band (the Vercors rim just west of it left out), six LiDAR HD tiles of 2021; its tiles made
+  apart (`python -m mapgen tiles … --out DATA/autrans/tiles`), then `lidarrace.py … --tiles DATA/autrans/tiles` with mapgen's
+  `work/` (point clouds, `osm_*.json`) moved beside that folder — lidarrace reads it there, and without it finds no OpenStreetMap.
   **The map and the world agree point by point** (owner, 2026-11-11): every boulder the race places is drawn on `map.webp` as its
   ISOM dot (204 ⌀ 0.6 mm, 205 ⌀ 0.9 mm at the map's scale), the outcrops as 206 areas. **North lines** (owner, 2026-11-11: missing on the generated map, which matters once the map turns to the leg): blue 601 lines every 300 m (30 mm at 1:10 000) on the grid's round hundreds, on `map.webp` and in `lidar.ocd`, parallel to the frame (the game's north is the grid's). **The map as an editable OCAD file**:
   `lidarrace.editable_ocd` writes `map_objects.json` — the OpenStreetMap objects, the boulders, karttapullautin's contours (101/102/103

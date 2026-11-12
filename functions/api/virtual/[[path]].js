@@ -9,7 +9,8 @@
 //                                      (owner, 2026-11-11: played once — a second run of one event and course is refused, 409;
 //                                      only competitions make the virtual index and the ranking), event its event's id
 //   DELETE runs/<race>/<run>           one's own run (an administrator: any)
-// The maps are their clubs': never served to anyone but an administrator. The runs live in R2 (cn-state)
+// The maps are made from open data, or are a club's with its permission (owner, 2026-11-12); served to the administrators
+// only for now. The runs live in R2 (cn-state)
 // virtual-runs/<race>/<course>/<u>-<time>.json — the route in the object, its summary in custom metadata (one R2 list gives
 // a map's results) —; `u` is a hash of the account's number (never answered as such), so that the results tell runners
 // apart; account deletion removes them (api/account/delete.js).
