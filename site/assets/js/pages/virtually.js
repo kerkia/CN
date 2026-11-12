@@ -176,7 +176,9 @@ export async function render(main, { query }) {
         <div class="vtp-maps">${list.map((r) => html`<button type="button" class="vtp-map card" data-race="${r.id}" aria-pressed="${r.id === sel.race}">
           ${r.thumb ? html`<img src="${r.event ? `${API}events/${r.id}/pkg/` : `${API}${r.id}/`}thumb.webp" alt="" loading="lazy">` : html`<span class="vtp-nothumb"></span>`}
           <b>${mapName(r.id)}</b><span class="muted">${t("vt.tr.mapLine", { scale: fmt(r.race.scale), std: r.race.std || "", n: r.race.courses.length })}</span>
-          ${r.event ? html`<span><span class="tag ${r.event.type === "competition" ? "vo-comp" : ""}">${t(`vo.type.${r.event.type}`)}</span> <span class="muted">${r.event.org}</span></span>` : ""}
+          ${/* a map card names no organiser, and a training says nothing: this is the training page (owner, 2026-11-12); a
+              competition, played once, keeps its tag */ ""}
+          ${r.event?.type === "competition" ? html`<span><span class="tag vo-comp">${t("vo.type.competition")}</span></span>` : ""}
           ${r.event && envText(t, r.event.env) ? html`<span class="vtp-env">${envText(t, r.event.env)}</span>` : ""}
           ${r.event && mapOptText(t, r.event.mapOpt) ? html`<span class="vtp-env">${mapOptText(t, r.event.mapOpt)}</span>` : ""}
           <span class="muted">${t(`vt.src.${r.race.source}`, { authors: (r.race.photoAuthors || []).join(", ") || "—" })}</span></button>${inline && r.id === race.id ? raw('<div class="vtp-inline"></div>') : ""}`)}</div>
