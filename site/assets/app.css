@@ -4450,6 +4450,11 @@ html.vt-fs-on, html.vt-fs-on body { overflow: hidden; }
 .vo-form legend { font-weight: 600; padding: 0 4px; }
 .vo-radio { display: block; font-weight: 400; }
 .vo-radio .muted { display: block; margin-left: 24px; font-size: 0.85rem; }
+/* a Pixel event's conditions (games/vweather.js): weather, dusk or night */
+.vtp-env { font-size: 0.85rem; color: var(--course, #7c3aed); font-weight: 600; }
+.vt-env { margin: 0 0 8px; }
+.vo-env { flex-direction: row !important; flex-wrap: wrap; align-items: end; }
+.vo-env > p { flex-basis: 100%; margin: 0; }
 .vo-dates, .vo-lidar { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
 .vo-lidar p { flex-basis: 100%; margin: 0; }
 .vo-files { display: flex; flex-direction: column; gap: 6px; }

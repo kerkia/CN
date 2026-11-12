@@ -12,6 +12,7 @@ import { t, tn, loadArea, lang } from "../i18n.js";
 import { THREE as THREE_URL } from "../vendor.js";
 import { loadRace, World, runnerFigure } from "./vworld.js";
 import { loadAvatar } from "./vavatar.js";
+import { applyEnv, envOf, envText } from "./vweather.js";
 
 await loadArea("virtually");
 
@@ -64,8 +65,10 @@ function briefSheet(course, title, cd) {
 
 /** The card before the start (owner, 2026-11-12: shown while the race loads): the course, its descriptions, the commands, « Partir »
  *  once everything is ready. `race`/`course` null while unknown, `sheet` null while the symbols load. */
-function briefCard({ race, course, title, sheet, ready, msg = "", ghosts = 0 }) {
+function briefCard({ race, course, title, sheet, ready, env, msg = "", ghosts = 0 }) {
+  const cond = envText(t, env), night = envOf(env).time === "night";
   return html`<div class="vt-card vt-brief"><h2>${title}</h2>
+    ${cond ? html`<p class="vt-env"><b>${t("vt.env.label")}</b> ${cond}${night ? html`<br><span class="muted">${t("vt.env.nightRule")}</span>` : ""}</p>` : ""}
     ${race && course ? html`<p>${t("vt.info", { n: course.controls.length - 2, km: num(course.length / 1000), scale: (race.scale || 0).toLocaleString(lang()) })}</p>
       <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
       ${race.photoCredits?.length ? html`<details class="muted vt-photos"><summary>${t("vt.src.photos", { n: race.photoCredits.length })}</summary>
@@ -91,13 +94,14 @@ const ghostsLine = (n) => (n ? html`<p class="vt-gh-brief">${tn("vt.gh.brief", n
  * when it is not a built-in map's (an event's: /api/virtual/events/<id>/pkg/); race the map's race.json as the page's list has it
  * (the briefing shows the course and its descriptions while the package loads); ghosts (owner, 2026-11-12: training only) a list,
  * or a promise of one, of runs replayed beside the runner — { name, t (race time), route [[t, x, z]], mine } —, translucent, named,
- * never in the way, on the map only while « Ma position » shows (and on the finish's map), their times on the finish card.
+ * never in the way, on the map only while « Ma position » shows (and on the finish's map), their times on the finish card;
+ * env an event's conditions { weather, time, lamp } (games/vweather.js; none: a clear day).
  */
 export function mount(root, raceId, opts = {}) {
   let stopped = false, raf = 0, cleanup = [];
   // the briefing at once, over the game's dark box: the course, its descriptions, the commands; « Partir » once all is loaded
   const courseIn = (r) => { const cs = coursesOf(r || {}); return cs.find((c) => c.id === opts.course) || cs[0] || null; };
-  const brief = { race: opts.race || null, course: courseIn(opts.race), sheet: null };
+  const brief = { race: opts.race || null, course: courseIn(opts.race), sheet: null, env: opts.env || null };
   brief.title = opts.title || brief.course?.name || raceId;
   root.innerHTML = html`<div class="vt" tabindex="0" data-view="scene"><div class="vt-over" id="vt-over">${briefCard({ ...brief, msg: t("vt.loading") })}</div></div>`;
   const say = (k, v) => { const m = $("#vt-msg", root); if (m) m.textContent = t(k, v); };
@@ -184,6 +188,7 @@ export function mount(root, raceId, opts = {}) {
     const SUN = new T.Vector3(...(B.sun || [-0.5, 0.6, 0.6])).normalize();
     const world = new World(T, data, scene, renderer);
     world.addCourse(course);
+    const ENV = applyEnv(T, opts.env, { scene, renderer, world, sun, camera });   // an event's weather, dusk or night (games/vweather.js)
     // the runner in the avatar's costume for the race's discipline: a sprint map (ISSprOM, or 1:5000 and larger) the sprint's
     const sprint = /ISSprOM/i.test(race.std || "") || (race.scale && race.scale <= 5000);
     const me = runnerFigure(T, opts.avatar || loadAvatar(sprint ? "sprint" : "forest")); scene.add(me);
@@ -729,6 +734,7 @@ export function mount(root, raceId, opts = {}) {
       const look = st.view === "first" ? 10 : 4;
       camera.lookAt(st.x + dx * look, y + (st.view === "first" ? 1.7 : 1.1) + Math.tan(st.pitch) * look, st.z + dz * look);
       sun.position.set(st.x + SUN.x * 120, y + SUN.y * 120, st.z + SUN.z * 120); sun.target.position.set(st.x, y, st.z);
+      ENV?.update(now, st.x, y, st.z, st.yaw, st.pitch);
       // the controls' cues
       const n = nearest();
       course.forEach((c, i) => { if (i) world.cue(i, n && n.i === i ? 1 : Math.hypot(c.x - st.x, c.z - st.z) < 15 ? 0.25 : 0, now / 1000); });

@@ -21,6 +21,7 @@ import { t, tn, loadArea } from "../i18n.js";
 import { pageTabs, tabFrom, bindPageTabs, dataTable, scoreCell, subHead } from "../ui.js";
 import * as auth from "../auth.js";
 import * as data from "../data.js";
+import { envText } from "../games/vweather.js";
 
 const API = "/api/virtual/";
 // a sprint has no violet nor middle and long distances: its orange courses are short and long (orange_s, orange_l)
@@ -163,6 +164,7 @@ export async function render(main, { query }) {
           ${r.thumb ? html`<img src="${r.event ? `${API}events/${r.id}/pkg/` : `${API}${r.id}/`}thumb.webp" alt="" loading="lazy">` : html`<span class="vtp-nothumb"></span>`}
           <b>${mapName(r.id)}</b><span class="muted">${t("vt.tr.mapLine", { scale: fmt(r.race.scale), std: r.race.std || "", n: r.race.courses.length })}</span>
           ${r.event ? html`<span><span class="tag ${r.event.type === "competition" ? "vo-comp" : ""}">${t(`vo.type.${r.event.type}`)}</span> <span class="muted">${r.event.org}</span></span>` : ""}
+          ${r.event && envText(t, r.event.env) ? html`<span class="vtp-env">${envText(t, r.event.env)}</span>` : ""}
           <span class="muted">${t(`vt.src.${r.race.source}`, { authors: (r.race.photoAuthors || []).join(", ") || "—" })}</span></button>${inline && r.id === race.id ? raw('<div class="vtp-inline"></div>') : ""}`)}</div>
         <div class="vtp-below">${race ? html`<h2 class="vtp-h vtp-h-row"><span>${t("vt.tr.courses", { map: mapName(race.id) })}</span>
           <button type="button" class="btn btn-sm" id="vtp-palm" title="${t("vt.palm.tip")}">🏆 ${t("vt.palm.btn")}</button></h2>
@@ -193,6 +195,7 @@ export async function render(main, { query }) {
         course: course.id, title: `${mapName(race.id)} · ${courseName(course)}`, base: ev ? `/api/virtual/events/${ev.id}/pkg/` : undefined, race: race.race,
         // the ghosts: in training only, never in a competition
         ghosts: ev?.type === "competition" ? [] : pickGhosts(race, course.id, ghostCount()),
+        env: ev?.env,
         onFinish: async (run) => {
           const note = () => $("#vt-saved", el);
           try {

@@ -9,6 +9,7 @@ import { t } from "../i18n.js";
 import { bar, setBar, elapsed } from "../waitbar.js";
 import { confirmBox, alertBox } from "../askbox.js";
 import * as auth from "../auth.js";
+import { WEATHERS, TIMES, LAMPS, envOf, envText } from "../games/vweather.js";
 
 const API = "/api/virtual/events";
 const MAX_MB = { "map.ocd": 40, "courses.ocd": 40, "courses.xml": 5 };
@@ -39,12 +40,24 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
           <b>${e.name}</b>
           <span class="tag ${e.type === "competition" ? "vo-comp" : ""}">${t(`vo.type.${e.type}`)}</span>
           <span class="muted">${t(`vo.status.${e.status}`)}${e.published ? html` · ${t("vo.published")}` : ""}${e.source === "lidar" ? html` · ${t("vo.src.lidar")}` : ""}</span>
-          <span class="muted">${e.courses.length ? t("vo.nCourses", { n: e.courses.length }) : ""}${e.from || e.to ? html` · ${dates(e)}` : ""}</span></button>`)}</div>`
+          <span class="muted">${e.courses.length ? t("vo.nCourses", { n: e.courses.length }) : ""}${e.from || e.to ? html` · ${dates(e)}` : ""}</span>
+          ${envText(t, e.env) ? html`<span class="vtp-env">${envText(t, e.env)}</span>` : ""}</button>`)}</div>`
         : html`<div class="card"><div class="empty">${t("vo.none")}</div></div>`}
       <details class="vtp-how"><summary>${t("vo.how.title")}</summary>${raw(t("vo.how.body"))}</details>`;
     $("#vo-new", el).addEventListener("click", () => form());
     $$(".vo-ev", el).forEach((b) => b.addEventListener("click", () => detail(b.dataset.id)));
   };
+  // the race's conditions (owner, 2026-11-12): weather, dusk or night, a night's headlamp; drawn by games/vweather.js, no rebuild
+  const envFields = (env) => {
+    const E = envOf(env), opt = (v, cur, label) => html`<option value="${v}" ${raw(v === cur ? "selected" : "")}>${label}</option>`;
+    return html`<fieldset class="vo-env"><legend>${t("vo.f.env")}</legend>
+      <label>${t("vo.f.weather")} <select id="vo-weather">${WEATHERS.map((w) => opt(w, E.weather, t(`vt.env.w.${w}`)))}</select></label>
+      <label>${t("vo.f.time")} <select id="vo-time">${TIMES.map((x) => opt(x, E.time, t(`vt.env.t.${x}`)))}</select></label>
+      <label class="vo-lamp" ${raw(E.time === "night" ? "" : "hidden")}>${t("vo.f.lamp")} <select id="vo-lamp">${LAMPS.map((l) => opt(l, E.lamp, t(`vt.env.lamp.${l}`)))}</select></label>
+      <p class="muted">${t("vo.f.envHint")}</p></fieldset>`;
+  };
+  const readEnv = () => ({ weather: $("#vo-weather", el).value, time: $("#vo-time", el).value, lamp: $("#vo-lamp", el).value });
+  const bindEnv = () => $("#vo-time", el).addEventListener("change", (e) => { $(".vo-lamp", el).hidden = e.target.value !== "night"; });
   const dates = (e) => (e.from && e.to ? t("vo.dates", { from: fmtDate(e.from), to: fmtDate(e.to) }) : e.from ? t("vo.from", { d: fmtDate(e.from) }) : t("vo.until", { d: fmtDate(e.to) }));
 
   // ---- a new event ---------------------------------------------------------------------------------------------------------
@@ -71,6 +84,7 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
           <label class="vo-radio"><input type="radio" name="vo-courses" value="proposed" checked> <b>${t("vo.courses.proposed")}</b> <span class="muted">${t("vo.courses.proposedHint")}</span></label>
           <label class="vo-radio"><input type="radio" name="vo-courses" value="file"> <b>${t("vo.courses.file")}</b> <span class="muted">${t("vo.courses.fileHint")}</span></label>
         </fieldset>
+        ${envFields(null)}
         <p class="vo-err" id="vo-err" hidden></p>
         <div class="vtp-go"><button type="button" class="btn btn-primary" id="vo-create">${t("vo.create")}</button></div>
       </div></div>`;
@@ -84,7 +98,7 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
     $("#vo-back", el).addEventListener("click", list);
     $("#vo-create", el).addEventListener("click", async () => {
       const err = $("#vo-err", el), say = (m) => { err.textContent = m; err.hidden = !m; };
-      const body = { name: $("#vo-name", el).value.trim(), type: val("vo-type"), source: val("vo-src"), courses: val("vo-courses") };
+      const body = { name: $("#vo-name", el).value.trim(), type: val("vo-type"), source: val("vo-src"), courses: val("vo-courses"), env: readEnv() };
       if (!body.name) return say(t("vo.err.name"));
       if (body.type === "competition") { body.from = $("#vo-from", el).value; body.to = $("#vo-to", el).value; }
       if (body.source === "lidar") {
@@ -94,7 +108,7 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
       }
       try { const ev = await post(API, body); detail(ev.id); } catch (e) { say(errText(e)); }
     });
-    sync();
+    sync(); bindEnv();
   }
 
   // ---- one event -----------------------------------------------------------------------------------------------------------
@@ -138,12 +152,14 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
         <div class="vo-dates" ${raw(ev.type === "competition" ? "" : "hidden")}><label>${t("vo.f.from")} <input type="date" id="vo-from" value="${ev.from}"></label><label>${t("vo.f.to")} <input type="date" id="vo-to" value="${ev.to}"></label></div>
         ${ev.source === "ocad" ? html`<label>${t("vo.f.courses")} <select id="vo-courses"><option value="proposed" ${raw(ev.coursesFrom !== "file" ? "selected" : "")}>${t("vo.courses.proposed")}</option>
           <option value="file" ${raw(ev.coursesFrom === "file" ? "selected" : "")}>${t("vo.courses.file")}</option></select></label>` : ""}
+        ${envFields(ev.env)}
         <p class="vo-err" id="vo-err" hidden></p>
         <div class="vtp-go"><button type="button" class="btn" id="vo-save">${t("vo.save")}</button><span class="muted" id="vo-saved"></span></div>
       </div></div>`;
     const err = $("#vo-err", el), say = (m) => { err.textContent = m; err.hidden = !m; };
     $("#vo-back", el).addEventListener("click", list);
     $("#vo-type", el).addEventListener("change", (e) => { $(".vo-dates", el).hidden = e.target.value !== "competition"; });
+    bindEnv();
     $$(".vo-file input[type=file]", el).forEach((inp) => inp.addEventListener("change", async () => {
       const f = inp.files?.[0], name = inp.dataset.file; if (!f) return;
       if (f.size > MAX_MB[name] * 1e6) return say(t("vo.err.size", { mb: MAX_MB[name] }));
@@ -165,7 +181,7 @@ export async function renderOrga(el, { onPlay, onChange } = {}) {
       try { await call(`${API}/${id}`, { method: "DELETE" }); onChange?.(); list(); } catch (e) { alertBox(errText(e)); }
     });
     $("#vo-save", el).addEventListener("click", async () => {
-      const body = { name: $("#vo-name", el).value.trim(), type: $("#vo-type", el).value, from: $("#vo-from", el).value, to: $("#vo-to", el).value };
+      const body = { name: $("#vo-name", el).value.trim(), type: $("#vo-type", el).value, from: $("#vo-from", el).value, to: $("#vo-to", el).value, env: readEnv() };
       if ($("#vo-courses", el)) body.courses = $("#vo-courses", el).value;
       try { await post(`${API}/${id}`, body, "PUT"); onChange?.(); detail(id); } catch (e) { say(errText(e)); }
     });

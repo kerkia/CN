@@ -6,7 +6,9 @@
 //   GET    events/<id>                    one event; its organisers also get its build's progress
 //   POST   events { name, type, from, to, source, courses, area }   a new event (a draft); source "ocad" or "lidar"
 //                                         (administrators: area { lat, lon, size } in metres), courses "proposed" or "file"
-//   PUT    events/<id> { name, type, from, to, published }           its settings
+//   PUT    events/<id> { name, type, from, to, published, env }      its settings; env { weather, time, lamp } the race's
+//                                         conditions (owner, 2026-11-12: clear | overcast | rain | fog | snow; day | dusk | night;
+//                                         a night's headlamp normal | strong), drawn by games/vweather.js
 //   PUT    events/<id>/file/<map.ocd|courses.ocd|courses.xml>        the organiser's files (the body), kept privately in R2
 //   POST   events/<id>/build              the race package made by the workflow virtually.yml (GH_DISPATCH_TOKEN)
 //   DELETE events/<id>                    the event, its files, its package and its runs
@@ -42,7 +44,7 @@ function mayPlay(env, user, ev) {
 /** What everyone may know of an event (never who made it, beyond the name shown). */
 const view = (ev, extra = {}) => ({ id: ev.id, name: ev.name, type: ev.type, from: ev.from || "", to: ev.to || "", source: ev.source,
   status: ev.status, published: !!ev.published, org: ev.orgName || "", courses: ev.courses || [], std: ev.std || "", scale: ev.scale || 0,
-  lonlat: ev.lonlat || null, thumb: !!ev.thumb, open: ev.type === "training" || openNow(ev), ...extra });
+  lonlat: ev.lonlat || null, thumb: !!ev.thumb, open: ev.type === "training" || openNow(ev), env: cleanEnv(ev.env), ...extra });
 
 async function getEvent(env, id) {
   if (!ID.test(id || "")) return null;
@@ -63,6 +65,12 @@ async function listAll(env, prefix, opts = {}) {
   return out;
 }
 const userOf = async (ctx) => (ctx.env.DB ? currentUser(ctx.request, ctx.env) : null);
+/** The race's conditions, as games/vweather.js knows them (anything else: a clear day). */
+function cleanEnv(e) {
+  const pick = (v, list) => (list.includes(v) ? v : list[0]);
+  return { weather: pick(e?.weather, ["clear", "overcast", "rain", "fog", "snow"]), time: pick(e?.time, ["day", "dusk", "night"]),
+    lamp: pick(e?.lamp, ["normal", "strong"]) };
+}
 const cleanName = (s) => String(s || "").replace(/[\u0000-\u001f<>]/g, "").trim().slice(0, 80);
 const cleanDate = (s) => (/^\d{4}-\d{2}-\d{2}$/.test(String(s || "")) ? String(s) : "");
 
@@ -172,7 +180,7 @@ export async function onRequestPost(ctx) {
     }
     const id = `e${Date.now().toString(36).slice(-6)}${Math.random().toString(36).slice(2, 5)}`.slice(0, 10).padEnd(10, "0");
     const ev = { id, name, type: b?.type === "competition" ? "competition" : "training", from: cleanDate(b?.from), to: cleanDate(b?.to),
-      source, area, coursesFrom: b?.courses === "file" && source === "ocad" ? "file" : "proposed", by: user.id,
+      source, area, coursesFrom: b?.courses === "file" && source === "ocad" ? "file" : "proposed", env: cleanEnv(b?.env), by: user.id,
       orgName: String(user.display_name || "").slice(0, 80), created: nowIso(), status: "draft", published: false, courses: [] };
     await putEvent(env, ev);
     return json(view(ev, { mine: true, files: {}, area, coursesFrom: ev.coursesFrom }));
@@ -245,6 +253,7 @@ export async function onRequestPut(ctx) {
   if (b?.type !== undefined) ev.type = b.type === "competition" ? "competition" : "training";
   if (b?.from !== undefined) ev.from = cleanDate(b.from);
   if (b?.to !== undefined) ev.to = cleanDate(b.to);
+  if (b?.env !== undefined) ev.env = cleanEnv(b.env);
   if (b?.courses !== undefined && ev.source === "ocad") ev.coursesFrom = b.courses === "file" ? "file" : "proposed";
   if (b?.published !== undefined) {
     if (b.published && !["ready", "stale"].includes(ev.status)) return json({ error: "not built" }, 400);

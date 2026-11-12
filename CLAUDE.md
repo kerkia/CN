@@ -1275,6 +1275,25 @@ Every multiple-choice game was played through to its score page at phone size, w
   `runnerFigure` legs "knee" | "long" | "sprint"); « Au hasard », « Par défaut »; kept in this browser (`localStorage
   ocn.vt.avatar`), shown turning in a small scene standing, walking or running, the costume being edited. The built-in maps also serve `map.webp`
   (a LiDAR race kept as a map: `api/virtual` `FILE`).
+  **Weather and night-O** (owner, 2026-11-12: « weather, decided by the creator », « night-O too: at night orienteers use a headlamp,
+  which reduces visibility on the sides and far »; `games/vweather.js`): an event's `env` { weather clear | overcast | rain | fog |
+  snow, time day | dusk | night, lamp normal | strong } (`functions/api/virtual/events` `cleanEnv`, kept in the event, sent by every
+  view of it; set in Orga's new-event form and the event's settings, « Conditions de course », changed at any time without a rebuild;
+  shown on the event's card in « Entraînement » and its Orga row, `envText`, and in the race's briefing with the night's rule, keys
+  `vt.env.*`, `vo.f.env*`); the built-in maps are a clear day (`mount`'s `opts.env` absent). `applyEnv(T, env, { scene, renderer,
+  world, sun, camera })`, called once the course is added, returns an `update` the frame loop calls after placing the sun: the haze's
+  and the zenith's colours and density over the biome's, the sun's and sky's light, the sun's disc hidden under a grey sky, **no sun
+  shadows unless clear** (cheaper), the far impostors dimmed (they were rendered in sunlight); rain or snow as `Points` in a box round
+  the camera, fixed in the world and falling by their shader alone (9 000 / 6 000, a phone 3 000 / 2 200); the ground's shader a
+  second pass — darker when wet, white where it faces up when snowy (less on the paths, patchy), grass and ferns hidden under snow;
+  dusk a low warm sun; **night** a black haze (density 0.026, a strong lamp 0.018), a faint moon, no shadows, and a `SpotLight` on
+  the runner's head (320 cd, ±27°, a strong lamp 650 cd, ±32°; soft at the sides, falling with the square of the distance) aimed
+  where the runner looks a little down; the flags' **retroreflective tape**: an additive copy of each flag's prism and a halo sprite
+  a few pixels wide however far, lit when the flag is in the beam (its cone, 1 / (1 + (d / reach)²), reach 60 m or 95 m, to 180 m)
+  and the ground not in the way (8 samples along the line), every third frame; the code plates no longer glow by themselves. The
+  map panel is 2D: readable at night. Measured 2026-11-12 in headless Edge on Granites (`work\vr3d\envtest.mjs`, `nighttest.mjs`):
+  1400 × 860 clear 36 fps, overcast 41, rain 41, fog 43, snow 49, dusk 33, night 49, strong lamp 46, rainy night 45; a phone's
+  390 × 844 56-60 fps for every condition (60 the headless cap).
 - **Apprendre / Learning** (`#/apprendre`, route `learn`, `pages/learn.js`; owner, 2026-11-10): « Définitions de postes » and
   « Symboles de carte » became one Coach page of three views (`?vue=definitions|symboles|test`; `#/definitions` and `#/symboles`
   open theirs; the two modules drawn in place with `embedded`, their own Forêt / Sprint tabs kept in `?onglet=`), the owner's only
