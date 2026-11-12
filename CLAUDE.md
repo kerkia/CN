@@ -1039,7 +1039,7 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`tools/virtually/gen.mjs` — the same generator and course setter, 1 200 tries a level —, then `genpack.py` for the package's
   pictures, `thumb.mjs`, `upload.py`): five races among Pixel's maps, source « gen » (`vt.src.gen`), 1.6 km — gen-moraine (seed
   20261112), gen-karst (20261113), gen-sandrock (20261114), gen-valley (20261115), gen-pine (20261116), in live R2 since 2026-11-12;
-  no map, LiDAR or licence involved. **Measured** 2026-11-12 in headless Edge on the local server (`C:\Kerkia\Ozimut\workr3d\gentest.mjs`):
+  no map, LiDAR or licence involved. **Measured** 2026-11-12 in headless Edge on the local server (`C:\Kerkia\Ozimut\work\vr3d\gentest.mjs`):
   a 1.2 km world and its six courses in 3-5 s (Node 2-3 s; a 1.6 km offline race 5-10 s); 30-43 fps at 1400 × 860 and at a phone's
   390 × 844 viewport, Autrans 33 fps the same way; not yet on a real phone. Local test: launch config `pixel-gen` (8772, its own copy
   of the local state, `.wrangler/state-gen`).
