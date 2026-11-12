@@ -450,6 +450,8 @@ export default {
   "map.data.brought.other": "{n} objetos añadidos como borrador",
   "map.data.accepted.one": "{n} objeto aceptado",
   "map.data.accepted.other": "{n} objetos aceptados",
+  "map.data.rejectAll.one": "No hay nada seleccionado: ¿rechazar todo el borrador ({n} objeto)? Se borrará del mapa.",
+  "map.data.rejectAll.other": "No hay nada seleccionado: ¿rechazar todo el borrador ({n} objetos)? Se borrarán del mapa.",
   "map.data.rejected.one": "{n} objeto rechazado",
   "map.data.rejected.other": "{n} objetos rechazados",
   "map.data.noVectors.one": "{n} tesela hecha antes de los vectores: solo su imagen",

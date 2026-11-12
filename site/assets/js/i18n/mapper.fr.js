@@ -450,6 +450,8 @@ export default {
   "map.data.brought.other": "{n} objets ajoutés en brouillon",
   "map.data.accepted.one": "{n} objet accepté",
   "map.data.accepted.other": "{n} objets acceptés",
+  "map.data.rejectAll.one": "Aucun objet n'est choisi : rejeter tout le brouillon ({n} objet) ? Il sera supprimé de la carte.",
+  "map.data.rejectAll.other": "Aucun objet n'est choisi : rejeter tout le brouillon ({n} objets) ? Ils seront supprimés de la carte.",
   "map.data.rejected.one": "{n} objet rejeté",
   "map.data.rejected.other": "{n} objets rejetés",
   "map.data.noVectors.one": "{n} tuile faite avant les vecteurs : seulement son image",

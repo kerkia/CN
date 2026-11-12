@@ -450,6 +450,8 @@ export default {
   "map.data.brought.other": "{n} Objekte als Entwurf hinzugefügt",
   "map.data.accepted.one": "{n} Objekt übernommen",
   "map.data.accepted.other": "{n} Objekte übernommen",
+  "map.data.rejectAll.one": "Nichts ist gewählt: den ganzen Entwurf verwerfen ({n} Objekt)? Es wird aus der Karte gelöscht.",
+  "map.data.rejectAll.other": "Nichts ist gewählt: den ganzen Entwurf verwerfen ({n} Objekte)? Sie werden aus der Karte gelöscht.",
   "map.data.rejected.one": "{n} Objekt verworfen",
   "map.data.rejected.other": "{n} Objekte verworfen",
   "map.data.noVectors.one": "{n} Kachel vor den Vektoren erstellt: nur ihr Bild",

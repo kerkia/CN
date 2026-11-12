@@ -450,6 +450,8 @@ export default {
   "map.data.brought.other": "{n} objects added as drafts",
   "map.data.accepted.one": "{n} object accepted",
   "map.data.accepted.other": "{n} objects accepted",
+  "map.data.rejectAll.one": "Nothing is selected: reject the whole draft ({n} object)? It will be deleted from the map.",
+  "map.data.rejectAll.other": "Nothing is selected: reject the whole draft ({n} objects)? They will be deleted from the map.",
   "map.data.rejected.one": "{n} object rejected",
   "map.data.rejected.other": "{n} objects rejected",
   "map.data.noVectors.one": "{n} tile made before vectors: its image only",

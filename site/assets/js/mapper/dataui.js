@@ -270,9 +270,15 @@ function accept(E, kind) {
   E.say(tn("map.data.accepted", list.length));
   E.selChanged();
 }
-function reject(E) {
+async function reject(E) {
   const sel = E.selected().filter((o) => o.draft);
   const list = sel.length ? sel : E.doc.objects.filter((o) => o.draft);
+  // nothing chosen means the whole draft: asked first (owner, 2026-11-12: a map's 10 750 draft objects — the town plan and the
+  // LiDAR — were gone in one click, then saved so)
+  if (!sel.length && list.length > 1) {
+    const { confirmBox } = await import("../askbox.js");
+    if (!(await confirmBox(tn("map.data.rejectAll", list.length), { ok: t("map.rib.draft-reject") }))) return;
+  }
   E.live.transact(t("map.undo.reject"), () => { for (const o of list) E.live.remove(o.id); });
   E.sel.clear(); E.selChanged();
   E.say(tn("map.data.rejected", list.length));
