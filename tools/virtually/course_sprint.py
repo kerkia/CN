@@ -57,8 +57,9 @@ sites = []
 
 
 def site(x, z, kind):
+    x, z = round(float(x), 1), round(float(z), 1)        # as race.json keeps it: the cell tested is the one the game reads
     i, j = int(z), int(x)
-    i2, j2 = min(H - 1, int(round(z))), min(W - 1, int(round(x)))          # the cell it falls in, however it is rounded
+    i2, j2 = min(H - 1, int(round(z))), min(W - 1, int(round(x)))          # and the next one, however it is rounded
     if not inbox(x, z) or not (0 <= i < H and 0 <= j < W) or not ok_ground[i, j] or not ok_ground[i2, j2]:
         return
     sites.append((x, z, kind))

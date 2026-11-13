@@ -58,6 +58,9 @@ const COLORS = [
   ["black20", "Black 20%", screen("black", 0.2)],
   ["black50", "Black 50%", screen("black", 0.5)],
   ["black65", "Black 65%", screen("black", 0.65)],
+  // 512.3's white stripes (ISSprOM: drawn over every area colour, a building's grey and the olive included, under the lines): above
+  // the greys, numbered after the others so that every other colour keeps its number (2026-11-13)
+  ["white5123", "White over grey (512.3 stripes)", [0, 0, 0, 0]],
   ["blue30", "Blue 30%", screen("blue", 0.3)],
   ["blue50", "Blue 50%", screen("blue", 0.5)],
   ["brown", "Brown 100%", BASE.brown],
@@ -69,7 +72,8 @@ const COLORS = [
   // the helper contours' light violet (2026-11-12), last so that every other colour keeps its number
   ["violet", "Violet 30% (helper contours)", screen("purple", 0.3)],
 ];
-const NUM = Object.fromEntries(COLORS.map(([k], i) => [k, i + 1]));
+const LATE = ["white5123"];                                  // colours inserted in the order after the numbering was fixed: numbered last
+const NUM = Object.fromEntries([...COLORS.filter(([k]) => !LATE.includes(k)), ...COLORS.filter(([k]) => LATE.includes(k))].map(([k], i) => [k, i + 1]));
 const OVERPRINT = new Set(["purple", "purple50", "violet"]);
 const c = (k) => { if (!NUM[k]) throw new Error(`colour ${k}`); return NUM[k]; };
 
@@ -587,7 +591,7 @@ function sprint() {
   add(line(512.1, N(512.1), { prim: { elts: [A("black", [[-tw / 2, 0], [tw / 2, 0], [0, -th], [-tw / 2, 0]])], every: tw } },
     { note: "Drawn along the bridge's edge, the triangles on the right of the line's direction (toward the lower level)." }));
   add(line(512.2, N(512.2), { color: "black", w: 0.2, dash: [0.2, 0.25] }));
-  add(area(512.3, N(512.3), { hatch: { color: "whiteB", w: 0.3, dist: 0.6, a1: 45 }, rotatable: true },
+  add(area(512.3, N(512.3), { hatch: { color: "white5123", w: 0.3, dist: 0.6, a1: 45 }, rotatable: true },
     { note: "White stripes drawn over the area's own colour (draw it over the paved area)." }));
   add(line(513.1, N(513.1), dotsOn("black", 0.21, 0.6, 3.75)));
   add(line(513.2, N(513.2), { color: "black", w: 0.21, prim: { elts: [halfDot("black", 0.6, 0.21, 0.09)], every: 1.9 } }));
@@ -723,7 +727,7 @@ function finish(standard, scale, symbols, minKey) {
     const min = MIN[minKey][code] ?? (sub && sub < 8 && !NAMES[minKey][code] ? MIN[minKey][n] : undefined);
     if (min) s.min = { ...min };
   }
-  const colors = COLORS.map(([k, name, cmyk], i) => ({ num: i + 1, name, cmyk, overprint: OVERPRINT.has(k) })).filter((x) => used.has(x.num));
+  const colors = COLORS.map(([k, name, cmyk]) => ({ num: NUM[k], name, cmyk, overprint: OVERPRINT.has(k) })).filter((x) => used.has(x.num));
   // compile once to measure the extents, and to fail loudly on a record the renderer refuses
   const ctx = makeContext(VERSION, colors);
   for (const s of symbols) if (s.otp !== 3 && s.otp !== 4) compileSymbol(s, ctx);

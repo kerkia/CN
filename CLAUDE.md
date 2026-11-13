@@ -1194,7 +1194,20 @@ Every multiple-choice game was played through to its score page at phone size, w
   forest 405; OSM's stream beside BD TOPO's within 12 m is the same stream; **OCAD corner points** (y flag 1) at every angle of 30°
   or more of a line, so that a pattern (ticks, triangles, dashes) starts again from the corner instead of falling on it; the
   areas cut on a 1 cm grid (GEOS failed on near-coincident outlines). The legibility check (`legibility.py`, run inside
-  `town_map.py`) accepts a contour ending only at a stairway or the map's edge, and counts 501.3 as paving. These rules are the generator's (`town_map.py`,
+  `town_map.py`) accepts a contour ending only at a stairway or the map's edge, and counts 501.3 as paving. **The owner's review of v6** (2026-11-13): 505's
+  junctions open (OCAD's « no left / right line » flags, x and y flag 4, on the segments inside another path's band); 512.3 over every
+  passage not through a building, its stripes at about 45° to the passage's axis (the object's angle) and in a white of their own,
+  « White over grey (512.3 stripes) », placed above the greys and numbered last (`docs/mapper/sets.mjs` `LATE`: the order differs from
+  the numbering, so every other colour keeps its number); 512.2 only when 2.8 m long or more, 0.2 mm from each end (ISSprOM rev. 6);
+  no 709 on any sports ground (the course setter's overprint): multi-sport courts paving with their edge; a bridge 0.8 mm wide at
+  least, so that its 515 sides keep 0.4 mm between them; OSM's watercourses only where BD TOPO has none within 12 m, piece by piece;
+  BD TOPO's paths only where OSM has none within 10 m; the public road space only within 15 m of a street or a square (a stream's
+  strip came out paved); OSM's lawns kept inside a paved square; ground reached only through 520 is 520; one tangent at each point,
+  from the most natural object through it (water, contours, vegetation, open land without angles); a curve's points 4 m apart at
+  least; a street crossed square, the contour coming to it over 3 m; a stairway centred between buildings or 520 with its shift
+  smoothed. course_sprint.py tests a control's cell after rounding it as race.json keeps it. **Every remark so far is listed, with
+  test places in Gif, in the sessions' notes `standard-remarks.md`**: the legibility session turns them into a rule catalogue from
+  ISSprOM's full text and regression tests (2026-11-13). These rules are the generator's (`town_map.py`,
   `mkocd.mjs`), so every town map made after Gif has them — and **Cartographier's « Plan de ville (sprint) » is this same
   generator** (owner, 2026-11-12: one engine, quality before speed; the townmap workflow, see Cartographier), so a rule changed here
   reaches both; the symbols mkocd.mjs used to make (501.6-501.9, 532.1-532.6, 990, 991, 993, 995) are the ISSprOM set's own
