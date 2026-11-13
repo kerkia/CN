@@ -1363,6 +1363,23 @@ Every multiple-choice game was played through to its score page at phone size, w
   running, the body bobbing twice a stride, leaning forward with the speed and into the turns (from the heading's rate). SSAO was not
   taken (a phone's budget). Granites, headless Edge, same PC and moment: 1400 × 860 34.3 → 34.7 fps, 390 × 844 54.7 → 57.0 (Foley
   Mountain 40 at 1400 × 860).
+  **Texture sets by terrain type** (owner, 2026-11-13, on Trois Pignons: « photos, like for Sprint… a general solution for more
+  realistic scenes in forest? »): a race's biome names a set (`biome.textures`, `vforest.js` `TEXTURE_SETS`), whose roles replace
+  the default photo files — the floor, the paths' gravel, the rock — and add their own: « pine-bark » (the conifers on a trunk of
+  their own, `K.trunkP`), « needles » (the conifers' cards), « leaves-tree » (half the broadleaf crowns), « grass », « low »;
+  `loadPhotos(set)` after race.json (`vgenpack.js` too). The first set, **« sandpine »**, Fontainebleau's: sand under pine needles,
+  white sand, grey sandstone, Scots pine bark, sprays of photographed needle pairs, oak leaves — CC0 only (Poly Haven, ambientCG),
+  made by `tools/virtually/texsets.py` from the downloads (credits in CREDITS.txt, its block rewritten by the script); 835 KB
+  against the default's 611. Photographed grass and a drawn heather were tried and left out (dark blades; a dense card's far
+  mipmaps become solid rectangles). The biome by place: `tools/virtually/biomes.py` (`for_place`: Fontainebleau's box, else the
+  temperate default), written by lidarrace.py when the race has no biome.json; its colours read on 29 freely licensed Wikimedia
+  Commons photos of the Trois Pignons (medians of the floor, the white sand, the sandstone, the pines' bark; only colours, nothing
+  kept), more Scots pines (`pineShare` 0.85 over `pineMinH` 8 m) with their reddish trunks (`trunkPine`); vgen's « sandrock »
+  takes the same set. Only CC0 libraries, or Commons / Panoramax photos under their licences with credits — never ordinary web
+  photos. The live Trois Pignons event (`ecavha6hyc`) was updated in place (race.json's biome and ground.jpg made again from its
+  own cls.png and h.png by build.py's formula: its courses and runs kept; a CI rebuild would set new courses, course.py searching
+  by time). Measured in headless Edge: 60 fps at 1400 × 860 and 390 × 844, as before. Left: young pines as dark streaks, many
+  conifers still spruce-shaped, no photographed undergrowth (heather, bracken).
   **The ground picture was mirrored north–south until 2026-11-11** (the sprint session found it, the owner met it on Trois Pignons:
   standing on a map's path junction, the path drawn on the ground lay further on): `ground.jpg` is an ImageBitmap, which three.js never
   flips, so its first row (north) is at v = 0 — `build()`'s ground uv is `z / H`. **« Avatar »** (Coach › Virtually's tab between
