@@ -36,7 +36,7 @@ async function inline(opts, onStep) {
 /** What the game plays: { race, W, H, h, cls, veg, groundImg, feats, trees, photos, ocd, mapImage, town }. */
 export async function packageOf({ world, courses }, { id, title = "" } = {}) {
   const race = raceOf(world, { id, courses });
-  const [set, photos, groundImg] = await Promise.all([isomSet(), loadPhotos(),
+  const [set, photos, groundImg] = await Promise.all([isomSet(), loadPhotos(race.biome?.textures),
     createImageBitmap(new ImageData(world.ground, world.W, world.H))]);
   return { race, W: world.W, H: world.H, h: world.h, cls: world.cls, veg: world.veg, groundImg, feats: world.feats, trees: null, photos,
     ocd: mapBytes(world, set, { title }), mapImage: null, town: null };

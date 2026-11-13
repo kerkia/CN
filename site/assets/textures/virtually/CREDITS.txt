@@ -8,4 +8,11 @@ Virtually's town textures (games/vtown.js), made by tools/virtually/town_texture
   town-ground (R asphalt, G paving stones, B concrete slabs): Poly Haven, clean_asphalt (https://polyhaven.com/a/clean_asphalt),
     square_cobblestone (https://polyhaven.com/a/square_cobblestone), square_concrete_pavers (https://polyhaven.com/a/square_concrete_pavers)
   town-roof (R clay tiles, G slates): Poly Haven, roof_tiles (https://polyhaven.com/a/roof_tiles), roof_slates_02 (https://polyhaven.com/a/roof_slates_02)
+Pixel's terrain texture sets (games/vforest.js TEXTURE_SETS), made by tools/virtually/texsets.py from CC0 sources (public domain):
+  sandpine-litter*: Poly Haven, forrest_sand_01 (https://polyhaven.com/a/forrest_sand_01)
+  sand: Poly Haven, sand_01 (https://polyhaven.com/a/sand_01)
+  sandstone*: Poly Haven, rock_boulder_dry (https://polyhaven.com/a/rock_boulder_dry)
+  pine-bark*: Poly Haven, pine_bark (https://polyhaven.com/a/pine_bark)
+  needles: sprays of ambientCG's PineNeedles001 (https://ambientcg.com/a/PineNeedles001)
+  oak-leaves: a cluster of ambientCG's LeafSet016 (https://ambientcg.com/a/LeafSet016)
 Poly Haven and ambientCG license their assets CC0 1.0 Universal; no attribution is required, it is given with thanks.

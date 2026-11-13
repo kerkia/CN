@@ -156,21 +156,35 @@ export function textures(T, renderer) {
     stone: tex(stoneCanvas(19)) };
 }
 
-// ---- photo textures (CC0: Poly Haven, ambientCG; tools/virtually/textures.py, credits in /assets/textures/virtually/CREDITS.txt) ----
+// ---- photo textures (CC0: Poly Haven, ambientCG; tools/virtually/textures.py and texsets.py, credits in
+// /assets/textures/virtually/CREDITS.txt) ----
 // Each photo's colours are normalised around mid-grey: the game's own colours (the map's classes, the biome's trunks, leaves and
 // stones) tint them, the photo gives the grain. They are read as linear data and multiplied by 2 (`PHOTO_GAIN`).
 const PHOTOS = ["ground-litter", "ground-litter-n", "ground-gravel", "bark", "bark-n", "stone", "stone-n", "leaves-a", "leaves-b"];
+/** The texture sets: a race's biome names one (« textures »), whose roles replace the default files. The roles a set may add:
+ *  the conifers' bark « pine-bark » (a trunk of their own), their needle sprays « needles », half the broadleaf crowns' leaves
+ *  « leaves-tree », the grass tufts « grass », the low plants « low »; without one the default or drawn card stays. Owner,
+ *  2026-11-13: photographed textures by terrain type, « a general solution for more realistic scenes in forest ». */
+export const TEXTURE_SETS = {
+  default: {},
+  // Fontainebleau's sandstone massifs (Trois Pignons…): sand under pine needles, white sand on the paths, grey sandstone, Scots
+  // pines, oaks
+  sandpine: { "ground-litter": "sandpine-litter", "ground-litter-n": "sandpine-litter-n", "ground-gravel": "sand",
+    stone: "sandstone", "stone-n": "sandstone-n", "pine-bark": "pine-bark", "pine-bark-n": "pine-bark-n", needles: "needles",
+    "leaves-tree": "oak-leaves" },
+};
 export const PHOTO_GAIN = 2;
-/** The photo textures' pictures (ImageBitmaps by name), fetched together; null for one that fails (the drawn one stands in). */
-export async function loadPhotos(base = "/assets/textures/virtually/") {
-  const one = async (n) => {
+/** The photo textures' pictures (ImageBitmaps by role), fetched together; null for one that fails (the drawn one stands in). */
+export async function loadPhotos(set = "default", base = "/assets/textures/virtually/") {
+  const roles = { ...Object.fromEntries(PHOTOS.map((n) => [n, n])), ...(TEXTURE_SETS[set] || {}) };
+  const one = async ([role, n]) => {
     try {
       const r = await fetch(`${base}${n}.webp`);
-      if (!r.ok) return [n, null];
-      return [n, await createImageBitmap(await r.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" })];
-    } catch (e) { return [n, null]; }
+      if (!r.ok) return [role, null];
+      return [role, await createImageBitmap(await r.blob(), { premultiplyAlpha: "none", colorSpaceConversion: "none" })];
+    } catch (e) { return [role, null]; }
   };
-  return Object.fromEntries(await Promise.all(PHOTOS.map(one)));
+  return Object.fromEntries(await Promise.all(Object.entries(roles).map(one)));
 }
 /** Textures of the photos: linear (they are factors), repeated, mipmapped. */
 export function photoTextures(T, renderer, bm) {

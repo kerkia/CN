@@ -29,8 +29,10 @@ export async function loadRace(base, onFile = () => {}) {
     onFile(f);
     return v;
   };
-  const photos = loadPhotos();                       // the photo textures, beside the package
-  const race = await get("race.json", "json");
+  const raceP = get("race.json", "json");
+  // the photo textures of the race's set (its biome's « textures »), beside the package
+  const photos = raceP.then((r) => loadPhotos(r.biome?.textures)).catch(() => ({}));
+  const race = await raceP;
   // the player's map: the club's OCAD file, or (a race from the LiDAR alone, tools/virtually/lidarrace.py) the generated map's image
   const webp = race.map === "webp";
   const [hb, cb, vb, gb, feats, trees, ocd] = await Promise.all([get("h.png"), get("cls.png"), get("veg.png"), get("ground.jpg"),
@@ -67,6 +69,7 @@ export class World {
     this.leaf = (B.leaf || ["#5d7d3a"]).map(col); this.pine = (B.coniferLeaf || ["#33532d"]).map(col);
     this.bushC = (B.bush || ["#4f6a33"]).map(col); this.lowC = (B.low || ["#7a7a48"]).map(col); this.rockC = (B.rock || ["#9a968e"]).map(col);
     this.trunk = col(B.trunk || "#6e665c"); this.trunk2 = col(B.trunk2 || B.trunk || "#6e665c");
+    this.trunkP = B.trunkPine ? col(B.trunkPine) : null;        // the conifers' own (a Scots pine's reddish bark), else trunk2
     this.chunks = new Map();
     this.queue = [];
     this.trunks = new Map();                       // 8 m cell -> [[x, z, r]]
@@ -156,6 +159,7 @@ export class World {
     const lam = (o = {}) => new T.MeshLambertMaterial({ color: 0xffffff, ...o });
     // leaves: the photographed clusters (grey, tinted by each tree's colour), else the drawn ones; the crowns' baked occlusion
     const leafA = P["leaves-a"] || X.leaf[0], leafB = P["leaves-b"] || X.leaf[1], leafGain = P["leaves-a"] ? 1.5 : 1.15;
+    const leafT = P["leaves-tree"] || leafB;           // a set's own tree leaves (oaks) on half the crowns; the bushes keep theirs
     const leafMat = (map, g = leafGain) => sway(lam({ map, color: gain(g), vertexColors: true, alphaTest: 0.42, alphaToCoverage: true }), this.wind, 0.035, -0.3);
     const euc = this.B.crown === "eucalypt";
     // the crowns' shapes: round, tall and narrow, wide and flat, in lobes (old, irregular)
@@ -178,18 +182,24 @@ export class World {
     // the trunk darker at its foot (the ground's and the undergrowth's shade)
     const trunkGeo = bakeAO(T, new T.CylinderGeometry(0.08, 0.2, 1, 7, 4).translate(0, 0.5, 0), (x, y) => 0.5 + 0.5 * Math.min(1, y / 0.14));
     const logGeo = bakeAO(T, new T.CylinderGeometry(1, 1, 1, 7, 1).rotateZ(Math.PI / 2), (x, y) => 0.62 + 0.38 * (y + 1) / 2);
-    const needle = (g) => sway(lam({ map: X.needle, vertexColors: true, alphaTest: 0.42, alphaToCoverage: true, ...(g ? { color: gain(g) } : {}) }), this.wind, 0.025, 0.2);
+    // the texture set's cards when it has them (photographed needle pairs, grass blades, heather), else the drawn ones
+    const needleMap = P.needles || X.needle, needleGain = P.needles ? 1.3 : 1.15;
+    const needle = () => sway(lam({ map: needleMap, vertexColors: true, alphaTest: 0.42, alphaToCoverage: true, color: gain(needleGain) }), this.wind, 0.025, 0.2);
+    const card = (map, photo, amount) => sway(lam({ map, alphaTest: 0.45, alphaToCoverage: true, ...(photo ? { color: gain(1.25) } : {}) }), this.wind, amount, 0.2);
+    // the conifers' bark: the set's (a pine's plates) on a trunk of their own, else the same as the others'
+    const pBark = P["pine-bark"], pBarkN = P["pine-bark-n"] || null; if (pBark) { pBark.repeat.set(2, 5); pBarkN?.repeat.set(2, 5); }
     this.K = {
       trunk: { geo: trunkGeo, mat: barkMat(), shadow: true },
       crown: { geo: crowns[0], mat: leafMat(leafA), shadow: true },
-      crown2: { geo: crowns[1], mat: leafMat(leafB), shadow: true },
+      crown2: { geo: crowns[1], mat: leafMat(leafT), shadow: true },
       crown3: { geo: crowns[2], mat: leafMat(leafA), shadow: true },
-      crown4: { geo: crowns[3], mat: leafMat(leafB), shadow: true },
-      pine: { geo: cardConifer(T, 9), mat: needle(1.15), shadow: true },
-      pine2: { geo: cardConifer(T, 27, { whorls: 7, from: 0.0, shape: "pine" }), mat: needle(1.15), shadow: true },
+      crown4: { geo: crowns[3], mat: leafMat(leafT), shadow: true },
+      ...(pBark ? { trunkP: { geo: trunkGeo, mat: lam({ map: pBark, normalMap: pBarkN, color: gain(G), vertexColors: true }), shadow: true } } : {}),
+      pine: { geo: cardConifer(T, 9), mat: needle(), shadow: true },
+      pine2: { geo: cardConifer(T, 27, { whorls: 7, from: 0.0, shape: "pine" }), mat: needle(), shadow: true },
       bush: { geo: cardCrown(T, 77, 10, 0.75), mat: leafMat(leafB), shadow: true },
-      low: { geo: crossed(T, 3), mat: sway(lam({ map: X.fern, alphaTest: 0.45, alphaToCoverage: true }), this.wind, 0.08, 0.2), shadow: false },
-      grass: { geo: crossed(T, 2), mat: sway(lam({ map: X.grass, alphaTest: 0.45, alphaToCoverage: true }), this.wind, 0.1, 0.2), shadow: false },
+      low: { geo: crossed(T, 3), mat: card(P.low || X.fern, !!P.low, 0.08), shadow: false },
+      grass: { geo: crossed(T, 2), mat: card(P.grass || X.grass, !!P.grass, 0.1), shadow: false },
       log: { geo: logGeo, mat: barkMat(), shadow: true },
       rock0: { geo: rock(7), mat: stoneMat, shadow: true }, rock1: { geo: rock(91), mat: stoneMat, shadow: true }, rock2: { geo: rock(1234), mat: stoneMat, shadow: true },
       box: { geo: new T.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), mat: lam(), shadow: true },
@@ -198,7 +208,8 @@ export class World {
     const light = () => { const s = new T.DirectionalLight(0xfff1dc, 1.9); s.position.set(-3, 6, 8); return [new T.HemisphereLight(0xdfe8f2, 0x5a4c36, 1.55), s]; };
     const model = (crown, crownMat, leafC, kind) => {
       const g = new T.Group(), h = 20, cr = 3.5;
-      const tm = new T.Mesh(trunkGeo, new T.MeshLambertMaterial({ map: bark, color: this.trunk2.clone().multiply(this.K.trunk.mat.color), vertexColors: true }));
+      const tk = kind !== "leaf" && this.K.trunkP ? this.K.trunkP : this.K.trunk, tcol = kind !== "leaf" && this.trunkP ? this.trunkP : this.trunk2;
+      const tm = new T.Mesh(trunkGeo, new T.MeshLambertMaterial({ map: tk.mat.map, color: tcol.clone().multiply(tk.mat.color), vertexColors: true }));
       tm.scale.set(1.3, kind === "pine2" ? h * 0.85 : kind === "pine" ? h * 0.75 : h * 0.66, 1.3); g.add(tm);
       const m = new T.Mesh(crown, new T.MeshLambertMaterial({ map: crownMat.map, alphaTest: 0.42, vertexColors: true, color: leafC.clone().multiply(crownMat.color) }));
       if (kind === "pine") { m.position.y = h * 0.3; m.scale.set(cr * 0.95, h * 0.7, cr * 0.95); }
@@ -306,11 +317,12 @@ export class World {
     const addTree = (x, z, h, cr) => {
       const y = this.heightAt(x, z), rot = r() * 6.283, isPine = r() < conifer;
       const bright = 0.85 + r() * 0.3;
-      const tc = tint(euc && r() < 0.7 ? this.trunk : this.trunk2, 0.6);
+      const tc = tint(isPine && this.trunkP ? this.trunkP : euc && r() < 0.7 ? this.trunk : this.trunk2, 0.6);
       if (isPine) {
-        // spruce-like cones, and (tall ones, a third) pines: a bare trunk under a high, rounded crown
-        const pine = h > 14 && r() < 0.35, c = tint(pick(this.pine)).multiplyScalar(bright);
-        inst.trunk.push([x, y - 0.2, z, 1 + h * 0.012, h * (pine ? 0.85 : 0.75), 1 + h * 0.012, rot, tc]);
+        // spruce-like cones, and (tall ones, a third, or the biome's « pineShare » over its « pineMinH ») pines: a bare trunk
+        // under a high, rounded crown
+        const pine = h > (this.B.pineMinH ?? 14) && r() < (this.B.pineShare ?? 0.35), c = tint(pick(this.pine)).multiplyScalar(bright);
+        inst[this.K.trunkP ? "trunkP" : "trunk"].push([x, y - 0.2, z, 1 + h * 0.012, h * (pine ? 0.85 : 0.75), 1 + h * 0.012, rot, tc]);
         if (pine) inst.pine2.push([x, y + h * 0.55, z, cr * 0.9, h * 0.45, cr * 0.9, rot, c]);
         else inst.pine.push([x, y + h * 0.3, z, cr * 0.95, h * 0.7, cr * 0.95, rot, c]);
         inst[pine ? "farPine2" : "farPine"].push([x, y - 0.2, z, (cr / 3.5) * this.IMP.w * 0.9, (h / 20) * this.IMP.h, (cr / 3.5) * this.IMP.w * 0.9, rot, c]);
@@ -398,7 +410,7 @@ export class World {
       const wg = new T.BufferGeometry(); wg.setAttribute("position", new T.Float32BufferAttribute(wp, 3)); wg.setIndex(wi); wg.computeVertexNormals();
       g.add(new T.Mesh(wg, this.waterMat));
     }
-    const LOD = { trunk: "near", crown: "near", crown2: "near", crown3: "near", crown4: "near", pine: "near", pine2: "near", farLeaf: "far", farPine: "far", farPine2: "far", low: "low", grass: "low", log: "near" };
+    const LOD = { trunk: "near", trunkP: "near", crown: "near", crown2: "near", crown3: "near", crown4: "near", pine: "near", pine2: "near", farLeaf: "far", farPine: "far", farPine2: "far", low: "low", grass: "low", log: "near" };
     const M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), P = new T.Vector3(), UP = new T.Vector3(0, 1, 0);
     for (const [kind, list] of Object.entries(inst)) {
       if (!list.length) continue;

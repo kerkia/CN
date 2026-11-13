@@ -323,10 +323,10 @@ Image.fromarray(cls, "L").save(RD / "cls_base.png", optimize=True)
 mapimg.save(RD / "map.webp", quality=90, method=6)
 th = mapimg.copy(); th.thumbnail((640, 640), Image.Resampling.LANCZOS); th.save(RD / "thumb.webp", quality=82)   # the page's card
 if not (RD / "biome.json").exists():
-    # a temperate European forest (oaks, beeches, birches, Scots pines), the default for these maps
-    json.dump({"conifer": 0.3, "leaf": ["#56763a", "#61803f", "#4d6c35", "#6a8a46"], "coniferLeaf": ["#34552f", "#3d5f35"],
-               "bush": ["#4f6d34", "#5a7a3a"], "low": ["#6f8045", "#7d8a4c", "#8a7a48"], "trunk": "#6b625a", "trunk2": "#5a5048",
-               "rock": ["#a29a8c", "#958e82", "#b0a898"], "fog": "#cdd6d8"}, open(RD / "biome.json", "w"))
+    # the place's biome (biomes.py: Fontainebleau's sandstone forests, else a temperate European forest)
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import biomes
+    json.dump(biomes.for_place(lat_c, lon_c), open(RD / "biome.json", "w"))
 laz = RD / "lidar" / "laz"; laz.mkdir(parents=True, exist_ok=True)
 for t in ids:
     for f in (mwork / "laz").glob(f"*{t}*.la[sz]"):
