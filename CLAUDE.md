@@ -1243,6 +1243,31 @@ Every multiple-choice game was played through to its score page at phone size, w
   (`checks.js` `sprintRules`, on a map of 1:5000 or larger or ISSprOM: gaps under 0.4 mm with the same touching and wedge rules, a
   path on paving, a stairway off it; « Vérifier » and « Lisibilité »; edges bucketed by 1 mm cells: 1 s on Gif's 11 000 objects);
   `tools/mapper/t_legibility.mjs` runs them on a map file.
+  **The rule catalogues, the gate, the review sheet, the remarks' tests** (2026-11-13, the owner: « every rule of the standards,
+  a gate, a sheet, a test for every remark »): `docs/mapper/standards.py` writes `site/assets/js/mapper/sets/rules-issprom2019-2.json`
+  (163 rules) and `rules-isom2017-2.json` (125) — every general rule and symbol of ISSprOM 2019-2 (rev. 6, the Czech text with the
+  FR/EN and SE ones) and ISOM 2017-2 with its paragraph, filed as `generator` (town_map.py does it), `check` (a measurable criterion,
+  the check's key, `implemented` or `planned`) or `manual` (a mapper's eye), severity `error` for the « shall » rules, `warn`, `info`,
+  English and French text, the minimum sizes (minimums.json and rev. 6's) as entries with their `value`; legibility.json names them
+  (`catalogues`) with the new parameters (scales, A3, point and line gaps, black lines, openings, olive, north lines, the course
+  symbols, white openings). `legibility.py` files every finding under its entry (`Report.entries`), checks the whole catalogue's
+  implemented rules — besides the earlier ones: a building's closed courtyards, white openings under 1 mm² (0.5 amid 401/408; cracks
+  under 0.05 mm, which print as nothing, mended unreported), points within radii + 0.15 mm, objects inside olive, outlines between
+  touching buildings, 518 under 3 mm made 515, the course symbols off the base map, contours cut at stairways, openings in walls and
+  fences under 1 mm, the scale, A3, the paved edge's 501.1, black lines side by side under 0.15 mm, the north lines, 512.2 along
+  another black line, minimum widths and areas of every area — and gives **the gate**: `gate` {error, warn, info, publishable} in
+  src/legibility.json (UTF-8 now), publishable when no « shall » rule is left. `py legibility.py <race> [--fix] [--sheet F.html]
+  [--gate]` (--gate: exit 2 when not publishable; the map's edge is its objects' extent, or its area's box when cut to it).
+  **`upload.py` refuses a package whose report has errors** unless `--accept-violations`, and the report always goes with the
+  package (`virtual/<race>/legibility.json`); `townmap_ci.py` puts it in the town plan (`legibility`: entries with their places)
+  and its result (`gate`), and Cartographier says after the import how many points the generator's check left (`map.data.town.leg`).
+  **`sheet.py`**: one HTML page, a crop of the map (48 m, 8 px/m, drawn from map_objects.json) round each place flagged — its
+  rule's paragraph, text, detail and Lambert 93 coordinates, 12 crops a rule spread over the map —, the summary, the manual list as
+  a checklist and the planned checks. **`test_remarks.py <race>`**: a test for each of the 31 remarks of standard-remarks.md and the
+  four known places of Gif (Bras Mort, the station tunnel, the town hall lawns, the long stairway), on map_objects.json (its
+  curves and OCAD flags: 505's junctions, corner points) and the sources (osm.json, sports.json, bdtopo_batiment.json) and the
+  report (`--recheck` runs the check again); 11 (bare ground by sports grounds) and 30 (helpers never printed) are not testable
+  from the objects and are skipped with their reason. Exit 1 on a failure.
   **Sports grounds** (owner, 2026-11-11: « a rugby field, soccer fields, tennis courts, a track: can the scene show them? »):
   `town_map.py` reads OpenStreetMap's `leisure=pitch|track` with their `sport` and `surface` (BD TOPO's `terrain_de_sport` where
   OSM has none, its `nature_detaillee` giving the sport; a filled oval's track 8.5 m wide) into `src/sports.json`; the map (owner,
