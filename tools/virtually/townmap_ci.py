@@ -126,14 +126,25 @@ def make(req: dict, work: Path) -> dict:
     lidar = json.load(open(rd / "src" / "lidar.json", encoding="utf-8")) if (rd / "src" / "lidar.json").exists() else {}
     out.update(area=area["box"], made=now_iso(), lidar={k: v.get("date", "") for k, v in lidar.items()},
                cadastre="pci" if (rd / "src" / "parcelles_pci.json").exists() else "etalab")
+    # the legibility check's report (legibility.py, run by town_map.py): what it left, rule by rule with its places, goes with
+    # the map — the mapper corrects a town plan, so it is said, not refused
+    lp = rd / "src" / "legibility.json"
+    if lp.exists():
+        lg = json.load(open(lp, encoding="utf-8"))
+        out["legibility"] = {"standard": lg.get("standard"), "gate": lg.get("gate"),
+                             "entries": {k: {"ref": v.get("ref"), "sev": v.get("sev"), "left": v.get("left"), "fixed": v.get("fixed"),
+                                             "places": [p["at"] for p in v.get("places", [])[:200]]}
+                                         for k, v in lg.get("entries", {}).items()}}
     prog("upload", 0)
     data = gzip.compress(json.dumps(out, separators=(",", ":")).encode("utf-8"))
     ci.aws("cp", "-", f"{ci.BUCKET}/{OUT}{rid}.json.gz", "--content-type", "application/json", data=data)
-    return {"objects": len(out["objects"]), "bytes": len(data), "lidar": sorted(set(out["lidar"].values())), "s": timing}
+    return {"objects": len(out["objects"]), "bytes": len(data), "lidar": sorted(set(out["lidar"].values())), "s": timing,
+            "legibility": (out.get("legibility") or {}).get("gate")}
 
 
 # town_map.py's steps and the share of the map's time they usually start at (500 × 500 m of Gif, 2026-11-12)
-STEPS = {"points": 0.0, "photo": 0.1, "vectors": 0.12, "areas": 0.2, "lines": 0.45, "contours": 0.85, "objects": 0.92}
+STEPS = {"points": 0.0, "photo": 0.1, "vectors": 0.12, "areas": 0.2, "enclosures": 0.35, "lines": 0.45, "contours": 0.75,
+         "objects": 0.82, "legibility": 0.86}
 
 
 def setup(reqs: Path):
