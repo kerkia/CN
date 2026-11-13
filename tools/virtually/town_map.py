@@ -1544,12 +1544,13 @@ for xm in np.arange(math.floor((X0 - CX) / 120) * 120, (X1 - CX) + 1, 120):
 # curved: what can be mended safely is (gaps under 0.4 mm between impassable features closed, slivers given to their
 # neighbour…), the rest reported in src/legibility.json
 import legibility
+step("legibility")
 DOC = {"title": f"{RACE} sprint", "scale": SCALE, "set": "issprom2019-2", "realWorld": {"x": CX, "y": CY, "epsg": 2154},
        "objects": objects}
 LEG = legibility.check(DOC, fix="--no-fix" not in sys.argv, frame=CLIP, log=log, decks=DECK_ALL)   # (its sides: 515, no gap)
 for line in ["legibility"] + LEG.lines():
     log(line)
-json.dump(LEG.json(), open(SRC / "legibility.json", "w"))
+legibility.write_report(LEG, SRC / "legibility.json")
 objects = DOC["objects"]
 # the unpaved paths' junctions (the owner, 2026-11-13: « the intersections are still wrong »): 505 is a double line (black edges over
 # a brown 30 % fill, the black printed above), so at a junction each path's edges cross the other's fill. A path loses its edges
