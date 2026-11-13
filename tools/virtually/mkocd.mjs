@@ -29,7 +29,8 @@ L.transact("town", () => {
     let coords;
     if (o.bez) {                                   // Bézier curves made by town_map.py: [x, y, flag] (1, 2 = the handles), a hole's first point flagged
       coords = [];
-      o.bez.forEach((r, i) => r.forEach(([x, y, f], k) => coords.push(ocad(x, y, f || 0, o.otp === 3 && i > 0 && k === 0 ? 2 : 0))));
+      // [x, y, x flag (1, 2: the handles), y flag (1: a corner point, where a line's pattern starts again)]; a hole's first point flagged 2
+      o.bez.forEach((r, i) => r.forEach(([x, y, f, c], k) => coords.push(ocad(x, y, f || 0, (c || 0) | (o.otp === 3 && i > 0 && k === 0 ? 2 : 0)))));
     } else if (o.otp === 3) coords = areaCoords(o.rings);
     else if (o.curve && o.otp === 2 && o.rings[0].length >= 3) coords = bezier(o.rings[0]);
     else coords = o.rings[0].map(([x, y]) => ocad(x, y));

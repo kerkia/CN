@@ -23,7 +23,8 @@ the report says what is really left; about 3.5 min on Gif's 1.4 km²):
   widened to its minimum; a building's narrow part is reported only;
 - area: an area under its symbol's minimum area: given to its neighbour (a building: reported);
 - length: a line under its symbol's minimum length (reported);
-- contour_end: a contour that ends in the open, not at a building or the map's edge (reported: the mapper's « not allowed »);
+- contour_end: a contour that ends in the open, not at a stairway or the map's edge (reported: the mapper's « not allowed »; a
+  contour runs through the buildings and across the streets, and is cut only where it crosses a stairway — ISSprOM);
 - overlap: a line (path, wall, fence, stream, edge) or a point (tree, monument) inside a building — cut out or dropped —, two
   point symbols drawn over each other (the smaller tree dropped), the LiDAR's vegetation over an area with a vector source
   (cut), any other two ground areas over each other (reported);
@@ -684,13 +685,15 @@ def _once(doc, fix, frame, log, what, areas_only=False, decks=None):
                     rep.add("length", f["g"], f"{c} {f['g'].length:.1f} m, minimum {mn * k:.1f} m")
         near_end = RULES["contourEndMm"] * k
         edge = frame.boundary
+        _sw = lambda f: [0.4, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0][min(int(f["c"].split(".")[1]) if "." in f["c"] else 0, 6)]
+        STL = Local([unary_union([f["g"].buffer(_sw(f) * k / 2 + 1.0, cap_style="flat") for f in line_feats(k_stairs)] or [Polygon()])])
         for f in line_feats(RULES["contours"]):
             cs = list(f["g"].coords)
             if len(cs) > 2 and Point(cs[0]).distance(Point(cs[-1])) < 0.05:
                 continue
             for e in (cs[0], cs[-1]):
                 p = Point(e)
-                nb = BL.at(p, near_end + 0.1)
+                nb = STL.at(p, near_end + 0.1)
                 if (nb.is_empty or nb.distance(p) > near_end) and edge.distance(p) > 1.0:
                     rep.add("contour_end", p, f"{f['c']} ends in the open")
         mouths = PASS.boundary if not PASS.is_empty else None

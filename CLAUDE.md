@@ -1184,7 +1184,17 @@ Every multiple-choice game was played through to its score page at phone size, w
   parcel with a building of 3 dwellings or more, or with shops or services, is open: an accessible courtyard had come out olive);
   **no sliver**: any part of an area under 1 m across goes to the neighbour it shares the longest edge with. The checks a mapper's
   software does (OCAD's legibility checker: minimum gaps between impassable features, minimum sizes) are another session's work
-  (2026-11-12). These rules are the generator's (`town_map.py`,
+  (2026-11-12). **The owner's review of 2026-11-13** (ISSprOM's texts): **contours run through the buildings** (brown 100 % is printed over
+  their black 50 %), **square across the streets** (a crossing shorter than three times the street's width laid perpendicular to its
+  carriageway's axis), **cut where they cross a stairway**, simplified before they are rounded (no kink), no angle kept on contours
+  and watercourses; **ground enclosed** by uncrossable features (buildings less their passages, walls and fences 1.5 m high or
+  more, hedges, water, the railway; opened at OSM's gates) and reached from no street, public space or the map's edge is **520**, or
+  **part of the building** when buildings make 85 % of its edge (sports grounds left out); **trees** closer than their symbols
+  allow (radii + 0.15 mm): two keep the larger, three or more become an area — 402 (open) or 501.3 (paving) from 300 m², else
+  forest 405; OSM's stream beside BD TOPO's within 12 m is the same stream; **OCAD corner points** (y flag 1) at every angle of 30°
+  or more of a line, so that a pattern (ticks, triangles, dashes) starts again from the corner instead of falling on it; the
+  areas cut on a 1 cm grid (GEOS failed on near-coincident outlines). The legibility check (`legibility.py`, run inside
+  `town_map.py`) accepts a contour ending only at a stairway or the map's edge, and counts 501.3 as paving. These rules are the generator's (`town_map.py`,
   `mkocd.mjs`), so every town map made after Gif has them — and **Cartographier's « Plan de ville (sprint) » is this same
   generator** (owner, 2026-11-12: one engine, quality before speed; the townmap workflow, see Cartographier), so a rule changed here
   reaches both; the symbols mkocd.mjs used to make (501.6-501.9, 532.1-532.6, 990, 991, 993, 995) are the ISSprOM set's own

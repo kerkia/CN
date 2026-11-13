@@ -560,7 +560,7 @@ for e in osm:
             ditches.append(g)
         else:
             streams.append(("osm", g))
-BD_STREAM = unary_union([g.buffer(4) for g in streams if not isinstance(g, tuple) and g is not None] or [Polygon()])
+BD_STREAM = unary_union([g.buffer(12) for g in streams if not isinstance(g, tuple) and g is not None] or [Polygon()])   # (they lie metres apart: one stream)
 streams = [g for g in streams if not isinstance(g, tuple)] + [g for _, g in (x for x in streams if isinstance(x, tuple))
                                                                  if g.difference(BD_STREAM).length > 0.5 * g.length]
 CULV = unary_union([g.buffer(2.5) for g in culverts]) if culverts else Polygon()
@@ -835,7 +835,121 @@ OPEN_R = unary_union([g for g, v in zip(_cov, _val) if KNAME.get(v) == "open"])
 GREEN_PUB = OPEN_R.intersection(PUBLIC) if not PUBLIC.is_empty else Polygon()
 SP_OPEN = unary_union([s["g"] for s in sports if s["sport"] not in NO_ENTRY and s["surface"] in ("grass", "turf")] or [Polygon()])
 SP_PAVED = unary_union([s["g"] for s in sports if s["sport"] in NO_ENTRY or s["surface"] not in ("grass", "turf")] or [Polygon()])
-OLIVE_A = PRIVATE
+def along(line, arr, step=0.5):
+    pts = [line.interpolate(d) for d in np.arange(0, line.length + 1e-6, step)]
+    if not pts:
+        return np.array([])
+    px, py = to_px([p.x for p in pts], [p.y for p in pts])
+    return arr[np.clip(py.astype(int), 0, NY - 1), np.clip(px.astype(int), 0, NX - 1)]
+
+
+ZO = np.maximum(maximum_filter(Z["zo"], 3), maximum_filter(Z["zb"], 3))      # the highest non-vegetation returns, once
+
+
+def height_of(line):
+    """A wall or fence's height above the ground: the highest non-vegetation return within 0.5 m along it (LiDAR)."""
+    v = along(line, ZO) - along(line, dtm)
+    v = v[(v > 0.2) & (v < 8)]
+    return float(np.median(v)) if len(v) > 3 else 0.0
+
+
+# ---- ground enclosed (the owner, 2026-11-13, from ISSprOM: « areas that are entirely enclosed within uncrossable features such as
+# hedges and fences should be filled with symbol 520 », and « inaccessible areas inside building blocks are part of the building »):
+# the uncrossable features rasterised at 0.5 m — buildings (less the passages through them), walls and fences 1.5 m high or more
+# (the LiDAR along them), hedges, water, the railway —, opened at OpenStreetMap's gates and entrances; every piece of ground no way
+# reaches from a street, the public road space or the map's edge is enclosed: part of the building when buildings make most of
+# its edge, else 520. The sports grounds are left as they are.
+step("enclosures")
+bar = np.zeros((NY, NX), np.uint8)
+_passes = unary_union([pc.buffer(w / 2 + 0.5, cap_style="flat") for pc, w, _ in passages] or [Polygon()])
+burn(B.difference(_passes), 2, bar)
+_imp = []
+for g, kind, ret in walls:
+    for l in getattr(g, "geoms", [g]):
+        if l.geom_type == "LineString" and l.length >= 1 and height_of(l) >= 1.5:
+            _imp.append(l.buffer(0.35))
+_gates = unary_union([osm_geom(e).buffer(1.5) for e in osm if e["type"] == "node" and tags(e).get("barrier") in
+                      ("gate", "entrance", "lift_gate", "swing_gate", "kissing_gate", "turnstile", "stile", "bollard", "cycle_barrier")]
+                     or [Polygon()])
+_lines_bar = unary_union(_imp + [h.buffer(0.5, cap_style="flat") for h in hedges]
+                         + ([RAIL_L.buffer(2.0)] if not RAIL_L.is_empty else []) or [Polygon()]).difference(_gates)
+burn(_lines_bar, 1, bar)
+burn(water, 1, bar)
+free = bar == 0
+lab, nlab = label(free)
+seed = np.zeros((NY, NX), bool)
+_sd = np.zeros((NY, NX), np.uint8); burn(unary_union([PAVED, PUBLIC] + ([unary_union([pc.buffer(w / 2) for pc, w, _ in passages])] if passages else [])), 1, _sd)
+seed |= _sd == 1
+seed[0, :] = seed[-1, :] = seed[:, 0] = seed[:, -1] = True
+reach = np.zeros(nlab + 1, bool); reach[np.unique(lab[seed & free])] = True; reach[0] = True
+encl = free & ~reach[lab]
+_sp = np.zeros((NY, NX), np.uint8)
+if sports:
+    burn(unary_union([s_["g"].buffer(1) for s_ in sports]), 1, _sp)
+ENCL_OLIVE, ENCL_BUILD = [], []
+if encl.any():
+    el, ne = label(encl)
+    sizes = np.bincount(el.ravel())
+    from scipy.ndimage import find_objects
+    for k, sl in enumerate(find_objects(el), start=1):
+        if sl is None or sizes[k] < 8:                            # under 2 m²: nothing to draw
+            continue
+        sl2 = (slice(max(0, sl[0].start - 1), sl[0].stop + 1), slice(max(0, sl[1].start - 1), sl[1].stop + 1))
+        m = el[sl2] == k
+        if (_sp[sl2][m] == 1).mean() > 0.5:
+            continue
+        ring = binary_dilation(m) & ~m
+        nb = bar[sl2][ring]
+        frac_b = float((nb == 2).sum()) / max(1, int((nb > 0).sum()))
+        for geo, v in _shapes(m.astype(np.uint8), mask=m, transform=_from_origin(X0 + sl2[1].start * R, Y1 - sl2[0].start * R, R, R)):
+            g = shape(geo).buffer(0.3).buffer(-0.3)                # the cells' staircase smoothed a little
+            (ENCL_BUILD if frac_b >= 0.85 else ENCL_OLIVE).append(g)
+ENCL_OLIVE = unary_union(ENCL_OLIVE or [Polygon()]).buffer(0.26).difference(B)   # up to the features that close it
+ENCL_BUILD = unary_union(ENCL_BUILD or [Polygon()]).buffer(0.26)
+log("enclosed ground: 520", round(ENCL_OLIVE.area), "m², part of a building", round(ENCL_BUILD.area), "m²")
+
+
+# ---- trees outside the woods: the LiDAR's crowns over paved or open ground, each a point 417 (large) or 418 — unless they stand
+# closer than their symbols can (the owner, 2026-11-13: « the minimum distance between the trees is not kept; then 402/404 for a
+# large area, 405 if small »): the symbols' radii and a gap of 0.15 mm apart at least; two too close keep the larger; three or more
+# become an area — scattered trees (402 on open ground, 501.3 on paving) when it covers 300 m² or more, else forest (405)
+from scipy.spatial import cKDTree
+_c = gaussian_filter(chm, 1.0)
+_olin = unary_union([PRIVATE, ENCL_OLIVE]).buffer(-1.0)
+trees = []
+for i, j in zip(*np.nonzero((_c == maximum_filter(_c, size=9)) & (_c > 4))):
+    if cl[i, j] in (K["paved"], K["open"], K["slow"]) and not WOOD[i, j]:
+        x, y = X0 + (j + 0.5) * R, Y1 - (i + 0.5) * R
+        if not _olin.contains(Point(x, y)):
+            trees.append((x, y, 417 if _c[i, j] > 14 else 418, int(cl[i, j])))
+TREE_R = {417: 0.6, 418: 0.4}                                         # the symbols' radii, mm
+TREE_POINTS, TREE_AREA = [], {"open_t": [], "paved_t": [], "forest": []}
+if trees:
+    xy = np.array([(t_[0], t_[1]) for t_ in trees]); par = list(range(len(trees)))
+
+    def find(a):
+        while par[a] != a:
+            par[a] = par[par[a]]; a = par[a]
+        return a
+    for a, b in cKDTree(xy).query_pairs((0.6 + 0.6 + 0.15) * SCALE / 1000):
+        if math.dist(xy[a], xy[b]) < (TREE_R[trees[a][2]] + TREE_R[trees[b][2]] + 0.15) * SCALE / 1000:
+            par[find(a)] = find(b)
+    groups = {}
+    for k in range(len(trees)):
+        groups.setdefault(find(k), []).append(k)
+    for ks in groups.values():
+        if len(ks) == 1:
+            TREE_POINTS.append(trees[ks[0]])
+        elif len(ks) == 2:
+            TREE_POINTS.append(max((trees[k] for k in ks), key=lambda t_: t_[2]))
+        else:
+            g = unary_union([Point(trees[k][0], trees[k][1]).buffer(3.0) for k in ks]).buffer(2.0).buffer(-2.0)
+            paved_n = sum(1 for k in ks if trees[k][3] == K["paved"])
+            TREE_AREA["forest" if g.area < 300 else "paved_t" if paved_n * 2 > len(ks) else "open_t"].append(g)
+TREE_AREA = {k: unary_union(v).difference(B) if v else Polygon() for k, v in TREE_AREA.items()}
+AREA_SYM["paved_t"] = S(501, 3)
+log("trees: points", len(TREE_POINTS), "of", len(trees), "areas", {k: round(v.area) for k, v in TREE_AREA.items()})
+OLIVE_A = unary_union([PRIVATE, ENCL_OLIVE])
 # OpenStreetMap's lawns (the owner's mapper, 2026-11-12: « lawns in front of the town hall are in OSM and not on the map »: the
 # photograph's infrared saw them bare, and the public road space made them paving): grass, village greens, meadows, grassland as
 # open land, drawn from their outline, but where a street or a paved area of OSM or BD TOPO lies
@@ -856,15 +970,25 @@ PATHS_A = unary_union([q for q in getattr(PATHS_A, "geoms", [PATHS_A]) if q.geom
 log("paved footways", len(paved_paths), round(PATHS_A.area), "m²")
 GRASS = GRASS.difference(PAVED).difference(PATHS_A).difference(B) if not GRASS.is_empty else GRASS
 log("OSM lawns", round(GRASS.area), "m²")
-VEC_ORDER = [("water", water), ("imp_veg", HEDGE_G), ("private", OLIVE_A), ("open", unary_union([SP_OPEN, GRASS])),
+VEC_ORDER = [("bfill", ENCL_BUILD), ("water", water), ("imp_veg", HEDGE_G), ("private", OLIVE_A),
+             ("forest", TREE_AREA["forest"]), ("open_t", TREE_AREA["open_t"]), ("paved_t", TREE_AREA["paved_t"]), ("open", unary_union([SP_OPEN, GRASS])),
              ("paved", unary_union([SP_PAVED, PAVED, PUBLIC.difference(GREEN_PUB), PATHS_A]))]
 taken = Polygon()
 COVER = {}
-for k, g in VEC_ORDER:
-    g = g.intersection(frame).difference(taken).buffer(0)
+def _poly(g):
+    """A valid geometry's surfaces only (make_valid may leave lines or points beside them)."""
+    g = shapely.make_valid(g)
+    if g.geom_type in ("Polygon", "MultiPolygon"):
+        return g
+    ps = [q for q in getattr(g, "geoms", [g]) if q.geom_type in ("Polygon", "MultiPolygon")]
+    return unary_union(ps) if ps else Polygon()
+
+
+for k, g in VEC_ORDER:                                              # (on a 1 cm grid: near-coincident outlines made GEOS fail)
+    g = _poly(shapely.difference(_poly(shapely.intersection(_poly(g), frame, grid_size=0.01)), taken, grid_size=0.01))
     if not g.is_empty:
         COVER.setdefault(k, []).append(g)
-        taken = taken.union(g)
+        taken = _poly(shapely.union(taken, g, grid_size=0.01))
 VECU = shapely.make_valid(taken)
 RVEC = unary_union([g for g, v in zip(_cov, _val) if KNAME.get(v) in ("private", "water", "imp_veg", "building")])
 log("vector areas", round(VECU.area), "m²")
@@ -940,6 +1064,8 @@ if not HEAVY.is_empty:
     COVER["paved"] = [PAVED_ALL.difference(HEAVY)]
     COVER["heavy"] = [HEAVY]
     AREA_SYM["heavy"] = S(501, 4)
+if COVER.get("paved_t"):                                            # (paving with scattered trees: the same paving, no edge between)
+    PAVED_ALL = shapely.make_valid(unary_union([PAVED_ALL] + COVER["paved_t"])).buffer(0)
 for k, sym in AREA_SYM.items():                                     # one geometry a class: no seam between two pieces
     if sym and COVER.get(k):
         add_area(shapely.make_valid(unary_union(COVER[k])).buffer(0), sym, 6 if k != "water" else 2)
@@ -948,7 +1074,7 @@ inside = frame.buffer(-0.01)
 # the borders, nobody cares »); a shed of under 20 m² inside the ground not to be entered is left out (what lies there is
 # generalised: the runner never goes in)
 OLIVE_IN = PRIVATE.buffer(-1.0)
-blocks = unary_union([g.buffer(0.15, join_style="mitre") for g, _ in buildings]).buffer(-0.15, join_style="mitre")
+blocks = unary_union([g.buffer(0.15, join_style="mitre") for g, _ in buildings] + [ENCL_BUILD]).buffer(-0.15, join_style="mitre")
 # a passage through a building (a porch, a covered driveway) is no tunnel: the building cut there and the passage a canopy, 522
 # (ISSprOM: a roofed area one runs under), no 512 symbol (the owner's mapper, 2026-11-12)
 def through_building(pc):
@@ -1056,22 +1182,6 @@ for g in COVER.get("water", []):
 
 # ---- lines ------------------------------------------------------------------------------------------------------------------
 step("lines")
-def along(line, arr, step=0.5):
-    pts = [line.interpolate(d) for d in np.arange(0, line.length + 1e-6, step)]
-    if not pts:
-        return np.array([])
-    px, py = to_px([p.x for p in pts], [p.y for p in pts])
-    return arr[np.clip(py.astype(int), 0, NY - 1), np.clip(px.astype(int), 0, NX - 1)]
-
-
-def height_of(line):
-    """A wall or fence's height above the ground: the highest non-vegetation return within 0.5 m along it (LiDAR)."""
-    zo = np.maximum(maximum_filter(Z["zo"], 3), maximum_filter(Z["zb"], 3))
-    v = along(line, zo) - along(line, dtm)
-    v = v[(v > 0.2) & (v < 8)]
-    return float(np.median(v)) if len(v) > 3 else 0.0
-
-
 # the courts' enclosures (tennis, multi-sport): their outline, fenced where the LiDAR sees something 1.5 m high along it, in 2 m
 # pieces (a gate, an open side stay open)
 from shapely.ops import linemerge
@@ -1232,13 +1342,16 @@ for g in ditches:
 if not RAIL.is_empty:
     add_line(RAIL.intersection(CLIP), S(509, 1), 3)
 
-# contours: every 2.5 m from the LiDAR's ground, smoothed, out of the buildings
+# contours: every 2.5 m from the LiDAR's ground, smoothed, through the buildings, square across the streets, cut at the stairways
 step("contours")
 from skimage.measure import find_contours
 # the owner's mapper, 2026-11-12: « parasite relief » and « contours that stop in the middle of nowhere — not allowed »: the
 # ground smoothed over 4 m (a town's ground holds kerbs, walls, embankments and the LiDAR's gaps), each line rounded (Chaikin);
-# a contour is dropped whole or kept whole — a closed loop under 600 m², a line under 40 m at the map's edge —, then cut
-# exactly at the buildings' outlines, so that every end it has touches a building or the map's edge
+# a contour is dropped whole or kept whole — a closed loop under 600 m², a line under 40 m at the map's edge.
+# The owner, 2026-11-13, from ISSprOM: a contour is not cut at the buildings (the brown is printed over their grey: cut, a town's
+# contours could be seen nowhere); « contour lines shall be drawn at right angles crossing streets » (each crossing of a street
+# shorter than three times its width laid square across it, the street's direction read from its carriageway's axis); « contour
+# lines shall be cut when crossing stairs »; the line simplified before it is rounded (no small kink left)
 def chaikin(pts, n=2, closed=False):
     pts = np.asarray(pts, float)
     for _ in range(n):
@@ -1251,7 +1364,46 @@ def chaikin(pts, n=2, closed=False):
 
 sm = gaussian_filter(dtm, 8.0)
 lo, hi = math.floor(sm.min() / 2.5) * 2.5, math.ceil(sm.max() / 2.5) * 2.5
-NOC = B
+STAIR_A = unary_union([g.buffer(sw / 2 + 0.3, cap_style="flat") for g, sw in steps] or [Polygon()])
+_axes = [(l, h) for (h, _, _), ls in carr_lines.items() for g in ls for l in getattr(g, "geoms", [g]) if l.geom_type == "LineString"]
+AX_TREE = shapely.STRtree([l for l, _ in _axes]) if _axes else None
+
+
+def square_streets(line):
+    """The line's crossings of the streets laid square across them."""
+    if AX_TREE is None or STREET.is_empty or not line.intersects(STREET):
+        return line
+    L = line.length; ds = np.arange(0, L + 1e-6, 0.5)
+    pts = [line.interpolate(d) for d in ds]
+    inside = shapely.contains_xy(STREET, [q.x for q in pts], [q.y for q in pts])
+    out, i, n = [], 0, len(pts)
+    while i < n:
+        if not inside[i]:
+            out.append((pts[i].x, pts[i].y)); i += 1; continue
+        j = i
+        while j < n and inside[j]:
+            j += 1
+        if i == 0 or j >= n:                                   # the line begins or ends in the street: left as it is
+            out += [(q.x, q.y) for q in pts[i:j]]; i = j; continue
+        A, Bp = pts[i - 1], pts[j]; mid = Point((A.x + Bp.x) / 2, (A.y + Bp.y) / 2)
+        ax = _axes[AX_TREE.nearest(mid)][0]; s0 = ax.project(mid)
+        p0, p1 = ax.interpolate(max(0, s0 - 1.5)), ax.interpolate(min(ax.length, s0 + 1.5))
+        tx, ty = p1.x - p0.x, p1.y - p0.y; tn = math.hypot(tx, ty) or 1; nx_, ny_ = -ty / tn, tx / tn
+        across = LineString([(mid.x - nx_ * 40, mid.y - ny_ * 40), (mid.x + nx_ * 40, mid.y + ny_ * 40)]).intersection(STREET)
+        seg = None
+        for q in getattr(across, "geoms", [across]):
+            if q.geom_type == "LineString" and q.distance(mid) < 0.5:
+                seg = q; break
+        run = (j - i) * 0.5
+        if seg is None or run > 3 * seg.length + 4:            # along the street rather than across: left as it is
+            out += [(q.x, q.y) for q in pts[i:j]]; i = j; continue
+        e0, e1 = seg.coords[0], seg.coords[-1]
+        if math.dist(e0, (A.x, A.y)) > math.dist(e1, (A.x, A.y)):
+            e0, e1 = e1, e0
+        out += [e0, e1]; i = j
+    return LineString(out) if len(out) >= 2 else line
+
+
 nc = 0
 for lv in np.arange(lo, hi + 0.01, 2.5):
     idx = abs((lv / 2.5) % 5) < 1e-6
@@ -1262,10 +1414,11 @@ for lv in np.arange(lo, hi + 0.01, 2.5):
         xy = np.c_[X0 + (c[:, 1] + 0.5) * R, Y1 - (c[:, 0] + 0.5) * R]
         if closed and Polygon(xy).area < 600:
             continue
-        l = LineString(chaikin(xy, 2, closed)).simplify(0.3)
+        l = LineString(chaikin(np.array(LineString(xy).simplify(0.8).coords), 3, closed))
         if not closed and l.length < 40:
             continue
-        cut = l.difference(NOC)
+        l = square_streets(l)
+        cut = l.difference(STAIR_A)
         for piece in getattr(cut, "geoms", [cut]):
             if piece.geom_type == "LineString" and piece.length >= 3:
                 add_line(piece, S(102) if idx else S(101), curve=True); nc += 1
@@ -1274,16 +1427,10 @@ log("contour pieces", nc, f"{lo}-{hi} m")
 # ---- points -----------------------------------------------------------------------------------------------------------------
 step("objects")
 # trees standing alone: the LiDAR's crowns over paved or open ground
-c = gaussian_filter(chm, 1.0)
-pk = (c == maximum_filter(c, size=9)) & (c > 4)
-r_, c_ = np.nonzero(pk)
 lone = 0
-for i, j in zip(r_, c_):
-    if cl[i, j] in (K["paved"], K["open"], K["slow"]) and not WOOD[i, j]:                  # (not inside the ground not to be entered)
-        x, y = X0 + (j + 0.5) * R, Y1 - (i + 0.5) * R
-        if OLIVE_IN.contains(Point(x, y)):
-            continue
-        add_point(x, y, S(417) if c[i, j] > 14 else S(418)); lone += 1
+for x, y, sym, _ in TREE_POINTS:                                       # (made above: those far enough apart)
+    if not OLIVE_IN.contains(Point(x, y)):
+        add_point(x, y, S(sym)); lone += 1
 for e in osm:
     t = tags(e)
     if e["type"] != "node":
@@ -1363,7 +1510,16 @@ for o in objects:
             NBR.setdefault(_K(p), set()).add(frozenset([_K(a) if a else None, _K(c) if c else None]))
 
 
-def _bez(r, closed):
+SMOOTH = {S(101), S(102), S(103), S(305), S(306)}
+
+
+def _turn(a, b, c):
+    u, v = (b[0] - a[0], b[1] - a[1]), (c[0] - b[0], c[1] - b[1])
+    nu, nv = math.hypot(*u), math.hypot(*v)
+    return 0.0 if nu < 1e-9 or nv < 1e-9 else math.degrees(math.acos(max(-1.0, min(1.0, (u[0] * v[0] + u[1] * v[1]) / (nu * nv)))))
+
+
+def _bez(r, closed, smooth=False):
     pts = r[:-1] if closed and _K(r[0]) == _K(r[-1]) else list(r); n = len(pts)
     if n < 3 if not closed else n < 3:
         return [[x, y, 0] for x, y in r]
@@ -1371,6 +1527,8 @@ def _bez(r, closed):
     def corner(i):
         if not closed and (i == 0 or i == n - 1):
             return True
+        if smooth:                                         # a contour or a watercourse has no angle
+            return False
         a, b, c = pts[(i - 1) % n], pts[i], pts[(i + 1) % n]
         if len(NBR.get(_K(b), ())) > 1:
             return True
@@ -1386,21 +1544,36 @@ def _bez(r, closed):
         a, c = pts[(i - 1) % n], pts[(i + 1) % n]; t = 1 if j == (i + 1) % n else -1
         return (pts[i][0] + t * (c[0] - a[0]) / 6, pts[i][1] + t * (c[1] - a[1]) / 6)
 
-    out = [[pts[0][0], pts[0][1], 0]]
+    # an angle of 30° or more is an OCAD corner point (y flag 1): a line's pattern (ticks, triangles, dashes) starts again from it
+    # rather than falling on it (the owner, 2026-11-13: « nothing should be on the corner »)
+    cp = [cor[i] and (closed or 0 < i < n - 1) and _turn(pts[(i - 1) % n], pts[i], pts[(i + 1) % n]) >= 30 for i in range(n)]
+    out = [[pts[0][0], pts[0][1], 0, 1 if cp[0] else 0]]
     for i in range(n if closed else n - 1):
         j = (i + 1) % n
         if cor[i] and cor[j]:
-            out.append([pts[j][0], pts[j][1], 0]); continue
+            out.append([pts[j][0], pts[j][1], 0, 1 if cp[j] else 0]); continue
         h1, h2 = h(i, j), h(j, i)
-        out += [[round(h1[0], 3), round(h1[1], 3), 1], [round(h2[0], 3), round(h2[1], 3), 2], [pts[j][0], pts[j][1], 0]]
+        out += [[round(h1[0], 3), round(h1[1], 3), 1, 0], [round(h2[0], 3), round(h2[1], 3), 2, 0], [pts[j][0], pts[j][1], 0, 1 if cp[j] else 0]]
     return out
+
+
+def _corners_only(r, closed):
+    """A line kept straight, its angles of 30° or more flagged as corner points."""
+    pts = r[:-1] if closed and _K(r[0]) == _K(r[-1]) else list(r); n = len(pts)
+    res = [[x, y, 0, 1 if (closed or 0 < i < n - 1) and n >= 3 and _turn(pts[(i - 1) % n], pts[i], pts[(i + 1) % n]) >= 30 else 0]
+           for i, (x, y) in enumerate(pts)]
+    return res + [res[0][:3] + [res[0][3]]] if closed else res
 
 
 n_curved = 0
 for o in objects:
-    if o["otp"] == 1 or o["sym"] in STRAIGHT:
+    if o["otp"] == 1:
         continue
-    o["bez"] = [_bez(r, o["otp"] == 3 or _closed(r)) for r in _rings(o)]
+    if o["sym"] in STRAIGHT:
+        if o["otp"] == 2 and o["sym"] not in (S(990), S(993)):
+            o["bez"] = [_corners_only(r, _closed(r)) for r in _rings(o)]
+        continue
+    o["bez"] = [_bez(r, o["otp"] == 3 or _closed(r), o["sym"] in SMOOTH) for r in _rings(o)]
     o.pop("curve", None); n_curved += 1
 log("curved objects", n_curved)
 json.dump(DOC, open(RD / "map_objects.json", "w"))
