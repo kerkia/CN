@@ -259,12 +259,15 @@ export function cardConifer(T, seed, { whorls = 9, from = 0.06, shape = "cone" }
   const r = rng(seed), parts = [];
   for (let w = 0; w < whorls; w++) {
     const f = w / whorls, y = from + f * (0.92 - from);
-    // a spruce's cone, or a pine's crown: wide and rounded at the top of a bare trunk
-    const rad = shape === "pine" ? (0.55 + 0.45 * Math.sin(Math.PI * (0.25 + 0.75 * f))) * (0.9 + r() * 0.25) : (1 - f) * 0.95 + 0.08;
-    const nb = Math.max(3, Math.round((shape === "pine" ? 6 : 7) - w * 0.5));
+    // a spruce's cone, a pine's crown (wide and rounded at the top of a bare trunk), or a young pine: an ovoid down to the ground,
+    // dense, its top rounded (a sapling's narrow cone of thin cards read as a dark spike, owner 2026-11-13)
+    const young = shape === "young";
+    const rad = shape === "pine" ? (0.55 + 0.45 * Math.sin(Math.PI * (0.25 + 0.75 * f))) * (0.9 + r() * 0.25)
+      : young ? (0.62 + 0.38 * Math.sin(Math.PI * (0.15 + 0.85 * f))) * (1 - 0.45 * f) * (0.9 + r() * 0.2) : (1 - f) * 0.95 + 0.08;
+    const nb = young ? Math.max(5, Math.round(9 - w * 0.5)) : Math.max(3, Math.round((shape === "pine" ? 6 : 7) - w * 0.5));
     for (let b = 0; b < nb; b++) {
       const a = (b / nb) * 6.283 + r() * 0.5 + w;
-      const p = new T.PlaneGeometry(rad * 1.15, 0.32 + rad * 0.12);
+      const p = new T.PlaneGeometry(rad * 1.15, (young ? 0.42 : 0.32) + rad * (young ? 0.2 : 0.12));
       p.translate(rad * 0.55, 0, 0); p.rotateZ(-0.12); p.rotateX((r() - 0.5) * 0.9); p.rotateY(-a); p.translate(0, y, 0);
       const N = p.attributes.normal, P = p.attributes.position;
       for (let i = 0; i < N.count; i++) { const v = new T.Vector3(P.getX(i), 0.5, P.getZ(i)).normalize(); N.setXYZ(i, v.x, v.y, v.z); }
@@ -276,6 +279,29 @@ export function cardConifer(T, seed, { whorls = 9, from = 0.06, shape = "cone" }
   parts.push(top, top.clone().rotateY(Math.PI / 2));
   // the inner branches and the lower ones in shade
   return twoSided(T, bakeAO(T, merge(T, parts), (x, y, z) => Math.min(1, 0.45 + 0.35 * Math.min(1, Math.hypot(x, z) / 0.7) + 0.3 * y)));
+}
+
+/** A Scots pine's crown (owner, 2026-11-13: « their real silhouette », not a spruce's cone): a flat, irregular umbrella of needle
+ *  tufts at the top of the bare trunk, gaps of sky between them. Each tuft: a card lying nearly flat, tilted up toward the
+ *  outside, and two upright crossed cards (seen from the side too); its normals bent outward and up, as one lit mass. Unit:
+ *  y 0…1 the crown's depth, x and z −1…1. */
+export function cardUmbrella(T, seed, tufts = 9) {
+  const r = rng(seed), parts = [], tilt = new T.Vector3(), up = new T.Vector3(0, 1, 0);
+  for (let k = 0; k < tufts; k++) {
+    const a = (k / tufts) * 6.283 + r() * 0.8, d = k === 0 ? 0.08 : 0.3 + 0.62 * Math.sqrt(r());
+    const cx = Math.cos(a) * d, cz = Math.sin(a) * d, cy = 0.45 + 0.4 * (1 - d * d) + (r() - 0.5) * 0.22, tw = 0.6 + r() * 0.4;
+    const cards = [new T.PlaneGeometry(tw, tw * 0.75).rotateX(-Math.PI / 2 + 0.25 + r() * 0.45),
+      new T.PlaneGeometry(tw * 0.9, tw * 0.5), new T.PlaneGeometry(tw * 0.9, tw * 0.5).rotateY(Math.PI / 2)];
+    const turn = a + (r() - 0.5) * 0.8;
+    for (const p of cards) {
+      p.rotateY(-turn); p.translate(cx, cy, cz);
+      const P = p.attributes.position, N = p.attributes.normal;
+      for (let i = 0; i < N.count; i++) { tilt.set(P.getX(i), (P.getY(i) - 0.35) * 0.6, P.getZ(i)).normalize().lerp(up, 0.45).normalize(); N.setXYZ(i, tilt.x, tilt.y, tilt.z); }
+      parts.push(p);
+    }
+  }
+  // the tufts' undersides and the middle in shade
+  return twoSided(T, bakeAO(T, merge(T, parts), (x, y, z) => Math.min(1, 0.42 + 0.42 * Math.min(1, (y - 0.25) / 0.7) + 0.22 * Math.min(1, Math.hypot(x, z)))));
 }
 
 /** Crossed cards, unit wide, standing on y = 0 (grass, ferns, impostors). */

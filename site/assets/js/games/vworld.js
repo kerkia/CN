@@ -7,7 +7,7 @@ const CH = 64;                     // chunk size (m)
 const NEAR = 250;                  // chunks within this distance of the runner are built
 const FAR = NEAR + 2 * CH;         // and dropped beyond this one
 
-import { rng, textures, cardCrown, cardConifer, crossed, sway, sky, impostor, loadPhotos, photoTextures, PHOTO_GAIN, bakeAO } from "./vforest.js";
+import { rng, textures, cardCrown, cardConifer, cardUmbrella, crossed, sway, sky, impostor, loadPhotos, photoTextures, PHOTO_GAIN, bakeAO } from "./vforest.js";
 
 /** A PNG's pixels, exact (no colour management). */
 async function pixels(blob) {
@@ -196,8 +196,10 @@ export class World {
       crown4: { geo: crowns[3], mat: leafMat(leafT), shadow: true },
       ...(pBark ? { trunkP: { geo: trunkGeo, mat: lam({ map: pBark, normalMap: pBarkN, color: gain(G), vertexColors: true }), shadow: true } } : {}),
       pine: { geo: cardConifer(T, 9), mat: needle(), shadow: true },
-      pine2: { geo: cardConifer(T, 27, { whorls: 7, from: 0.0, shape: "pine" }), mat: needle(), shadow: true },
-      bush: { geo: cardCrown(T, 77, 10, 0.75), mat: leafMat(leafB), shadow: true },
+      pine2: { geo: cardUmbrella(T, 27), mat: needle(), shadow: true },                            // a Scots pine's umbrella
+      young: { geo: cardConifer(T, 13, { whorls: 7, from: 0.02, shape: "young" }), mat: needle(), shadow: true },
+      // the bushes cast no sun shadow (their cards' hard-edged shadows were black blots): a soft shade under them instead
+      bush: { geo: cardCrown(T, 77, 10, 0.75), mat: leafMat(leafB), shadow: false },
       low: { geo: crossed(T, 3), mat: card(P.low || X.fern, !!P.low, 0.08), shadow: false },
       grass: { geo: crossed(T, 2), mat: card(P.grass || X.grass, !!P.grass, 0.1), shadow: false },
       log: { geo: logGeo, mat: barkMat(), shadow: true },
@@ -213,7 +215,7 @@ export class World {
       tm.scale.set(1.3, kind === "pine2" ? h * 0.85 : kind === "pine" ? h * 0.75 : h * 0.66, 1.3); g.add(tm);
       const m = new T.Mesh(crown, new T.MeshLambertMaterial({ map: crownMat.map, alphaTest: 0.42, vertexColors: true, color: leafC.clone().multiply(crownMat.color) }));
       if (kind === "pine") { m.position.y = h * 0.3; m.scale.set(cr * 0.95, h * 0.7, cr * 0.95); }
-      else if (kind === "pine2") { m.position.y = h * 0.55; m.scale.set(cr * 0.9, h * 0.45, cr * 0.9); }
+      else if (kind === "pine2") { m.position.y = h * 0.66; m.scale.set(cr * 1.1, h * 0.34, cr * 1.1); }
       else { m.position.y = h * 0.7; m.scale.set(cr * 1.1, h * 0.3, cr * 1.1); }
       g.add(m); return g;
     };
@@ -321,10 +323,19 @@ export class World {
       if (isPine) {
         // spruce-like cones, and (tall ones, a third, or the biome's « pineShare » over its « pineMinH ») pines: a bare trunk
         // under a high, rounded crown
-        const pine = h > (this.B.pineMinH ?? 14) && r() < (this.B.pineShare ?? 0.35), c = tint(pick(this.pine)).multiplyScalar(bright);
-        inst[this.K.trunkP ? "trunkP" : "trunk"].push([x, y - 0.2, z, 1 + h * 0.012, h * (pine ? 0.85 : 0.75), 1 + h * 0.012, rot, tc]);
-        if (pine) inst.pine2.push([x, y + h * 0.55, z, cr * 0.9, h * 0.45, cr * 0.9, rot, c]);
-        else inst.pine.push([x, y + h * 0.3, z, cr * 0.95, h * 0.7, cr * 0.95, rot, c]);
+        // a young conifer (under the biome's « youngH », 7 m): a soft, rounded sapling down to the ground, lighter green
+        const young = h < (this.B.youngH ?? 7);
+        const pine = !young && h > (this.B.pineMinH ?? 14) && r() < (this.B.pineShare ?? 0.35), c = tint(pick(this.pine)).multiplyScalar(bright);
+        if (young) {
+          c.lerp(new T.Color(0x7f9a52), 0.25).multiplyScalar(1.12);
+          inst[this.K.trunkP ? "trunkP" : "trunk"].push([x, y - 0.2, z, 0.7, h * 0.5, 0.7, rot, tc]);
+          inst.young.push([x, y + h * 0.04, z, cr * 1.25, h * 0.94, cr * 1.25, rot, c]);
+        } else {
+          inst[this.K.trunkP ? "trunkP" : "trunk"].push([x, y - 0.2, z, 1 + h * 0.012, h * (pine ? 0.9 : 0.75), 1 + h * 0.012, rot, tc]);
+          // a Scots pine's umbrella: high on the bare trunk, its width a little irregular
+          if (pine) inst.pine2.push([x, y + h * 0.66, z, cr * 1.1 * (0.85 + r() * 0.3), h * 0.34, cr * 1.1 * (0.85 + r() * 0.3), rot, c]);
+          else inst.pine.push([x, y + h * 0.3, z, cr * 0.95, h * 0.7, cr * 0.95, rot, c]);
+        }
         inst[pine ? "farPine2" : "farPine"].push([x, y - 0.2, z, (cr / 3.5) * this.IMP.w * 0.9, (h / 20) * this.IMP.h, (cr / 3.5) * this.IMP.w * 0.9, rot, c]);
       } else {
         inst.trunk.push([x, y - 0.2, z, 1 + h * 0.014, h * 0.66, 1 + h * 0.014, rot, tc]);
@@ -353,7 +364,7 @@ export class World {
     const open = new Set(["open", "open_t", "rough", "rough_t", "cultivated", "marsh"].map((n) => this.C[n]).filter((v) => v != null));
     for (let i = z0; i < z1; i++) for (let j = x0; j < x1; j++) {
       const q = (i * this.W + j) * 3, bd = this.d.veg[q + 1] / BK, ld = this.d.veg[q + 2] / LK;
-      if (bd > 0 && r() < bd) { const x = j + r(), z = i + r(), s = 0.7 + r() * 0.9; inst.bush.push([x, this.heightAt(x, z) + 0.35, z, s, (0.9 + r() * 1.1) * 0.6, s, r() * 6.28, pick(this.bushC).clone().multiplyScalar(0.85 + r() * 0.3)]); }
+      if (bd > 0 && r() < bd) { const x = j + r(), z = i + r(), s = 0.7 + r() * 0.9; inst.bush.push([x, this.heightAt(x, z) + 0.35, z, s, (0.9 + r() * 1.1) * 0.6, s, r() * 6.28, pick(this.bushC).clone().multiplyScalar(0.85 + r() * 0.3)]); shadeAt(x, z, s * 1.3, 0.22); }
       // grass in open ground, ferns and low growth in the forest
       const grassy = open.has(this.d.cls[i * this.W + j]);
       let n = ld; while (n > 0) { if (r() < n) { const x = j + r(), z = i + r(), s = 0.5 + r() * 0.6;
@@ -410,7 +421,7 @@ export class World {
       const wg = new T.BufferGeometry(); wg.setAttribute("position", new T.Float32BufferAttribute(wp, 3)); wg.setIndex(wi); wg.computeVertexNormals();
       g.add(new T.Mesh(wg, this.waterMat));
     }
-    const LOD = { trunk: "near", trunkP: "near", crown: "near", crown2: "near", crown3: "near", crown4: "near", pine: "near", pine2: "near", farLeaf: "far", farPine: "far", farPine2: "far", low: "low", grass: "low", log: "near" };
+    const LOD = { trunk: "near", trunkP: "near", young: "near", crown: "near", crown2: "near", crown3: "near", crown4: "near", pine: "near", pine2: "near", farLeaf: "far", farPine: "far", farPine2: "far", low: "low", grass: "low", log: "near" };
     const M = new T.Matrix4(), Q = new T.Quaternion(), S = new T.Vector3(), P = new T.Vector3(), UP = new T.Vector3(0, 1, 0);
     for (const [kind, list] of Object.entries(inst)) {
       if (!list.length) continue;

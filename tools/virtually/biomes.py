@@ -14,7 +14,7 @@ TEMPERATE = {"conifer": 0.3, "leaf": ["#56763a", "#61803f", "#4d6c35", "#6a8a46"
 
 FONTAINEBLEAU = {
     "name": "Fontainebleau: Scots pine, oak and birch on sand and sandstone", "textures": "sandpine",
-    "conifer": 0.6, "pineShare": 0.85, "pineMinH": 8,
+    "conifer": 0.6, "pineShare": 0.95, "pineMinH": 7,
     "ground": {"forest": [138, 120, 94], "open": [184, 172, 140], "open_t": [176, 164, 132], "rough": [126, 106, 84],
                "rough_t": [132, 114, 90], "slow": [104, 96, 70], "slow_vis": [110, 102, 74], "walk": [90, 88, 62],
                "walk_vis": [96, 94, 66], "fight": [78, 80, 56], "path": [206, 198, 184], "track": [200, 192, 178],

@@ -1399,12 +1399,17 @@ Every multiple-choice game was played through to its score page at phone size, w
   mipmaps become solid rectangles). The biome by place: `tools/virtually/biomes.py` (`for_place`: Fontainebleau's box, else the
   temperate default), written by lidarrace.py when the race has no biome.json; its colours read on 29 freely licensed Wikimedia
   Commons photos of the Trois Pignons (medians of the floor, the white sand, the sandstone, the pines' bark; only colours, nothing
-  kept), more Scots pines (`pineShare` 0.85 over `pineMinH` 8 m) with their reddish trunks (`trunkPine`); vgen's « sandrock »
+  kept), more Scots pines (`pineShare` 0.95 over `pineMinH` 7 m) with their reddish trunks (`trunkPine`); vgen's « sandrock »
   takes the same set. Only CC0 libraries, or Commons / Panoramax photos under their licences with credits — never ordinary web
   photos. The live Trois Pignons event (`ecavha6hyc`) was updated in place (race.json's biome and ground.jpg made again from its
   own cls.png and h.png by build.py's formula: its courses and runs kept; a CI rebuild would set new courses, course.py searching
-  by time). Measured in headless Edge: 60 fps at 1400 × 860 and 390 × 844, as before. Left: young pines as dark streaks, many
-  conifers still spruce-shaped, no photographed undergrowth (heather, bracken).
+  by time). Measured in headless Edge: 60 fps at 1400 × 860 and 390 × 844, as before. **The trees' shapes** (owner, the same day:
+  young pines as dark spikes, pines spruce-shaped, harsh shadows under the bushes): a Scots pine (`pine2`) is an irregular
+  umbrella of needle tufts high on its bare trunk (`vforest.cardUmbrella`: tufts of a card lying nearly flat and two upright ones,
+  crown 0.66-1 of the height), a young conifer under `youngH` (7 m) a soft ovoid down to the ground, lighter green
+  (`cardConifer` shape « young », kind `young`); spruces and firs keep their cones (`pine`). The bushes cast no sun shadow any
+  more (their cards' hard-edged shadows were black blots): a soft shade splatted on the ground under each. Trois Pignons still
+  59.8 fps at a phone's 390 × 844. Left: no photographed undergrowth (heather, bracken).
   **The ground picture was mirrored north–south until 2026-11-11** (the sprint session found it, the owner met it on Trois Pignons:
   standing on a map's path junction, the path drawn on the ground lay further on): `ground.jpg` is an ImageBitmap, which three.js never
   flips, so its first row (north) is at v = 0 — `build()`'s ground uv is `z / H`. **« Avatar »** (Coach › Virtually's tab between
