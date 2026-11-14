@@ -19,20 +19,24 @@ await loadArea("virtually");
 
 const BASE = "/api/virtual/";
 const RUN = 3.7;                    // m/s on flat open ground (about 4:30 a km)
-// the race's clock runs three times as fast as the wall clock (owner, 2026-11-11: the real pace, seen on a screen, looked like
-// walking — twice then; 2026-11-12: « ×1 still feels slow »): the times stay a runner's real times, only the play is shorter
-const PLAY = 3;
-// The runner's pace (owner, 2026-11-12; a fast-forward of the game until then, which made thinking at « ×2 » cost twice as much):
-// ×0.5 walking, ×1 running, ×1.5 running fast, ×2 running very fast, the speed over the ground multiplied, the clock unchanged —
-// going fast saves time by itself, and leaves less time to read the map. The two fast paces empty the runner's energy (a full
-// bar lasts DRAIN race seconds), running at ×1, walking and standing still fill it (in REFILL); empty, the pace drops to ×1.
+// The runner's speed (owner, 2026-11-14: « les flèches bas/haut contrôlent la vitesse ; le coureur garde sa vitesse si aucune
+// touche n'est pressée ; de 0 à 3 par 0,5 »): a cruise level L set with ↑ / ↓ and kept, the runner going forward on their own.
+// L is how many times faster than a real runner the play goes: over the ground L × the real speed (RUN × the ground's factor ×
+// the slope's, a good club runner's), the race clock max(L, 1) × the wall clock. So from ×1 up every metre costs the same race
+// time — a real runner's on that ground —, a higher level only shortens the play (less time to read the map on the way); ×0.5
+// costs twice as much race time a metre (walking); standing still, the clock runs as the wall clock (real time spent reading).
+// The best strategy is no longer the top speed. Measured on Autrans' six courses (2026-11-14, perfect routes on a 2 m grid with
+// this model): violet long 71 race min, so 36 min of play at ×2 and 24 at ×3; violet middle 38 min, 19 at ×2.
+const LEVELS = [0, 0.5, 1, 1.5, 2, 2.5, 3];
+// The stamina of 2026-11-12 (the fast levels empty an energy bar, the slow ones fill it; empty, back to ×2): off for now (owner,
+// 2026-11-14: « enlever le simulateur de perte d'énergie, au moins pour le moment »); true brings it back.
+const STAMINA = false;
 const VIEW_ICONS = [
   ["scene", '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M2 20 9 8l4 6 3-4 6 10Z" fill="currentColor"/><circle cx="17" cy="6" r="2" fill="currentColor"/></svg>'],
   ["map", '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2Z"/><path d="M9 4v14M15 6v14"/></svg>'],
   ["desc", '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="5" width="19" height="14" rx="1"/><path d="M2.5 12h19M8 5v14M13 5v14M17.5 5v14"/></svg>'],
 ];
-const PACES = [0.5, 1, 1.5, 2], PACE_NAME = { 0.5: "walk", 1: "run", 1.5: "fast", 2: "vfast" };
-const DRAIN = { 1.5: 240, 2: 60 }, REFILL = { 0.5: 60, 1: 300, still: 90 }, REST = 0.1;
+const DRAIN = { 2.5: 240, 3: 60 }, REFILL = { 0.5: 60, 1: 120, 1.5: 200, 2: 300, still: 90 }, REST = 0.1, TIRED = 2;
 const REACH = 6;                    // m: a control within reach (its cue, the punch)
 const PURPLE = "rgba(181, 23, 158, 0.9)";
 const fmt = (s) => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? `${h}:${String(m).padStart(2, "0")}` : `${m}`) + `:${String(x).padStart(2, "0")}`; };
@@ -43,8 +47,8 @@ export const coursesOf = (race) => race.courses || (race.course ? [{ id: "course
 
 // ---- the commands, before the start, at the pause and at any time of the race (« ? » or H; owner, 2026-11-12) ------------------
 const touchScreen = () => matchMedia("(hover: none) and (pointer: coarse)").matches;
-const KEYS = ["move", "turn", "strafe", "walk", "look", "punch", "map", "views", "sheet", "orient", "view", "help", "pause", "pos", "speed", "energy"];
-const TOUCH_KEYS = ["touch.move", "touch.look", "touch.punch", "touch.map", "touch.views", "touch.pause", "pos", "speed", "energy"];
+const KEYS = ["move", "turn", "look", "punch", "map", "views", "sheet", "orient", "view", "help", "pause", "pos", "speed", ...(STAMINA ? ["energy"] : [])];
+const TOUCH_KEYS = ["touch.move", "touch.look", "touch.punch", "touch.map", "touch.views", "touch.pause", "pos", "speed", ...(STAMINA ? ["energy"] : [])];
 const keysHtml = () => html`<ul class="vt-keys">${(touchScreen() ? TOUCH_KEYS : KEYS).map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>`;
 
 /** The course's description sheet before the world is built (the briefing): the features' symbols, no direction read from a town. */
@@ -163,7 +167,7 @@ export function mount(root, raceId, opts = {}) {
       <div class="vt-topbar">
         <span class="vt-views" role="group">${VIEW_ICONS.map(([v, svg]) => html`<button type="button" class="btn${v === "scene" ? " on" : ""}" data-view="${v}" title="${t(`vt.view.${v}`)}" aria-label="${t(`vt.view.${v}`)}">${raw(svg)}</button>`)}</span>
         <button type="button" class="btn" id="vt-pos" title="${t("vt.pos.tip")}"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z" fill="currentColor"/></svg><span class="vt-lbl" id="vt-poslbl">${t("vt.pos.btn")}</span></button>
-        <span class="vt-pace"><button type="button" class="btn" id="vt-slower" title="${t("vt.pace.slower")}" aria-label="${t("vt.pace.slower")}">−</button><button type="button" class="btn" id="vt-speed" title="${t("vt.speed.tip")}"><span id="vt-pacelbl">×1</span><span class="vt-energy" aria-hidden="true"><i></i></span></button><button type="button" class="btn" id="vt-faster" title="${t("vt.pace.faster")}" aria-label="${t("vt.pace.faster")}">+</button></span>
+        <span class="vt-pace"><button type="button" class="btn" id="vt-slower" title="${t("vt.pace.slower")}" aria-label="${t("vt.pace.slower")}">−</button><button type="button" class="btn" id="vt-speed" title="${t("vt.speed.tip")}"><span id="vt-pacelbl">×0</span><span class="vt-energy" aria-hidden="true" ${raw(STAMINA ? "" : "hidden")}><i></i></span></button><button type="button" class="btn" id="vt-faster" title="${t("vt.pace.faster")}" aria-label="${t("vt.pace.faster")}">+</button></span>
         <button type="button" class="btn" id="vt-help" title="${t("vt.help.tip")}" aria-label="${t("vt.help.title")}" aria-expanded="false">?</button>
         <button type="button" class="btn" id="vt-pause" title="${t("vt.pause.tip")}" aria-label="${t("vt.pause")}"><span aria-hidden="true">❚❚</span><span class="vt-lbl">${t("vt.pause")}</span></button>
         <button type="button" class="btn" id="vt-full" aria-pressed="false" title="${t("vt.full")}" aria-label="${t("vt.full")}">⤢</button>
@@ -180,8 +184,8 @@ export function mount(root, raceId, opts = {}) {
       </div>
       <div class="vt-sheet" id="vt-sheet"></div>
       <div class="vt-pad" id="vt-pad">
-        <button type="button" data-k="ArrowLeft">◀</button><button type="button" data-k="ArrowUp">▲</button><button type="button" data-k="ArrowRight">▶</button>
-        <button type="button" data-k="Space" class="vt-padpunch">${t("vt.punchBtn")}</button><button type="button" data-k="ArrowDown">▼</button><button type="button" data-k="View" id="vt-padview">${t("vt.mapBtn")}</button>
+        <button type="button" data-k="ArrowLeft">◀</button><button type="button" data-lv="1" class="vt-padlv" title="${t("vt.pace.faster")}">+</button><button type="button" data-k="ArrowRight">▶</button>
+        <button type="button" data-k="Space" class="vt-padpunch">${t("vt.punchBtn")}</button><button type="button" data-lv="-1" class="vt-padlv" title="${t("vt.pace.slower")}">−</button><button type="button" data-k="View" id="vt-padview">${t("vt.mapBtn")}</button>
       </div>
       <button type="button" class="btn btn-primary vt-back" id="vt-back">${t("vt.backToRace")}</button>
       <div class="vt-help" id="vt-helpbox" hidden><div class="vt-help-h"><b>${t("vt.help.title")}</b>
@@ -220,7 +224,7 @@ export function mount(root, raceId, opts = {}) {
     if (ghosts.length && !$(".vt-gh-brief", root)) $(".vt-brief-cols", root)?.insertAdjacentHTML("beforebegin", String(ghostsLine(ghosts.length)));
     // ---- the runner's state ----
     const st = { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, pitch: -0.08, next: 1, splits: [], track: [], dist: 0,
-      view: "third", pace: 1, energy: 1, paceT: {}, speed: 0, lastTrack: -1, msgUntil: 0,
+      view: "third", level: 0, energy: 1, paceT: {}, speed: 0, lastTrack: -1, msgUntil: 0,
       posLeft: 0, posN: 0, pen: 0, legPen: [] };       // « Ma position »: seconds still shown (real time), presses, penalty seconds, per leg
     const total = () => st.t + st.pen;                // the race time: the clock and the penalties
     const keys = new Set();
@@ -500,7 +504,9 @@ export function mount(root, raceId, opts = {}) {
       g.fillText(`${Math.round((((st.yaw * 180) / Math.PI) % 360 + 360) % 360)}°`, c, s - 12);
     }
     // ---- input ----
-    const GAMEKEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "KeyQ", "KeyE", "ShiftLeft", "ShiftRight", "Space", "Tab", "Comma", "Period"]);
+    const GAMEKEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "Space", "Tab", "Comma", "Period"]);
+    const UP = ["ArrowUp", "KeyW", "KeyR"], DOWN = ["ArrowDown", "KeyS", "KeyF"];
+    let lvAt = 0;
     /** A key or a pad button just pressed: its first step of turning, and when it was pressed. */
     const pressStep = (code) => {
       pressAt.set(code, performance.now());
@@ -516,6 +522,12 @@ export function mount(root, raceId, opts = {}) {
         if (e.code === "Escape" && st.phase === "run" && box.dataset.view !== "scene") { setView("scene"); return; }
         if (e.code === "Escape" && st.phase === "run") { pause(); return; }
         if (st.phase === "run" && GAMEKEYS.has(e.code)) e.preventDefault();
+        // the cruise speed: ↑ / ↓ (W / S, Z / S on AZERTY; R / F too), held down it goes on a step every 0.15 s; 0 to 3 directly
+        if (st.phase === "run" && (UP.includes(e.code) || DOWN.includes(e.code))) {
+          const now = performance.now();
+          if (!e.repeat || now - lvAt > 150) { lvAt = now; setLevel(UP.includes(e.code) ? 1 : -1); }
+          return;
+        }
         if (e.repeat) return;
         if ((e.code === "KeyH" || e.key === "?") && !e.ctrlKey && !e.metaKey && !e.altKey) { if (st.phase === "run") help(helpEl.hidden); return; }
         if (e.code === "Enter" && st.phase === "ready") { const go = $("#vt-go", root); if (go && !go.disabled) { e.preventDefault(); go.click(); } return; }
@@ -526,9 +538,7 @@ export function mount(root, raceId, opts = {}) {
         else if (e.code === "Tab" && st.phase === "run") setView(VIEWS[(VIEWS.indexOf(box.dataset.view) + 1) % VIEWS.length]);
         else if (e.code === "KeyC") toggleSheet();
         else if (e.code === "KeyV") st.view = st.view === "third" ? "first" : "third";
-        else if (e.code === "KeyR") setPace(+1);
-        else if (e.code === "KeyF") setPace(-1);
-        else if (/^Digit[1-4]$/.test(e.code)) setPace(0, PACES[+e.code[5] - 1]);
+        else if (/^(Digit|Numpad)[0-3]$/.test(e.code) && st.phase === "run") setLevel(0, +e.code.slice(-1));
         keys.add(e.code);
       } else keys.delete(e.code);
     };
@@ -542,6 +552,11 @@ export function mount(root, raceId, opts = {}) {
     view.addEventListener("pointerup", () => (look = null));
     $$$(root, "#vt-pad button").forEach((b) => {
       const k = b.dataset.k;
+      if (b.dataset.lv) {                                   // + / −: the cruise speed, a step a tap
+        b.addEventListener("pointerdown", (e) => { e.preventDefault(); if (st.phase === "run") setLevel(+b.dataset.lv); });
+        b.addEventListener("contextmenu", (e) => e.preventDefault());
+        return;
+      }
       // the finger held is captured, so that a thumb sliding off the button does not stop the runner
       b.addEventListener("pointerdown", (e) => { e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (x) { /* none */ }
         if (k === "Space") punch(); else if (k === "View") setView(box.dataset.view === "scene" ? "map" : "scene"); else { if (!keys.has(k)) pressStep(k); keys.add(k); } });
@@ -577,27 +592,27 @@ export function mount(root, raceId, opts = {}) {
     const help = (on) => { helpEl.hidden = !on; helpBtn.classList.toggle("on", on); helpBtn.setAttribute("aria-expanded", String(on)); box.focus(); };
     helpBtn.addEventListener("click", () => help(helpEl.hidden));
     $("#vt-helpx", root).addEventListener("click", () => help(false));
-    // the runner's pace, changed during the race: − and + (F and R, 1 to 4); the pace button itself goes up, then round to ×0.5
+    // the cruise speed, changed during the race: − and + (↓ ↑, W S, F R, 0 to 3); the button itself goes up, then round to 0
     const speedBtn = $("#vt-speed", root), paceLbl = $("#vt-pacelbl", root), bar = $(".vt-energy i", root);
     const paceText = (p) => `×${p.toLocaleString(lang())}`;
-    const showSpeed = () => { paceLbl.textContent = paceText(st.pace); speedBtn.classList.toggle("on", st.pace > 1); speedBtn.classList.toggle("slow", st.pace < 1); };
+    const showSpeed = () => { paceLbl.textContent = paceText(st.level); speedBtn.classList.toggle("on", st.level > 2); speedBtn.classList.toggle("slow", st.level < 1); };
     let barShown = -1;
     const showEnergy = () => {
       const e = Math.round(st.energy * 100);
       if (e === barShown) return;
       barShown = e; bar.style.width = `${e}%`; bar.dataset.level = e < 20 ? "low" : e < 50 ? "mid" : "high";
     };
-    function setPace(d, to) {
-      const i = PACES.indexOf(st.pace);
-      const p = to ?? (d === "cycle" ? PACES[(i + 1) % PACES.length] : PACES[Math.max(0, Math.min(PACES.length - 1, i + d))]);
-      if (p === st.pace) return;
-      if (p > 1 && st.energy < REST) { toast(t("vt.pace.rest"), false); return; }
-      st.pace = p; showSpeed();
-      toast(t("vt.speed.set", { name: t(`vt.pace.${PACE_NAME[p]}`), x: paceText(p) }));
+    function setLevel(d, to) {
+      const i = LEVELS.indexOf(st.level);
+      const p = to ?? (d === "cycle" ? LEVELS[(i + 1) % LEVELS.length] : LEVELS[Math.max(0, Math.min(LEVELS.length - 1, i + d))]);
+      if (p === st.level) return;
+      if (STAMINA && p > TIRED && st.energy < REST) { toast(t("vt.pace.rest"), false); return; }
+      st.level = p; showSpeed();
+      toast(p ? t("vt.level.set", { x: paceText(p) }) : t("vt.level.stop"));
     }
-    speedBtn.addEventListener("click", () => { setPace("cycle"); box.focus(); });
-    $("#vt-slower", root).addEventListener("click", () => { setPace(-1); box.focus(); });
-    $("#vt-faster", root).addEventListener("click", () => { setPace(+1); box.focus(); });
+    speedBtn.addEventListener("click", () => { setLevel("cycle"); box.focus(); });
+    $("#vt-slower", root).addEventListener("click", () => { setLevel(-1); box.focus(); });
+    $("#vt-faster", root).addEventListener("click", () => { setLevel(+1); box.focus(); });
     // « Ma position »: the runner shown on the map for POS_S seconds of play, POS_PEN seconds added to the race time
     const POS_S = 10, POS_PEN = 20;
     const posBtn = $("#vt-pos", root), posLbl = $("#vt-poslbl", root);
@@ -649,7 +664,7 @@ export function mount(root, raceId, opts = {}) {
     function reset() {
       if (mapImg.canvas !== layered) mapImg.canvas = layered;        // the finish drew the whole map
       Object.assign(st, { phase: "ready", t: 0, punchT: -1e9, x: course[0].x, z: course[0].z, yaw: 0, next: 1, splits: [], track: [], dist: 0, lastTrack: -1,
-        posLeft: 0, posN: 0, pen: 0, legPen: [], pace: 1, energy: 1, paceT: {} });
+        posLeft: 0, posN: 0, pen: 0, legPen: [], level: 0, energy: 1, paceT: {} });
       showPosBtn(); showSpeed(); showEnergy(); setView("scene"); sheet.hidden = false; describe(); mapSize("small"); mv.cx = course[0].x * mPer; mv.cy = course[0].z * mPer; fitZoom(700); drawMapPanel();
     }
     function finished() {
@@ -694,7 +709,7 @@ export function mount(root, raceId, opts = {}) {
     function paceLine() {
       const all = Object.values(st.paceT).reduce((a, b) => a + b, 0);
       if (!all) return "";
-      const parts = PACES.slice().reverse().filter((p) => st.paceT[p] / all >= 0.005).map((p) => `${paceText(p)} ${pct(st.paceT[p] / all)}`);
+      const parts = LEVELS.slice().reverse().filter((p) => st.paceT[p] / all >= 0.005).map((p) => `${p ? paceText(p) : t("vt.level.stopped")} ${pct(st.paceT[p] / all)}`);
       return html`<p class="muted">${t("vt.pace.done", { list: parts.join(" · ") })}</p>`;
     }
     function nearest() {
@@ -723,36 +738,37 @@ export function mount(root, raceId, opts = {}) {
     }
     // ---- the loop ----
     const MAX_FRAME = 0.25, SUB = 1 / 40;
-    /** One sub-step of the race: `dt` seconds of real time (turning), `sdt` of race time (the clock and the running). */
+    /** One sub-step of the race: `dt` seconds of real time (turning, the ground covered), `sdt` of race time (the clock). */
     function move(dt, sdt) {
       st.t += sdt;
       const tl = LEFT.some((c) => keys.has(c)), tr = RIGHT.some((c) => keys.has(c));
       if (tl !== tr) st.yaw += (tr ? 1 : -1) * turnRate(heldSince(tr ? RIGHT : LEFT)) * dt;
-      const fwd = (keys.has("ArrowUp") || keys.has("KeyW") ? 1 : 0) - (keys.has("ArrowDown") || keys.has("KeyS") ? 1 : 0);
-      const side = (keys.has("KeyE") ? 1 : 0) - (keys.has("KeyQ") ? 1 : 0);
-      let v = 0;
-      const pace = keys.has("ShiftLeft") || keys.has("ShiftRight") ? 0.5 : st.pace;   // Shift held: walking
-      if (fwd || side) {
+      const L = st.level;
+      let v = 0;                                            // the ground covered a race second (the animation's speed)
+      if (L > 0) {
         const f = (world.terrainSpeed(st.x, st.z) || 0.3) * world.rough(st.x, st.z);
-        const dx0 = Math.sin(st.yaw) * fwd + Math.cos(st.yaw) * side, dz0 = -Math.cos(st.yaw) * fwd + Math.sin(st.yaw) * side, l = Math.hypot(dx0, dz0);
-        const ahead = world.heightAt(st.x + (dx0 / l) * 2, st.z + (dz0 / l) * 2) - world.heightAt(st.x, st.z), grade = ahead / 2;
+        const dx0 = Math.sin(st.yaw), dz0 = -Math.cos(st.yaw);
+        const ahead = world.heightAt(st.x + dx0 * 2, st.z + dz0 * 2) - world.heightAt(st.x, st.z), grade = ahead / 2;
         const slope = grade > 0 ? 1 / (1 + 7 * grade) : 1 / (1 + 2.5 * Math.max(0, -grade - 0.12));
-        v = RUN * f * slope * pace * (fwd < 0 ? 0.45 : 1) * (fwd === 0 ? 0.6 : 1);
-        const d = v * sdt, nx = st.x + (dx0 / l) * d, nz = st.z + (dz0 / l) * d;
+        const d = RUN * f * slope * L * dt, nx = st.x + dx0 * d, nz = st.z + dz0 * d;   // a real runner's speed × L, over the wall clock
         const free = (x, z) => world.terrainSpeed(x, z) > 0 && !world.hits(x, z, 0.3);
+        let moved = d;
         if (free(nx, nz)) { st.x = nx; st.z = nz; }
-        else if (free(nx, st.z)) st.x = nx;
-        else if (free(st.x, nz)) st.z = nz;
-        else v = 0;
-        st.dist += v * sdt;
+        else if (free(nx, st.z)) { moved = Math.abs(nx - st.x); st.x = nx; }
+        else if (free(st.x, nz)) { moved = Math.abs(nz - st.z); st.z = nz; }
+        else moved = 0;
+        st.dist += moved;
+        v = sdt > 0 ? moved / sdt : 0;
       }
       st.speed = v;
-      // the runner's energy: the fast paces empty it while moving, the others and the stops fill it
-      if (v > 0 && pace > 1) {
-        st.energy = Math.max(0, st.energy - sdt / DRAIN[pace]);
-        if (!st.energy) { st.pace = 1; showSpeed(); toast(t("vt.pace.tired"), false); }
-      } else st.energy = Math.min(1, st.energy + sdt / (v > 0 ? REFILL[pace] : REFILL.still));
-      if (v > 0) st.paceT[pace] = (st.paceT[pace] || 0) + sdt;
+      // the stamina (STAMINA, off for now): the levels above TIRED empty it while moving, the others and the stops fill it
+      if (STAMINA) {
+        if (v > 0 && L > TIRED) {
+          st.energy = Math.max(0, st.energy - sdt / DRAIN[L]);
+          if (!st.energy) { st.level = TIRED; showSpeed(); toast(t("vt.pace.tired"), false); }
+        } else st.energy = Math.min(1, st.energy + sdt / (v > 0 ? REFILL[L] : REFILL.still));
+      }
+      st.paceT[v > 0 ? L : 0] = (st.paceT[v > 0 ? L : 0] || 0) + sdt;
       if (st.t - st.lastTrack >= 1) { st.track.push([st.t, st.x, st.z]); st.lastTrack = st.t; }
     }
     let last = performance.now(), camPos = null, mapTick = 0, freeTick = 0;
@@ -763,7 +779,7 @@ export function mount(root, raceId, opts = {}) {
       // MAX_FRAME s (a longer gap is a hiccup or a hidden tab), and the movement is done in sub-steps of SUB s of real time,
       // so that a fast frame at ×2 never jumps through a trunk.
       const dt = Math.min(MAX_FRAME, (now - last) / 1000); last = now;
-      const run = st.phase === "run", sdt = dt * (run ? PLAY : 1);
+      const run = st.phase === "run", sdt = dt * (run ? Math.max(1, st.level) : 1);   // the race clock: max(L, 1) × the wall clock
       if (run) {
         if (st.posLeft > 0) { st.posLeft = Math.max(0, st.posLeft - dt); showPosBtn(); if (!st.posLeft) drawMapPanel(); }
         const n = Math.max(1, Math.ceil(dt / SUB));
