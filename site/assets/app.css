@@ -4258,6 +4258,7 @@ tr.bk-blocked td { color: var(--ink-3); font-style: italic; }
 .vt-mapbar button { width: 30px; height: 30px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(28, 34, 42, 0.86); color: #fff; font-size: 17px; font-weight: 700; cursor: pointer; display: grid; place-items: center; padding: 0; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45); }   /* dark, as the bar over the race: white buttons vanished on the map's white (owner, 2026-11-11) */
 .vt-mapbar button:hover { background: rgba(48, 58, 70, 0.95); }
 .vt-mapbar button[hidden] { display: none; }
+.vt-mapbar button.vt-mcomp.on { background: rgba(242, 107, 29, 0.92); border-color: rgba(255, 255, 255, 0.6); }   /* the compass line shown */
 /* over the map when it fills the screen: the race's lines and buttons, the compass, the sheet, the pad, the cards */
 .vt-map { z-index: 1; }
 .vt-hud, .vt-topbar, .vt-cue, .vt-toast, .vt-compass, .vt-sheet, .vt-pad, .vt-over { z-index: 2; }

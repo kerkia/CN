@@ -47,7 +47,7 @@ export const coursesOf = (race) => race.courses || (race.course ? [{ id: "course
 
 // ---- the commands, before the start, at the pause and at any time of the race (« ? » or H; owner, 2026-11-12) ------------------
 const touchScreen = () => matchMedia("(hover: none) and (pointer: coarse)").matches;
-const KEYS = ["move", "turn", "look", "punch", "map", "views", "sheet", "orient", "view", "help", "pause", "pos", "speed", ...(STAMINA ? ["energy"] : [])];
+const KEYS = ["move", "turn", "look", "punch", "map", "views", "sheet", "orient", "compline", "view", "help", "pause", "pos", "speed", ...(STAMINA ? ["energy"] : [])];
 const TOUCH_KEYS = ["touch.move", "touch.look", "touch.punch", "touch.map", "touch.views", "touch.pause", "pos", "speed", ...(STAMINA ? ["energy"] : [])];
 const keysHtml = () => html`<ul class="vt-keys">${(touchScreen() ? TOUCH_KEYS : KEYS).map((k) => html`<li>${t(`vt.keys.${k}`)}</li>`)}</ul>`;
 
@@ -179,6 +179,7 @@ export function mount(root, raceId, opts = {}) {
           <button type="button" data-z="1.5" title="${t("vt.map.zoomIn")}">+</button><button type="button" data-z="0.67" title="${t("vt.map.zoomOut")}">−</button>
           <button type="button" id="vt-mnext" title="${t("vt.map.next")}">◎</button><button type="button" id="vt-msize" title="${t("vt.map.size")}">⤢</button>
           <button type="button" id="vt-morient" class="vt-morient"></button>
+          <button type="button" id="vt-mcomp" class="vt-mcomp" title="${t("vt.map.compline")}" aria-label="${t("vt.map.compline")}"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 13 13 3M13 3H8.5M13 3v4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
           <button type="button" id="vt-mrotl" title="${t("vt.map.rotL")}" aria-label="${t("vt.map.rotL")}" hidden>↺</button><button type="button" id="vt-mrotr" title="${t("vt.map.rotR")}" aria-label="${t("vt.map.rotR")}" hidden>↻</button>
         </div>
       </div>
@@ -293,7 +294,7 @@ export function mount(root, raceId, opts = {}) {
         g.font = `${Math.max(10, Math.min(13, w / 22))}px Arial`; g.fillText(t("vt.mo.hiddenSub", { m: MEM_R }), w / 2, h / 2 + 10);
         return;
       }
-      mv.ang = mapAngle();
+      mv.ang = mapAngle(); mv.yaw = st.yaw;
       g.save(); g.translate(w / 2, h / 2); g.rotate(mv.ang); g.scale(mv.zoom, mv.zoom); g.translate(-mv.cx, -mv.cy);
       g.imageSmoothingQuality = "high"; g.drawImage(mapImg.canvas, 0, 0);
       overprint(g);
@@ -311,11 +312,15 @@ export function mount(root, raceId, opts = {}) {
         st.track.forEach(([, x, z], i) => (i ? g.lineTo(x * mPer, z * mPer) : g.moveTo(x * mPer, z * mPer))); g.stroke();
       }
       if ((st.posLeft > 0 && st.phase === "run") || st.phase === "done") {
-        g.fillStyle = "#e01e1e"; g.beginPath(); g.arc(st.x * mPer, st.z * mPer, 5 / mv.zoom, 0, 7); g.fill();
-        g.strokeStyle = "#e01e1e"; g.lineWidth = 2 / mv.zoom; g.beginPath(); g.moveTo(st.x * mPer, st.z * mPer);
-        g.lineTo((st.x + Math.sin(st.yaw) * 40) * mPer, (st.z - Math.cos(st.yaw) * 40) * mPer); g.stroke();
+        // the runner: an arrow pointing the way they face (owner, 2026-11-14: a line ahead read as a tail, the wrong way round)
+        const x = st.x * mPer, y = st.z * mPer, ux = Math.sin(st.yaw), uy = -Math.cos(st.yaw), k = 1 / mv.zoom;
+        const tip = [x + ux * 13 * k, y + uy * 13 * k], back = [x - ux * 7 * k, y - uy * 7 * k], notch = [x - ux * 2 * k, y - uy * 2 * k];
+        g.beginPath(); g.moveTo(...tip); g.lineTo(back[0] - uy * 8 * k, back[1] + ux * 8 * k); g.lineTo(...notch);
+        g.lineTo(back[0] + uy * 8 * k, back[1] - ux * 8 * k); g.closePath();
+        g.fillStyle = "#e01e1e"; g.strokeStyle = "#fff"; g.lineWidth = 1.6 * k; g.lineJoin = "round"; g.fill(); g.stroke();
       }
       g.restore();
+      if (compLine && st.phase === "run") compassLine(g, w, h);
       if (mv.ang) {                                                    // a north arrow when the map is turned (over the compass in the map's view)
         g.save(); g.translate(20, box.dataset.view === "map" ? h - (comp.clientHeight || 96) - 44 : 22); g.rotate(mv.ang);
         g.fillStyle = "rgba(255, 255, 255, 0.85)"; g.beginPath(); g.arc(0, 0, 14, 0, 7); g.fill();
@@ -326,6 +331,32 @@ export function mount(root, raceId, opts = {}) {
       }
     }
     function overprint(g) { drawOverprint(g, course, mPer, ppm); }
+    // The compass's line (owner, 2026-11-14: « la ligne de la boussole… ça permet aux autres manières d'orienter la carte d'être
+    // utile »): a black line across the map panel through its middle in the direction the runner faces, as the compass laid on
+    // the map gives it — never the runner's position: one pans the map to put the line where one thinks one is. Its arrow at a
+    // third of the way toward the heading. Shown unless turned off (its button, or B; kept in this browser).
+    let compLine = true;
+    try { compLine = localStorage.getItem("ocn.vt.compline") !== "0"; } catch (e) { /* on */ }
+    function compassLine(g, w, h) {
+      const a = st.yaw + mv.ang, ux = Math.sin(a), uy = -Math.cos(a), cx = w / 2, cy = h / 2, R = Math.hypot(w, h);
+      g.save(); g.lineCap = "round";
+      g.strokeStyle = "rgba(255, 255, 255, 0.7)"; g.lineWidth = 3.4;
+      g.beginPath(); g.moveTo(cx - ux * R, cy - uy * R); g.lineTo(cx + ux * R, cy + uy * R); g.stroke();
+      g.strokeStyle = "#111"; g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(cx - ux * R, cy - uy * R); g.lineTo(cx + ux * R, cy + uy * R); g.stroke();
+      const r = Math.min(w, h) * 0.33, tx = cx + ux * r, ty = cy + uy * r, s = 7;
+      g.fillStyle = "#111"; g.beginPath(); g.moveTo(tx + ux * s, ty + uy * s);
+      g.lineTo(tx - ux * s - uy * s * 0.75, ty - uy * s + ux * s * 0.75); g.lineTo(tx - ux * s + uy * s * 0.75, ty - uy * s - ux * s * 0.75); g.closePath(); g.fill();
+      g.restore();
+    }
+    const showComp = () => { const b = $("#vt-mcomp", root); b.classList.toggle("on", compLine); b.setAttribute("aria-pressed", String(compLine)); };
+    const toggleComp = () => {
+      compLine = !compLine; showComp(); drawMapPanel();
+      try { localStorage.setItem("ocn.vt.compline", compLine ? "1" : "0"); } catch (e) { /* not kept */ }
+      toast(t(compLine ? "vt.map.complineOn" : "vt.map.complineOff"));
+    };
+    $("#vt-mcomp", root).addEventListener("click", () => { toggleComp(); box.focus(); });
+    showComp();
     // « map at the controls only » (games/vmapopt.js): shown within MEM_R m of the last control punched (the start first), for MEM_S
     // s of race after a punch, while « Ma position » shows, and before the start and after the finish; never during a pause
     const memo = usable(brief.mapOpt, race).memory, layered = mapImg.canvas;
@@ -536,6 +567,7 @@ export function mount(root, raceId, opts = {}) {
         if (e.code === "Space" && st.phase === "run") punch();
         else if (e.code === "KeyM") mapSize(mapEl.dataset.size === "small" ? "large" : mapEl.dataset.size === "large" ? "hidden" : "small");
         else if (e.code === "KeyO") nextOrient();
+        else if (e.code === "KeyB") toggleComp();
         else if (e.code === "Tab" && st.phase === "run") setView(VIEWS[(VIEWS.indexOf(box.dataset.view) + 1) % VIEWS.length]);
         else if (e.code === "KeyC") toggleSheet();
         else if (e.code === "KeyV") st.view = st.view === "third" ? "first" : "third";
@@ -615,7 +647,7 @@ export function mount(root, raceId, opts = {}) {
     $("#vt-slower", root).addEventListener("click", () => { setLevel(-1); box.focus(); });
     $("#vt-faster", root).addEventListener("click", () => { setLevel(+1); box.focus(); });
     // « Ma position »: the runner shown on the map for POS_S seconds of play, POS_PEN seconds added to the race time
-    const POS_S = 10, POS_PEN = 20;
+    const POS_S = 10, POS_PEN = 30;   // 20 s until 2026-11-14 (owner: « la pénalité doit être plus grande »)
     const posBtn = $("#vt-pos", root), posLbl = $("#vt-poslbl", root);
     let posShown = -1;
     const showPosBtn = () => {
@@ -842,9 +874,9 @@ export function mount(root, raceId, opts = {}) {
       $("#vt-next", root).textContent = st.next >= course.length - 1 ? `→ ${t("vt.finish")}` : `→ ${st.next} (${course[st.next].code})`;
       if (memo && mapShown() !== memoShown) drawMapPanel();
       else if (st.posLeft > 0 && run && (mapTick++ % 6 === 0)) drawMapPanel();
-      else if (orient !== "north" && mapEl.dataset.size !== "hidden") {
-        const d = mapAngle() - mv.ang;
-        if (Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) > 0.004) drawMapPanel();
+      else if ((orient !== "north" || (compLine && st.phase === "run")) && mapEl.dataset.size !== "hidden") {
+        const d = mapAngle() - mv.ang, dy = st.yaw - mv.yaw;        // the map turned, or the compass line with the runner
+        if (Math.abs(Math.atan2(Math.sin(d), Math.cos(d))) > 0.004 || (compLine && Math.abs(Math.atan2(Math.sin(dy), Math.cos(dy))) > 0.004)) drawMapPanel();
       }
     };
     reset(); resize();
