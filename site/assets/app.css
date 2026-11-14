@@ -4446,6 +4446,7 @@ html.vt-fs-on, html.vt-fs-on body { overflow: hidden; }
 .vt-gh-h { font-size: 0.95rem; margin: 12px 0 2px; }
 .vt-gh-sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
 .vt-gh-me td { font-weight: 600; }
+.vt-gh-sub td { font-size: 0.85rem; font-weight: 600; opacity: 0.8; padding-top: 10px; }
 /* « Virtually » › Orga (pages/virtuallyorga.js): the organisers' events */
 .vtp-course:disabled { opacity: 0.55; cursor: not-allowed; }
 /* Virtually › Avatar (games/vavatar.js) */

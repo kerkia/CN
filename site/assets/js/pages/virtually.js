@@ -74,18 +74,37 @@ async function allRuns() {
 // ---- the ghosts (owner, 2026-11-12: « a user could select a number of ghosts to run with, in training for now ») -------------
 const GHOSTS_KEY = "ocn.vt.ghosts", GHOSTS_MAX = 5;
 const ghostCount = () => { try { const n = Number(localStorage.getItem(GHOSTS_KEY)); return n >= 0 && n <= GHOSTS_MAX ? n : 0; } catch (e) { return 0; } };
-/** The n ghosts of a course: training runs only (a competition's never), each runner's best, picked as one's own best first, then
- *  the fastest, then the runners nearest one's own best time (else the field's median); their routes read one by one. */
-async function pickGhosts(race, courseId, n) {
+/** The n ghosts of a run: training runs of the whole map (a competition's never, nor one shown « Ma position »), each runner once.
+ *  The course's own runs first — one's own best, the fastest, then the runners nearest one's own best time (else the field's
+ *  median) —, taken in turn with the map's other courses' runners (owner, 2026-11-14: « runners who did the same map »): each one's
+ *  best run on the course nearest this one in length, nearest one's own pace; those carry their course's name (`course`).
+ *  Their routes read one by one. */
+async function pickGhosts(race, courseId, n, courses, courseLabel) {
   if (!n) return [];
-  const runs = (await runsOf(race.id)).filter((r) => r.course === courseId && r.kind !== "competition" && !r.help && r.t > 0);
-  const best = new Map();
-  for (const r of runs) { const b = best.get(r.u); if (!b || r.t < b.t) best.set(r.u, r); }
+  const runs = (await runsOf(race.id)).filter((r) => r.kind !== "competition" && !r.help && r.t > 0);
+  const lenOf = new Map((courses || []).map((c) => [c.id, c.length]));
+  const here = lenOf.get(courseId) || 0;
+  const best = new Map(), elsewhere = new Map(), dl = (x) => Math.abs((lenOf.get(x.course) || 0) - here);
+  for (const r of runs) {
+    if (r.course === courseId) { const b = best.get(r.u); if (!b || r.t < b.t) best.set(r.u, r); continue; }
+    const b = elsewhere.get(r.u);
+    if (!b || dl(r) < dl(b) || (dl(r) === dl(b) && r.t < b.t)) elsewhere.set(r.u, r);
+  }
   const all = [...best.values()].sort((a, b) => a.t - b.t), mine = all.find((r) => r.mine), others = all.filter((r) => !r.mine);
   const ref = mine ? mine.t : others[Math.floor(others.length / 2)]?.t;
-  const out = [mine, others[0], ...others.slice(1).sort((a, b) => Math.abs(a.t - ref) - Math.abs(b.t - ref))].filter(Boolean).slice(0, n);
+  const same = [mine, others[0], ...others.slice(1).sort((a, b) => Math.abs(a.t - ref) - Math.abs(b.t - ref))].filter(Boolean);
+  // the other courses' runners not already here, nearest one's own pace on this course (seconds a km), else the fastest first
+  const pace = (r) => r.t / ((lenOf.get(r.course) || 1000) / 1000), refPace = ref && here ? ref / (here / 1000) : null;
+  const other = [...elsewhere.values()].filter((r) => !best.has(r.u))
+    .sort((a, b) => (refPace ? Math.abs(pace(a) - refPace) - Math.abs(pace(b) - refPace) : pace(a) - pace(b)));
+  const out = [];
+  for (let i = 0; out.length < n && (i < same.length || i < other.length); i++) {
+    if (i < same.length) out.push(same[i]);
+    if (out.length < n && i < other.length) out.push(other[i]);
+  }
   const got = await Promise.all(out.map((r) => getJson(`${API}runs/${encodeURIComponent(race.id)}/${r.id}`)
-    .then((d) => ({ name: r.mine ? t("vt.gh.me") : displayName(r.name), t: r.t, mine: !!r.mine, route: d.route || [] })).catch(() => null)));
+    .then((d) => ({ name: r.mine ? t("vt.gh.me") : displayName(r.name), t: r.t, mine: !!r.mine, route: d.route || [],
+      course: r.course === courseId ? null : courseLabel(r.course) })).catch(() => null)));
   return got.filter((g) => g && g.route.length > 1);
 }
 
@@ -221,7 +240,7 @@ export async function render(main, { query }) {
       game = mount($(".vtp-game .card-body", el), race.id, {
         course: course.id, title: `${name} · ${courseName(course)}`, base: ev ? `/api/virtual/events/${ev.id}/pkg/` : undefined, race: race.race, load: race.load,
         // the ghosts: in training only, never in a competition nor on invented terrain (the day's first runs are ranked blind)
-        ghosts: ev?.type === "competition" || race.gen ? [] : pickGhosts(race, course.id, ghostCount()),
+        ghosts: ev?.type === "competition" || race.gen ? [] : pickGhosts(race, course.id, ghostCount(), race.race?.courses || [], (id) => courseName((race.race?.courses || []).find((c) => c.id === id) || { id })),
         env: ev?.env,
         // the map options: an event's, fixed by its creator; a map's training, the runner's choice (games/vmapopt.js)
         // (the « Carte du jour »'s ranked runs: the whole map for everyone)

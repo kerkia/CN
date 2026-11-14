@@ -70,7 +70,7 @@ function briefSheet(course, title, cd) {
 
 /** The card before the start (owner, 2026-11-12: shown while the race loads): the course, its descriptions, the commands, « Partir »
  *  once everything is ready. `race`/`course` null while unknown, `sheet` null while the symbols load. */
-function briefCard({ race, course, title, sheet, ready, env, mapOpt, msg = "", ghosts = 0 }) {
+function briefCard({ race, course, title, sheet, ready, env, mapOpt, msg = "", ghosts = 0, ghostsOther = 0 }) {
   const cond = envText(t, env), night = envOf(env).time === "night";
   return html`<div class="vt-card vt-brief"><h2>${title}</h2>
     ${cond ? html`<p class="vt-env"><b>${t("vt.env.label")}</b> ${cond}${night ? html`<br><span class="muted">${t("vt.env.nightRule")}</span>` : ""}</p>` : ""}
@@ -79,7 +79,7 @@ function briefCard({ race, course, title, sheet, ready, env, mapOpt, msg = "", g
       <p class="muted">${t(`vt.src.${race.source}`, { authors: (race.photoAuthors || []).join(", ") || "—" })}</p>
       ${race.photoCredits?.length ? html`<details class="muted vt-photos"><summary>${t("vt.src.photos", { n: race.photoCredits.length })}</summary>
         <p>${race.photoCredits.map((c, i) => html`${i ? ", " : ""}<a href="${c.url}" target="_blank" rel="noopener">${c.id.slice(0, 8)}</a> (${c.author})`)}</p></details>` : ""}` : ""}
-    ${ghostsLine(ghosts)}
+    ${ghostsLine(ghosts, ghostsOther)}
     <div class="vt-brief-cols">
       <section><h3>${t("vt.brief.cd")}</h3><div class="vt-bsheet" id="vt-bsheet">${sheet || html`<div class="spinner vt-spin"></div>`}</div></section>
       <section><h3>${t("vt.brief.keys")}</h3>${keysHtml()}</section>
@@ -101,7 +101,7 @@ function moLine(o, race) {
 }
 
 /** The briefing's line on the ghosts running with one: how many, and where they show. */
-const ghostsLine = (n) => (n ? html`<p class="vt-gh-brief">${tn("vt.gh.brief", n)}</p>` : "");
+const ghostsLine = (n, other = 0) => (n ? html`<p class="vt-gh-brief">${tn("vt.gh.brief", n)}${other ? html` ${tn("vt.gh.briefOther", other)}` : ""}</p>` : "");
 
 /**
  * Mount the game for map `raceId` in `root` (Coach › Virtually's Training tab); returns { stop }.
@@ -216,12 +216,13 @@ export function mount(root, raceId, opts = {}) {
     const ghosts = ghostRuns.filter((g) => g.route?.length > 1).map((g, i) => {
       const colour = GHOST_COLOURS[i % GHOST_COLOURS.length], fig = runnerFigure(T, { shirt: colour, shorts: "#3a3f47", socks: colour, shoes: "#f2f2f2" });
       fig.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.42; o.material.depthWrite = false; o.castShadow = false; } });
-      const tag = nameTag(T, g.name, colour); tag.position.y = 2.15; fig.add(tag);
+      const tag = nameTag(T, g.course ? `${g.name} · ${g.course}` : g.name, colour); tag.position.y = 2.15; fig.add(tag);   // another course's: named
       fig.visible = false; scene.add(fig);
       return { ...g, colour, fig };
     });
     brief.ghosts = ghosts.length;
-    if (ghosts.length && !$(".vt-gh-brief", root)) $(".vt-brief-cols", root)?.insertAdjacentHTML("beforebegin", String(ghostsLine(ghosts.length)));
+    brief.ghostsOther = ghosts.filter((g) => g.course).length;
+    if (ghosts.length && !$(".vt-gh-brief", root)) $(".vt-brief-cols", root)?.insertAdjacentHTML("beforebegin", String(ghostsLine(ghosts.length, brief.ghostsOther)));
     // ---- the runner's state ----
     const st = { phase: "ready", t: 0, x: course[0].x, z: course[0].z, yaw: 0, pitch: -0.08, next: 1, splits: [], track: [], dist: 0,
       view: "third", level: 0, energy: 1, paceT: {}, speed: 0, lastTrack: -1, msgUntil: 0,
@@ -695,15 +696,22 @@ export function mount(root, raceId, opts = {}) {
       $("#vt-to-res", root)?.addEventListener("click", () => opts.onNav("results"));
       $("#vt-to-an", root)?.addEventListener("click", () => opts.onNav("analysis"));
     }
-    /** The ghosts' times against one's own, fastest first, for the finish card (the gap: theirs less one's own). */
+    /** The ghosts' times against one's own, fastest first, for the finish card (the gap: theirs less one's own); the ghosts of the
+     *  map's other courses below, under their own heading, their time on their course and no gap (another course, no comparison). */
     function ghostTable(T) {
       if (!ghosts.length) return "";
-      const rows = ghosts.map((g) => ({ name: g.name, t: g.t, colour: g.colour })).concat([{ name: t("vt.gh.you"), t: T, me: true }]).sort((a, b) => a.t - b.t);
+      const rows = ghosts.filter((g) => !g.course).map((g) => ({ name: g.name, t: g.t, colour: g.colour }))
+        .concat([{ name: t("vt.gh.you"), t: T, me: true }]).sort((a, b) => a.t - b.t);
+      const other = ghosts.filter((g) => g.course).sort((a, b) => a.t - b.t);
       const gap = (s) => { const r = Math.round(s); return r === 0 ? "±0:00" : `${r > 0 ? "+" : "−"}${fmt(Math.abs(r))}`; };
+      const sw = (c) => html`<span class="vt-gh-sw" style="background:${c}"></span>`;
       return html`<h3 class="vt-gh-h">${t("vt.gh.done")}</h3><table class="data vt-gh-t"><thead><tr><th>${t("vt.col.runner")}</th><th>${t("vt.col.time")}</th>
         <th title="${t("vt.gh.gapTip")}">${t("vt.col.gap")}</th></tr></thead>
-        <tbody>${rows.map((r) => html`<tr class="${r.me ? "vt-gh-me" : ""}"><td>${r.me ? "" : html`<span class="vt-gh-sw" style="background:${r.colour}"></span>`}${r.name}</td>
-          <td>${fmt(r.t)}</td><td>${r.me ? "" : gap(r.t - T)}</td></tr>`)}</tbody></table>`;
+        <tbody>${rows.map((r) => html`<tr class="${r.me ? "vt-gh-me" : ""}"><td>${r.me ? "" : sw(r.colour)}${r.name}</td>
+          <td>${fmt(r.t)}</td><td>${r.me ? "" : gap(r.t - T)}</td></tr>`)}
+        ${other.length ? html`<tr class="vt-gh-sub"><td colspan="3">${t("vt.gh.otherHead")}</td></tr>
+          ${other.map((g) => html`<tr><td>${sw(g.colour)}${g.name} <span class="muted">· ${g.course}</span></td><td>${fmt(g.t)}</td>
+            <td class="muted" title="${t("vt.gh.otherTip")}">—</td></tr>`)}` : ""}</tbody></table>`;
     }
     /** The share of the time spent moving at each pace, for the finish card. */
     function paceLine() {
